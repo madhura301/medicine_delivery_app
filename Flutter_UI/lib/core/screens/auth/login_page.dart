@@ -12,19 +12,19 @@ class LoginPage extends StatefulWidget {
 
 class _LoginPageState extends State<LoginPage> {
   final _formKey = GlobalKey<FormState>();
-  final _usernameController = TextEditingController();
+  final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
 
   bool _isLoading = false;
   bool _obscurePassword = true;
   String _errorMessage = '';
 
-  // Demo credentials for all user types
+  // Demo credentials for all user types - updated to use email format
   final Map<String, Map<String, String>> _demoUsers = {
-    'customer': {'password': 'customer123', 'role': 'Customer'},
-    'chemist': {'password': 'chemist123', 'role': 'Chemist'},
-    'admin': {'password': 'admin123', 'role': 'Admin'},
-    'support': {'password': 'support123', 'role': 'Customer Support'},
+    'customer@example.com': {'password': 'CUstomer12!', 'role': 'Customer'},
+    'chemist@example.com': {'password': 'CHemist12!', 'role': 'Chemist'},
+    'admin@example.com': {'password': 'ADmin12!', 'role': 'Admin'},
+    'support@example.com': {'password': 'SUpport12!', 'role': 'Customer Support'},
   };
 
   @override
@@ -47,13 +47,15 @@ class _LoginPageState extends State<LoginPage> {
 
                 const SizedBox(height: 50),
 
-                // Username Field
+                // Email Field (User Name)
                 TextFormField(
-                  controller: _usernameController,
+                  controller: _emailController,
+                  maxLength: 100,
+                  keyboardType: TextInputType.emailAddress,
                   decoration: InputDecoration(
-                    labelText: 'Username',
-                    hintText: 'Enter your username',
-                    prefixIcon: const Icon(Icons.person_outline),
+                    labelText: 'User Name',
+                    hintText: 'Enter your email address',
+                    prefixIcon: const Icon(Icons.email_outlined),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
@@ -62,10 +64,19 @@ class _LoginPageState extends State<LoginPage> {
                       borderSide:
                           const BorderSide(color: Color(0xFF2E7D32), width: 2),
                     ),
+                    counterText: '', // Hide character counter
                   ),
                   validator: (value) {
                     if (value?.isEmpty ?? true) {
-                      return 'Please enter your username';
+                      return 'Please enter your email address';
+                    }
+                    // Email validation regex
+                    final emailRegex = RegExp(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$');
+                    if (!emailRegex.hasMatch(value!)) {
+                      return 'Please enter a valid email address';
+                    }
+                    if (value.length > 100) {
+                      return 'Email address cannot exceed 100 characters';
                     }
                     return null;
                   },
@@ -84,6 +95,7 @@ class _LoginPageState extends State<LoginPage> {
                 TextFormField(
                   controller: _passwordController,
                   obscureText: _obscurePassword,
+                  maxLength: 20,
                   decoration: InputDecoration(
                     labelText: 'Password',
                     hintText: 'Enter your password',
@@ -108,11 +120,47 @@ class _LoginPageState extends State<LoginPage> {
                       borderSide:
                           const BorderSide(color: Color(0xFF2E7D32), width: 2),
                     ),
+                    counterText: '', // Hide character counter
                   ),
                   validator: (value) {
                     if (value?.isEmpty ?? true) {
                       return 'Please enter your password';
                     }
+                    
+                    // Check minimum length
+                    if (value!.length < 8) {
+                      return 'Password must be at least 8 characters long';
+                    }
+                    
+                    // Check maximum length
+                    if (value.length > 20) {
+                      return 'Password cannot exceed 20 characters';
+                    }
+                    
+                    // Check for minimum 2 capital letters
+                    final capitalLetters = RegExp(r'[A-Z]').allMatches(value).length;
+                    if (capitalLetters < 2) {
+                      return 'Password must contain at least 2 capital letters';
+                    }
+                    
+                    // Check for minimum 2 small letters
+                    final smallLetters = RegExp(r'[a-z]').allMatches(value).length;
+                    if (smallLetters < 2) {
+                      return 'Password must contain at least 2 small letters';
+                    }
+                    
+                    // Check for minimum 1 special character
+                    final specialCharacters = RegExp(r'[!@#$%^&*(),.?":{}|<>]').allMatches(value).length;
+                    if (specialCharacters < 1) {
+                      return 'Password must contain at least 1 special character';
+                    }
+                    
+                    // Check for minimum 1 numerical number
+                    final numbers = RegExp(r'[0-9]').allMatches(value).length;
+                    if (numbers < 1) {
+                      return 'Password must contain at least 1 number';
+                    }
+                    
                     return null;
                   },
                   onChanged: (value) {
@@ -194,7 +242,6 @@ class _LoginPageState extends State<LoginPage> {
                   alignment: Alignment.centerRight,
                   child: TextButton(
                     onPressed: () {
-                      //_showForgotPasswordDialog();
                       Navigator.push(
                         context,
                         MaterialPageRoute(
@@ -239,7 +286,7 @@ class _LoginPageState extends State<LoginPage> {
 
                 const SizedBox(height: 30),
 
-                // Demo Credentials
+                // Demo Credentials 
                 //_buildDemoCredentials(),
               ],
             ),
@@ -325,19 +372,19 @@ class _LoginPageState extends State<LoginPage> {
   //         ),
   //         const SizedBox(height: 12),
   //         Text(
-  //           'Customer: customer / customer123',
+  //           'Customer: customer@example.com / CUstomer12!',
   //           style: TextStyle(color: Colors.blue.shade700, fontSize: 14),
   //         ),
   //         Text(
-  //           'Chemist: chemist / chemist123',
+  //           'Chemist: chemist@example.com / CHemist12!',
   //           style: TextStyle(color: Colors.blue.shade700, fontSize: 14),
   //         ),
   //         Text(
-  //           'Admin: admin / admin123',
+  //           'Admin: admin@example.com / ADmin12!',
   //           style: TextStyle(color: Colors.blue.shade700, fontSize: 14),
   //         ),
   //         Text(
-  //           'Support: support / support123',
+  //           'Support: support@example.com / SUpport12!',
   //           style: TextStyle(color: Colors.blue.shade700, fontSize: 14),
   //         ),
   //       ],
@@ -356,13 +403,13 @@ class _LoginPageState extends State<LoginPage> {
     // Simulate API call
     await Future.delayed(const Duration(seconds: 1));
 
-    final username = _usernameController.text.trim();
+    final email = _emailController.text.trim();
     final password = _passwordController.text.trim();
 
     // Check credentials
-    if (_demoUsers.containsKey(username) &&
-        _demoUsers[username]!['password'] == password) {
-      final userRole = _demoUsers[username]!['role']!;
+    if (_demoUsers.containsKey(email) &&
+        _demoUsers[email]!['password'] == password) {
+      final userRole = _demoUsers[email]!['role']!;
 
       setState(() {
         _isLoading = false;
@@ -373,7 +420,7 @@ class _LoginPageState extends State<LoginPage> {
     } else {
       setState(() {
         _isLoading = false;
-        _errorMessage = 'Incorrect username or password';
+        _errorMessage = 'Incorrect email address or password';
       });
     }
   }
@@ -400,25 +447,10 @@ class _LoginPageState extends State<LoginPage> {
 
     Navigator.pushReplacementNamed(context, routeName);
   }
-  // void _showForgotPasswordDialog() {
-  //   showDialog(
-  //     context: context,
-  //     builder: (context) => AlertDialog(
-  //       title: const Text('Forgot Password'),
-  //       content: const Text('Reset password functionality coming soon!'),
-  //       actions: [
-  //         TextButton(
-  //           onPressed: () => Navigator.pop(context),
-  //           child: const Text('OK'),
-  //         ),
-  //       ],
-  //     ),
-  //   );
-  // }
 
   @override
   void dispose() {
-    _usernameController.dispose();
+    _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
   }
