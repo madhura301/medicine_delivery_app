@@ -18,25 +18,25 @@ class AppConstants {
   // Demo Users
   static const Map<String, Map<String, String>> demoUsers = {
     'customer': {
-      'password': 'customer123',
+      'password': 'CUstomer12!',
       'role': 'Customer',
       'email': 'customer@example.com',
       'mobile': '9876543210'
     },
     'chemist': {
-      'password': 'chemist123',
+      'password': 'CHemist12!',
       'role': 'Chemist',
       'email': 'chemist@example.com',
       'mobile': '9876543211'
     },
     'admin': {
-      'password': 'admin123',
+      'password': 'ADmin12!',
       'role': 'Admin',
       'email': 'admin@example.com',
       'mobile': '9876543212'
     },
     'support': {
-      'password': 'support123',
+      'password': 'SUpport12!',
       'role': 'Customer Support',
       'email': 'support@example.com',
       'mobile': '9876543213'

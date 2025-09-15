@@ -19,22 +19,22 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
   // Demo users database (matches your existing login users)
   final Map<String, Map<String, String>> _demoUsers = {
     'customer': {
-      'password': 'customer123',
+      'password': 'CUstomer12!',
       'email': 'customer@example.com',
       'mobile': '9876543210'
     },
     'chemist': {
-      'password': 'chemist123', 
+      'password': 'CHemist12!', 
       'email': 'chemist@example.com',
       'mobile': '9876543211'
     },
     'admin': {
-      'password': 'admin123',
+      'password': 'ADmin12!',
       'email': 'admin@example.com', 
       'mobile': '9876543212'
     },
     'support': {
-      'password': 'support123',
+      'password': 'SUpport12!',
       'email': 'support@example.com',
       'mobile': '9876543213'
     },
