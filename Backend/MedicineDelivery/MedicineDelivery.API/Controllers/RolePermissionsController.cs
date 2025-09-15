@@ -5,6 +5,7 @@ using MedicineDelivery.Application.DTOs;
 using MedicineDelivery.Application.Features.RolePermissions.Commands.AddRolePermission;
 using MedicineDelivery.Application.Features.RolePermissions.Commands.RemoveRolePermission;
 using MedicineDelivery.Application.Features.RolePermissions.Queries.GetRolePermissions;
+using MedicineDelivery.Application.Features.Roles.Queries.GetRolesWithPermissions;
 using System.Security.Claims;
 
 namespace MedicineDelivery.API.Controllers
@@ -102,6 +103,26 @@ namespace MedicineDelivery.API.Controllers
             catch (Exception ex)
             {
                 return StatusCode(500, new { error = "An error occurred while removing role permission." });
+            }
+        }
+
+        [HttpGet("roles-with-permissions")]
+        [Authorize(Policy = "RequireManageRolePermission")]
+        public async Task<IActionResult> GetRolesWithPermissions([FromQuery] bool includeInactiveRoles = false)
+        {
+            try
+            {
+                var query = new GetRolesWithPermissionsQuery 
+                { 
+                    IncludeInactiveRoles = includeInactiveRoles 
+                };
+                
+                var result = await _mediator.Send(query);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = "An error occurred while retrieving roles with permissions." });
             }
         }
     }
