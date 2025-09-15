@@ -82,6 +82,16 @@ CREATE TABLE [Products] (
 );
 GO
 
+CREATE TABLE [Roles] (
+    [Id] int NOT NULL IDENTITY,
+    [Name] nvarchar(max) NOT NULL,
+    [Description] nvarchar(max) NOT NULL,
+    [CreatedAt] datetime2 NOT NULL,
+    [IsActive] bit NOT NULL,
+    CONSTRAINT [PK_Roles] PRIMARY KEY ([Id])
+);
+GO
+
 CREATE TABLE [Users] (
     [Id] nvarchar(450) NOT NULL,
     [Email] nvarchar(max) NOT NULL,
@@ -156,35 +166,89 @@ CREATE TABLE [OrderItems] (
 );
 GO
 
-CREATE TABLE [UserPermissions] (
-    [UserId] nvarchar(450) NOT NULL,
+CREATE TABLE [RolePermissions] (
+    [RoleId] int NOT NULL,
     [PermissionId] int NOT NULL,
     [GrantedAt] datetime2 NOT NULL,
     [GrantedBy] nvarchar(max) NULL,
     [IsActive] bit NOT NULL,
-    CONSTRAINT [PK_UserPermissions] PRIMARY KEY ([UserId], [PermissionId]),
-    CONSTRAINT [FK_UserPermissions_Permissions_PermissionId] FOREIGN KEY ([PermissionId]) REFERENCES [Permissions] ([Id]) ON DELETE CASCADE,
-    CONSTRAINT [FK_UserPermissions_Users_UserId] FOREIGN KEY ([UserId]) REFERENCES [Users] ([Id]) ON DELETE CASCADE
+    CONSTRAINT [PK_RolePermissions] PRIMARY KEY ([RoleId], [PermissionId]),
+    CONSTRAINT [FK_RolePermissions_Permissions_PermissionId] FOREIGN KEY ([PermissionId]) REFERENCES [Permissions] ([Id]) ON DELETE CASCADE,
+    CONSTRAINT [FK_RolePermissions_Roles_RoleId] FOREIGN KEY ([RoleId]) REFERENCES [Roles] ([Id]) ON DELETE CASCADE
+);
+GO
+
+CREATE TABLE [UserRoles] (
+    [UserId] nvarchar(450) NOT NULL,
+    [RoleId] int NOT NULL,
+    [AssignedAt] datetime2 NOT NULL,
+    [AssignedBy] nvarchar(max) NULL,
+    [IsActive] bit NOT NULL,
+    CONSTRAINT [PK_UserRoles] PRIMARY KEY ([UserId], [RoleId]),
+    CONSTRAINT [FK_UserRoles_Roles_RoleId] FOREIGN KEY ([RoleId]) REFERENCES [Roles] ([Id]) ON DELETE CASCADE,
+    CONSTRAINT [FK_UserRoles_Users_UserId] FOREIGN KEY ([UserId]) REFERENCES [Users] ([Id]) ON DELETE CASCADE
 );
 GO
 
 IF EXISTS (SELECT * FROM [sys].[identity_columns] WHERE [name] IN (N'Id', N'CreatedAt', N'Description', N'IsActive', N'Module', N'Name') AND [object_id] = OBJECT_ID(N'[Permissions]'))
     SET IDENTITY_INSERT [Permissions] ON;
 INSERT INTO [Permissions] ([Id], [CreatedAt], [Description], [IsActive], [Module], [Name])
-VALUES (1, '2025-09-13T14:09:58.1610583Z', N'Can view user information', CAST(1 AS bit), N'Users', N'ReadUsers'),
-(2, '2025-09-13T14:09:58.1610587Z', N'Can create new users', CAST(1 AS bit), N'Users', N'CreateUsers'),
-(3, '2025-09-13T14:09:58.1610588Z', N'Can update user information', CAST(1 AS bit), N'Users', N'UpdateUsers'),
-(4, '2025-09-13T14:09:58.1610589Z', N'Can delete users', CAST(1 AS bit), N'Users', N'DeleteUsers'),
-(5, '2025-09-13T14:09:58.1610589Z', N'Can view products', CAST(1 AS bit), N'Products', N'ReadProducts'),
-(6, '2025-09-13T14:09:58.1610590Z', N'Can create new products', CAST(1 AS bit), N'Products', N'CreateProducts'),
-(7, '2025-09-13T14:09:58.1610591Z', N'Can update products', CAST(1 AS bit), N'Products', N'UpdateProducts'),
-(8, '2025-09-13T14:09:58.1610592Z', N'Can delete products', CAST(1 AS bit), N'Products', N'DeleteProducts'),
-(9, '2025-09-13T14:09:58.1610593Z', N'Can view orders', CAST(1 AS bit), N'Orders', N'ReadOrders'),
-(10, '2025-09-13T14:09:58.1610594Z', N'Can create new orders', CAST(1 AS bit), N'Orders', N'CreateOrders'),
-(11, '2025-09-13T14:09:58.1610595Z', N'Can update orders', CAST(1 AS bit), N'Orders', N'UpdateOrders'),
-(12, '2025-09-13T14:09:58.1610595Z', N'Can delete orders', CAST(1 AS bit), N'Orders', N'DeleteOrders');
+VALUES (1, '2025-09-15T14:17:02.1487799Z', N'Can view user information', CAST(1 AS bit), N'Users', N'ReadUsers'),
+(2, '2025-09-15T14:17:02.1487800Z', N'Can create new users', CAST(1 AS bit), N'Users', N'CreateUsers'),
+(3, '2025-09-15T14:17:02.1487802Z', N'Can update user information', CAST(1 AS bit), N'Users', N'UpdateUsers'),
+(4, '2025-09-15T14:17:02.1487803Z', N'Can delete users', CAST(1 AS bit), N'Users', N'DeleteUsers'),
+(5, '2025-09-15T14:17:02.1487804Z', N'Can view products', CAST(1 AS bit), N'Products', N'ReadProducts'),
+(6, '2025-09-15T14:17:02.1487805Z', N'Can create new products', CAST(1 AS bit), N'Products', N'CreateProducts'),
+(7, '2025-09-15T14:17:02.1487806Z', N'Can update products', CAST(1 AS bit), N'Products', N'UpdateProducts'),
+(8, '2025-09-15T14:17:02.1487808Z', N'Can delete products', CAST(1 AS bit), N'Products', N'DeleteProducts'),
+(9, '2025-09-15T14:17:02.1487809Z', N'Can view orders', CAST(1 AS bit), N'Orders', N'ReadOrders'),
+(10, '2025-09-15T14:17:02.1487810Z', N'Can create new orders', CAST(1 AS bit), N'Orders', N'CreateOrders'),
+(11, '2025-09-15T14:17:02.1487811Z', N'Can update orders', CAST(1 AS bit), N'Orders', N'UpdateOrders'),
+(12, '2025-09-15T14:17:02.1487812Z', N'Can delete orders', CAST(1 AS bit), N'Orders', N'DeleteOrders');
 IF EXISTS (SELECT * FROM [sys].[identity_columns] WHERE [name] IN (N'Id', N'CreatedAt', N'Description', N'IsActive', N'Module', N'Name') AND [object_id] = OBJECT_ID(N'[Permissions]'))
     SET IDENTITY_INSERT [Permissions] OFF;
+GO
+
+IF EXISTS (SELECT * FROM [sys].[identity_columns] WHERE [name] IN (N'Id', N'CreatedAt', N'Description', N'IsActive', N'Name') AND [object_id] = OBJECT_ID(N'[Roles]'))
+    SET IDENTITY_INSERT [Roles] ON;
+INSERT INTO [Roles] ([Id], [CreatedAt], [Description], [IsActive], [Name])
+VALUES (1, '2025-09-15T14:17:02.1487926Z', N'Full system access', CAST(1 AS bit), N'Admin'),
+(2, '2025-09-15T14:17:02.1487928Z', N'Management level access', CAST(1 AS bit), N'Manager'),
+(3, '2025-09-15T14:17:02.1487929Z', N'Basic employee access', CAST(1 AS bit), N'Employee'),
+(4, '2025-09-15T14:17:02.1487931Z', N'Customer access', CAST(1 AS bit), N'Customer');
+IF EXISTS (SELECT * FROM [sys].[identity_columns] WHERE [name] IN (N'Id', N'CreatedAt', N'Description', N'IsActive', N'Name') AND [object_id] = OBJECT_ID(N'[Roles]'))
+    SET IDENTITY_INSERT [Roles] OFF;
+GO
+
+IF EXISTS (SELECT * FROM [sys].[identity_columns] WHERE [name] IN (N'PermissionId', N'RoleId', N'GrantedAt', N'GrantedBy', N'IsActive') AND [object_id] = OBJECT_ID(N'[RolePermissions]'))
+    SET IDENTITY_INSERT [RolePermissions] ON;
+INSERT INTO [RolePermissions] ([PermissionId], [RoleId], [GrantedAt], [GrantedBy], [IsActive])
+VALUES (1, 1, '2025-09-15T14:17:02.1487950Z', NULL, CAST(1 AS bit)),
+(2, 1, '2025-09-15T14:17:02.1487952Z', NULL, CAST(1 AS bit)),
+(3, 1, '2025-09-15T14:17:02.1487953Z', NULL, CAST(1 AS bit)),
+(4, 1, '2025-09-15T14:17:02.1487954Z', NULL, CAST(1 AS bit)),
+(5, 1, '2025-09-15T14:17:02.1487955Z', NULL, CAST(1 AS bit)),
+(6, 1, '2025-09-15T14:17:02.1487956Z', NULL, CAST(1 AS bit)),
+(7, 1, '2025-09-15T14:17:02.1487957Z', NULL, CAST(1 AS bit)),
+(8, 1, '2025-09-15T14:17:02.1487958Z', NULL, CAST(1 AS bit)),
+(9, 1, '2025-09-15T14:17:02.1487959Z', NULL, CAST(1 AS bit)),
+(10, 1, '2025-09-15T14:17:02.1487960Z', NULL, CAST(1 AS bit)),
+(11, 1, '2025-09-15T14:17:02.1487961Z', NULL, CAST(1 AS bit)),
+(12, 1, '2025-09-15T14:17:02.1487962Z', NULL, CAST(1 AS bit)),
+(1, 2, '2025-09-15T14:17:02.1487964Z', NULL, CAST(1 AS bit)),
+(3, 2, '2025-09-15T14:17:02.1487966Z', NULL, CAST(1 AS bit)),
+(5, 2, '2025-09-15T14:17:02.1487967Z', NULL, CAST(1 AS bit)),
+(7, 2, '2025-09-15T14:17:02.1487969Z', NULL, CAST(1 AS bit)),
+(9, 2, '2025-09-15T14:17:02.1487971Z', NULL, CAST(1 AS bit)),
+(11, 2, '2025-09-15T14:17:02.1487972Z', NULL, CAST(1 AS bit)),
+(5, 3, '2025-09-15T14:17:02.1487974Z', NULL, CAST(1 AS bit)),
+(9, 3, '2025-09-15T14:17:02.1487975Z', NULL, CAST(1 AS bit)),
+(10, 3, '2025-09-15T14:17:02.1487977Z', NULL, CAST(1 AS bit)),
+(5, 4, '2025-09-15T14:17:02.1487978Z', NULL, CAST(1 AS bit)),
+(9, 4, '2025-09-15T14:17:02.1487980Z', NULL, CAST(1 AS bit)),
+(10, 4, '2025-09-15T14:17:02.1487981Z', NULL, CAST(1 AS bit));
+IF EXISTS (SELECT * FROM [sys].[identity_columns] WHERE [name] IN (N'PermissionId', N'RoleId', N'GrantedAt', N'GrantedBy', N'IsActive') AND [object_id] = OBJECT_ID(N'[RolePermissions]'))
+    SET IDENTITY_INSERT [RolePermissions] OFF;
 GO
 
 CREATE INDEX [IX_AspNetRoleClaims_RoleId] ON [AspNetRoleClaims] ([RoleId]);
@@ -214,11 +278,14 @@ GO
 CREATE INDEX [IX_OrderItems_ProductId] ON [OrderItems] ([ProductId]);
 GO
 
-CREATE INDEX [IX_UserPermissions_PermissionId] ON [UserPermissions] ([PermissionId]);
+CREATE INDEX [IX_RolePermissions_PermissionId] ON [RolePermissions] ([PermissionId]);
+GO
+
+CREATE INDEX [IX_UserRoles_RoleId] ON [UserRoles] ([RoleId]);
 GO
 
 INSERT INTO [__EFMigrationsHistory] ([MigrationId], [ProductVersion])
-VALUES (N'20250913140958_InitialCreate', N'8.0.0');
+VALUES (N'20250915141703_InitialCreate', N'8.0.0');
 GO
 
 COMMIT;

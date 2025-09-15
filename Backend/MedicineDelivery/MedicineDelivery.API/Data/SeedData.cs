@@ -9,19 +9,19 @@ namespace MedicineDelivery.API.Data
     {
         public static async Task Initialize(MedicineDelivery.Infrastructure.Data.ApplicationDbContext context, UserManager<MedicineDelivery.Infrastructure.Data.ApplicationUser> userManager, RoleManager<IdentityRole> roleManager, IRoleService roleService)
         {
-            // Create roles
-            if (!await roleManager.RoleExistsAsync("Admin"))
+            // Create Identity roles (these are separate from our domain roles)
+            var identityRoles = new[] { "Admin", "Manager", "CustomerSupport", "Customer", "Chemist" };
+            
+            foreach (var role in identityRoles)
             {
-                await roleManager.CreateAsync(new IdentityRole("Admin"));
+                if (!await roleManager.RoleExistsAsync(role))
+                {
+                    await roleManager.CreateAsync(new IdentityRole(role));
+                }
             }
 
-            if (!await roleManager.RoleExistsAsync("User"))
-            {
-                await roleManager.CreateAsync(new IdentityRole("User"));
-            }
-
-            // Create admin user
-            var adminEmail = "admin@medimart.com";
+            // Create admin user with specified credentials
+            var adminEmail = "admin@gmail.com";
             var adminUser = await userManager.FindByEmailAsync(adminEmail);
             if (adminUser == null)
             {
@@ -29,12 +29,13 @@ namespace MedicineDelivery.API.Data
                 {
                     UserName = adminEmail,
                     Email = adminEmail,
-                    FirstName = "Admin",
-                    LastName = "User",
-                    EmailConfirmed = true
+                    FirstName = "System",
+                    LastName = "Administrator",
+                    EmailConfirmed = true,
+                    IsActive = true
                 };
 
-                await userManager.CreateAsync(adminUser, "Admin123!");
+                await userManager.CreateAsync(adminUser, "PAssword@123");
                 await userManager.AddToRoleAsync(adminUser, "Admin");
 
                 // Create domain user
@@ -55,8 +56,8 @@ namespace MedicineDelivery.API.Data
                 await roleService.AssignRoleToUserAsync(adminUser.Id, 1, "system");
             }
 
-            // Create regular user
-            var userEmail = "user@medimart.com";
+            // Create sample customer user
+            var userEmail = "customer@medicine.com";
             var regularUser = await userManager.FindByEmailAsync(userEmail);
             if (regularUser == null)
             {
@@ -64,13 +65,14 @@ namespace MedicineDelivery.API.Data
                 {
                     UserName = userEmail,
                     Email = userEmail,
-                    FirstName = "Regular",
-                    LastName = "User",
-                    EmailConfirmed = true
+                    FirstName = "John",
+                    LastName = "Customer",
+                    EmailConfirmed = true,
+                    IsActive = true
                 };
 
-                await userManager.CreateAsync(regularUser, "User123!");
-                await userManager.AddToRoleAsync(regularUser, "User");
+                await userManager.CreateAsync(regularUser, "Customer123!");
+                await userManager.AddToRoleAsync(regularUser, "Customer");
 
                 // Create domain user
                 var domainUser = new MedicineDelivery.Domain.Entities.User

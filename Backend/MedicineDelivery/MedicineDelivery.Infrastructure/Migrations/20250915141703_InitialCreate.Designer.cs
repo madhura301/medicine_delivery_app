@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace MedicineDelivery.Infrastructure.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20250913140958_InitialCreate")]
+    [Migration("20250915141703_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -25,7 +25,7 @@ namespace MedicineDelivery.Infrastructure.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
-            modelBuilder.Entity("MediMart.Domain.Entities.Order", b =>
+            modelBuilder.Entity("MedicineDelivery.Domain.Entities.Order", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -59,7 +59,7 @@ namespace MedicineDelivery.Infrastructure.Migrations
                     b.ToTable("Orders");
                 });
 
-            modelBuilder.Entity("MediMart.Domain.Entities.OrderItem", b =>
+            modelBuilder.Entity("MedicineDelivery.Domain.Entities.OrderItem", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -91,7 +91,7 @@ namespace MedicineDelivery.Infrastructure.Migrations
                     b.ToTable("OrderItems");
                 });
 
-            modelBuilder.Entity("MediMart.Domain.Entities.Permission", b =>
+            modelBuilder.Entity("MedicineDelivery.Domain.Entities.Permission", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -125,7 +125,7 @@ namespace MedicineDelivery.Infrastructure.Migrations
                         new
                         {
                             Id = 1,
-                            CreatedAt = new DateTime(2025, 9, 13, 14, 9, 58, 161, DateTimeKind.Utc).AddTicks(583),
+                            CreatedAt = new DateTime(2025, 9, 15, 14, 17, 2, 148, DateTimeKind.Utc).AddTicks(7799),
                             Description = "Can view user information",
                             IsActive = true,
                             Module = "Users",
@@ -134,7 +134,7 @@ namespace MedicineDelivery.Infrastructure.Migrations
                         new
                         {
                             Id = 2,
-                            CreatedAt = new DateTime(2025, 9, 13, 14, 9, 58, 161, DateTimeKind.Utc).AddTicks(587),
+                            CreatedAt = new DateTime(2025, 9, 15, 14, 17, 2, 148, DateTimeKind.Utc).AddTicks(7800),
                             Description = "Can create new users",
                             IsActive = true,
                             Module = "Users",
@@ -143,7 +143,7 @@ namespace MedicineDelivery.Infrastructure.Migrations
                         new
                         {
                             Id = 3,
-                            CreatedAt = new DateTime(2025, 9, 13, 14, 9, 58, 161, DateTimeKind.Utc).AddTicks(588),
+                            CreatedAt = new DateTime(2025, 9, 15, 14, 17, 2, 148, DateTimeKind.Utc).AddTicks(7802),
                             Description = "Can update user information",
                             IsActive = true,
                             Module = "Users",
@@ -152,7 +152,7 @@ namespace MedicineDelivery.Infrastructure.Migrations
                         new
                         {
                             Id = 4,
-                            CreatedAt = new DateTime(2025, 9, 13, 14, 9, 58, 161, DateTimeKind.Utc).AddTicks(589),
+                            CreatedAt = new DateTime(2025, 9, 15, 14, 17, 2, 148, DateTimeKind.Utc).AddTicks(7803),
                             Description = "Can delete users",
                             IsActive = true,
                             Module = "Users",
@@ -161,7 +161,7 @@ namespace MedicineDelivery.Infrastructure.Migrations
                         new
                         {
                             Id = 5,
-                            CreatedAt = new DateTime(2025, 9, 13, 14, 9, 58, 161, DateTimeKind.Utc).AddTicks(589),
+                            CreatedAt = new DateTime(2025, 9, 15, 14, 17, 2, 148, DateTimeKind.Utc).AddTicks(7804),
                             Description = "Can view products",
                             IsActive = true,
                             Module = "Products",
@@ -170,7 +170,7 @@ namespace MedicineDelivery.Infrastructure.Migrations
                         new
                         {
                             Id = 6,
-                            CreatedAt = new DateTime(2025, 9, 13, 14, 9, 58, 161, DateTimeKind.Utc).AddTicks(590),
+                            CreatedAt = new DateTime(2025, 9, 15, 14, 17, 2, 148, DateTimeKind.Utc).AddTicks(7805),
                             Description = "Can create new products",
                             IsActive = true,
                             Module = "Products",
@@ -179,7 +179,7 @@ namespace MedicineDelivery.Infrastructure.Migrations
                         new
                         {
                             Id = 7,
-                            CreatedAt = new DateTime(2025, 9, 13, 14, 9, 58, 161, DateTimeKind.Utc).AddTicks(591),
+                            CreatedAt = new DateTime(2025, 9, 15, 14, 17, 2, 148, DateTimeKind.Utc).AddTicks(7806),
                             Description = "Can update products",
                             IsActive = true,
                             Module = "Products",
@@ -188,7 +188,7 @@ namespace MedicineDelivery.Infrastructure.Migrations
                         new
                         {
                             Id = 8,
-                            CreatedAt = new DateTime(2025, 9, 13, 14, 9, 58, 161, DateTimeKind.Utc).AddTicks(592),
+                            CreatedAt = new DateTime(2025, 9, 15, 14, 17, 2, 148, DateTimeKind.Utc).AddTicks(7808),
                             Description = "Can delete products",
                             IsActive = true,
                             Module = "Products",
@@ -197,7 +197,7 @@ namespace MedicineDelivery.Infrastructure.Migrations
                         new
                         {
                             Id = 9,
-                            CreatedAt = new DateTime(2025, 9, 13, 14, 9, 58, 161, DateTimeKind.Utc).AddTicks(593),
+                            CreatedAt = new DateTime(2025, 9, 15, 14, 17, 2, 148, DateTimeKind.Utc).AddTicks(7809),
                             Description = "Can view orders",
                             IsActive = true,
                             Module = "Orders",
@@ -206,7 +206,7 @@ namespace MedicineDelivery.Infrastructure.Migrations
                         new
                         {
                             Id = 10,
-                            CreatedAt = new DateTime(2025, 9, 13, 14, 9, 58, 161, DateTimeKind.Utc).AddTicks(594),
+                            CreatedAt = new DateTime(2025, 9, 15, 14, 17, 2, 148, DateTimeKind.Utc).AddTicks(7810),
                             Description = "Can create new orders",
                             IsActive = true,
                             Module = "Orders",
@@ -215,7 +215,7 @@ namespace MedicineDelivery.Infrastructure.Migrations
                         new
                         {
                             Id = 11,
-                            CreatedAt = new DateTime(2025, 9, 13, 14, 9, 58, 161, DateTimeKind.Utc).AddTicks(595),
+                            CreatedAt = new DateTime(2025, 9, 15, 14, 17, 2, 148, DateTimeKind.Utc).AddTicks(7811),
                             Description = "Can update orders",
                             IsActive = true,
                             Module = "Orders",
@@ -224,7 +224,7 @@ namespace MedicineDelivery.Infrastructure.Migrations
                         new
                         {
                             Id = 12,
-                            CreatedAt = new DateTime(2025, 9, 13, 14, 9, 58, 161, DateTimeKind.Utc).AddTicks(595),
+                            CreatedAt = new DateTime(2025, 9, 15, 14, 17, 2, 148, DateTimeKind.Utc).AddTicks(7812),
                             Description = "Can delete orders",
                             IsActive = true,
                             Module = "Orders",
@@ -232,7 +232,7 @@ namespace MedicineDelivery.Infrastructure.Migrations
                         });
                 });
 
-            modelBuilder.Entity("MediMart.Domain.Entities.Product", b =>
+            modelBuilder.Entity("MedicineDelivery.Domain.Entities.Product", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -272,7 +272,262 @@ namespace MedicineDelivery.Infrastructure.Migrations
                     b.ToTable("Products");
                 });
 
-            modelBuilder.Entity("MediMart.Domain.Entities.User", b =>
+            modelBuilder.Entity("MedicineDelivery.Domain.Entities.Role", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Roles");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            CreatedAt = new DateTime(2025, 9, 15, 14, 17, 2, 148, DateTimeKind.Utc).AddTicks(7926),
+                            Description = "Full system access",
+                            IsActive = true,
+                            Name = "Admin"
+                        },
+                        new
+                        {
+                            Id = 2,
+                            CreatedAt = new DateTime(2025, 9, 15, 14, 17, 2, 148, DateTimeKind.Utc).AddTicks(7928),
+                            Description = "Management level access",
+                            IsActive = true,
+                            Name = "Manager"
+                        },
+                        new
+                        {
+                            Id = 3,
+                            CreatedAt = new DateTime(2025, 9, 15, 14, 17, 2, 148, DateTimeKind.Utc).AddTicks(7929),
+                            Description = "Basic employee access",
+                            IsActive = true,
+                            Name = "Employee"
+                        },
+                        new
+                        {
+                            Id = 4,
+                            CreatedAt = new DateTime(2025, 9, 15, 14, 17, 2, 148, DateTimeKind.Utc).AddTicks(7931),
+                            Description = "Customer access",
+                            IsActive = true,
+                            Name = "Customer"
+                        });
+                });
+
+            modelBuilder.Entity("MedicineDelivery.Domain.Entities.RolePermission", b =>
+                {
+                    b.Property<int>("RoleId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("PermissionId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("GrantedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("GrantedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.HasKey("RoleId", "PermissionId");
+
+                    b.HasIndex("PermissionId");
+
+                    b.ToTable("RolePermissions");
+
+                    b.HasData(
+                        new
+                        {
+                            RoleId = 1,
+                            PermissionId = 1,
+                            GrantedAt = new DateTime(2025, 9, 15, 14, 17, 2, 148, DateTimeKind.Utc).AddTicks(7950),
+                            IsActive = true
+                        },
+                        new
+                        {
+                            RoleId = 1,
+                            PermissionId = 2,
+                            GrantedAt = new DateTime(2025, 9, 15, 14, 17, 2, 148, DateTimeKind.Utc).AddTicks(7952),
+                            IsActive = true
+                        },
+                        new
+                        {
+                            RoleId = 1,
+                            PermissionId = 3,
+                            GrantedAt = new DateTime(2025, 9, 15, 14, 17, 2, 148, DateTimeKind.Utc).AddTicks(7953),
+                            IsActive = true
+                        },
+                        new
+                        {
+                            RoleId = 1,
+                            PermissionId = 4,
+                            GrantedAt = new DateTime(2025, 9, 15, 14, 17, 2, 148, DateTimeKind.Utc).AddTicks(7954),
+                            IsActive = true
+                        },
+                        new
+                        {
+                            RoleId = 1,
+                            PermissionId = 5,
+                            GrantedAt = new DateTime(2025, 9, 15, 14, 17, 2, 148, DateTimeKind.Utc).AddTicks(7955),
+                            IsActive = true
+                        },
+                        new
+                        {
+                            RoleId = 1,
+                            PermissionId = 6,
+                            GrantedAt = new DateTime(2025, 9, 15, 14, 17, 2, 148, DateTimeKind.Utc).AddTicks(7956),
+                            IsActive = true
+                        },
+                        new
+                        {
+                            RoleId = 1,
+                            PermissionId = 7,
+                            GrantedAt = new DateTime(2025, 9, 15, 14, 17, 2, 148, DateTimeKind.Utc).AddTicks(7957),
+                            IsActive = true
+                        },
+                        new
+                        {
+                            RoleId = 1,
+                            PermissionId = 8,
+                            GrantedAt = new DateTime(2025, 9, 15, 14, 17, 2, 148, DateTimeKind.Utc).AddTicks(7958),
+                            IsActive = true
+                        },
+                        new
+                        {
+                            RoleId = 1,
+                            PermissionId = 9,
+                            GrantedAt = new DateTime(2025, 9, 15, 14, 17, 2, 148, DateTimeKind.Utc).AddTicks(7959),
+                            IsActive = true
+                        },
+                        new
+                        {
+                            RoleId = 1,
+                            PermissionId = 10,
+                            GrantedAt = new DateTime(2025, 9, 15, 14, 17, 2, 148, DateTimeKind.Utc).AddTicks(7960),
+                            IsActive = true
+                        },
+                        new
+                        {
+                            RoleId = 1,
+                            PermissionId = 11,
+                            GrantedAt = new DateTime(2025, 9, 15, 14, 17, 2, 148, DateTimeKind.Utc).AddTicks(7961),
+                            IsActive = true
+                        },
+                        new
+                        {
+                            RoleId = 1,
+                            PermissionId = 12,
+                            GrantedAt = new DateTime(2025, 9, 15, 14, 17, 2, 148, DateTimeKind.Utc).AddTicks(7962),
+                            IsActive = true
+                        },
+                        new
+                        {
+                            RoleId = 2,
+                            PermissionId = 1,
+                            GrantedAt = new DateTime(2025, 9, 15, 14, 17, 2, 148, DateTimeKind.Utc).AddTicks(7964),
+                            IsActive = true
+                        },
+                        new
+                        {
+                            RoleId = 2,
+                            PermissionId = 3,
+                            GrantedAt = new DateTime(2025, 9, 15, 14, 17, 2, 148, DateTimeKind.Utc).AddTicks(7966),
+                            IsActive = true
+                        },
+                        new
+                        {
+                            RoleId = 2,
+                            PermissionId = 5,
+                            GrantedAt = new DateTime(2025, 9, 15, 14, 17, 2, 148, DateTimeKind.Utc).AddTicks(7967),
+                            IsActive = true
+                        },
+                        new
+                        {
+                            RoleId = 2,
+                            PermissionId = 7,
+                            GrantedAt = new DateTime(2025, 9, 15, 14, 17, 2, 148, DateTimeKind.Utc).AddTicks(7969),
+                            IsActive = true
+                        },
+                        new
+                        {
+                            RoleId = 2,
+                            PermissionId = 9,
+                            GrantedAt = new DateTime(2025, 9, 15, 14, 17, 2, 148, DateTimeKind.Utc).AddTicks(7971),
+                            IsActive = true
+                        },
+                        new
+                        {
+                            RoleId = 2,
+                            PermissionId = 11,
+                            GrantedAt = new DateTime(2025, 9, 15, 14, 17, 2, 148, DateTimeKind.Utc).AddTicks(7972),
+                            IsActive = true
+                        },
+                        new
+                        {
+                            RoleId = 3,
+                            PermissionId = 5,
+                            GrantedAt = new DateTime(2025, 9, 15, 14, 17, 2, 148, DateTimeKind.Utc).AddTicks(7974),
+                            IsActive = true
+                        },
+                        new
+                        {
+                            RoleId = 3,
+                            PermissionId = 9,
+                            GrantedAt = new DateTime(2025, 9, 15, 14, 17, 2, 148, DateTimeKind.Utc).AddTicks(7975),
+                            IsActive = true
+                        },
+                        new
+                        {
+                            RoleId = 3,
+                            PermissionId = 10,
+                            GrantedAt = new DateTime(2025, 9, 15, 14, 17, 2, 148, DateTimeKind.Utc).AddTicks(7977),
+                            IsActive = true
+                        },
+                        new
+                        {
+                            RoleId = 4,
+                            PermissionId = 5,
+                            GrantedAt = new DateTime(2025, 9, 15, 14, 17, 2, 148, DateTimeKind.Utc).AddTicks(7978),
+                            IsActive = true
+                        },
+                        new
+                        {
+                            RoleId = 4,
+                            PermissionId = 9,
+                            GrantedAt = new DateTime(2025, 9, 15, 14, 17, 2, 148, DateTimeKind.Utc).AddTicks(7980),
+                            IsActive = true
+                        },
+                        new
+                        {
+                            RoleId = 4,
+                            PermissionId = 10,
+                            GrantedAt = new DateTime(2025, 9, 15, 14, 17, 2, 148, DateTimeKind.Utc).AddTicks(7981),
+                            IsActive = true
+                        });
+                });
+
+            modelBuilder.Entity("MedicineDelivery.Domain.Entities.User", b =>
                 {
                     b.Property<string>("Id")
                         .HasColumnType("nvarchar(450)");
@@ -303,31 +558,31 @@ namespace MedicineDelivery.Infrastructure.Migrations
                     b.ToTable("Users");
                 });
 
-            modelBuilder.Entity("MediMart.Domain.Entities.UserPermission", b =>
+            modelBuilder.Entity("MedicineDelivery.Domain.Entities.UserRole", b =>
                 {
                     b.Property<string>("UserId")
                         .HasColumnType("nvarchar(450)");
 
-                    b.Property<int>("PermissionId")
+                    b.Property<int>("RoleId")
                         .HasColumnType("int");
 
-                    b.Property<DateTime>("GrantedAt")
+                    b.Property<DateTime>("AssignedAt")
                         .HasColumnType("datetime2");
 
-                    b.Property<string>("GrantedBy")
+                    b.Property<string>("AssignedBy")
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
 
-                    b.HasKey("UserId", "PermissionId");
+                    b.HasKey("UserId", "RoleId");
 
-                    b.HasIndex("PermissionId");
+                    b.HasIndex("RoleId");
 
-                    b.ToTable("UserPermissions");
+                    b.ToTable("UserRoles");
                 });
 
-            modelBuilder.Entity("MediMart.Infrastructure.Data.ApplicationUser", b =>
+            modelBuilder.Entity("MedicineDelivery.Infrastructure.Data.ApplicationUser", b =>
                 {
                     b.Property<string>("Id")
                         .HasColumnType("nvarchar(450)");
@@ -540,15 +795,15 @@ namespace MedicineDelivery.Infrastructure.Migrations
                     b.ToTable("AspNetUserTokens", (string)null);
                 });
 
-            modelBuilder.Entity("MediMart.Domain.Entities.OrderItem", b =>
+            modelBuilder.Entity("MedicineDelivery.Domain.Entities.OrderItem", b =>
                 {
-                    b.HasOne("MediMart.Domain.Entities.Order", "Order")
+                    b.HasOne("MedicineDelivery.Domain.Entities.Order", "Order")
                         .WithMany("OrderItems")
                         .HasForeignKey("OrderId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("MediMart.Domain.Entities.Product", "Product")
+                    b.HasOne("MedicineDelivery.Domain.Entities.Product", "Product")
                         .WithMany()
                         .HasForeignKey("ProductId")
                         .OnDelete(DeleteBehavior.Restrict)
@@ -559,21 +814,40 @@ namespace MedicineDelivery.Infrastructure.Migrations
                     b.Navigation("Product");
                 });
 
-            modelBuilder.Entity("MediMart.Domain.Entities.UserPermission", b =>
+            modelBuilder.Entity("MedicineDelivery.Domain.Entities.RolePermission", b =>
                 {
-                    b.HasOne("MediMart.Domain.Entities.Permission", "Permission")
-                        .WithMany("UserPermissions")
+                    b.HasOne("MedicineDelivery.Domain.Entities.Permission", "Permission")
+                        .WithMany("RolePermissions")
                         .HasForeignKey("PermissionId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("MediMart.Domain.Entities.User", "User")
-                        .WithMany("UserPermissions")
-                        .HasForeignKey("UserId")
+                    b.HasOne("MedicineDelivery.Domain.Entities.Role", "Role")
+                        .WithMany("RolePermissions")
+                        .HasForeignKey("RoleId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.Navigation("Permission");
+
+                    b.Navigation("Role");
+                });
+
+            modelBuilder.Entity("MedicineDelivery.Domain.Entities.UserRole", b =>
+                {
+                    b.HasOne("MedicineDelivery.Domain.Entities.Role", "Role")
+                        .WithMany("UserRoles")
+                        .HasForeignKey("RoleId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("MedicineDelivery.Domain.Entities.User", "User")
+                        .WithMany("UserRoles")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Role");
 
                     b.Navigation("User");
                 });
@@ -589,7 +863,7 @@ namespace MedicineDelivery.Infrastructure.Migrations
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserClaim<string>", b =>
                 {
-                    b.HasOne("MediMart.Infrastructure.Data.ApplicationUser", null)
+                    b.HasOne("MedicineDelivery.Infrastructure.Data.ApplicationUser", null)
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -598,7 +872,7 @@ namespace MedicineDelivery.Infrastructure.Migrations
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserLogin<string>", b =>
                 {
-                    b.HasOne("MediMart.Infrastructure.Data.ApplicationUser", null)
+                    b.HasOne("MedicineDelivery.Infrastructure.Data.ApplicationUser", null)
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -613,7 +887,7 @@ namespace MedicineDelivery.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("MediMart.Infrastructure.Data.ApplicationUser", null)
+                    b.HasOne("MedicineDelivery.Infrastructure.Data.ApplicationUser", null)
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -622,26 +896,33 @@ namespace MedicineDelivery.Infrastructure.Migrations
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserToken<string>", b =>
                 {
-                    b.HasOne("MediMart.Infrastructure.Data.ApplicationUser", null)
+                    b.HasOne("MedicineDelivery.Infrastructure.Data.ApplicationUser", null)
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("MediMart.Domain.Entities.Order", b =>
+            modelBuilder.Entity("MedicineDelivery.Domain.Entities.Order", b =>
                 {
                     b.Navigation("OrderItems");
                 });
 
-            modelBuilder.Entity("MediMart.Domain.Entities.Permission", b =>
+            modelBuilder.Entity("MedicineDelivery.Domain.Entities.Permission", b =>
                 {
-                    b.Navigation("UserPermissions");
+                    b.Navigation("RolePermissions");
                 });
 
-            modelBuilder.Entity("MediMart.Domain.Entities.User", b =>
+            modelBuilder.Entity("MedicineDelivery.Domain.Entities.Role", b =>
                 {
-                    b.Navigation("UserPermissions");
+                    b.Navigation("RolePermissions");
+
+                    b.Navigation("UserRoles");
+                });
+
+            modelBuilder.Entity("MedicineDelivery.Domain.Entities.User", b =>
+                {
+                    b.Navigation("UserRoles");
                 });
 #pragma warning restore 612, 618
         }

@@ -70,61 +70,148 @@ namespace MedicineDelivery.Infrastructure.Data
 
             // Seed permissions
             builder.Entity<Permission>().HasData(
-                new Permission { Id = 1, Name = "ReadUsers", Description = "Can view user information", Module = "Users" },
-                new Permission { Id = 2, Name = "CreateUsers", Description = "Can create new users", Module = "Users" },
-                new Permission { Id = 3, Name = "UpdateUsers", Description = "Can update user information", Module = "Users" },
-                new Permission { Id = 4, Name = "DeleteUsers", Description = "Can delete users", Module = "Users" },
-                new Permission { Id = 5, Name = "ReadProducts", Description = "Can view products", Module = "Products" },
-                new Permission { Id = 6, Name = "CreateProducts", Description = "Can create new products", Module = "Products" },
-                new Permission { Id = 7, Name = "UpdateProducts", Description = "Can update products", Module = "Products" },
-                new Permission { Id = 8, Name = "DeleteProducts", Description = "Can delete products", Module = "Products" },
-                new Permission { Id = 9, Name = "ReadOrders", Description = "Can view orders", Module = "Orders" },
-                new Permission { Id = 10, Name = "CreateOrders", Description = "Can create new orders", Module = "Orders" },
-                new Permission { Id = 11, Name = "UpdateOrders", Description = "Can update orders", Module = "Orders" },
-                new Permission { Id = 12, Name = "DeleteOrders", Description = "Can delete orders", Module = "Orders" }
+                // Original permissions
+                new Permission { Id = 1, Name = "ReadUsers", Description = "Can view user information", Module = "Users", CreatedAt = DateTime.UtcNow, IsActive = true },
+                new Permission { Id = 2, Name = "CreateUsers", Description = "Can create new users", Module = "Users", CreatedAt = DateTime.UtcNow, IsActive = true },
+                new Permission { Id = 3, Name = "UpdateUsers", Description = "Can update user information", Module = "Users", CreatedAt = DateTime.UtcNow, IsActive = true },
+                new Permission { Id = 4, Name = "DeleteUsers", Description = "Can delete users", Module = "Users", CreatedAt = DateTime.UtcNow, IsActive = true },
+                new Permission { Id = 5, Name = "ReadProducts", Description = "Can view products", Module = "Products", CreatedAt = DateTime.UtcNow, IsActive = true },
+                new Permission { Id = 6, Name = "CreateProducts", Description = "Can create new products", Module = "Products", CreatedAt = DateTime.UtcNow, IsActive = true },
+                new Permission { Id = 7, Name = "UpdateProducts", Description = "Can update products", Module = "Products", CreatedAt = DateTime.UtcNow, IsActive = true },
+                new Permission { Id = 8, Name = "DeleteProducts", Description = "Can delete products", Module = "Products", CreatedAt = DateTime.UtcNow, IsActive = true },
+                new Permission { Id = 9, Name = "ReadOrders", Description = "Can view orders", Module = "Orders", CreatedAt = DateTime.UtcNow, IsActive = true },
+                new Permission { Id = 10, Name = "CreateOrders", Description = "Can create new orders", Module = "Orders", CreatedAt = DateTime.UtcNow, IsActive = true },
+                new Permission { Id = 11, Name = "UpdateOrders", Description = "Can update orders", Module = "Orders", CreatedAt = DateTime.UtcNow, IsActive = true },
+                new Permission { Id = 12, Name = "DeleteOrders", Description = "Can delete orders", Module = "Orders", CreatedAt = DateTime.UtcNow, IsActive = true },
+                
+                // Admin User Management Permissions
+                new Permission { Id = 13, Name = "AdminReadUsers", Description = "Admin can view all user information", Module = "UserManagement", CreatedAt = DateTime.UtcNow, IsActive = true },
+                new Permission { Id = 14, Name = "AdminCreateUsers", Description = "Admin can create users", Module = "UserManagement", CreatedAt = DateTime.UtcNow, IsActive = true },
+                new Permission { Id = 15, Name = "AdminUpdateUsers", Description = "Admin can update user information", Module = "UserManagement", CreatedAt = DateTime.UtcNow, IsActive = true },
+                new Permission { Id = 16, Name = "AdminDeleteUsers", Description = "Admin can delete users", Module = "UserManagement", CreatedAt = DateTime.UtcNow, IsActive = true },
+                
+                // Manager User Management Permissions
+                new Permission { Id = 17, Name = "ManagerReadUsers", Description = "Manager can view user information", Module = "UserManagement", CreatedAt = DateTime.UtcNow, IsActive = true },
+                new Permission { Id = 18, Name = "ManagerCreateUsers", Description = "Manager can create users", Module = "UserManagement", CreatedAt = DateTime.UtcNow, IsActive = true },
+                new Permission { Id = 19, Name = "ManagerUpdateUsers", Description = "Manager can update user information", Module = "UserManagement", CreatedAt = DateTime.UtcNow, IsActive = true },
+                new Permission { Id = 20, Name = "ManagerDeleteUsers", Description = "Manager can delete users", Module = "UserManagement", CreatedAt = DateTime.UtcNow, IsActive = true },
+                
+                // CustomerSupport User Management Permissions
+                new Permission { Id = 21, Name = "CustomerSupportReadUsers", Description = "CustomerSupport can view user information", Module = "UserManagement", CreatedAt = DateTime.UtcNow, IsActive = true },
+                new Permission { Id = 22, Name = "CustomerSupportCreateUsers", Description = "CustomerSupport can create users", Module = "UserManagement", CreatedAt = DateTime.UtcNow, IsActive = true },
+                new Permission { Id = 23, Name = "CustomerSupportUpdateUsers", Description = "CustomerSupport can update user information", Module = "UserManagement", CreatedAt = DateTime.UtcNow, IsActive = true },
+                new Permission { Id = 24, Name = "CustomerSupportDeleteUsers", Description = "CustomerSupport can delete users", Module = "UserManagement", CreatedAt = DateTime.UtcNow, IsActive = true },
+                
+                // Chemist User Management Permissions
+                new Permission { Id = 25, Name = "ChemistReadUsers", Description = "Chemist can view user information", Module = "UserManagement", CreatedAt = DateTime.UtcNow, IsActive = true },
+                new Permission { Id = 26, Name = "ChemistCreateUsers", Description = "Chemist can create users", Module = "UserManagement", CreatedAt = DateTime.UtcNow, IsActive = true },
+                new Permission { Id = 27, Name = "ChemistUpdateUsers", Description = "Chemist can update user information", Module = "UserManagement", CreatedAt = DateTime.UtcNow, IsActive = true },
+                new Permission { Id = 28, Name = "ChemistDeleteUsers", Description = "Chemist can delete users", Module = "UserManagement", CreatedAt = DateTime.UtcNow, IsActive = true },
+                
+                // Role Permission Management Permission
+                new Permission { Id = 29, Name = "ManageRolePermission", Description = "Can manage role permissions", Module = "RoleManagement", CreatedAt = DateTime.UtcNow, IsActive = true }
             );
 
             // Seed roles
             builder.Entity<Role>().HasData(
-                new Role { Id = 1, Name = "Admin", Description = "Full system access", IsActive = true },
-                new Role { Id = 2, Name = "Manager", Description = "Management level access", IsActive = true },
-                new Role { Id = 3, Name = "Employee", Description = "Basic employee access", IsActive = true },
-                new Role { Id = 4, Name = "Customer", Description = "Customer access", IsActive = true }
+                new Role { Id = 1, Name = "Admin", Description = "Full system access", CreatedAt = DateTime.UtcNow, IsActive = true },
+                new Role { Id = 2, Name = "Manager", Description = "Management level access", CreatedAt = DateTime.UtcNow, IsActive = true },
+                new Role { Id = 3, Name = "CustomerSupport", Description = "Customer support access", CreatedAt = DateTime.UtcNow, IsActive = true },
+                new Role { Id = 4, Name = "Customer", Description = "Customer access", CreatedAt = DateTime.UtcNow, IsActive = true },
+                new Role { Id = 5, Name = "Chemist", Description = "Chemist/pharmacist access", CreatedAt = DateTime.UtcNow, IsActive = true }
             );
 
             // Seed role-permission mappings
             builder.Entity<RolePermission>().HasData(
-                // Admin gets all permissions
-                new RolePermission { RoleId = 1, PermissionId = 1, IsActive = true },
-                new RolePermission { RoleId = 1, PermissionId = 2, IsActive = true },
-                new RolePermission { RoleId = 1, PermissionId = 3, IsActive = true },
-                new RolePermission { RoleId = 1, PermissionId = 4, IsActive = true },
-                new RolePermission { RoleId = 1, PermissionId = 5, IsActive = true },
-                new RolePermission { RoleId = 1, PermissionId = 6, IsActive = true },
-                new RolePermission { RoleId = 1, PermissionId = 7, IsActive = true },
-                new RolePermission { RoleId = 1, PermissionId = 8, IsActive = true },
-                new RolePermission { RoleId = 1, PermissionId = 9, IsActive = true },
-                new RolePermission { RoleId = 1, PermissionId = 10, IsActive = true },
-                new RolePermission { RoleId = 1, PermissionId = 11, IsActive = true },
-                new RolePermission { RoleId = 1, PermissionId = 12, IsActive = true },
+                // Admin gets all permissions (including all user management permissions)
+                new RolePermission { RoleId = 1, PermissionId = 1, GrantedAt = DateTime.UtcNow, IsActive = true },
+                new RolePermission { RoleId = 1, PermissionId = 2, GrantedAt = DateTime.UtcNow, IsActive = true },
+                new RolePermission { RoleId = 1, PermissionId = 3, GrantedAt = DateTime.UtcNow, IsActive = true },
+                new RolePermission { RoleId = 1, PermissionId = 4, GrantedAt = DateTime.UtcNow, IsActive = true },
+                new RolePermission { RoleId = 1, PermissionId = 5, GrantedAt = DateTime.UtcNow, IsActive = true },
+                new RolePermission { RoleId = 1, PermissionId = 6, GrantedAt = DateTime.UtcNow, IsActive = true },
+                new RolePermission { RoleId = 1, PermissionId = 7, GrantedAt = DateTime.UtcNow, IsActive = true },
+                new RolePermission { RoleId = 1, PermissionId = 8, GrantedAt = DateTime.UtcNow, IsActive = true },
+                new RolePermission { RoleId = 1, PermissionId = 9, GrantedAt = DateTime.UtcNow, IsActive = true },
+                new RolePermission { RoleId = 1, PermissionId = 10, GrantedAt = DateTime.UtcNow, IsActive = true },
+                new RolePermission { RoleId = 1, PermissionId = 11, GrantedAt = DateTime.UtcNow, IsActive = true },
+                new RolePermission { RoleId = 1, PermissionId = 12, GrantedAt = DateTime.UtcNow, IsActive = true },
+                // Admin User Management Permissions
+                new RolePermission { RoleId = 1, PermissionId = 13, GrantedAt = DateTime.UtcNow, IsActive = true },
+                new RolePermission { RoleId = 1, PermissionId = 14, GrantedAt = DateTime.UtcNow, IsActive = true },
+                new RolePermission { RoleId = 1, PermissionId = 15, GrantedAt = DateTime.UtcNow, IsActive = true },
+                new RolePermission { RoleId = 1, PermissionId = 16, GrantedAt = DateTime.UtcNow, IsActive = true },
+                // Manager User Management Permissions
+                new RolePermission { RoleId = 1, PermissionId = 17, GrantedAt = DateTime.UtcNow, IsActive = true },
+                new RolePermission { RoleId = 1, PermissionId = 18, GrantedAt = DateTime.UtcNow, IsActive = true },
+                new RolePermission { RoleId = 1, PermissionId = 19, GrantedAt = DateTime.UtcNow, IsActive = true },
+                new RolePermission { RoleId = 1, PermissionId = 20, GrantedAt = DateTime.UtcNow, IsActive = true },
+                // CustomerSupport User Management Permissions
+                new RolePermission { RoleId = 1, PermissionId = 21, GrantedAt = DateTime.UtcNow, IsActive = true },
+                new RolePermission { RoleId = 1, PermissionId = 22, GrantedAt = DateTime.UtcNow, IsActive = true },
+                new RolePermission { RoleId = 1, PermissionId = 23, GrantedAt = DateTime.UtcNow, IsActive = true },
+                new RolePermission { RoleId = 1, PermissionId = 24, GrantedAt = DateTime.UtcNow, IsActive = true },
+                // Chemist User Management Permissions
+                new RolePermission { RoleId = 1, PermissionId = 25, GrantedAt = DateTime.UtcNow, IsActive = true },
+                new RolePermission { RoleId = 1, PermissionId = 26, GrantedAt = DateTime.UtcNow, IsActive = true },
+                new RolePermission { RoleId = 1, PermissionId = 27, GrantedAt = DateTime.UtcNow, IsActive = true },
+                new RolePermission { RoleId = 1, PermissionId = 28, GrantedAt = DateTime.UtcNow, IsActive = true },
+                // Role Permission Management Permission
+                new RolePermission { RoleId = 1, PermissionId = 29, GrantedAt = DateTime.UtcNow, IsActive = true },
 
-                // Manager gets read and update permissions
-                new RolePermission { RoleId = 2, PermissionId = 1, IsActive = true },
-                new RolePermission { RoleId = 2, PermissionId = 3, IsActive = true },
-                new RolePermission { RoleId = 2, PermissionId = 5, IsActive = true },
-                new RolePermission { RoleId = 2, PermissionId = 7, IsActive = true },
-                new RolePermission { RoleId = 2, PermissionId = 9, IsActive = true },
-                new RolePermission { RoleId = 2, PermissionId = 11, IsActive = true },
+                // Manager gets read and update permissions + Manager User Management Permissions
+                new RolePermission { RoleId = 2, PermissionId = 1, GrantedAt = DateTime.UtcNow, IsActive = true },
+                new RolePermission { RoleId = 2, PermissionId = 3, GrantedAt = DateTime.UtcNow, IsActive = true },
+                new RolePermission { RoleId = 2, PermissionId = 5, GrantedAt = DateTime.UtcNow, IsActive = true },
+                new RolePermission { RoleId = 2, PermissionId = 7, GrantedAt = DateTime.UtcNow, IsActive = true },
+                new RolePermission { RoleId = 2, PermissionId = 9, GrantedAt = DateTime.UtcNow, IsActive = true },
+                new RolePermission { RoleId = 2, PermissionId = 11, GrantedAt = DateTime.UtcNow, IsActive = true },
+                // Manager User Management Permissions
+                new RolePermission { RoleId = 2, PermissionId = 17, GrantedAt = DateTime.UtcNow, IsActive = true },
+                new RolePermission { RoleId = 2, PermissionId = 18, GrantedAt = DateTime.UtcNow, IsActive = true },
+                new RolePermission { RoleId = 2, PermissionId = 19, GrantedAt = DateTime.UtcNow, IsActive = true },
+                new RolePermission { RoleId = 2, PermissionId = 20, GrantedAt = DateTime.UtcNow, IsActive = true },
+                // CustomerSupport User Management Permissions
+                new RolePermission { RoleId = 2, PermissionId = 21, GrantedAt = DateTime.UtcNow, IsActive = true },
+                new RolePermission { RoleId = 2, PermissionId = 22, GrantedAt = DateTime.UtcNow, IsActive = true },
+                new RolePermission { RoleId = 2, PermissionId = 23, GrantedAt = DateTime.UtcNow, IsActive = true },
+                new RolePermission { RoleId = 2, PermissionId = 24, GrantedAt = DateTime.UtcNow, IsActive = true },
+                // Chemist User Management Permissions
+                new RolePermission { RoleId = 2, PermissionId = 25, GrantedAt = DateTime.UtcNow, IsActive = true },
+                new RolePermission { RoleId = 2, PermissionId = 26, GrantedAt = DateTime.UtcNow, IsActive = true },
+                new RolePermission { RoleId = 2, PermissionId = 27, GrantedAt = DateTime.UtcNow, IsActive = true },
+                new RolePermission { RoleId = 2, PermissionId = 28, GrantedAt = DateTime.UtcNow, IsActive = true },
 
-                // Employee gets read permissions for products and orders
-                new RolePermission { RoleId = 3, PermissionId = 5, IsActive = true },
-                new RolePermission { RoleId = 3, PermissionId = 9, IsActive = true },
-                new RolePermission { RoleId = 3, PermissionId = 10, IsActive = true },
+                // CustomerSupport gets read permissions for products and orders, plus create orders + CustomerSupport User Management Permissions
+                new RolePermission { RoleId = 3, PermissionId = 5, GrantedAt = DateTime.UtcNow, IsActive = true },
+                new RolePermission { RoleId = 3, PermissionId = 9, GrantedAt = DateTime.UtcNow, IsActive = true },
+                new RolePermission { RoleId = 3, PermissionId = 10, GrantedAt = DateTime.UtcNow, IsActive = true },
+                // CustomerSupport User Management Permissions
+                new RolePermission { RoleId = 3, PermissionId = 21, GrantedAt = DateTime.UtcNow, IsActive = true },
+                new RolePermission { RoleId = 3, PermissionId = 22, GrantedAt = DateTime.UtcNow, IsActive = true },
+                new RolePermission { RoleId = 3, PermissionId = 23, GrantedAt = DateTime.UtcNow, IsActive = true },
+                new RolePermission { RoleId = 3, PermissionId = 24, GrantedAt = DateTime.UtcNow, IsActive = true },
+                // Chemist User Management Permissions
+                new RolePermission { RoleId = 3, PermissionId = 25, GrantedAt = DateTime.UtcNow, IsActive = true },
+                new RolePermission { RoleId = 3, PermissionId = 26, GrantedAt = DateTime.UtcNow, IsActive = true },
+                new RolePermission { RoleId = 3, PermissionId = 27, GrantedAt = DateTime.UtcNow, IsActive = true },
+                new RolePermission { RoleId = 3, PermissionId = 28, GrantedAt = DateTime.UtcNow, IsActive = true },
 
                 // Customer gets read permissions for products and create/read for orders
-                new RolePermission { RoleId = 4, PermissionId = 5, IsActive = true },
-                new RolePermission { RoleId = 4, PermissionId = 9, IsActive = true },
-                new RolePermission { RoleId = 4, PermissionId = 10, IsActive = true }
+                new RolePermission { RoleId = 4, PermissionId = 5, GrantedAt = DateTime.UtcNow, IsActive = true },
+                new RolePermission { RoleId = 4, PermissionId = 9, GrantedAt = DateTime.UtcNow, IsActive = true },
+                new RolePermission { RoleId = 4, PermissionId = 10, GrantedAt = DateTime.UtcNow, IsActive = true },
+
+                // Chemist gets full access to products and orders (can manage inventory and process orders)
+                new RolePermission { RoleId = 5, PermissionId = 5, GrantedAt = DateTime.UtcNow, IsActive = true },
+                new RolePermission { RoleId = 5, PermissionId = 6, GrantedAt = DateTime.UtcNow, IsActive = true },
+                new RolePermission { RoleId = 5, PermissionId = 7, GrantedAt = DateTime.UtcNow, IsActive = true },
+                new RolePermission { RoleId = 5, PermissionId = 8, GrantedAt = DateTime.UtcNow, IsActive = true },
+                new RolePermission { RoleId = 5, PermissionId = 9, GrantedAt = DateTime.UtcNow, IsActive = true },
+                new RolePermission { RoleId = 5, PermissionId = 10, GrantedAt = DateTime.UtcNow, IsActive = true },
+                new RolePermission { RoleId = 5, PermissionId = 11, GrantedAt = DateTime.UtcNow, IsActive = true },
+                new RolePermission { RoleId = 5, PermissionId = 12, GrantedAt = DateTime.UtcNow, IsActive = true }
+                // Note: Chemist doesn't get user management permissions as per requirements
             );
         }
     }

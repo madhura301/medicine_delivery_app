@@ -142,6 +142,62 @@ builder.Services.AddAuthorization(options =>
     
     options.AddPolicy("RequireDeleteOrdersPermission", policy => 
         policy.Requirements.Add(new MedicineDelivery.API.Authorization.PermissionRequirement("DeleteOrders")));
+    
+    // Admin User Management Policies
+    options.AddPolicy("RequireAdminReadUsersPermission", policy => 
+        policy.Requirements.Add(new MedicineDelivery.API.Authorization.PermissionRequirement("AdminReadUsers")));
+    
+    options.AddPolicy("RequireAdminCreateUsersPermission", policy => 
+        policy.Requirements.Add(new MedicineDelivery.API.Authorization.PermissionRequirement("AdminCreateUsers")));
+    
+    options.AddPolicy("RequireAdminUpdateUsersPermission", policy => 
+        policy.Requirements.Add(new MedicineDelivery.API.Authorization.PermissionRequirement("AdminUpdateUsers")));
+    
+    options.AddPolicy("RequireAdminDeleteUsersPermission", policy => 
+        policy.Requirements.Add(new MedicineDelivery.API.Authorization.PermissionRequirement("AdminDeleteUsers")));
+    
+    // Manager User Management Policies
+    options.AddPolicy("RequireManagerReadUsersPermission", policy => 
+        policy.Requirements.Add(new MedicineDelivery.API.Authorization.PermissionRequirement("ManagerReadUsers")));
+    
+    options.AddPolicy("RequireManagerCreateUsersPermission", policy => 
+        policy.Requirements.Add(new MedicineDelivery.API.Authorization.PermissionRequirement("ManagerCreateUsers")));
+    
+    options.AddPolicy("RequireManagerUpdateUsersPermission", policy => 
+        policy.Requirements.Add(new MedicineDelivery.API.Authorization.PermissionRequirement("ManagerUpdateUsers")));
+    
+    options.AddPolicy("RequireManagerDeleteUsersPermission", policy => 
+        policy.Requirements.Add(new MedicineDelivery.API.Authorization.PermissionRequirement("ManagerDeleteUsers")));
+    
+    // CustomerSupport User Management Policies
+    options.AddPolicy("RequireCustomerSupportReadUsersPermission", policy => 
+        policy.Requirements.Add(new MedicineDelivery.API.Authorization.PermissionRequirement("CustomerSupportReadUsers")));
+    
+    options.AddPolicy("RequireCustomerSupportCreateUsersPermission", policy => 
+        policy.Requirements.Add(new MedicineDelivery.API.Authorization.PermissionRequirement("CustomerSupportCreateUsers")));
+    
+    options.AddPolicy("RequireCustomerSupportUpdateUsersPermission", policy => 
+        policy.Requirements.Add(new MedicineDelivery.API.Authorization.PermissionRequirement("CustomerSupportUpdateUsers")));
+    
+    options.AddPolicy("RequireCustomerSupportDeleteUsersPermission", policy => 
+        policy.Requirements.Add(new MedicineDelivery.API.Authorization.PermissionRequirement("CustomerSupportDeleteUsers")));
+    
+    // Chemist User Management Policies
+    options.AddPolicy("RequireChemistReadUsersPermission", policy => 
+        policy.Requirements.Add(new MedicineDelivery.API.Authorization.PermissionRequirement("ChemistReadUsers")));
+    
+    options.AddPolicy("RequireChemistCreateUsersPermission", policy => 
+        policy.Requirements.Add(new MedicineDelivery.API.Authorization.PermissionRequirement("ChemistCreateUsers")));
+    
+    options.AddPolicy("RequireChemistUpdateUsersPermission", policy => 
+        policy.Requirements.Add(new MedicineDelivery.API.Authorization.PermissionRequirement("ChemistUpdateUsers")));
+    
+    options.AddPolicy("RequireChemistDeleteUsersPermission", policy => 
+        policy.Requirements.Add(new MedicineDelivery.API.Authorization.PermissionRequirement("ChemistDeleteUsers")));
+    
+    // Role Permission Management Policy
+    options.AddPolicy("RequireManageRolePermission", policy => 
+        policy.Requirements.Add(new MedicineDelivery.API.Authorization.PermissionRequirement("ManageRolePermission")));
 });
 
 // Register the permission authorization handler
@@ -159,6 +215,7 @@ builder.Services.AddScoped<MedicineDelivery.Domain.Interfaces.IAuthService, Medi
 builder.Services.AddScoped<MedicineDelivery.Domain.Interfaces.IRoleService, MedicineDelivery.Infrastructure.Services.RoleService>();
 builder.Services.AddScoped<MedicineDelivery.Domain.Interfaces.IPermissionService, MedicineDelivery.Infrastructure.Services.PermissionService>();
 builder.Services.AddScoped<MedicineDelivery.API.Services.IPermissionService, MedicineDelivery.API.Services.PermissionService>();
+builder.Services.AddScoped<MedicineDelivery.Domain.Interfaces.IUserManager, MedicineDelivery.Infrastructure.Services.UserManagerService>();
 
 // Add SignInManager explicitly (not automatically registered with AddIdentity)
 builder.Services.AddScoped<SignInManager<MedicineDelivery.Infrastructure.Data.ApplicationUser>>();
