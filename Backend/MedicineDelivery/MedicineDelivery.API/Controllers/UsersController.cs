@@ -4,6 +4,7 @@ using MediatR;
 using MedicineDelivery.Application.DTOs;
 using MedicineDelivery.Application.Features.Users.Commands.CreateUser;
 using MedicineDelivery.Application.Features.Users.Commands.CreateUserWithRole;
+using MedicineDelivery.Application.Features.Users.Commands.RegisterUser;
 using MedicineDelivery.Application.Features.Users.Queries.GetUsers;
 
 namespace MedicineDelivery.API.Controllers
@@ -71,6 +72,39 @@ namespace MedicineDelivery.API.Controllers
             catch (Exception ex)
             {
                 return StatusCode(500, new { error = "An error occurred while creating the user." });
+            }
+        }
+
+        [HttpPost("register")]
+        [AllowAnonymous]
+        public async Task<IActionResult> RegisterUser([FromBody] UserRegistrationDto request)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            try
+            {
+                var command = new RegisterUserCommand
+                {
+                    Email = request.Email,
+                    Password = request.Password,
+                    FirstName = request.FirstName,
+                    LastName = request.LastName,
+                    PhoneNumber = request.PhoneNumber
+                };
+
+                var user = await _mediator.Send(command);
+                return CreatedAtAction(nameof(GetUsers), new { id = user.Id }, user);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = "An error occurred while registering the user." });
             }
         }
     }
