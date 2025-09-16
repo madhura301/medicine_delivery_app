@@ -16,6 +16,7 @@ namespace MedicineDelivery.Infrastructure.Repositories
         private IRepository<Product>? _products;
         private IRepository<Order>? _orders;
         private IRepository<OrderItem>? _orderItems;
+        private IRepository<MedicalStore>? _medicalStores;
 
         public UnitOfWork(ApplicationDbContext context)
         {
@@ -30,6 +31,7 @@ namespace MedicineDelivery.Infrastructure.Repositories
         public IRepository<Product> Products => _products ??= new Repository<Product>(_context);
         public IRepository<Order> Orders => _orders ??= new Repository<Order>(_context);
         public IRepository<OrderItem> OrderItems => _orderItems ??= new Repository<OrderItem>(_context);
+        public IRepository<MedicalStore> MedicalStores => _medicalStores ??= new Repository<MedicalStore>(_context);
 
         public async Task<int> SaveChangesAsync()
         {

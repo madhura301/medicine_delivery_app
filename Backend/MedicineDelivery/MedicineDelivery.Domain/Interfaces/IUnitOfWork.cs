@@ -12,6 +12,7 @@ namespace MedicineDelivery.Domain.Interfaces
         IRepository<Product> Products { get; }
         IRepository<Order> Orders { get; }
         IRepository<OrderItem> OrderItems { get; }
+        IRepository<MedicalStore> MedicalStores { get; }
         
         Task<int> SaveChangesAsync();
         Task BeginTransactionAsync();
