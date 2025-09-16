@@ -31,6 +31,14 @@ namespace MedicineDelivery.Application.Mappings
             // MedicalStore mappings
             CreateMap<MedicalStore, MedicalStoreDto>();
             CreateMap<MedicalStoreRegistrationDto, MedicalStore>();
+
+            // CustomerSupport mappings
+            CreateMap<CustomerSupport, CustomerSupportDto>();
+            CreateMap<CustomerSupportRegistrationDto, CustomerSupport>();
+
+            // Manager mappings
+            CreateMap<Manager, ManagerDto>();
+            CreateMap<ManagerRegistrationDto, Manager>();
         }
     }
 }
