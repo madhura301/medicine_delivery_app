@@ -18,6 +18,9 @@ namespace MedicineDelivery.Infrastructure.Data
         public DbSet<Product> Products { get; set; }
         public DbSet<Order> Orders { get; set; }
         public DbSet<OrderItem> OrderItems { get; set; }
+        public DbSet<MedicalStore> MedicalStores { get; set; }
+        public DbSet<CustomerSupport> CustomerSupports { get; set; }
+        public DbSet<Manager> Managers { get; set; }
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
@@ -68,6 +71,220 @@ namespace MedicineDelivery.Infrastructure.Data
                 .HasForeignKey(oi => oi.ProductId)
                 .OnDelete(DeleteBehavior.Restrict);
 
+            // Configure MedicalStore entity
+            builder.Entity<MedicalStore>()
+                .HasKey(ms => ms.MedicalStoreId);
+
+            builder.Entity<MedicalStore>()
+                .Property(ms => ms.MedicalStoreId)
+                .HasDefaultValueSql("NEWID()");
+
+            builder.Entity<MedicalStore>()
+                .Property(ms => ms.MedicalName)
+                .HasMaxLength(100)
+                .IsRequired();
+
+            builder.Entity<MedicalStore>()
+                .Property(ms => ms.OwnerFirstName)
+                .HasMaxLength(100)
+                .IsRequired();
+
+            builder.Entity<MedicalStore>()
+                .Property(ms => ms.OwnerLastName)
+                .HasMaxLength(100)
+                .IsRequired();
+
+            builder.Entity<MedicalStore>()
+                .Property(ms => ms.OwnerMiddleName)
+                .HasMaxLength(100);
+
+            builder.Entity<MedicalStore>()
+                .Property(ms => ms.Address)
+                .HasMaxLength(300)
+                .IsRequired();
+
+            builder.Entity<MedicalStore>()
+                .Property(ms => ms.Latitude)
+                .HasColumnType("decimal(18,6)");
+
+            builder.Entity<MedicalStore>()
+                .Property(ms => ms.Longitude)
+                .HasColumnType("decimal(18,6)");
+
+            builder.Entity<MedicalStore>()
+                .Property(ms => ms.MobileNumber)
+                .HasMaxLength(15)
+                .IsRequired();
+
+            builder.Entity<MedicalStore>()
+                .Property(ms => ms.EmailId)
+                .HasMaxLength(50)
+                .IsRequired();
+
+            builder.Entity<MedicalStore>()
+                .Property(ms => ms.AlternativeMobileNumber)
+                .HasMaxLength(15);
+
+            builder.Entity<MedicalStore>()
+                .Property(ms => ms.GSTIN)
+                .HasMaxLength(100);
+
+            builder.Entity<MedicalStore>()
+                .Property(ms => ms.PAN)
+                .HasMaxLength(100);
+
+            builder.Entity<MedicalStore>()
+                .Property(ms => ms.FSSAINo)
+                .HasMaxLength(100);
+
+            builder.Entity<MedicalStore>()
+                .Property(ms => ms.DLNo)
+                .HasMaxLength(100);
+
+            builder.Entity<MedicalStore>()
+                .Property(ms => ms.CreatedOn)
+                .HasColumnType("datetime2(7)");
+
+            builder.Entity<MedicalStore>()
+                .Property(ms => ms.UpdatedOn)
+                .HasColumnType("datetime2(7)");
+
+            builder.Entity<MedicalStore>()
+                .HasOne(ms => ms.User)
+                .WithMany()
+                .HasForeignKey(ms => ms.UserId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            // Configure CustomerSupport entity
+            builder.Entity<CustomerSupport>()
+                .HasKey(cs => cs.CustomerSupportId);
+
+            builder.Entity<CustomerSupport>()
+                .Property(cs => cs.CustomerSupportId)
+                .HasDefaultValueSql("NEWID()");
+
+            builder.Entity<CustomerSupport>()
+                .Property(cs => cs.CustomerSupportFirstName)
+                .HasMaxLength(100)
+                .IsRequired();
+
+            builder.Entity<CustomerSupport>()
+                .Property(cs => cs.CustomerSupportLastName)
+                .HasMaxLength(100)
+                .IsRequired();
+
+            builder.Entity<CustomerSupport>()
+                .Property(cs => cs.CustomerSupportMiddleName)
+                .HasMaxLength(100);
+
+            builder.Entity<CustomerSupport>()
+                .Property(cs => cs.Address)
+                .HasMaxLength(300)
+                .IsRequired();
+
+            builder.Entity<CustomerSupport>()
+                .Property(cs => cs.City)
+                .HasMaxLength(100)
+                .IsRequired();
+
+            builder.Entity<CustomerSupport>()
+                .Property(cs => cs.State)
+                .HasMaxLength(100)
+                .IsRequired();
+
+            builder.Entity<CustomerSupport>()
+                .Property(cs => cs.MobileNumber)
+                .HasMaxLength(15)
+                .IsRequired();
+
+            builder.Entity<CustomerSupport>()
+                .Property(cs => cs.EmailId)
+                .HasMaxLength(50)
+                .IsRequired();
+
+            builder.Entity<CustomerSupport>()
+                .Property(cs => cs.AlternativeMobileNumber)
+                .HasMaxLength(15);
+
+            builder.Entity<CustomerSupport>()
+                .Property(cs => cs.CreatedOn)
+                .HasColumnType("datetime2(7)");
+
+            builder.Entity<CustomerSupport>()
+                .Property(cs => cs.UpdatedOn)
+                .HasColumnType("datetime2(7)");
+
+            builder.Entity<CustomerSupport>()
+                .HasOne(cs => cs.User)
+                .WithMany()
+                .HasForeignKey(cs => cs.UserId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            // Configure Manager entity
+            builder.Entity<Manager>()
+                .HasKey(m => m.ManagerId);
+
+            builder.Entity<Manager>()
+                .Property(m => m.ManagerId)
+                .HasDefaultValueSql("NEWID()");
+
+            builder.Entity<Manager>()
+                .Property(m => m.ManagerFirstName)
+                .HasMaxLength(100)
+                .IsRequired();
+
+            builder.Entity<Manager>()
+                .Property(m => m.ManagerLastName)
+                .HasMaxLength(100)
+                .IsRequired();
+
+            builder.Entity<Manager>()
+                .Property(m => m.ManagerMiddleName)
+                .HasMaxLength(100);
+
+            builder.Entity<Manager>()
+                .Property(m => m.Address)
+                .HasMaxLength(300)
+                .IsRequired();
+
+            builder.Entity<Manager>()
+                .Property(m => m.City)
+                .HasMaxLength(100)
+                .IsRequired();
+
+            builder.Entity<Manager>()
+                .Property(m => m.State)
+                .HasMaxLength(100)
+                .IsRequired();
+
+            builder.Entity<Manager>()
+                .Property(m => m.MobileNumber)
+                .HasMaxLength(15)
+                .IsRequired();
+
+            builder.Entity<Manager>()
+                .Property(m => m.EmailId)
+                .HasMaxLength(50)
+                .IsRequired();
+
+            builder.Entity<Manager>()
+                .Property(m => m.AlternativeMobileNumber)
+                .HasMaxLength(15);
+
+            builder.Entity<Manager>()
+                .Property(m => m.CreatedOn)
+                .HasColumnType("datetime2(7)");
+
+            builder.Entity<Manager>()
+                .Property(m => m.UpdatedOn)
+                .HasColumnType("datetime2(7)");
+
+            builder.Entity<Manager>()
+                .HasOne(m => m.User)
+                .WithMany()
+                .HasForeignKey(m => m.UserId)
+                .OnDelete(DeleteBehavior.SetNull);
+
             // Seed permissions
             builder.Entity<Permission>().HasData(
                 // Original permissions
@@ -109,7 +326,25 @@ namespace MedicineDelivery.Infrastructure.Data
                 new Permission { Id = 28, Name = "ChemistDeleteUsers", Description = "Chemist can delete users", Module = "UserManagement", CreatedAt = DateTime.UtcNow, IsActive = true },
                 
                 // Role Permission Management Permission
-                new Permission { Id = 29, Name = "ManageRolePermission", Description = "Can manage role permissions", Module = "RoleManagement", CreatedAt = DateTime.UtcNow, IsActive = true }
+                new Permission { Id = 29, Name = "ManageRolePermission", Description = "Can manage role permissions", Module = "RoleManagement", CreatedAt = DateTime.UtcNow, IsActive = true },
+                
+                // Chemist CRUD Permissions
+                new Permission { Id = 30, Name = "ChemistRead", Description = "Can read chemist information", Module = "Chemist", CreatedAt = DateTime.UtcNow, IsActive = true },
+                new Permission { Id = 31, Name = "ChemistCreate", Description = "Can create chemist accounts", Module = "Chemist", CreatedAt = DateTime.UtcNow, IsActive = true },
+                new Permission { Id = 32, Name = "ChemistUpdate", Description = "Can update chemist information", Module = "Chemist", CreatedAt = DateTime.UtcNow, IsActive = true },
+                new Permission { Id = 33, Name = "ChemistDelete", Description = "Can delete chemist accounts", Module = "Chemist", CreatedAt = DateTime.UtcNow, IsActive = true },
+                
+                // CustomerSupport CRUD Permissions
+                new Permission { Id = 34, Name = "CustomerSupportRead", Description = "Can read customer support information", Module = "CustomerSupport", CreatedAt = DateTime.UtcNow, IsActive = true },
+                new Permission { Id = 35, Name = "CustomerSupportCreate", Description = "Can create customer support accounts", Module = "CustomerSupport", CreatedAt = DateTime.UtcNow, IsActive = true },
+                new Permission { Id = 36, Name = "CustomerSupportUpdate", Description = "Can update customer support information", Module = "CustomerSupport", CreatedAt = DateTime.UtcNow, IsActive = true },
+                new Permission { Id = 37, Name = "CustomerSupportDelete", Description = "Can delete customer support accounts", Module = "CustomerSupport", CreatedAt = DateTime.UtcNow, IsActive = true },
+                
+                // Manager CRUD Permissions
+                new Permission { Id = 38, Name = "ManagerSupportRead", Description = "Can read manager information", Module = "Manager", CreatedAt = DateTime.UtcNow, IsActive = true },
+                new Permission { Id = 39, Name = "ManagerSupportCreate", Description = "Can create manager accounts", Module = "Manager", CreatedAt = DateTime.UtcNow, IsActive = true },
+                new Permission { Id = 40, Name = "ManagerSupportUpdate", Description = "Can update manager information", Module = "Manager", CreatedAt = DateTime.UtcNow, IsActive = true },
+                new Permission { Id = 41, Name = "ManagerSupportDelete", Description = "Can delete manager accounts", Module = "Manager", CreatedAt = DateTime.UtcNow, IsActive = true }
             );
 
             // Seed roles
@@ -158,6 +393,21 @@ namespace MedicineDelivery.Infrastructure.Data
                 new RolePermission { RoleId = 1, PermissionId = 28, GrantedAt = DateTime.UtcNow, IsActive = true },
                 // Role Permission Management Permission
                 new RolePermission { RoleId = 1, PermissionId = 29, GrantedAt = DateTime.UtcNow, IsActive = true },
+                // Chemist CRUD Permissions for Admin
+                new RolePermission { RoleId = 1, PermissionId = 30, GrantedAt = DateTime.UtcNow, IsActive = true },
+                new RolePermission { RoleId = 1, PermissionId = 31, GrantedAt = DateTime.UtcNow, IsActive = true },
+                new RolePermission { RoleId = 1, PermissionId = 32, GrantedAt = DateTime.UtcNow, IsActive = true },
+                new RolePermission { RoleId = 1, PermissionId = 33, GrantedAt = DateTime.UtcNow, IsActive = true },
+                // CustomerSupport CRUD Permissions for Admin
+                new RolePermission { RoleId = 1, PermissionId = 34, GrantedAt = DateTime.UtcNow, IsActive = true },
+                new RolePermission { RoleId = 1, PermissionId = 35, GrantedAt = DateTime.UtcNow, IsActive = true },
+                new RolePermission { RoleId = 1, PermissionId = 36, GrantedAt = DateTime.UtcNow, IsActive = true },
+                new RolePermission { RoleId = 1, PermissionId = 37, GrantedAt = DateTime.UtcNow, IsActive = true },
+                // Manager CRUD Permissions for Admin
+                new RolePermission { RoleId = 1, PermissionId = 38, GrantedAt = DateTime.UtcNow, IsActive = true },
+                new RolePermission { RoleId = 1, PermissionId = 39, GrantedAt = DateTime.UtcNow, IsActive = true },
+                new RolePermission { RoleId = 1, PermissionId = 40, GrantedAt = DateTime.UtcNow, IsActive = true },
+                new RolePermission { RoleId = 1, PermissionId = 41, GrantedAt = DateTime.UtcNow, IsActive = true },
 
                 // Manager gets read and update permissions + Manager User Management Permissions
                 new RolePermission { RoleId = 2, PermissionId = 1, GrantedAt = DateTime.UtcNow, IsActive = true },
@@ -181,6 +431,21 @@ namespace MedicineDelivery.Infrastructure.Data
                 new RolePermission { RoleId = 2, PermissionId = 26, GrantedAt = DateTime.UtcNow, IsActive = true },
                 new RolePermission { RoleId = 2, PermissionId = 27, GrantedAt = DateTime.UtcNow, IsActive = true },
                 new RolePermission { RoleId = 2, PermissionId = 28, GrantedAt = DateTime.UtcNow, IsActive = true },
+                // Chemist CRUD Permissions for Manager
+                new RolePermission { RoleId = 2, PermissionId = 30, GrantedAt = DateTime.UtcNow, IsActive = true },
+                new RolePermission { RoleId = 2, PermissionId = 31, GrantedAt = DateTime.UtcNow, IsActive = true },
+                new RolePermission { RoleId = 2, PermissionId = 32, GrantedAt = DateTime.UtcNow, IsActive = true },
+                new RolePermission { RoleId = 2, PermissionId = 33, GrantedAt = DateTime.UtcNow, IsActive = true },
+                // CustomerSupport CRUD Permissions for Manager
+                new RolePermission { RoleId = 2, PermissionId = 34, GrantedAt = DateTime.UtcNow, IsActive = true },
+                new RolePermission { RoleId = 2, PermissionId = 35, GrantedAt = DateTime.UtcNow, IsActive = true },
+                new RolePermission { RoleId = 2, PermissionId = 36, GrantedAt = DateTime.UtcNow, IsActive = true },
+                new RolePermission { RoleId = 2, PermissionId = 37, GrantedAt = DateTime.UtcNow, IsActive = true },
+                // Manager CRUD Permissions for self-management (own information only)
+                new RolePermission { RoleId = 2, PermissionId = 38, GrantedAt = DateTime.UtcNow, IsActive = true },
+                new RolePermission { RoleId = 2, PermissionId = 40, GrantedAt = DateTime.UtcNow, IsActive = true },
+                new RolePermission { RoleId = 2, PermissionId = 41, GrantedAt = DateTime.UtcNow, IsActive = true },
+                // Note: Manager doesn't get ManagerSupportCreate permission as they can't create other managers
 
                 // CustomerSupport gets read permissions for products and orders, plus create orders + CustomerSupport User Management Permissions
                 new RolePermission { RoleId = 3, PermissionId = 5, GrantedAt = DateTime.UtcNow, IsActive = true },
@@ -196,6 +461,16 @@ namespace MedicineDelivery.Infrastructure.Data
                 new RolePermission { RoleId = 3, PermissionId = 26, GrantedAt = DateTime.UtcNow, IsActive = true },
                 new RolePermission { RoleId = 3, PermissionId = 27, GrantedAt = DateTime.UtcNow, IsActive = true },
                 new RolePermission { RoleId = 3, PermissionId = 28, GrantedAt = DateTime.UtcNow, IsActive = true },
+                // Chemist CRUD Permissions for CustomerSupport
+                new RolePermission { RoleId = 3, PermissionId = 30, GrantedAt = DateTime.UtcNow, IsActive = true },
+                new RolePermission { RoleId = 3, PermissionId = 31, GrantedAt = DateTime.UtcNow, IsActive = true },
+                new RolePermission { RoleId = 3, PermissionId = 32, GrantedAt = DateTime.UtcNow, IsActive = true },
+                new RolePermission { RoleId = 3, PermissionId = 33, GrantedAt = DateTime.UtcNow, IsActive = true },
+                // CustomerSupport CRUD Permissions for self-management (own information only)
+                new RolePermission { RoleId = 3, PermissionId = 34, GrantedAt = DateTime.UtcNow, IsActive = true },
+                new RolePermission { RoleId = 3, PermissionId = 36, GrantedAt = DateTime.UtcNow, IsActive = true },
+                new RolePermission { RoleId = 3, PermissionId = 37, GrantedAt = DateTime.UtcNow, IsActive = true },
+                // Note: CustomerSupport doesn't get CustomerSupportCreate permission as they can't create other customer support
 
                 // Customer gets read permissions for products and create/read for orders
                 new RolePermission { RoleId = 4, PermissionId = 5, GrantedAt = DateTime.UtcNow, IsActive = true },
@@ -210,8 +485,12 @@ namespace MedicineDelivery.Infrastructure.Data
                 new RolePermission { RoleId = 5, PermissionId = 9, GrantedAt = DateTime.UtcNow, IsActive = true },
                 new RolePermission { RoleId = 5, PermissionId = 10, GrantedAt = DateTime.UtcNow, IsActive = true },
                 new RolePermission { RoleId = 5, PermissionId = 11, GrantedAt = DateTime.UtcNow, IsActive = true },
-                new RolePermission { RoleId = 5, PermissionId = 12, GrantedAt = DateTime.UtcNow, IsActive = true }
-                // Note: Chemist doesn't get user management permissions as per requirements
+                new RolePermission { RoleId = 5, PermissionId = 12, GrantedAt = DateTime.UtcNow, IsActive = true },
+                // Chemist CRUD Permissions for self-management (own information only)
+                new RolePermission { RoleId = 5, PermissionId = 30, GrantedAt = DateTime.UtcNow, IsActive = true },
+                new RolePermission { RoleId = 5, PermissionId = 32, GrantedAt = DateTime.UtcNow, IsActive = true },
+                new RolePermission { RoleId = 5, PermissionId = 33, GrantedAt = DateTime.UtcNow, IsActive = true }
+                // Note: Chemist doesn't get ChemistCreate permission as they can't create other chemists
             );
         }
     }
