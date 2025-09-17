@@ -1,4 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import 'dart:io';
+import 'dart:convert' show base64Url, json, utf8;
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:medicine_delivery_app/core/app_routes.dart';
 import 'package:medicine_delivery_app/core/screens/auth/forgot_password_page.dart';
 import 'package:medicine_delivery_app/core/screens/auth/register_page.dart';
@@ -18,14 +23,6 @@ class _LoginPageState extends State<LoginPage> {
   bool _isLoading = false;
   bool _obscurePassword = true;
   String _errorMessage = '';
-
-  // Demo credentials for all user types - updated to use email format
-  final Map<String, Map<String, String>> _demoUsers = {
-    'customer@example.com': {'password': 'CUstomer12!', 'role': 'Customer'},
-    'chemist@example.com': {'password': 'CHemist12!', 'role': 'Chemist'},
-    'admin@example.com': {'password': 'ADmin12!', 'role': 'Admin'},
-    'support@example.com': {'password': 'SUpport12!', 'role': 'Customer Support'},
-  };
 
   @override
   Widget build(BuildContext context) {
@@ -283,11 +280,6 @@ class _LoginPageState extends State<LoginPage> {
                     ),
                   ],
                 ),
-
-                const SizedBox(height: 30),
-
-                // Demo Credentials 
-                //_buildDemoCredentials(),
               ],
             ),
           ),
@@ -345,53 +337,6 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 
-  // Widget _buildDemoCredentials() {
-  //   return Container(
-  //     padding: const EdgeInsets.all(16),
-  //     decoration: BoxDecoration(
-  //       color: Colors.blue.shade50,
-  //       borderRadius: BorderRadius.circular(12),
-  //       border: Border.all(color: Colors.blue.shade200),
-  //     ),
-  //     child: Column(
-  //       crossAxisAlignment: CrossAxisAlignment.start,
-  //       children: [
-  //         Row(
-  //           children: [
-  //             Icon(Icons.info_outline, color: Colors.blue.shade600, size: 20),
-  //             const SizedBox(width: 8),
-  //             Text(
-  //               'Demo Credentials',
-  //               style: TextStyle(
-  //                 color: Colors.blue.shade600,
-  //                 fontSize: 16,
-  //                 fontWeight: FontWeight.w600,
-  //               ),
-  //             ),
-  //           ],
-  //         ),
-  //         const SizedBox(height: 12),
-  //         Text(
-  //           'Customer: customer@example.com / CUstomer12!',
-  //           style: TextStyle(color: Colors.blue.shade700, fontSize: 14),
-  //         ),
-  //         Text(
-  //           'Chemist: chemist@example.com / CHemist12!',
-  //           style: TextStyle(color: Colors.blue.shade700, fontSize: 14),
-  //         ),
-  //         Text(
-  //           'Admin: admin@example.com / ADmin12!',
-  //           style: TextStyle(color: Colors.blue.shade700, fontSize: 14),
-  //         ),
-  //         Text(
-  //           'Support: support@example.com / SUpport12!',
-  //           style: TextStyle(color: Colors.blue.shade700, fontSize: 14),
-  //         ),
-  //       ],
-  //     ),
-  //   );
-  // }
-
   void _handleLogin() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -400,28 +345,152 @@ class _LoginPageState extends State<LoginPage> {
       _errorMessage = '';
     });
 
-    // Simulate API call
-    await Future.delayed(const Duration(seconds: 1));
+    try {
+      final email = _emailController.text.trim();
+      final password = _passwordController.text.trim();
 
-    final email = _emailController.text.trim();
-    final password = _passwordController.text.trim();
-
-    // Check credentials
-    if (_demoUsers.containsKey(email) &&
-        _demoUsers[email]!['password'] == password) {
-      final userRole = _demoUsers[email]!['role']!;
+      // Make API call
+      final response = await http.post(
+        Uri.parse('https://localhost:7000/api/Auth/login'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: jsonEncode({
+          'email': email,
+          'password': password,
+        }),
+      );
 
       setState(() {
         _isLoading = false;
       });
 
-      // Navigate based on role
-      _navigateToDashboard(userRole);
+      if (response.statusCode == 200) {
+        // Parse response
+        final responseData = jsonDecode(response.body);
+        
+        // Check if login was successful
+        if (responseData['success'] == true) {
+          // Extract data from response
+          final token = responseData['token'];
+          final refreshToken = responseData['refreshToken'];
+          final errors = responseData['errors'];
+          
+          // Store token securely
+          await _storeToken(token, refreshToken);
+          
+          print('Login successful!');
+          print('Token: $token');
+          print('Refresh Token: $refreshToken');
+          
+          // Decode JWT token to get user information
+          final userInfo = _decodeJwtToken(token);
+          final userRole = _determineUserRole(userInfo);
+          
+          // Navigate to appropriate dashboard
+          _navigateToDashboard(userRole);
+        } else {
+          // API returned success: false
+          final errors = responseData['errors'] as List<dynamic>;
+          setState(() {
+            _errorMessage = errors.isNotEmpty 
+                ? errors.first.toString() 
+                : 'Login failed. Please try again.';
+          });
+        }
+      } else if (response.statusCode == 401) {
+        // Unauthorized - wrong credentials
+        setState(() {
+          _errorMessage = 'Incorrect email address or password';
+        });
+      } else if (response.statusCode == 400) {
+        // Bad request - validation errors
+        try {
+          final errorData = jsonDecode(response.body);
+          final errors = errorData['errors'] as List<dynamic>;
+          setState(() {
+            _errorMessage = errors.isNotEmpty 
+                ? errors.first.toString() 
+                : 'Invalid login details';
+          });
+        } catch (e) {
+          setState(() {
+            _errorMessage = 'Invalid login details';
+          });
+        }
+      } else {
+        // Other server errors
+        setState(() {
+          _errorMessage = 'Server error. Please try again later.';
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+        _errorMessage = 'Network error. Please check your connection.';
+      });
+      print('Login error: $e');
+    }
+  }
+
+  // Create secure storage instance
+  static const _storage = FlutterSecureStorage();
+
+  // Helper method to store authentication tokens securely
+  Future<void> _storeToken(String token, String? refreshToken) async {
+    try {
+      await _storage.write(key: 'auth_token', value: token);
+      
+      if (refreshToken != null) {
+        await _storage.write(key: 'refresh_token', value: refreshToken);
+      }
+      
+      print('Tokens stored successfully');
+    } catch (e) {
+      print('Error storing tokens: $e');
+    }
+  }
+
+  // Helper method to decode JWT token and extract user information
+  Map<String, dynamic> _decodeJwtToken(String token) {
+    try {
+      final parts = token.split('.');
+      if (parts.length != 3) {
+        throw Exception('Invalid token');
+      }
+      
+      final payload = parts[1];
+      final normalized = base64Url.normalize(payload);
+      final resp = utf8.decode(base64Url.decode(normalized));
+      final payloadMap = json.decode(resp);
+      
+      return payloadMap;
+    } catch (e) {
+      print('Error decoding token: $e');
+      return {};
+    }
+  }
+
+  // Helper method to determine user role from JWT claims
+  String _determineUserRole(Map<String, dynamic> userInfo) {
+    // Extract user information from JWT claims
+    final email = userInfo['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress'] ?? '';
+    final firstName = userInfo['firstName'] ?? '';
+    final lastName = userInfo['lastName'] ?? '';
+    
+    print('User Info: Email: $email, Name: $firstName $lastName');
+    
+    // Determine role based on email or other claims
+    // You might have a role claim in the token, adjust this logic as needed
+    if (email.contains('admin')) {
+      return 'Admin';
+    } else if (email.contains('chemist')) {
+      return 'Chemist';
+    } else if (email.contains('support')) {
+      return 'Customer Support';
     } else {
-      setState(() {
-        _isLoading = false;
-        _errorMessage = 'Incorrect email address or password';
-      });
+      return 'Customer';
     }
   }
 

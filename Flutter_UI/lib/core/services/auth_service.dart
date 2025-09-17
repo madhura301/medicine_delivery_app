@@ -43,4 +43,23 @@ class AuthService {
     await Future.delayed(const Duration(seconds: 2));
     return true;
   }
+
+  //  static Future<void> storeTokens(String token, String? refreshToken) async {
+  //   final prefs = await SharedPreferences.getInstance();
+  //   await prefs.setString('auth_token', token);
+  //   if (refreshToken != null) {
+  //     await prefs.setString('refresh_token', refreshToken);
+  //   }
+  // }
+  
+  // static Future<String?> getToken() async {
+  //   final prefs = await SharedPreferences.getInstance();
+  //   return prefs.getString('auth_token');
+  // }
+  
+  // static Future<void> clearTokens() async {
+  //   final prefs = await SharedPreferences.getInstance();
+  //   await prefs.remove('auth_token');
+  //   await prefs.remove('refresh_token');
+  // }
 }
