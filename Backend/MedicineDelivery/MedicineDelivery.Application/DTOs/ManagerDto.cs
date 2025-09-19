@@ -11,6 +11,9 @@ namespace MedicineDelivery.Application.DTOs
         public string MobileNumber { get; set; } = string.Empty;
         public string EmailId { get; set; } = string.Empty;
         public string AlternativeMobileNumber { get; set; } = string.Empty;
+        
+        // Employee information
+        public string EmployeeId { get; set; } = string.Empty;
     }
 
     public class ManagerResponseDto
@@ -25,6 +28,11 @@ namespace MedicineDelivery.Application.DTOs
         public string MobileNumber { get; set; } = string.Empty;
         public string EmailId { get; set; } = string.Empty;
         public string AlternativeMobileNumber { get; set; } = string.Empty;
+        
+        // Employee and photo information
+        public string EmployeeId { get; set; } = string.Empty;
+        public string ManagerPhoto { get; set; } = string.Empty;
+        
         public bool IsActive { get; set; }
         public bool IsDeleted { get; set; }
         public DateTime CreatedOn { get; set; }
@@ -47,6 +55,11 @@ namespace MedicineDelivery.Application.DTOs
         public string MobileNumber { get; set; } = string.Empty;
         public string EmailId { get; set; } = string.Empty;
         public string AlternativeMobileNumber { get; set; } = string.Empty;
+        
+        // Employee and photo information
+        public string EmployeeId { get; set; } = string.Empty;
+        public string ManagerPhoto { get; set; } = string.Empty;
+        
         public bool IsActive { get; set; }
         public bool IsDeleted { get; set; }
         public DateTime CreatedOn { get; set; }

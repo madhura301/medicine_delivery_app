@@ -98,9 +98,29 @@ namespace MedicineDelivery.Infrastructure.Data
                 .Property(ms => ms.OwnerMiddleName)
                 .HasMaxLength(100);
 
+            // Address fields
             builder.Entity<MedicalStore>()
-                .Property(ms => ms.Address)
+                .Property(ms => ms.AddressLine1)
                 .HasMaxLength(300)
+                .IsRequired();
+
+            builder.Entity<MedicalStore>()
+                .Property(ms => ms.AddressLine2)
+                .HasMaxLength(300);
+
+            builder.Entity<MedicalStore>()
+                .Property(ms => ms.City)
+                .HasMaxLength(100)
+                .IsRequired();
+
+            builder.Entity<MedicalStore>()
+                .Property(ms => ms.State)
+                .HasMaxLength(100)
+                .IsRequired();
+
+            builder.Entity<MedicalStore>()
+                .Property(ms => ms.PostalCode)
+                .HasMaxLength(20)
                 .IsRequired();
 
             builder.Entity<MedicalStore>()
@@ -125,6 +145,11 @@ namespace MedicineDelivery.Infrastructure.Data
                 .Property(ms => ms.AlternativeMobileNumber)
                 .HasMaxLength(15);
 
+            // Registration and tax information
+            builder.Entity<MedicalStore>()
+                .Property(ms => ms.RegistrationStatus)
+                .IsRequired();
+
             builder.Entity<MedicalStore>()
                 .Property(ms => ms.GSTIN)
                 .HasMaxLength(100);
@@ -140,6 +165,27 @@ namespace MedicineDelivery.Infrastructure.Data
             builder.Entity<MedicalStore>()
                 .Property(ms => ms.DLNo)
                 .HasMaxLength(100);
+
+            // Pharmacist information
+            builder.Entity<MedicalStore>()
+                .Property(ms => ms.PharmacistFirstName)
+                .HasMaxLength(100)
+                .IsRequired();
+
+            builder.Entity<MedicalStore>()
+                .Property(ms => ms.PharmacistLastName)
+                .HasMaxLength(100)
+                .IsRequired();
+
+            builder.Entity<MedicalStore>()
+                .Property(ms => ms.PharmacistRegistrationNumber)
+                .HasMaxLength(100)
+                .IsRequired();
+
+            builder.Entity<MedicalStore>()
+                .Property(ms => ms.PharmacistMobileNumber)
+                .HasMaxLength(15)
+                .IsRequired();
 
             builder.Entity<MedicalStore>()
                 .Property(ms => ms.CreatedOn)
@@ -206,6 +252,16 @@ namespace MedicineDelivery.Infrastructure.Data
                 .Property(cs => cs.AlternativeMobileNumber)
                 .HasMaxLength(15);
 
+            // Employee and photo information
+            builder.Entity<CustomerSupport>()
+                .Property(cs => cs.EmployeeId)
+                .HasMaxLength(50)
+                .IsRequired();
+
+            builder.Entity<CustomerSupport>()
+                .Property(cs => cs.CustomerSupportPhoto)
+                .HasMaxLength(255);
+
             builder.Entity<CustomerSupport>()
                 .Property(cs => cs.CreatedOn)
                 .HasColumnType("datetime2(7)");
@@ -270,6 +326,16 @@ namespace MedicineDelivery.Infrastructure.Data
             builder.Entity<Manager>()
                 .Property(m => m.AlternativeMobileNumber)
                 .HasMaxLength(15);
+
+            // Employee and photo information
+            builder.Entity<Manager>()
+                .Property(m => m.EmployeeId)
+                .HasMaxLength(50)
+                .IsRequired();
+
+            builder.Entity<Manager>()
+                .Property(m => m.ManagerPhoto)
+                .HasMaxLength(255);
 
             builder.Entity<Manager>()
                 .Property(m => m.CreatedOn)

@@ -1,0 +1,1217 @@
+{
+	"info": {
+		"_postman_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+		"name": "Medicine Delivery API Tests",
+		"description": "Comprehensive test collection for Medicine Delivery API endpoints including authentication, user management, medical stores, customer support, and managers.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"auth": {
+		"type": "bearer",
+		"bearer": [
+			{
+				"key": "token",
+				"value": "{{auth_token}}",
+				"type": "string"
+			}
+		]
+	},
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					"// Set base URL if not already set",
+					"if (!pm.environment.get('base_url')) {",
+					"    pm.environment.set('base_url', 'http://localhost:5000');",
+					"}"
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:5000",
+			"type": "string"
+		},
+		{
+			"key": "auth_token",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "admin_user_id",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "medical_store_id",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "customer_support_id",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "manager_id",
+			"value": "",
+			"type": "string"
+		}
+	],
+	"item": [
+		{
+			"name": "Authentication",
+			"item": [
+				{
+					"name": "Register Admin User",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Response contains access token', function () {",
+									"    const jsonData = pm.response.json();",
+									"    pm.expect(jsonData.accessToken).to.exist;",
+									"    pm.environment.set('auth_token', jsonData.accessToken);",
+									"});",
+									"",
+									"pm.test('Response contains user ID', function () {",
+									"    const jsonData = pm.response.json();",
+									"    pm.expect(jsonData.userId).to.exist;",
+									"    pm.environment.set('admin_user_id', jsonData.userId);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"firstName\": \"Admin\",\n    \"lastName\": \"User\",\n    \"email\": \"admin@test.com\",\n    \"password\": \"Admin@123\",\n    \"confirmPassword\": \"Admin@123\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/auth/register",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"register"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Login Admin User",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Response contains access token', function () {",
+									"    const jsonData = pm.response.json();",
+									"    pm.expect(jsonData.accessToken).to.exist;",
+									"    pm.environment.set('auth_token', jsonData.accessToken);",
+									"});",
+									"",
+									"pm.test('Response contains user ID', function () {",
+									"    const jsonData = pm.response.json();",
+									"    pm.expect(jsonData.userId).to.exist;",
+									"    pm.environment.set('admin_user_id', jsonData.userId);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"admin@test.com\",\n    \"password\": \"Admin@123\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/auth/login",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"login"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Medical Stores",
+			"item": [
+				{
+					"name": "Register Medical Store",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Response contains medical store ID', function () {",
+									"    const jsonData = pm.response.json();",
+									"    pm.expect(jsonData.medicalStoreId).to.exist;",
+									"    pm.environment.set('medical_store_id', jsonData.medicalStoreId);",
+									"});",
+									"",
+									"pm.test('Response contains generated password', function () {",
+									"    const jsonData = pm.response.json();",
+									"    pm.expect(jsonData.generatedPassword).to.exist;",
+									"    console.log('Generated Password for Medical Store:', jsonData.generatedPassword);",
+									"});",
+									"",
+									"pm.test('Response contains address fields', function () {",
+									"    const jsonData = pm.response.json();",
+									"    pm.expect(jsonData.addressLine1).to.exist;",
+									"    pm.expect(jsonData.city).to.exist;",
+									"    pm.expect(jsonData.state).to.exist;",
+									"    pm.expect(jsonData.postalCode).to.exist;",
+									"});",
+									"",
+									"pm.test('Response contains pharmacist information', function () {",
+									"    const jsonData = pm.response.json();",
+									"    pm.expect(jsonData.pharmacistFirstName).to.exist;",
+									"    pm.expect(jsonData.pharmacistLastName).to.exist;",
+									"    pm.expect(jsonData.pharmacistRegistrationNumber).to.exist;",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{auth_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"medicalName\": \"Test Medical Store\",\n    \"ownerFirstName\": \"John\",\n    \"ownerLastName\": \"Doe\",\n    \"ownerMiddleName\": \"William\",\n    \"addressLine1\": \"123 Main Street\",\n    \"addressLine2\": \"Suite 100\",\n    \"city\": \"Mumbai\",\n    \"state\": \"Maharashtra\",\n    \"postalCode\": \"400001\",\n    \"latitude\": 19.0760,\n    \"longitude\": 72.8777,\n    \"mobileNumber\": \"9876543210\",\n    \"emailId\": \"medicalstore@test.com\",\n    \"alternativeMobileNumber\": \"9876543211\",\n    \"registrationStatus\": true,\n    \"gstin\": \"29ABCDE1234F1Z5\",\n    \"pan\": \"ABCDE1234F\",\n    \"fssaiNo\": \"FSSAI123456789\",\n    \"dlNo\": \"DL123456789\",\n    \"pharmacistFirstName\": \"Dr. Jane\",\n    \"pharmacistLastName\": \"Smith\",\n    \"pharmacistRegistrationNumber\": \"PHAR123456\",\n    \"pharmacistMobileNumber\": \"9876543212\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/medicalstores/register",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"medicalstores",
+								"register"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get All Medical Stores",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Response is an array', function () {",
+									"    const jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.be.an('array');",
+									"});",
+									"",
+									"pm.test('Array contains at least one medical store', function () {",
+									"    const jsonData = pm.response.json();",
+									"    pm.expect(jsonData.length).to.be.at.least(1);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{auth_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/medicalstores",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"medicalstores"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Medical Store by ID",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Response contains medical store details', function () {",
+									"    const jsonData = pm.response.json();",
+									"    pm.expect(jsonData.medicalStoreId).to.exist;",
+									"    pm.expect(jsonData.medicalName).to.exist;",
+									"    pm.expect(jsonData.ownerFirstName).to.exist;",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{auth_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/medicalstores/{{medical_store_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"medicalstores",
+								"{{medical_store_id}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update Medical Store",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Response contains updated medical store details', function () {",
+									"    const jsonData = pm.response.json();",
+									"    pm.expect(jsonData.medicalStoreId).to.exist;",
+									"    pm.expect(jsonData.medicalName).to.equal('Updated Medical Store');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{auth_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"medicalName\": \"Updated Medical Store\",\n    \"ownerFirstName\": \"John\",\n    \"ownerLastName\": \"Doe\",\n    \"ownerMiddleName\": \"William\",\n    \"addressLine1\": \"456 Updated Street\",\n    \"addressLine2\": \"Suite 200\",\n    \"city\": \"Mumbai\",\n    \"state\": \"Maharashtra\",\n    \"postalCode\": \"400002\",\n    \"latitude\": 19.0760,\n    \"longitude\": 72.8777,\n    \"mobileNumber\": \"9876543210\",\n    \"emailId\": \"updated@test.com\",\n    \"alternativeMobileNumber\": \"9876543211\",\n    \"registrationStatus\": true,\n    \"gstin\": \"29ABCDE1234F1Z5\",\n    \"pan\": \"ABCDE1234F\",\n    \"fssaiNo\": \"FSSAI123456789\",\n    \"dlNo\": \"DL123456789\",\n    \"pharmacistFirstName\": \"Dr. Jane\",\n    \"pharmacistLastName\": \"Smith\",\n    \"pharmacistRegistrationNumber\": \"PHAR123456\",\n    \"pharmacistMobileNumber\": \"9876543212\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/medicalstores/{{medical_store_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"medicalstores",
+								"{{medical_store_id}}"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Customer Support",
+			"item": [
+				{
+					"name": "Register Customer Support",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Response contains customer support ID', function () {",
+									"    const jsonData = pm.response.json();",
+									"    pm.expect(jsonData.customerSupportId).to.exist;",
+									"    pm.environment.set('customer_support_id', jsonData.customerSupportId);",
+									"});",
+									"",
+									"pm.test('Response contains generated password', function () {",
+									"    const jsonData = pm.response.json();",
+									"    pm.expect(jsonData.generatedPassword).to.exist;",
+									"    console.log('Generated Password for Customer Support:', jsonData.generatedPassword);",
+									"});",
+									"",
+									"pm.test('Response contains employee ID', function () {",
+									"    const jsonData = pm.response.json();",
+									"    pm.expect(jsonData.employeeId).to.exist;",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{auth_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"customerSupportFirstName\": \"Alice\",\n    \"customerSupportLastName\": \"Johnson\",\n    \"customerSupportMiddleName\": \"Marie\",\n    \"address\": \"789 Customer Support Street\",\n    \"city\": \"Delhi\",\n    \"state\": \"Delhi\",\n    \"mobileNumber\": \"9876543220\",\n    \"emailId\": \"customersupport@test.com\",\n    \"alternativeMobileNumber\": \"9876543221\",\n    \"employeeId\": \"EMP001\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/customersupports/register",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"customersupports",
+								"register"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get All Customer Supports",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Response is an array', function () {",
+									"    const jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.be.an('array');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{auth_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/customersupports",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"customersupports"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Customer Support by ID",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Response contains customer support details', function () {",
+									"    const jsonData = pm.response.json();",
+									"    pm.expect(jsonData.customerSupportId).to.exist;",
+									"    pm.expect(jsonData.customerSupportFirstName).to.exist;",
+									"    pm.expect(jsonData.employeeId).to.exist;",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{auth_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/customersupports/{{customer_support_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"customersupports",
+								"{{customer_support_id}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Upload Customer Support Photo",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Response contains photo URL', function () {",
+									"    const jsonData = pm.response.json();",
+									"    pm.expect(jsonData.photoUrl).to.exist;",
+									"    console.log('Photo URL:', jsonData.photoUrl);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{auth_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "photo",
+									"type": "file",
+									"src": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==",
+									"description": "Sample image file for testing"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/api/customersupports/{{customer_support_id}}/photo",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"customersupports",
+								"{{customer_support_id}}",
+								"photo"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update Customer Support",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Response contains updated customer support details', function () {",
+									"    const jsonData = pm.response.json();",
+									"    pm.expect(jsonData.customerSupportId).to.exist;",
+									"    pm.expect(jsonData.customerSupportFirstName).to.equal('Alice Updated');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{auth_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"customerSupportFirstName\": \"Alice Updated\",\n    \"customerSupportLastName\": \"Johnson\",\n    \"customerSupportMiddleName\": \"Marie\",\n    \"address\": \"789 Updated Customer Support Street\",\n    \"city\": \"Delhi\",\n    \"state\": \"Delhi\",\n    \"mobileNumber\": \"9876543220\",\n    \"emailId\": \"updatedcustomersupport@test.com\",\n    \"alternativeMobileNumber\": \"9876543221\",\n    \"employeeId\": \"EMP001\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/customersupports/{{customer_support_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"customersupports",
+								"{{customer_support_id}}"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Managers",
+			"item": [
+				{
+					"name": "Register Manager",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Response contains manager ID', function () {",
+									"    const jsonData = pm.response.json();",
+									"    pm.expect(jsonData.managerId).to.exist;",
+									"    pm.environment.set('manager_id', jsonData.managerId);",
+									"});",
+									"",
+									"pm.test('Response contains generated password', function () {",
+									"    const jsonData = pm.response.json();",
+									"    pm.expect(jsonData.generatedPassword).to.exist;",
+									"    console.log('Generated Password for Manager:', jsonData.generatedPassword);",
+									"});",
+									"",
+									"pm.test('Response contains employee ID', function () {",
+									"    const jsonData = pm.response.json();",
+									"    pm.expect(jsonData.employeeId).to.exist;",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{auth_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"managerFirstName\": \"Bob\",\n    \"managerLastName\": \"Wilson\",\n    \"managerMiddleName\": \"Robert\",\n    \"address\": \"321 Manager Avenue\",\n    \"city\": \"Bangalore\",\n    \"state\": \"Karnataka\",\n    \"mobileNumber\": \"9876543230\",\n    \"emailId\": \"manager@test.com\",\n    \"alternativeMobileNumber\": \"9876543231\",\n    \"employeeId\": \"MGR001\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/managers/register",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"managers",
+								"register"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get All Managers",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Response is an array', function () {",
+									"    const jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.be.an('array');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{auth_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/managers",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"managers"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Manager by ID",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Response contains manager details', function () {",
+									"    const jsonData = pm.response.json();",
+									"    pm.expect(jsonData.managerId).to.exist;",
+									"    pm.expect(jsonData.managerFirstName).to.exist;",
+									"    pm.expect(jsonData.employeeId).to.exist;",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{auth_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/managers/{{manager_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"managers",
+								"{{manager_id}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Upload Manager Photo",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Response contains photo URL', function () {",
+									"    const jsonData = pm.response.json();",
+									"    pm.expect(jsonData.photoUrl).to.exist;",
+									"    console.log('Photo URL:', jsonData.photoUrl);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{auth_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "photo",
+									"type": "file",
+									"src": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==",
+									"description": "Sample image file for testing"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/api/managers/{{manager_id}}/photo",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"managers",
+								"{{manager_id}}",
+								"photo"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update Manager",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Response contains updated manager details', function () {",
+									"    const jsonData = pm.response.json();",
+									"    pm.expect(jsonData.managerId).to.exist;",
+									"    pm.expect(jsonData.managerFirstName).to.equal('Bob Updated');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{auth_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"managerFirstName\": \"Bob Updated\",\n    \"managerLastName\": \"Wilson\",\n    \"managerMiddleName\": \"Robert\",\n    \"address\": \"321 Updated Manager Avenue\",\n    \"city\": \"Bangalore\",\n    \"state\": \"Karnataka\",\n    \"mobileNumber\": \"9876543230\",\n    \"emailId\": \"updatedmanager@test.com\",\n    \"alternativeMobileNumber\": \"9876543231\",\n    \"employeeId\": \"MGR001\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/managers/{{manager_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"managers",
+								"{{manager_id}}"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Users Management",
+			"item": [
+				{
+					"name": "Get All Users",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Response is an array', function () {",
+									"    const jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.be.an('array');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{auth_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/users",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"users"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get User by ID",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Response contains user details', function () {",
+									"    const jsonData = pm.response.json();",
+									"    pm.expect(jsonData.id).to.exist;",
+									"    pm.expect(jsonData.email).to.exist;",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{auth_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/users/{{admin_user_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"users",
+								"{{admin_user_id}}"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Cleanup (Optional)",
+			"item": [
+				{
+					"name": "Delete Medical Store",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 204 (No Content)', function () {",
+									"    pm.response.to.have.status(204);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{auth_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/medicalstores/{{medical_store_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"medicalstores",
+								"{{medical_store_id}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Customer Support",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 204 (No Content)', function () {",
+									"    pm.response.to.have.status(204);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{auth_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/customersupports/{{customer_support_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"customersupports",
+								"{{customer_support_id}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Manager",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 204 (No Content)', function () {",
+									"    pm.response.to.have.status(204);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{auth_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/managers/{{manager_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"managers",
+								"{{manager_id}}"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		}
+	]
+}

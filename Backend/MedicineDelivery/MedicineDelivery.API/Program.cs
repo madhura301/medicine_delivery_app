@@ -258,6 +258,7 @@ builder.Services.AddScoped<MedicineDelivery.Domain.Interfaces.IUserManager, Medi
 builder.Services.AddScoped<MedicineDelivery.Application.Interfaces.IMedicalStoreService, MedicineDelivery.Infrastructure.Services.MedicalStoreService>();
 builder.Services.AddScoped<MedicineDelivery.Application.Interfaces.ICustomerSupportService, MedicineDelivery.Infrastructure.Services.CustomerSupportService>();
 builder.Services.AddScoped<MedicineDelivery.Application.Interfaces.IManagerService, MedicineDelivery.Infrastructure.Services.ManagerService>();
+builder.Services.AddScoped<MedicineDelivery.Application.Interfaces.IPhotoUploadService, MedicineDelivery.Infrastructure.Services.PhotoUploadService>();
 
 // Add SignInManager explicitly (not automatically registered with AddIdentity)
 builder.Services.AddScoped<SignInManager<MedicineDelivery.Infrastructure.Data.ApplicationUser>>();
