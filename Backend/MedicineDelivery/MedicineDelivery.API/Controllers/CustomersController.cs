@@ -1,7 +1,8 @@
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc;
 using MedicineDelivery.Application.DTOs;
 using MedicineDelivery.Application.Interfaces;
+using MedicineDelivery.Domain.Entities;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 
 namespace MedicineDelivery.API.Controllers
@@ -12,14 +13,16 @@ namespace MedicineDelivery.API.Controllers
     public class CustomersController : ControllerBase
     {
         private readonly ICustomerService _customerService;
+        private readonly IPermissionCheckerService _permissionCheckerService;
 
-        public CustomersController(ICustomerService customerService)
+        public CustomersController(ICustomerService customerService, IPermissionCheckerService permissionCheckerService)
         {
             _customerService = customerService;
+            _permissionCheckerService = permissionCheckerService;
         }
 
         [HttpGet]
-        [Authorize(Policy = "RequireCustomerReadPermission")]
+        [Authorize(Policy = "RequireAllCustomerReadPermission")]
         public async Task<IActionResult> GetCustomers()
         {
             try
@@ -45,16 +48,22 @@ namespace MedicineDelivery.API.Controllers
                     return NotFound(new { error = "Customer not found." });
                 }
 
-                // Check if user is trying to access their own data or has admin/manager/customer support role
-                var currentUserId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-                var userRoles = User.FindAll(ClaimTypes.Role).Select(c => c.Value).ToList();
+                // Check if user has AllCustomerRead permission or CustomerRead permission
+                var hasAllCustomerRead = await _permissionCheckerService.HasPermissionAsync(User, "AllCustomerRead");
+                var hasCustomerRead = await _permissionCheckerService.HasPermissionAsync(User, "CustomerRead");
 
-                if (customer.UserId != currentUserId && 
-                    !userRoles.Contains("Admin") && 
-                    !userRoles.Contains("Manager") && 
-                    !userRoles.Contains("CustomerSupport"))
+                var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                var result = await _permissionCheckerService.GetPermissionsByUserIdAsync(userId);
+
+
+                if (!hasAllCustomerRead && hasCustomerRead)
                 {
-                    return Forbid("You can only access your own customer information.");
+                    // User only has CustomerRead permission, can only access their own record
+                    var currentUserId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                    if (customer.UserId != currentUserId)
+                    {
+                        return Forbid("You can only access your own customer information.");
+                    }
                 }
 
                 return Ok(customer);
@@ -77,16 +86,18 @@ namespace MedicineDelivery.API.Controllers
                     return NotFound(new { error = "Customer not found." });
                 }
 
-                // Check if user is trying to access their own data or has admin/manager/customer support role
-                var currentUserId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-                var userRoles = User.FindAll(ClaimTypes.Role).Select(c => c.Value).ToList();
+                // Check if user has AllCustomerRead permission or CustomerRead permission
+                var hasAllCustomerRead = await _permissionCheckerService.HasPermissionAsync(User, "AllCustomerRead");
+                var hasCustomerRead = await _permissionCheckerService.HasPermissionAsync(User, "CustomerRead");
 
-                if (customer.UserId != currentUserId && 
-                    !userRoles.Contains("Admin") && 
-                    !userRoles.Contains("Manager") && 
-                    !userRoles.Contains("CustomerSupport"))
+                if (!hasAllCustomerRead && hasCustomerRead)
                 {
-                    return Forbid("You can only access your own customer information.");
+                    // User only has CustomerRead permission, can only access their own record
+                    var currentUserId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                    if (customer.UserId != currentUserId)
+                    {
+                        return Forbid("You can only access your own customer information.");
+                    }
                 }
 
                 return Ok(customer);
@@ -214,16 +225,18 @@ namespace MedicineDelivery.API.Controllers
                     return NotFound(new { error = "Customer not found." });
                 }
 
-                // Check if user is trying to update their own data or has admin/manager/customer support role
-                var currentUserId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-                var userRoles = User.FindAll(ClaimTypes.Role).Select(c => c.Value).ToList();
+                // Check if user has AllCustomerUpdate permission or CustomerUpdate permission
+                var hasAllCustomerUpdate = await _permissionCheckerService.HasPermissionAsync(User, "AllCustomerUpdate");
+                var hasCustomerUpdate = await _permissionCheckerService.HasPermissionAsync(User, "CustomerUpdate");
 
-                if (existingCustomer.UserId != currentUserId && 
-                    !userRoles.Contains("Admin") && 
-                    !userRoles.Contains("Manager") && 
-                    !userRoles.Contains("CustomerSupport"))
+                if (!hasAllCustomerUpdate && hasCustomerUpdate)
                 {
-                    return Forbid("You can only update your own customer information.");
+                    // User only has CustomerUpdate permission, can only update their own record
+                    var currentUserId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                    if (existingCustomer.UserId != currentUserId)
+                    {
+                        return Forbid("You can only update your own customer information.");
+                    }
                 }
 
                 var updatedCustomer = await _customerService.UpdateCustomerAsync(id, request);
@@ -253,16 +266,18 @@ namespace MedicineDelivery.API.Controllers
                     return NotFound(new { error = "Customer not found." });
                 }
 
-                // Check if user is trying to delete their own data or has admin/manager/customer support role
-                var currentUserId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-                var userRoles = User.FindAll(ClaimTypes.Role).Select(c => c.Value).ToList();
+                // Check if user has AllCustomerDelete permission or CustomerDelete permission
+                var hasAllCustomerDelete = await _permissionCheckerService.HasPermissionAsync(User, "AllCustomerDelete");
+                var hasCustomerDelete = await _permissionCheckerService.HasPermissionAsync(User, "CustomerDelete");
 
-                if (existingCustomer.UserId != currentUserId && 
-                    !userRoles.Contains("Admin") && 
-                    !userRoles.Contains("Manager") && 
-                    !userRoles.Contains("CustomerSupport"))
+                if (!hasAllCustomerDelete && hasCustomerDelete)
                 {
-                    return Forbid("You can only delete your own customer information.");
+                    // User only has CustomerDelete permission, can only delete their own record
+                    var currentUserId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                    if (existingCustomer.UserId != currentUserId)
+                    {
+                        return Forbid("You can only delete your own customer information.");
+                    }
                 }
 
                 var result = await _customerService.DeleteCustomerAsync(id);

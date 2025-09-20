@@ -238,7 +238,7 @@ builder.Services.AddAuthorization(options =>
     options.AddPolicy("RequireManagerSupportDeletePermission", policy => 
         policy.Requirements.Add(new MedicineDelivery.API.Authorization.PermissionRequirement("ManagerSupportDelete")));
     
-    // Customer CRUD Policies
+    // Customer CRUD Policies (for own records only)
     options.AddPolicy("RequireCustomerReadPermission", policy => 
         policy.Requirements.Add(new MedicineDelivery.API.Authorization.PermissionRequirement("CustomerRead")));
     
@@ -250,6 +250,16 @@ builder.Services.AddAuthorization(options =>
     
     options.AddPolicy("RequireCustomerDeletePermission", policy => 
         policy.Requirements.Add(new MedicineDelivery.API.Authorization.PermissionRequirement("CustomerDelete")));
+    
+    // All Customer CRUD Policies (for all customer records)
+    options.AddPolicy("RequireAllCustomerReadPermission", policy => 
+        policy.Requirements.Add(new MedicineDelivery.API.Authorization.PermissionRequirement("AllCustomerRead")));
+    
+    options.AddPolicy("RequireAllCustomerUpdatePermission", policy => 
+        policy.Requirements.Add(new MedicineDelivery.API.Authorization.PermissionRequirement("AllCustomerUpdate")));
+    
+    options.AddPolicy("RequireAllCustomerDeletePermission", policy => 
+        policy.Requirements.Add(new MedicineDelivery.API.Authorization.PermissionRequirement("AllCustomerDelete")));
 });
 
 // Register the permission authorization handler
@@ -273,6 +283,7 @@ builder.Services.AddScoped<MedicineDelivery.Application.Interfaces.ICustomerSupp
 builder.Services.AddScoped<MedicineDelivery.Application.Interfaces.IManagerService, MedicineDelivery.Infrastructure.Services.ManagerService>();
 builder.Services.AddScoped<MedicineDelivery.Application.Interfaces.ICustomerService, MedicineDelivery.Infrastructure.Services.CustomerService>();
 builder.Services.AddScoped<MedicineDelivery.Application.Interfaces.IPhotoUploadService, MedicineDelivery.Infrastructure.Services.PhotoUploadService>();
+builder.Services.AddScoped<MedicineDelivery.Application.Interfaces.IPermissionCheckerService, MedicineDelivery.Infrastructure.Services.PermissionCheckerService>();
 
 // Add SignInManager explicitly (not automatically registered with AddIdentity)
 builder.Services.AddScoped<SignInManager<MedicineDelivery.Infrastructure.Data.ApplicationUser>>();
