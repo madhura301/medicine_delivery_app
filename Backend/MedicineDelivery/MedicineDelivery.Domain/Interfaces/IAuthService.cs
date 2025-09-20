@@ -4,9 +4,8 @@ namespace MedicineDelivery.Domain.Interfaces
 {
     public interface IAuthService
     {
-        Task<AuthResult> LoginAsync(string mobileNumber, string password);
+        Task<AuthResult> LoginAsync(string mobileNumber, string password, bool stayLoggedIn = false);
         Task<AuthResult> RegisterAsync(RegisterRequest request);
-        Task<string> GenerateJwtTokenAsync(User user);
         Task<bool> ValidateTokenAsync(string token);
         Task<AuthResult> ForgotPasswordAsync(string mobileNumber);
         Task<AuthResult> ResetPasswordAsync(string mobileNumber, string token, string newPassword);
@@ -18,6 +17,10 @@ namespace MedicineDelivery.Domain.Interfaces
         public bool Success { get; set; }
         public string? Token { get; set; }
         public string? RefreshToken { get; set; }
+        public DateTime? ExpiresAt { get; set; }
+        public string? Role { get; set; }
+        public string? UserId { get; set; }
+        public string? EntityId { get; set; } // CustomerId, ManagerId, etc.
         public List<string> Errors { get; set; } = new();
     }
 

@@ -4,6 +4,7 @@ namespace MedicineDelivery.Application.DTOs
     {
         public string MobileNumber { get; set; } = string.Empty;
         public string Password { get; set; } = string.Empty;
+        public bool StayLoggedIn { get; set; } = false;
     }
 
     public class RegisterDto
@@ -20,6 +21,10 @@ namespace MedicineDelivery.Application.DTOs
         public bool Success { get; set; }
         public string? Token { get; set; }
         public string? RefreshToken { get; set; }
+        public DateTime? ExpiresAt { get; set; }
+        public string? Role { get; set; }
+        public string? UserId { get; set; }
+        public string? EntityId { get; set; } // CustomerId, ManagerId, etc.
         public List<string> Errors { get; set; } = new();
     }
 

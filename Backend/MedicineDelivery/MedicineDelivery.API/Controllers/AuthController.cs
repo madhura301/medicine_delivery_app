@@ -19,7 +19,7 @@ namespace MedicineDelivery.API.Controllers
         [HttpPost("login")]
         public async Task<IActionResult> Login([FromBody] LoginDto request)
         {
-            var result = await _authService.LoginAsync(request.MobileNumber, request.Password);
+            var result = await _authService.LoginAsync(request.MobileNumber, request.Password, request.StayLoggedIn);
             
             if (!result.Success)
             {
