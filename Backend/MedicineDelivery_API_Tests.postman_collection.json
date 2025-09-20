@@ -5,16 +5,6 @@
 		"description": "Comprehensive test collection for Medicine Delivery API endpoints including authentication, user management, medical stores, customer support, and managers.",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
 	},
-	"auth": {
-		"type": "bearer",
-		"bearer": [
-			{
-				"key": "token",
-				"value": "{{auth_token}}",
-				"type": "string"
-			}
-		]
-	},
 	"event": [
 		{
 			"listen": "prerequest",
@@ -78,8 +68,9 @@
 									"",
 									"pm.test('Response contains access token', function () {",
 									"    const jsonData = pm.response.json();",
-									"    pm.expect(jsonData.accessToken).to.exist;",
-									"    pm.environment.set('auth_token', jsonData.accessToken);",
+									"    pm.expect(jsonData.token).to.exist;",
+									"    pm.environment.set('auth_token', jsonData.token);",
+									"    console.log('Auth token set from registration:', jsonData.token);",
 									"});",
 									"",
 									"pm.test('Response contains user ID', function () {",
@@ -131,8 +122,9 @@
 									"",
 									"pm.test('Response contains access token', function () {",
 									"    const jsonData = pm.response.json();",
-									"    pm.expect(jsonData.accessToken).to.exist;",
-									"    pm.environment.set('auth_token', jsonData.accessToken);",
+									"    pm.expect(jsonData.token).to.exist;",
+									"    pm.environment.set('auth_token', jsonData.token);",
+									"    console.log('Auth token set:', jsonData.token);",
 									"});",
 									"",
 									"pm.test('Response contains user ID', function () {",

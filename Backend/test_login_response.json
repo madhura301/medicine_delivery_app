@@ -1,0 +1,126 @@
+{
+  "info": {
+    "_postman_id": "test-login-123",
+    "name": "Test Login Response Format",
+    "description": "Simple test to check login response format",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:5000",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Test Login Response",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status code is 200', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "if (pm.response.code === 200) {",
+              "    const jsonData = pm.response.json();",
+              "    console.log('=== LOGIN RESPONSE DEBUG ===');",
+              "    console.log('Full response:', JSON.stringify(jsonData, null, 2));",
+              "    console.log('Response keys:', Object.keys(jsonData));",
+              "    ",
+              "    // Check for different possible token field names",
+              "    if (jsonData.token) {",
+              "        console.log('✅ Found token field:', jsonData.token.substring(0, 20) + '...');",
+              "        pm.environment.set('auth_token', jsonData.token);",
+              "    } else if (jsonData.accessToken) {",
+              "        console.log('✅ Found accessToken field:', jsonData.accessToken.substring(0, 20) + '...');",
+              "        pm.environment.set('auth_token', jsonData.accessToken);",
+              "    } else if (jsonData.access_token) {",
+              "        console.log('✅ Found access_token field:', jsonData.access_token.substring(0, 20) + '...');",
+              "        pm.environment.set('auth_token', jsonData.access_token);",
+              "    } else {",
+              "        console.log('❌ No token field found in response');",
+              "        console.log('Available fields:', Object.keys(jsonData));",
+              "    }",
+              "} else {",
+              "    console.log('❌ Login failed with status:', pm.response.code);",
+              "    console.log('Response body:', pm.response.text());",
+              "}"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n    \"email\": \"admin@test.com\",\n    \"password\": \"Admin@123\"\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/auth/login",
+          "host": ["{{base_url}}"],
+          "path": ["api", "auth", "login"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Test Token with Users API",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "const token = pm.environment.get('auth_token');",
+              "console.log('=== TOKEN TEST DEBUG ===');",
+              "console.log('Token exists:', token ? 'YES' : 'NO');",
+              "if (token) {",
+              "    console.log('Token preview:', token.substring(0, 30) + '...');",
+              "}",
+              "",
+              "pm.test('Status code is 200', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "if (pm.response.code === 401) {",
+              "    console.log('❌ 401 Unauthorized - Token issue');",
+              "    console.log('Request headers:', pm.request.headers);",
+              "    console.log('Response headers:', pm.response.headers);",
+              "} else if (pm.response.code === 200) {",
+              "    console.log('✅ Success! Token is working');",
+              "    const jsonData = pm.response.json();",
+              "    console.log('Users count:', jsonData.length);",
+              "}"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{auth_token}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/users",
+          "host": ["{{base_url}}"],
+          "path": ["api", "users"]
+        }
+      },
+      "response": []
+    }
+  ]
+}

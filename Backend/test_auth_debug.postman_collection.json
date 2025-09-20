@@ -1,0 +1,187 @@
+{
+	"info": {
+		"_postman_id": "debug-auth-1234",
+		"name": "Debug Authentication Issue",
+		"description": "Simple collection to debug authentication issues",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:5000",
+			"type": "string"
+		},
+		{
+			"key": "auth_token",
+			"value": "",
+			"type": "string"
+		}
+	],
+	"item": [
+		{
+			"name": "1. Login and Get Token",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test('Login successful', function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"if (pm.response.code === 200) {",
+							"    const jsonData = pm.response.json();",
+							"    console.log('Full response:', JSON.stringify(jsonData, null, 2));",
+							"    ",
+							"    if (jsonData.token) {",
+							"        pm.environment.set('auth_token', jsonData.token);",
+							"        console.log('Token set successfully:', jsonData.token);",
+							"    } else {",
+							"        console.log('No token found in response');",
+							"    }",
+							"} else {",
+							"    console.log('Login failed with status:', pm.response.code);",
+							"    console.log('Response:', pm.response.text());",
+							"}"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"email\": \"admin@test.com\",\n    \"password\": \"Admin@123\"\n}"
+				},
+				"url": {
+					"raw": "{{base_url}}/api/auth/login",
+					"host": ["{{base_url}}"],
+					"path": ["api", "auth", "login"]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "2. Test Token - Get Users",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"const token = pm.environment.get('auth_token');",
+							"console.log('Using token for request:', token ? 'Token exists' : 'No token found');",
+							"if (token) {",
+							"    console.log('Token value:', token.substring(0, 20) + '...');",
+							"}"
+						],
+						"type": "text/javascript"
+					}
+				},
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test('Get users successful', function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"if (pm.response.code === 401) {",
+							"    console.log('401 Unauthorized - Token issue');",
+							"    console.log('Response headers:', pm.response.headers);",
+							"    console.log('Response body:', pm.response.text());",
+							"} else if (pm.response.code === 200) {",
+							"    console.log('Success! Token is working');",
+							"    const jsonData = pm.response.json();",
+							"    console.log('Users count:', jsonData.length);",
+							"}"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{auth_token}}",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "{{base_url}}/api/users",
+					"host": ["{{base_url}}"],
+					"path": ["api", "users"]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "3. Test Medical Store Registration",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"const token = pm.environment.get('auth_token');",
+							"console.log('Token check for medical store:', token ? 'Token exists' : 'No token');",
+							"if (!token) {",
+							"    console.log('ERROR: No auth token available');",
+							"}"
+						],
+						"type": "text/javascript"
+					}
+				},
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test('Medical store registration', function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"if (pm.response.code === 401) {",
+							"    console.log('401 - Authentication failed for medical store registration');",
+							"    console.log('Check if token is properly set and valid');",
+							"} else if (pm.response.code === 200) {",
+							"    console.log('Medical store registration successful');",
+							"}"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					},
+					{
+						"key": "Authorization",
+						"value": "Bearer {{auth_token}}",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"medicalName\": \"Test Medical Store\",\n    \"ownerFirstName\": \"John\",\n    \"ownerLastName\": \"Doe\",\n    \"ownerMiddleName\": \"William\",\n    \"addressLine1\": \"123 Main Street\",\n    \"addressLine2\": \"Suite 100\",\n    \"city\": \"Mumbai\",\n    \"state\": \"Maharashtra\",\n    \"postalCode\": \"400001\",\n    \"latitude\": 19.0760,\n    \"longitude\": 72.8777,\n    \"mobileNumber\": \"9876543210\",\n    \"emailId\": \"medicalstore@test.com\",\n    \"alternativeMobileNumber\": \"9876543211\",\n    \"registrationStatus\": true,\n    \"gstin\": \"29ABCDE1234F1Z5\",\n    \"pan\": \"ABCDE1234F\",\n    \"fssaiNo\": \"FSSAI123456789\",\n    \"dlNo\": \"DL123456789\",\n    \"pharmacistFirstName\": \"Dr. Jane\",\n    \"pharmacistLastName\": \"Smith\",\n    \"pharmacistRegistrationNumber\": \"PHAR123456\",\n    \"pharmacistMobileNumber\": \"9876543212\"\n}"
+				},
+				"url": {
+					"raw": "{{base_url}}/api/medicalstores/register",
+					"host": ["{{base_url}}"],
+					"path": ["api", "medicalstores", "register"]
+				}
+			},
+			"response": []
+		}
+	]
+}

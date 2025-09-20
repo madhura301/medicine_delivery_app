@@ -29,15 +29,15 @@ namespace MedicineDelivery.Infrastructure.Services
             _unitOfWork = unitOfWork;
         }
 
-        public async Task<AuthResult> LoginAsync(string email, string password)
+        public async Task<AuthResult> LoginAsync(string mobileNumber, string password)
         {
-            var user = await _userManager.FindByEmailAsync(email);
+            var user = await _userManager.FindByNameAsync(mobileNumber);
             if (user == null)
             {
                 return new AuthResult
                 {
                     Success = false,
-                    Errors = new List<string> { "Invalid email or password" }
+                    Errors = new List<string> { "Invalid mobile number or password" }
                 };
             }
 
@@ -47,11 +47,11 @@ namespace MedicineDelivery.Infrastructure.Services
                 return new AuthResult
                 {
                     Success = false,
-                    Errors = new List<string> { "Invalid email or password" }
+                    Errors = new List<string> { "Invalid mobile number or password" }
                 };
             }
 
-            var domainUser = await _unitOfWork.Users.FirstOrDefaultAsync(u => u.Email == email);
+            var domainUser = await _unitOfWork.Users.FirstOrDefaultAsync(u => u.Id == user.Id);
             if (domainUser == null)
             {
                 return new AuthResult
@@ -73,8 +73,9 @@ namespace MedicineDelivery.Infrastructure.Services
         {
             var user = new ApplicationUser
             {
-                UserName = request.Email,
-                Email = request.Email,
+                UserName = request.MobileNumber,
+                Email = request.Email ?? $"{request.MobileNumber}@user.local",
+                PhoneNumber = request.MobileNumber,
                 FirstName = request.FirstName,
                 LastName = request.LastName
             };
@@ -88,6 +89,9 @@ namespace MedicineDelivery.Infrastructure.Services
                     Errors = result.Errors.Select(e => e.Description).ToList()
                 };
             }
+
+            // Assign Admin role to the user
+            await _userManager.AddToRoleAsync(user, "Admin");
 
             var domainUser = new User
             {
@@ -125,6 +129,17 @@ namespace MedicineDelivery.Infrastructure.Services
                 new("firstName", user.FirstName),
                 new("lastName", user.LastName)
             };
+
+            // Add role claims
+            var identityUser = await _userManager.FindByIdAsync(user.Id);
+            if (identityUser != null)
+            {
+                var roles = await _userManager.GetRolesAsync(identityUser);
+                foreach (var role in roles)
+                {
+                    claims.Add(new Claim(ClaimTypes.Role, role));
+                }
+            }
 
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey));
             var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
@@ -170,6 +185,85 @@ namespace MedicineDelivery.Infrastructure.Services
             {
                 return false;
             }
+        }
+
+        public async Task<AuthResult> ForgotPasswordAsync(string mobileNumber)
+        {
+            var user = await _userManager.FindByNameAsync(mobileNumber);
+            if (user == null)
+            {
+                return new AuthResult
+                {
+                    Success = false,
+                    Errors = new List<string> { "User with this mobile number not found" }
+                };
+            }
+
+            var token = await _userManager.GeneratePasswordResetTokenAsync(user);
+            
+            // In a real application, you would send this token via SMS or email
+            // For now, we'll return it in the response for testing purposes
+            return new AuthResult
+            {
+                Success = true,
+                Token = token // This should be sent via SMS in production
+            };
+        }
+
+        public async Task<AuthResult> ResetPasswordAsync(string mobileNumber, string token, string newPassword)
+        {
+            var user = await _userManager.FindByNameAsync(mobileNumber);
+            if (user == null)
+            {
+                return new AuthResult
+                {
+                    Success = false,
+                    Errors = new List<string> { "User with this mobile number not found" }
+                };
+            }
+
+            var result = await _userManager.ResetPasswordAsync(user, token, newPassword);
+            if (!result.Succeeded)
+            {
+                return new AuthResult
+                {
+                    Success = false,
+                    Errors = result.Errors.Select(e => e.Description).ToList()
+                };
+            }
+
+            return new AuthResult
+            {
+                Success = true
+            };
+        }
+
+        public async Task<AuthResult> ChangePasswordAsync(string mobileNumber, string currentPassword, string newPassword)
+        {
+            var user = await _userManager.FindByNameAsync(mobileNumber);
+            if (user == null)
+            {
+                return new AuthResult
+                {
+                    Success = false,
+                    Errors = new List<string> { "User with this mobile number not found" }
+                };
+            }
+
+            var result = await _userManager.ChangePasswordAsync(user, currentPassword, newPassword);
+            if (!result.Succeeded)
+            {
+                return new AuthResult
+                {
+                    Success = false,
+                    Errors = result.Errors.Select(e => e.Description).ToList()
+                };
+            }
+
+            return new AuthResult
+            {
+                Success = true
+            };
         }
     }
 }

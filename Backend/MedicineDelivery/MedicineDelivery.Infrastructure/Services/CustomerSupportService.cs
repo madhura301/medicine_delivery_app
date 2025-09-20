@@ -39,14 +39,14 @@ namespace MedicineDelivery.Infrastructure.Services
                     };
                 }
 
-                // Check if user with this email already exists
-                var existingUser = await _userManager.FindByEmailAsync(registrationDto.EmailId);
+                // Check if user with this mobile number already exists
+                var existingUser = await _userManager.FindByNameAsync(registrationDto.MobileNumber);
                 if (existingUser != null)
                 {
                     return new CustomerSupportRegistrationResult
                     {
                         Success = false,
-                        Errors = new List<string> { "User with this email already exists" }
+                        Errors = new List<string> { "User with this mobile number already exists" }
                     };
                 }
 
@@ -56,8 +56,9 @@ namespace MedicineDelivery.Infrastructure.Services
                 // Create Identity user
                 var identityUser = new ApplicationUser
                 {
-                    UserName = registrationDto.EmailId,
+                    UserName = registrationDto.MobileNumber,
                     Email = registrationDto.EmailId,
+                    PhoneNumber = registrationDto.MobileNumber,
                     FirstName = registrationDto.CustomerSupportFirstName,
                     LastName = registrationDto.CustomerSupportLastName,
                     EmailConfirmed = true

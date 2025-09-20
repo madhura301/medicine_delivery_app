@@ -1,0 +1,126 @@
+{
+  "info": {
+    "_postman_id": "test-token-claims",
+    "name": "Test Token Claims",
+    "description": "Test to verify JWT token contains role claims",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:5000",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Register and Get Token with Roles",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Registration successful', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "if (pm.response.code === 200) {",
+              "    const jsonData = pm.response.json();",
+              "    if (jsonData.token) {",
+              "        pm.environment.set('auth_token', jsonData.token);",
+              "        console.log('=== TOKEN ANALYSIS ===');",
+              "        console.log('Token set:', jsonData.token.substring(0, 30) + '...');",
+              "        ",
+              "        // Decode JWT token to check claims",
+              "        try {",
+              "            const tokenParts = jsonData.token.split('.');",
+              "            const payload = JSON.parse(atob(tokenParts[1]));",
+              "            console.log('Token payload:', JSON.stringify(payload, null, 2));",
+              "            ",
+              "            if (payload['http://schemas.microsoft.com/ws/2008/06/identity/claims/role']) {",
+              "                console.log('✅ Role claims found:', payload['http://schemas.microsoft.com/ws/2008/06/identity/claims/role']);",
+              "            } else {",
+              "                console.log('❌ No role claims found in token');",
+              "            }",
+              "        } catch (e) {",
+              "            console.log('Error decoding token:', e.message);",
+              "        }",
+              "    }",
+              "}"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n    \"firstName\": \"Test\",\n    \"lastName\": \"Admin\",\n    \"email\": \"testadmin@example.com\",\n    \"password\": \"Admin@123\",\n    \"confirmPassword\": \"Admin@123\"\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/auth/register",
+          "host": ["{{base_url}}"],
+          "path": ["api", "auth", "register"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "2. Test Medical Store Registration with Roles",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Medical store registration', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "if (pm.response.code === 403) {",
+              "    console.log('❌ 403 Forbidden - Permission denied');",
+              "    console.log('This means authentication works but authorization fails');",
+              "    console.log('User may not have the required permissions');",
+              "} else if (pm.response.code === 200) {",
+              "    console.log('✅ Success! User has required permissions');",
+              "} else {",
+              "    console.log('Unexpected status code:', pm.response.code);",
+              "}"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{auth_token}}",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n    \"medicalName\": \"Test Medical Store\",\n    \"ownerFirstName\": \"John\",\n    \"ownerLastName\": \"Doe\",\n    \"ownerMiddleName\": \"William\",\n    \"addressLine1\": \"123 Main Street\",\n    \"addressLine2\": \"Suite 100\",\n    \"city\": \"Mumbai\",\n    \"state\": \"Maharashtra\",\n    \"postalCode\": \"400001\",\n    \"latitude\": 19.0760,\n    \"longitude\": 72.8777,\n    \"mobileNumber\": \"9876543210\",\n    \"emailId\": \"medicalstore@test.com\",\n    \"alternativeMobileNumber\": \"9876543211\",\n    \"registrationStatus\": true,\n    \"gstin\": \"29ABCDE1234F1Z5\",\n    \"pan\": \"ABCDE1234F\",\n    \"fssaiNo\": \"FSSAI123456789\",\n    \"dlNo\": \"DL123456789\",\n    \"pharmacistFirstName\": \"Dr. Jane\",\n    \"pharmacistLastName\": \"Smith\",\n    \"pharmacistRegistrationNumber\": \"PHAR123456\",\n    \"pharmacistMobileNumber\": \"9876543212\"\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/medicalstores/register",
+          "host": ["{{base_url}}"],
+          "path": ["api", "medicalstores", "register"]
+        }
+      },
+      "response": []
+    }
+  ]
+}

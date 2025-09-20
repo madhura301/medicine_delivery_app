@@ -21,6 +21,7 @@ namespace MedicineDelivery.Infrastructure.Data
         public DbSet<MedicalStore> MedicalStores { get; set; }
         public DbSet<CustomerSupport> CustomerSupports { get; set; }
         public DbSet<Manager> Managers { get; set; }
+        public DbSet<Customer> Customers { get; set; }
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
@@ -351,6 +352,79 @@ namespace MedicineDelivery.Infrastructure.Data
                 .HasForeignKey(m => m.UserId)
                 .OnDelete(DeleteBehavior.SetNull);
 
+            // Configure Customer entity
+            builder.Entity<Customer>()
+                .HasKey(c => c.CustomerId);
+
+            builder.Entity<Customer>()
+                .Property(c => c.CustomerId)
+                .HasDefaultValueSql("NEWID()");
+
+            builder.Entity<Customer>()
+                .Property(c => c.CustomerFirstName)
+                .HasMaxLength(100)
+                .IsRequired();
+
+            builder.Entity<Customer>()
+                .Property(c => c.CustomerLastName)
+                .HasMaxLength(100)
+                .IsRequired();
+
+            builder.Entity<Customer>()
+                .Property(c => c.CustomerMiddleName)
+                .HasMaxLength(100);
+
+            builder.Entity<Customer>()
+                .Property(c => c.MobileNumber)
+                .HasMaxLength(15)
+                .IsRequired();
+
+            builder.Entity<Customer>()
+                .Property(c => c.AlternativeMobileNumber)
+                .HasMaxLength(15);
+
+            builder.Entity<Customer>()
+                .Property(c => c.EmailId)
+                .HasMaxLength(50);
+
+            builder.Entity<Customer>()
+                .Property(c => c.Address)
+                .HasMaxLength(300);
+
+            builder.Entity<Customer>()
+                .Property(c => c.City)
+                .HasMaxLength(100);
+
+            builder.Entity<Customer>()
+                .Property(c => c.State)
+                .HasMaxLength(100);
+
+            builder.Entity<Customer>()
+                .Property(c => c.PostalCode)
+                .HasMaxLength(20);
+
+            builder.Entity<Customer>()
+                .Property(c => c.Gender)
+                .HasMaxLength(10);
+
+            builder.Entity<Customer>()
+                .Property(c => c.CustomerPhoto)
+                .HasMaxLength(255);
+
+            builder.Entity<Customer>()
+                .Property(c => c.CreatedOn)
+                .HasColumnType("datetime2(7)");
+
+            builder.Entity<Customer>()
+                .Property(c => c.UpdatedOn)
+                .HasColumnType("datetime2(7)");
+
+            builder.Entity<Customer>()
+                .HasOne(c => c.User)
+                .WithMany()
+                .HasForeignKey(c => c.UserId)
+                .OnDelete(DeleteBehavior.SetNull);
+
             // Seed permissions
             builder.Entity<Permission>().HasData(
                 // Original permissions
@@ -410,7 +484,13 @@ namespace MedicineDelivery.Infrastructure.Data
                 new Permission { Id = 38, Name = "ManagerSupportRead", Description = "Can read manager information", Module = "Manager", CreatedAt = DateTime.UtcNow, IsActive = true },
                 new Permission { Id = 39, Name = "ManagerSupportCreate", Description = "Can create manager accounts", Module = "Manager", CreatedAt = DateTime.UtcNow, IsActive = true },
                 new Permission { Id = 40, Name = "ManagerSupportUpdate", Description = "Can update manager information", Module = "Manager", CreatedAt = DateTime.UtcNow, IsActive = true },
-                new Permission { Id = 41, Name = "ManagerSupportDelete", Description = "Can delete manager accounts", Module = "Manager", CreatedAt = DateTime.UtcNow, IsActive = true }
+                new Permission { Id = 41, Name = "ManagerSupportDelete", Description = "Can delete manager accounts", Module = "Manager", CreatedAt = DateTime.UtcNow, IsActive = true },
+                
+                // Customer CRUD Permissions
+                new Permission { Id = 42, Name = "CustomerRead", Description = "Can read customer information", Module = "Customer", CreatedAt = DateTime.UtcNow, IsActive = true },
+                new Permission { Id = 43, Name = "CustomerCreate", Description = "Can create customer accounts", Module = "Customer", CreatedAt = DateTime.UtcNow, IsActive = true },
+                new Permission { Id = 44, Name = "CustomerUpdate", Description = "Can update customer information", Module = "Customer", CreatedAt = DateTime.UtcNow, IsActive = true },
+                new Permission { Id = 45, Name = "CustomerDelete", Description = "Can delete customer accounts", Module = "Customer", CreatedAt = DateTime.UtcNow, IsActive = true }
             );
 
             // Seed roles
@@ -474,6 +554,11 @@ namespace MedicineDelivery.Infrastructure.Data
                 new RolePermission { RoleId = 1, PermissionId = 39, GrantedAt = DateTime.UtcNow, IsActive = true },
                 new RolePermission { RoleId = 1, PermissionId = 40, GrantedAt = DateTime.UtcNow, IsActive = true },
                 new RolePermission { RoleId = 1, PermissionId = 41, GrantedAt = DateTime.UtcNow, IsActive = true },
+                // Customer CRUD Permissions for Admin
+                new RolePermission { RoleId = 1, PermissionId = 42, GrantedAt = DateTime.UtcNow, IsActive = true },
+                new RolePermission { RoleId = 1, PermissionId = 43, GrantedAt = DateTime.UtcNow, IsActive = true },
+                new RolePermission { RoleId = 1, PermissionId = 44, GrantedAt = DateTime.UtcNow, IsActive = true },
+                new RolePermission { RoleId = 1, PermissionId = 45, GrantedAt = DateTime.UtcNow, IsActive = true },
 
                 // Manager gets read and update permissions + Manager User Management Permissions
                 new RolePermission { RoleId = 2, PermissionId = 1, GrantedAt = DateTime.UtcNow, IsActive = true },
@@ -512,6 +597,11 @@ namespace MedicineDelivery.Infrastructure.Data
                 new RolePermission { RoleId = 2, PermissionId = 40, GrantedAt = DateTime.UtcNow, IsActive = true },
                 new RolePermission { RoleId = 2, PermissionId = 41, GrantedAt = DateTime.UtcNow, IsActive = true },
                 // Note: Manager doesn't get ManagerSupportCreate permission as they can't create other managers
+                // Customer CRUD Permissions for Manager
+                new RolePermission { RoleId = 2, PermissionId = 42, GrantedAt = DateTime.UtcNow, IsActive = true },
+                new RolePermission { RoleId = 2, PermissionId = 43, GrantedAt = DateTime.UtcNow, IsActive = true },
+                new RolePermission { RoleId = 2, PermissionId = 44, GrantedAt = DateTime.UtcNow, IsActive = true },
+                new RolePermission { RoleId = 2, PermissionId = 45, GrantedAt = DateTime.UtcNow, IsActive = true },
 
                 // CustomerSupport gets read permissions for products and orders, plus create orders + CustomerSupport User Management Permissions
                 new RolePermission { RoleId = 3, PermissionId = 5, GrantedAt = DateTime.UtcNow, IsActive = true },
@@ -537,11 +627,21 @@ namespace MedicineDelivery.Infrastructure.Data
                 new RolePermission { RoleId = 3, PermissionId = 36, GrantedAt = DateTime.UtcNow, IsActive = true },
                 new RolePermission { RoleId = 3, PermissionId = 37, GrantedAt = DateTime.UtcNow, IsActive = true },
                 // Note: CustomerSupport doesn't get CustomerSupportCreate permission as they can't create other customer support
+                // Customer CRUD Permissions for CustomerSupport
+                new RolePermission { RoleId = 3, PermissionId = 42, GrantedAt = DateTime.UtcNow, IsActive = true },
+                new RolePermission { RoleId = 3, PermissionId = 43, GrantedAt = DateTime.UtcNow, IsActive = true },
+                new RolePermission { RoleId = 3, PermissionId = 44, GrantedAt = DateTime.UtcNow, IsActive = true },
+                new RolePermission { RoleId = 3, PermissionId = 45, GrantedAt = DateTime.UtcNow, IsActive = true },
 
                 // Customer gets read permissions for products and create/read for orders
                 new RolePermission { RoleId = 4, PermissionId = 5, GrantedAt = DateTime.UtcNow, IsActive = true },
                 new RolePermission { RoleId = 4, PermissionId = 9, GrantedAt = DateTime.UtcNow, IsActive = true },
                 new RolePermission { RoleId = 4, PermissionId = 10, GrantedAt = DateTime.UtcNow, IsActive = true },
+                // Customer CRUD Permissions for self-management (own information only)
+                new RolePermission { RoleId = 4, PermissionId = 42, GrantedAt = DateTime.UtcNow, IsActive = true },
+                new RolePermission { RoleId = 4, PermissionId = 43, GrantedAt = DateTime.UtcNow, IsActive = true },
+                new RolePermission { RoleId = 4, PermissionId = 44, GrantedAt = DateTime.UtcNow, IsActive = true },
+                new RolePermission { RoleId = 4, PermissionId = 45, GrantedAt = DateTime.UtcNow, IsActive = true },
 
                 // Chemist gets full access to products and orders (can manage inventory and process orders)
                 new RolePermission { RoleId = 5, PermissionId = 5, GrantedAt = DateTime.UtcNow, IsActive = true },
