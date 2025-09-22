@@ -6,6 +6,11 @@ import 'package:medicine_delivery_app/utils/helpers.dart';
 class CustomerDashboard extends StatelessWidget {
   const CustomerDashboard({super.key});
 
+
+  void _goToCustomerProfile(BuildContext context) {
+    Navigator.pushNamed(context, '/customerProfile');
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -15,6 +20,11 @@ class CustomerDashboard extends StatelessWidget {
         foregroundColor: Colors.white,
         automaticallyImplyLeading: false,
         actions: [
+          IconButton(
+            onPressed: () => _goToCustomerProfile(context),
+            icon: const Icon(Icons.person),
+            tooltip: 'Profile',
+          ),
           IconButton(
             onPressed: () => AppHelpers.logout(context),
             icon: const Icon(Icons.logout),

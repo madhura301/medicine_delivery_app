@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import 'dart:io';
-import 'dart:convert' show base64Url, json, utf8;
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:medicine_delivery_app/core/app_routes.dart';
 import 'package:medicine_delivery_app/core/screens/auth/forgot_password_page.dart';
-import 'package:medicine_delivery_app/core/screens/auth/register_page.dart';
+import 'package:medicine_delivery_app/core/screens/auth/register_customer_page.dart';
+import 'package:medicine_delivery_app/core/screens/auth/register_pharmacist_page.dart';
+import 'package:medicine_delivery_app/utils/constants.dart';
+import 'package:medicine_delivery_app/utils/storage.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -17,12 +17,38 @@ class LoginPage extends StatefulWidget {
 
 class _LoginPageState extends State<LoginPage> {
   final _formKey = GlobalKey<FormState>();
-  final _emailController = TextEditingController();
+  final _userNameController = TextEditingController();
   final _passwordController = TextEditingController();
 
   bool _isLoading = false;
   bool _obscurePassword = true;
+  bool _rememberPassword = false;
   String _errorMessage = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSavedCredentials();
+  }
+
+  /// Load saved credentials if "Remember Password" was previously checked
+  Future<void> _loadSavedCredentials() async {
+    try {
+      final credentials = await StorageService.loadSavedCredentials();
+
+      if (credentials['rememberPassword'] == true &&
+          credentials['username'].isNotEmpty &&
+          credentials['password'].isNotEmpty) {
+        setState(() {
+          _userNameController.text = credentials['username'];
+          _passwordController.text = credentials['password'];
+          _rememberPassword = true;
+        });
+      }
+    } catch (e) {
+      print('Error loading saved credentials: $e');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -44,15 +70,15 @@ class _LoginPageState extends State<LoginPage> {
 
                 const SizedBox(height: 50),
 
-                // Email Field (User Name)
+                // User Name Field (Phone Number)
                 TextFormField(
-                  controller: _emailController,
+                  controller: _userNameController,
                   maxLength: 100,
-                  keyboardType: TextInputType.emailAddress,
+                  keyboardType: TextInputType.phone,
                   decoration: InputDecoration(
                     labelText: 'User Name',
-                    hintText: 'Enter your email address',
-                    prefixIcon: const Icon(Icons.email_outlined),
+                    hintText: 'Enter your phone number',
+                    prefixIcon: const Icon(Icons.phone),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
@@ -65,15 +91,15 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                   validator: (value) {
                     if (value?.isEmpty ?? true) {
-                      return 'Please enter your email address';
+                      return 'User Name is required';
                     }
-                    // Email validation regex
-                    final emailRegex = RegExp(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$');
-                    if (!emailRegex.hasMatch(value!)) {
-                      return 'Please enter a valid email address';
+                    // Phone number validation - only allow numbers
+                    final phoneRegex = RegExp(r'^[0-9]+$');
+                    if (!phoneRegex.hasMatch(value!)) {
+                      return 'User Name should contain only numbers';
                     }
                     if (value.length > 100) {
-                      return 'Email address cannot exceed 100 characters';
+                      return 'User Name cannot exceed 100 characters';
                     }
                     return null;
                   },
@@ -121,43 +147,39 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                   validator: (value) {
                     if (value?.isEmpty ?? true) {
-                      return 'Please enter your password';
+                      return 'Password is required';
                     }
-                    
-                    // Check minimum length
-                    if (value!.length < 8) {
-                      return 'Password must be at least 8 characters long';
+
+                    // Check minimum length (6 characters as per requirement)
+                    if (value!.length < 6) {
+                      return 'Password must be at least 6 characters';
                     }
-                    
+
                     // Check maximum length
                     if (value.length > 20) {
                       return 'Password cannot exceed 20 characters';
                     }
-                    
-                    // Check for minimum 2 capital letters
-                    final capitalLetters = RegExp(r'[A-Z]').allMatches(value).length;
-                    if (capitalLetters < 2) {
-                      return 'Password must contain at least 2 capital letters';
+
+                    // Check for minimum 1 capital letter
+                    if (!RegExp(r'[A-Z]').hasMatch(value)) {
+                      return 'Password must contain at least 1 capital letter';
                     }
-                    
-                    // Check for minimum 2 small letters
-                    final smallLetters = RegExp(r'[a-z]').allMatches(value).length;
-                    if (smallLetters < 2) {
-                      return 'Password must contain at least 2 small letters';
+
+                    // Check for minimum 1 small letter
+                    if (!RegExp(r'[a-z]').hasMatch(value)) {
+                      return 'Password must contain at least 1 small letter';
                     }
-                    
+
                     // Check for minimum 1 special character
-                    final specialCharacters = RegExp(r'[!@#$%^&*(),.?":{}|<>]').allMatches(value).length;
-                    if (specialCharacters < 1) {
+                    if (!RegExp(r'[!@#$%^&*(),.?":{}|<>]').hasMatch(value)) {
                       return 'Password must contain at least 1 special character';
                     }
-                    
+
                     // Check for minimum 1 numerical number
-                    final numbers = RegExp(r'[0-9]').allMatches(value).length;
-                    if (numbers < 1) {
+                    if (!RegExp(r'[0-9]').hasMatch(value)) {
                       return 'Password must contain at least 1 number';
                     }
-                    
+
                     return null;
                   },
                   onChanged: (value) {
@@ -167,6 +189,47 @@ class _LoginPageState extends State<LoginPage> {
                       });
                     }
                   },
+                ),
+
+                const SizedBox(height: 16),
+
+                // Remember Password Checkbox
+                Row(
+                  children: [
+                    Checkbox(
+                      value: _rememberPassword,
+                      onChanged: (value) {
+                        setState(() {
+                          _rememberPassword = value ?? false;
+                        });
+                      },
+                      activeColor: const Color(0xFF2E7D32),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                    ),
+                    const Text(
+                      'Remember Password',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const Spacer(),
+                    TextButton(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (context) => const ForgotPasswordPage()),
+                        );
+                      },
+                      child: const Text(
+                        'Forgot Password?',
+                        style: TextStyle(color: Color(0xFF2E7D32)),
+                      ),
+                    ),
+                  ],
                 ),
 
                 // Error Message
@@ -232,46 +295,23 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                 ),
 
-                const SizedBox(height: 20),
-
-                // Forgot Password
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: TextButton(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                            builder: (context) => const ForgotPasswordPage()),
-                      );
-                    },
-                    child: const Text(
-                      'Forgot Password?',
-                      style: TextStyle(color: Color(0xFF2E7D32)),
-                    ),
-                  ),
-                ),
-
                 const SizedBox(height: 30),
 
-                // Register Link
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
+                // Register Pharmacist Link
+                Wrap(
+                  alignment: WrapAlignment.center,
                   children: [
                     Text(
-                      "Don't have an account? ",
+                      "Don't have an account as a Pharmacist yet ? ",
                       style: TextStyle(color: Colors.grey.shade600),
                     ),
                     TextButton(
                       onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                              builder: (context) => const RegisterPage()),
-                        );
+                        Navigator.pushNamed(
+                            context, AppRoutes.registerPharmacist);
                       },
                       child: const Text(
-                        'Register',
+                        'Register Pharmacist',
                         style: TextStyle(
                           color: Color(0xFF2E7D32),
                           fontWeight: FontWeight.w600,
@@ -280,6 +320,65 @@ class _LoginPageState extends State<LoginPage> {
                     ),
                   ],
                 ),
+
+const SizedBox(height: 30),
+
+                // Register Customer Link
+                Wrap(
+                  alignment: WrapAlignment.center,
+                  children: [
+                    Text(
+                      "Don't have a Customer account yet ? ",
+                      style: TextStyle(color: Colors.grey.shade600),
+                    ),
+                    TextButton(
+                      onPressed: () {
+                        Navigator.pushNamed(
+                            context, AppRoutes.registerCustomer);
+                      },
+                      child: const Text(
+                        'Register Customer',
+                        style: TextStyle(
+                          color: Color(0xFF2E7D32),
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 20),
+
+                // Security Notice
+                if (_rememberPassword)
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.amber.shade50,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.amber.shade200),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.security,
+                          color: Colors.amber.shade700,
+                          size: 20,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Your password will be saved securely on this device only.',
+                            style: TextStyle(
+                              color: Colors.amber.shade800,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
               ],
             ),
           ),
@@ -346,20 +445,24 @@ class _LoginPageState extends State<LoginPage> {
     });
 
     try {
-      final email = _emailController.text.trim();
+      // Save credentials using StorageService
+      await StorageService.saveCredentials(
+        username: _userNameController.text.trim(),
+        password: _passwordController.text.trim(),
+        rememberPassword: _rememberPassword,
+      );
+
+      final userName = _userNameController.text.trim();
       final password = _passwordController.text.trim();
 
       // Make API call
       final response = await http.post(
-        Uri.parse('https://localhost:7000/api/Auth/login'),
+        Uri.parse('${AppConstants.apiBaseUrl}/Auth/login'),
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
         },
-        body: jsonEncode({
-          'email': email,
-          'password': password,
-        }),
+        body: jsonEncode({'mobileNumber': userName, 'password': password, 'stayLoggedIn': _rememberPassword}),
       );
 
       setState(() {
@@ -369,49 +472,65 @@ class _LoginPageState extends State<LoginPage> {
       if (response.statusCode == 200) {
         // Parse response
         final responseData = jsonDecode(response.body);
-        
+
         // Check if login was successful
         if (responseData['success'] == true) {
           // Extract data from response
           final token = responseData['token'];
           final refreshToken = responseData['refreshToken'];
-          final errors = responseData['errors'];
-          
-          // Store token securely
-          await _storeToken(token, refreshToken);
-          
+
+          // Store tokens using StorageService
+          await StorageService.storeAuthTokens(
+            token: token,
+            refreshToken: refreshToken,
+          );
+
           print('Login successful!');
           print('Token: $token');
           print('Refresh Token: $refreshToken');
-          
-          // Decode JWT token to get user information
-          final userInfo = _decodeJwtToken(token);
-          final userRole = _determineUserRole(userInfo);
-          
+
+          // Decode JWT token to get user information using StorageService
+          final userInfo = StorageService.decodeJwtToken(token);
+          final extractedUserInfo = StorageService.extractUserInfo(userInfo);
+          if(extractedUserInfo != null) {
+            print('Extracted User Info: $extractedUserInfo');
+            StorageService.storeUserInfo(extractedUserInfo);
+          } else {
+            print('No user info extracted from token');
+          }
+          final userId = responseData['userId'] ?? '';          
+          print('User ID: $userId');
+          // Store user ID
+          if (userId != null && userId.isNotEmpty) {
+            await StorageService.storeUserId(userId);
+          }
+          final userRole = StorageService.extractUserRole(userInfo);
+
+          print('User Role: $userRole');
           // Navigate to appropriate dashboard
           _navigateToDashboard(userRole);
         } else {
           // API returned success: false
-          final errors = responseData['errors'] as List<dynamic>;
+          final errors = responseData['errors'] as List<dynamic>?;
           setState(() {
-            _errorMessage = errors.isNotEmpty 
-                ? errors.first.toString() 
+            _errorMessage = errors?.isNotEmpty == true
+                ? errors!.first.toString()
                 : 'Login failed. Please try again.';
           });
         }
       } else if (response.statusCode == 401) {
         // Unauthorized - wrong credentials
         setState(() {
-          _errorMessage = 'Incorrect email address or password';
+          _errorMessage = 'Incorrect phone number or password';
         });
       } else if (response.statusCode == 400) {
         // Bad request - validation errors
         try {
           final errorData = jsonDecode(response.body);
-          final errors = errorData['errors'] as List<dynamic>;
+          final errors = errorData['errors'] as List<dynamic>?;
           setState(() {
-            _errorMessage = errors.isNotEmpty 
-                ? errors.first.toString() 
+            _errorMessage = errors?.isNotEmpty == true
+                ? errors!.first.toString()
                 : 'Invalid login details';
           });
         } catch (e) {
@@ -434,66 +553,6 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
-  // Create secure storage instance
-  static const _storage = FlutterSecureStorage();
-
-  // Helper method to store authentication tokens securely
-  Future<void> _storeToken(String token, String? refreshToken) async {
-    try {
-      await _storage.write(key: 'auth_token', value: token);
-      
-      if (refreshToken != null) {
-        await _storage.write(key: 'refresh_token', value: refreshToken);
-      }
-      
-      print('Tokens stored successfully');
-    } catch (e) {
-      print('Error storing tokens: $e');
-    }
-  }
-
-  // Helper method to decode JWT token and extract user information
-  Map<String, dynamic> _decodeJwtToken(String token) {
-    try {
-      final parts = token.split('.');
-      if (parts.length != 3) {
-        throw Exception('Invalid token');
-      }
-      
-      final payload = parts[1];
-      final normalized = base64Url.normalize(payload);
-      final resp = utf8.decode(base64Url.decode(normalized));
-      final payloadMap = json.decode(resp);
-      
-      return payloadMap;
-    } catch (e) {
-      print('Error decoding token: $e');
-      return {};
-    }
-  }
-
-  // Helper method to determine user role from JWT claims
-  String _determineUserRole(Map<String, dynamic> userInfo) {
-    // Extract user information from JWT claims
-    final email = userInfo['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress'] ?? '';
-    final firstName = userInfo['firstName'] ?? '';
-    final lastName = userInfo['lastName'] ?? '';
-    
-    print('User Info: Email: $email, Name: $firstName $lastName');
-    
-    // Determine role based on email or other claims
-    // You might have a role claim in the token, adjust this logic as needed
-    if (email.contains('admin')) {
-      return 'Admin';
-    } else if (email.contains('chemist')) {
-      return 'Chemist';
-    } else if (email.contains('support')) {
-      return 'Customer Support';
-    } else {
-      return 'Customer';
-    }
-  }
-
   void _navigateToDashboard(String role) {
     String routeName;
 
@@ -507,8 +566,11 @@ class _LoginPageState extends State<LoginPage> {
       case 'Admin':
         routeName = AppRoutes.adminDashboard;
         break;
-      case 'Customer Support':
+      case 'CustomerSupport':
         routeName = AppRoutes.customerSupportDashboard;
+        break;
+      case 'Manager':
+        routeName = AppRoutes.managerDashboard;
         break;
       default:
         routeName = AppRoutes.customerDashboard;
@@ -519,7 +581,7 @@ class _LoginPageState extends State<LoginPage> {
 
   @override
   void dispose() {
-    _emailController.dispose();
+    _userNameController.dispose();
     _passwordController.dispose();
     super.dispose();
   }
