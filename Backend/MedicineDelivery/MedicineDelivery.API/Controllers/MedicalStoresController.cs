@@ -45,7 +45,7 @@ namespace MedicineDelivery.API.Controllers
                 return BadRequest(new { errors = result.Errors });
             }
 
-            return Ok(result.MedicalStore);
+            return Ok(result);
         }
 
         /// <summary>
