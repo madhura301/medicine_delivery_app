@@ -143,7 +143,7 @@ namespace MedicineDelivery.Infrastructure.Services
                     UpdatedOn = manager.UpdatedOn,
                     UpdatedBy = manager.UpdatedBy,
                     UserId = manager.UserId,
-                    GeneratedPassword = generatedPassword
+                    Password = generatedPassword
                 };
 
                 return new ManagerRegistrationResult
