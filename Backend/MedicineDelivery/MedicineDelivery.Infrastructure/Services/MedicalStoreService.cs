@@ -50,8 +50,8 @@ namespace MedicineDelivery.Infrastructure.Services
                     };
                 }
 
-                // Generate random password
-                var generatedPassword = GenerateRandomPassword();
+                // Use provided password
+                var password = registrationDto.Password;
 
                 // Create Identity user
                 var identityUser = new ApplicationUser
@@ -64,7 +64,7 @@ namespace MedicineDelivery.Infrastructure.Services
                     EmailConfirmed = true
                 };
 
-                var userResult = await _userManager.CreateAsync(identityUser, generatedPassword);
+                var userResult = await _userManager.CreateAsync(identityUser, password);
                 if (!userResult.Succeeded)
                 {
                     return new MedicalStoreRegistrationResult
@@ -171,7 +171,7 @@ namespace MedicineDelivery.Infrastructure.Services
                     UpdatedOn = medicalStore.UpdatedOn,
                     UpdatedBy = medicalStore.UpdatedBy,
                     UserId = medicalStore.UserId,
-                    GeneratedPassword = generatedPassword
+                    Password = password
                 };
 
                 return new MedicalStoreRegistrationResult

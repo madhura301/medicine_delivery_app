@@ -2,7 +2,7 @@
 	"info": {
 		"_postman_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
 		"name": "Medicine Delivery API Tests",
-		"description": "Comprehensive test collection for Medicine Delivery API endpoints including authentication, user management, medical stores, customer support, and managers.",
+		"description": "Comprehensive test collection for Medicine Delivery API endpoints including authentication, user management, medical stores, customer support, and managers. Updated to match latest DTO changes and new by-email endpoints.",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
 	},
 	"event": [
@@ -187,8 +187,8 @@
 									"",
 									"pm.test('Response contains generated password', function () {",
 									"    const jsonData = pm.response.json();",
-									"    pm.expect(jsonData.generatedPassword).to.exist;",
-									"    console.log('Generated Password for Medical Store:', jsonData.generatedPassword);",
+									"    pm.expect(jsonData.password).to.exist;",
+									"    console.log('Generated Password for Medical Store:', jsonData.password);",
 									"});",
 									"",
 									"pm.test('Response contains address fields', function () {",
@@ -230,7 +230,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"medicalName\": \"Test Medical Store\",\n    \"ownerFirstName\": \"John\",\n    \"ownerLastName\": \"Doe\",\n    \"ownerMiddleName\": \"William\",\n    \"addressLine1\": \"123 Main Street\",\n    \"addressLine2\": \"Suite 100\",\n    \"city\": \"Mumbai\",\n    \"state\": \"Maharashtra\",\n    \"postalCode\": \"400001\",\n    \"latitude\": 19.0760,\n    \"longitude\": 72.8777,\n    \"mobileNumber\": \"9876543210\",\n    \"emailId\": \"medicalstore@test.com\",\n    \"alternativeMobileNumber\": \"9876543211\",\n    \"registrationStatus\": true,\n    \"gstin\": \"29ABCDE1234F1Z5\",\n    \"pan\": \"ABCDE1234F\",\n    \"fssaiNo\": \"FSSAI123456789\",\n    \"dlNo\": \"DL123456789\",\n    \"pharmacistFirstName\": \"Dr. Jane\",\n    \"pharmacistLastName\": \"Smith\",\n    \"pharmacistRegistrationNumber\": \"PHAR123456\",\n    \"pharmacistMobileNumber\": \"9876543212\"\n}"
+							"raw": "{\n    \"medicalName\": \"Test Medical Store\",\n    \"ownerFirstName\": \"John\",\n    \"ownerLastName\": \"Doe\",\n    \"ownerMiddleName\": \"William\",\n    \"addressLine1\": \"123 Main Street\",\n    \"addressLine2\": \"Suite 100\",\n    \"city\": \"Mumbai\",\n    \"state\": \"Maharashtra\",\n    \"postalCode\": \"400001\",\n    \"latitude\": 19.0760,\n    \"longitude\": 72.8777,\n    \"mobileNumber\": \"9876543210\",\n    \"emailId\": \"medicalstore@test.com\",\n    \"alternativeMobileNumber\": \"9876543211\",\n    \"registrationStatus\": true,\n    \"gstin\": \"29ABCDE1234F1Z5\",\n    \"pan\": \"ABCDE1234F\",\n    \"fssaiNo\": \"FSSAI123456789\",\n    \"dlNo\": \"DL123456789\",\n    \"pharmacistFirstName\": \"Dr. Jane\",\n    \"pharmacistLastName\": \"Smith\",\n    \"pharmacistRegistrationNumber\": \"PHAR123456\",\n    \"Password\": \"Password@123\",\n    \"pharmacistMobileNumber\": \"9876543212\"\n}"
 						},
 						"url": {
 							"raw": "{{base_url}}/api/medicalstores/register",
@@ -347,6 +347,56 @@
 					"response": []
 				},
 				{
+					"name": "Get Medical Store by Email",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Response contains medical store details', function () {",
+									"    const jsonData = pm.response.json();",
+									"    pm.expect(jsonData.medicalStoreId).to.exist;",
+									"    pm.expect(jsonData.medicalName).to.exist;",
+									"    pm.expect(jsonData.emailId).to.exist;",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{auth_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/medicalstores/by-email/medicalstore@test.com",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"medicalstores",
+								"by-email",
+								"medicalstore@test.com"
+							]
+						}
+					},
+					"response": []
+				},
+				{
 					"name": "Update Medical Store",
 					"event": [
 						{
@@ -427,8 +477,8 @@
 									"",
 									"pm.test('Response contains generated password', function () {",
 									"    const jsonData = pm.response.json();",
-									"    pm.expect(jsonData.generatedPassword).to.exist;",
-									"    console.log('Generated Password for Customer Support:', jsonData.generatedPassword);",
+									"    pm.expect(jsonData.password).to.exist;",
+									"    console.log('Generated Password for Customer Support:', jsonData.password);",
 									"});",
 									"",
 									"pm.test('Response contains employee ID', function () {",
@@ -572,6 +622,56 @@
 					"response": []
 				},
 				{
+					"name": "Get Customer Support by Email",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Response contains customer support details', function () {",
+									"    const jsonData = pm.response.json();",
+									"    pm.expect(jsonData.customerSupportId).to.exist;",
+									"    pm.expect(jsonData.customerSupportFirstName).to.exist;",
+									"    pm.expect(jsonData.emailId).to.exist;",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{auth_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/customersupports/by-email/customersupport@test.com",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"customersupports",
+								"by-email",
+								"customersupport@test.com"
+							]
+						}
+					},
+					"response": []
+				},
+				{
 					"name": "Upload Customer Support Photo",
 					"event": [
 						{
@@ -585,7 +685,9 @@
 									"pm.test('Response contains photo URL', function () {",
 									"    const jsonData = pm.response.json();",
 									"    pm.expect(jsonData.photoUrl).to.exist;",
+									"    pm.expect(jsonData.fileName).to.exist;",
 									"    console.log('Photo URL:', jsonData.photoUrl);",
+									"    console.log('File Name:', jsonData.fileName);",
 									"});"
 								],
 								"type": "text/javascript"
@@ -712,8 +814,8 @@
 									"",
 									"pm.test('Response contains generated password', function () {",
 									"    const jsonData = pm.response.json();",
-									"    pm.expect(jsonData.generatedPassword).to.exist;",
-									"    console.log('Generated Password for Manager:', jsonData.generatedPassword);",
+									"    pm.expect(jsonData.password).to.exist;",
+									"    console.log('Generated Password for Manager:', jsonData.password);",
 									"});",
 									"",
 									"pm.test('Response contains employee ID', function () {",
@@ -857,6 +959,56 @@
 					"response": []
 				},
 				{
+					"name": "Get Manager by Email",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Response contains manager details', function () {",
+									"    const jsonData = pm.response.json();",
+									"    pm.expect(jsonData.managerId).to.exist;",
+									"    pm.expect(jsonData.managerFirstName).to.exist;",
+									"    pm.expect(jsonData.emailId).to.exist;",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{auth_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/managers/by-email/manager@test.com",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"managers",
+								"by-email",
+								"manager@test.com"
+							]
+						}
+					},
+					"response": []
+				},
+				{
 					"name": "Upload Manager Photo",
 					"event": [
 						{
@@ -870,7 +1022,9 @@
 									"pm.test('Response contains photo URL', function () {",
 									"    const jsonData = pm.response.json();",
 									"    pm.expect(jsonData.photoUrl).to.exist;",
+									"    pm.expect(jsonData.fileName).to.exist;",
 									"    console.log('Photo URL:', jsonData.photoUrl);",
+									"    console.log('File Name:', jsonData.fileName);",
 									"});"
 								],
 								"type": "text/javascript"

@@ -6,6 +6,7 @@ namespace MedicineDelivery.Application.DTOs
         public string OwnerFirstName { get; set; } = string.Empty;
         public string OwnerLastName { get; set; } = string.Empty;
         public string OwnerMiddleName { get; set; } = string.Empty;
+        public string Password { get; set; } = string.Empty;
         
         // Address fields
         public string AddressLine1 { get; set; } = string.Empty;
@@ -75,7 +76,7 @@ namespace MedicineDelivery.Application.DTOs
         public DateTime? UpdatedOn { get; set; }
         public Guid? UpdatedBy { get; set; }
         public string? UserId { get; set; }
-        public string GeneratedPassword { get; set; } = string.Empty;
+        public string Password { get; set; } = string.Empty;
     }
 
     public class MedicalStoreDto

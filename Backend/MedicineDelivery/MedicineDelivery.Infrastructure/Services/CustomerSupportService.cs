@@ -143,7 +143,7 @@ namespace MedicineDelivery.Infrastructure.Services
                     UpdatedOn = customerSupport.UpdatedOn,
                     UpdatedBy = customerSupport.UpdatedBy,
                     UserId = customerSupport.UserId,
-                    GeneratedPassword = generatedPassword
+                    Password = generatedPassword
                 };
 
                 return new CustomerSupportRegistrationResult

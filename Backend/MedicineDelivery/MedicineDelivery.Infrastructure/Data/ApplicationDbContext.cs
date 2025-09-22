@@ -495,7 +495,12 @@ namespace MedicineDelivery.Infrastructure.Data
                 // All Customer CRUD Permissions (for all customer records)
                 new Permission { Id = 46, Name = "AllCustomerRead", Description = "Can read all customer information", Module = "Customer", CreatedAt = DateTime.UtcNow, IsActive = true },
                 new Permission { Id = 47, Name = "AllCustomerUpdate", Description = "Can update any customer information", Module = "Customer", CreatedAt = DateTime.UtcNow, IsActive = true },
-                new Permission { Id = 48, Name = "AllCustomerDelete", Description = "Can delete any customer account", Module = "Customer", CreatedAt = DateTime.UtcNow, IsActive = true }
+                new Permission { Id = 48, Name = "AllCustomerDelete", Description = "Can delete any customer account", Module = "Customer", CreatedAt = DateTime.UtcNow, IsActive = true },
+
+                // All Chemist CRUD Permissions (for all Chemist records)
+                new Permission { Id = 49, Name = "AllChemistRead", Description = "Can read all Chemist information", Module = "Chemist", CreatedAt = DateTime.UtcNow, IsActive = true },
+                new Permission { Id = 50, Name = "AllChemistUpdate", Description = "Can update any Chemist information", Module = "Chemist", CreatedAt = DateTime.UtcNow, IsActive = true },
+                new Permission { Id = 51, Name = "AllChemistDelete", Description = "Can delete any Chemist account", Module = "Chemist", CreatedAt = DateTime.UtcNow, IsActive = true }
             );
 
             // Seed roles
@@ -565,6 +570,10 @@ namespace MedicineDelivery.Infrastructure.Data
                 new RolePermission { RoleId = 1, PermissionId = 48, GrantedAt = DateTime.UtcNow, IsActive = true },
                 // CustomerCreate permission for Admin (can create customers)
                 new RolePermission { RoleId = 1, PermissionId = 43, GrantedAt = DateTime.UtcNow, IsActive = true },
+                // All MedicalStore CRUD Permissions for Admin
+                new RolePermission { RoleId = 1, PermissionId = 49, GrantedAt = DateTime.UtcNow, IsActive = true },
+                new RolePermission { RoleId = 1, PermissionId = 50, GrantedAt = DateTime.UtcNow, IsActive = true },
+                new RolePermission { RoleId = 1, PermissionId = 51, GrantedAt = DateTime.UtcNow, IsActive = true },
 
                 // Manager gets read and update permissions + Manager User Management Permissions
                 new RolePermission { RoleId = 2, PermissionId = 1, GrantedAt = DateTime.UtcNow, IsActive = true },
@@ -609,6 +618,10 @@ namespace MedicineDelivery.Infrastructure.Data
                 new RolePermission { RoleId = 2, PermissionId = 48, GrantedAt = DateTime.UtcNow, IsActive = true },
                 // CustomerCreate permission for Manager (can create customers)
                 new RolePermission { RoleId = 2, PermissionId = 43, GrantedAt = DateTime.UtcNow, IsActive = true },
+                // All MedicalStore CRUD Permissions for Manager
+                new RolePermission { RoleId = 2, PermissionId = 49, GrantedAt = DateTime.UtcNow, IsActive = true },
+                new RolePermission { RoleId = 2, PermissionId = 50, GrantedAt = DateTime.UtcNow, IsActive = true },
+                new RolePermission { RoleId = 2, PermissionId = 51, GrantedAt = DateTime.UtcNow, IsActive = true },
 
                 // CustomerSupport gets read permissions for products and orders, plus create orders + CustomerSupport User Management Permissions
                 new RolePermission { RoleId = 3, PermissionId = 5, GrantedAt = DateTime.UtcNow, IsActive = true },
@@ -640,6 +653,10 @@ namespace MedicineDelivery.Infrastructure.Data
                 new RolePermission { RoleId = 3, PermissionId = 48, GrantedAt = DateTime.UtcNow, IsActive = true },
                 // CustomerCreate permission for CustomerSupport (can create customers)
                 new RolePermission { RoleId = 3, PermissionId = 43, GrantedAt = DateTime.UtcNow, IsActive = true },
+                // All MedicalStore CRUD Permissions for CustomerSupport
+                new RolePermission { RoleId = 3, PermissionId = 49, GrantedAt = DateTime.UtcNow, IsActive = true },
+                new RolePermission { RoleId = 3, PermissionId = 50, GrantedAt = DateTime.UtcNow, IsActive = true },
+                new RolePermission { RoleId = 3, PermissionId = 51, GrantedAt = DateTime.UtcNow, IsActive = true },
 
                 // Customer gets read permissions for products and create/read for orders
                 new RolePermission { RoleId = 4, PermissionId = 5, GrantedAt = DateTime.UtcNow, IsActive = true },

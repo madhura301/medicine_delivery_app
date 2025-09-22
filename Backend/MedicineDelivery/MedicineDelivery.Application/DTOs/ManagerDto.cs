@@ -40,7 +40,7 @@ namespace MedicineDelivery.Application.DTOs
         public DateTime? UpdatedOn { get; set; }
         public Guid? UpdatedBy { get; set; }
         public string? UserId { get; set; }
-        public string GeneratedPassword { get; set; } = string.Empty;
+        public string Password { get; set; } = string.Empty;
     }
 
     public class ManagerDto

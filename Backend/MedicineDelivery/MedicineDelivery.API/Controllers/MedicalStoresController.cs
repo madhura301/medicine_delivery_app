@@ -1,8 +1,11 @@
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Authorization;
+using MedicineDelivery.API.Authorization;
 using MedicineDelivery.Application.DTOs;
 using MedicineDelivery.Application.Interfaces;
-using MedicineDelivery.API.Authorization;
+using MedicineDelivery.Domain.Entities;
+using MedicineDelivery.Infrastructure.Services;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace MedicineDelivery.API.Controllers
 {
@@ -12,10 +15,12 @@ namespace MedicineDelivery.API.Controllers
     public class MedicalStoresController : ControllerBase
     {
         private readonly IMedicalStoreService _medicalStoreService;
+        private readonly IPermissionCheckerService _permissionCheckerService;
 
-        public MedicalStoresController(IMedicalStoreService medicalStoreService)
+        public MedicalStoresController(IMedicalStoreService medicalStoreService, IPermissionCheckerService permissionCheckerService)
         {
             _medicalStoreService = medicalStoreService;
+            _permissionCheckerService = permissionCheckerService;
         }
 
         /// <summary>
@@ -24,7 +29,8 @@ namespace MedicineDelivery.API.Controllers
         /// <param name="registrationDto">Medical store registration details</param>
         /// <returns>Medical store details with generated password</returns>
         [HttpPost("register")]
-        [Authorize(Policy = "RequireChemistCreatePermission")]
+        //[Authorize(Policy = "RequireChemistCreatePermission")]
+        [AllowAnonymous]
         public async Task<ActionResult<MedicalStoreResponseDto>> RegisterMedicalStore([FromBody] MedicalStoreRegistrationDto registrationDto)
         {
             if (!ModelState.IsValid)
@@ -70,6 +76,20 @@ namespace MedicineDelivery.API.Controllers
                 return NotFound();
             }
 
+            // Check if user has AllCustomerRead permission or CustomerRead permission
+            var hasAllChemistRead = await _permissionCheckerService.HasPermissionAsync(User, "AllChemistRead");
+            var hasChemistRead = await _permissionCheckerService.HasPermissionAsync(User, "ChemistRead");
+
+            if (!hasAllChemistRead && hasChemistRead)
+            {
+                // User only has CustomerRead permission, can only access their own record
+                var currentUserId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (medicalStore.UserId != currentUserId)
+                {
+                    return Forbid("You can only access your own chemist information.");
+                }
+            }
+
             return Ok(medicalStore);
         }
 
@@ -107,14 +127,42 @@ namespace MedicineDelivery.API.Controllers
                 return BadRequest(ModelState);
             }
 
-            var medicalStore = await _medicalStoreService.UpdateMedicalStoreAsync(id, updateDto);
-            
-            if (medicalStore == null)
+            try
             {
-                return NotFound();
-            }
+                // Check if chemist exists
+                var existingChemist = await _medicalStoreService.GetMedicalStoreByIdAsync(id);
+                if (existingChemist == null)
+                {
+                    return NotFound(new { error = "Chemist not found." });
+                }
 
-            return Ok(medicalStore);
+                // Check if user has AllChemistUpdate permission or CustomerUpdate permission
+                var hasAllChemistUpdate = await _permissionCheckerService.HasPermissionAsync(User, "AllChemistUpdate");
+                var hasChemistUpdate = await _permissionCheckerService.HasPermissionAsync(User, "ChemistUpdate");
+
+                if (!hasAllChemistUpdate && hasChemistUpdate)
+                {
+                    // User only has CustomerUpdate permission, can only update their own record
+                    var currentUserId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                    if (existingChemist.UserId != currentUserId)
+                    {
+                        return Forbid("You can only update your own chemist information.");
+                    }
+                }
+
+                var medicalStore = await _medicalStoreService.UpdateMedicalStoreAsync(id, updateDto);
+            
+                if (medicalStore == null)
+                {
+                    return NotFound();
+                }
+
+                return Ok(medicalStore);
+            }
+            catch (Exception)
+            {
+                return StatusCode(500, new { error = "An error occurred while updating the chemist." });
+            }
         }
 
         /// <summary>
@@ -126,14 +174,43 @@ namespace MedicineDelivery.API.Controllers
         [Authorize(Policy = "RequireChemistDeletePermission")]
         public async Task<ActionResult> DeleteMedicalStore(Guid id)
         {
-            var result = await _medicalStoreService.DeleteMedicalStoreAsync(id);
-            
-            if (!result)
+            try
             {
-                return NotFound();
-            }
+                // Check if chemist exists
+                var existingChemist = await _medicalStoreService.GetMedicalStoreByIdAsync(id);
+                if (existingChemist == null)
+                {
+                    return NotFound(new { error = "Chemist not found." });
+                }
 
-            return NoContent();
+                // Check if user has AllChemistDelete permission or ChemistDelete permission
+                var hasAllChemistDelete = await _permissionCheckerService.HasPermissionAsync(User, "AllChemistDelete");
+                var hasChemistDelete = await _permissionCheckerService.HasPermissionAsync(User, "ChemistDelete");
+
+                if (!hasAllChemistDelete && hasChemistDelete)
+                {
+                    // User only has CustomerUpdate permission, can only update their own record
+                    var currentUserId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                    if (existingChemist.UserId != currentUserId)
+                    {
+                        return Forbid("You can only update your own chemist information.");
+                    }
+                }
+
+                var result = await _medicalStoreService.DeleteMedicalStoreAsync(id);
+
+                if (!result)
+                {
+                    return NotFound();
+                }
+
+                return NoContent();
+            }
+            catch (Exception)
+            {
+
+                return StatusCode(500, new { error = "An error occurred while deleting the chemist." });
+            }
         }
     }
 }
