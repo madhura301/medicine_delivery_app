@@ -2,27 +2,18 @@
 import 'package:flutter/material.dart';
 import 'package:medicine_delivery_app/utils/helpers.dart';
 
-class AdminDashboard extends StatelessWidget {
-  const AdminDashboard({super.key});
-
-void _goToAdminProfile(BuildContext context) {
-    Navigator.pushNamed(context, '/customerProfile');
-  }
+class ManagerDashboard extends StatelessWidget {
+  const ManagerDashboard({super.key});
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Admin Dashboard'),
+        title: const Text('Manager Dashboard'),
         backgroundColor: const Color(0xFF2E7D32),
         foregroundColor: Colors.white,
         automaticallyImplyLeading: false,
         actions: [
-          IconButton(
-            onPressed: () => _goToAdminProfile(context),
-            icon: const Icon(Icons.person),
-            tooltip: 'Profile',
-          ),
           IconButton(
             onPressed: () => AppHelpers.logout(context),
             icon: const Icon(Icons.logout),
@@ -36,7 +27,7 @@ void _goToAdminProfile(BuildContext context) {
             Icon(Icons.admin_panel_settings, size: 80, color: Color(0xFF2E7D32)),
             SizedBox(height: 20),
             Text(
-              'Admin Dashboard',
+              'Manager Dashboard',
               style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
             ),
             SizedBox(height: 10),

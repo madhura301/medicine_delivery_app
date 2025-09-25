@@ -1,14 +1,18 @@
 // Register Page - Complete Multi-Step Registration
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import 'package:medicine_delivery_app/utils/constants.dart';
+import 'package:medicine_delivery_app/core/services/auth_service.dart';
 
-class RegisterPage extends StatefulWidget {
-  const RegisterPage({super.key});
+class CustomerRegisterPage extends StatefulWidget {
+  const CustomerRegisterPage({super.key});
 
   @override
-  State<RegisterPage> createState() => _RegisterPageState();
+  State<CustomerRegisterPage> createState() => _RegisterPageState();
 }
 
-class _RegisterPageState extends State<RegisterPage> {
+class _RegisterPageState extends State<CustomerRegisterPage> {
   final _formKey = GlobalKey<FormState>();
   final _pageController = PageController();
   int _currentStep = 0;
@@ -25,17 +29,56 @@ class _RegisterPageState extends State<RegisterPage> {
   final _lastNameController = TextEditingController();
   final _middleNameController = TextEditingController();
   final _addressController = TextEditingController();
+  final _cityController = TextEditingController();
+  final _postalCodeController = TextEditingController();
   
   // Other Form Data
   DateTime? _selectedDate;
+  String? _selectedState;
+  String? _selectedGender;
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
   bool _isLoading = false;
-  //final String _errorMessage = '';
+  String _errorMessage = '';
 
   // Validation flags
   bool _usernameAvailable = true;
-  //final bool _passwordValid = false;
+
+  final List<String> _states = [
+    'Andhra Pradesh',
+    'Arunachal Pradesh',
+    'Assam',
+    'Bihar',
+    'Chhattisgarh',
+    'Goa',
+    'Gujarat',
+    'Haryana',
+    'Himachal Pradesh',
+    'Jharkhand',
+    'Karnataka',
+    'Kerala',
+    'Madhya Pradesh',
+    'Maharashtra',
+    'Manipur',
+    'Meghalaya',
+    'Mizoram',
+    'Nagaland',
+    'Odisha',
+    'Punjab',
+    'Rajasthan',
+    'Sikkim',
+    'Tamil Nadu',
+    'Telangana',
+    'Tripura',
+    'Uttar Pradesh',
+    'Uttarakhand',
+    'West Bengal',
+    'Delhi',
+    'Jammu and Kashmir',
+    'Ladakh',
+    'Lakshadweep',
+    'Puducherry'
+  ];
 
   @override
   Widget build(BuildContext context) {
@@ -64,6 +107,31 @@ class _RegisterPageState extends State<RegisterPage> {
               ],
             ),
           ),
+
+          // Error Message
+          if (_errorMessage.isNotEmpty)
+            Container(
+              width: double.infinity,
+              margin: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.red.shade50,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.red.shade200),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.error_outline, color: Colors.red.shade600, size: 20),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      _errorMessage,
+                      style: TextStyle(color: Colors.red.shade600, fontSize: 14),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           
           // Navigation Buttons
           _buildNavigationButtons(),
@@ -162,16 +230,16 @@ class _RegisterPageState extends State<RegisterPage> {
             
             const SizedBox(height: 30),
             
-            // Username Field
+            // Mobile Number Field (Primary identifier)
             TextFormField(
-              controller: _usernameController,
+              controller: _mobileController,
+              keyboardType: TextInputType.phone,
+              maxLength: 10,
               decoration: InputDecoration(
-                labelText: 'Username *',
-                hintText: 'Choose a unique username',
-                prefixIcon: const Icon(Icons.person_outline),
-                suffixIcon: _usernameAvailable 
-                    ? const Icon(Icons.check_circle, color: Colors.green)
-                    : const Icon(Icons.error, color: Colors.red),
+                labelText: 'Mobile Number *',
+                hintText: 'Enter 10-digit mobile number',
+                prefixIcon: const Icon(Icons.phone_outlined),
+                prefixText: '+91 ',
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
@@ -179,18 +247,24 @@ class _RegisterPageState extends State<RegisterPage> {
                   borderRadius: BorderRadius.circular(12),
                   borderSide: const BorderSide(color: Color(0xFF2E7D32), width: 2),
                 ),
+                counterText: '',
               ),
               validator: (value) {
                 if (value?.isEmpty ?? true) {
-                  return 'Username is required';
+                  return 'Mobile number is required';
                 }
-                if (value!.length < 3) {
-                  return 'Username must be at least 3 characters';
+                final phoneRegex = RegExp(r'^[6-9]\d{9}$');
+                if (!phoneRegex.hasMatch(value!)) {
+                  return 'Enter valid 10-digit mobile number';
                 }
                 return null;
               },
               onChanged: (value) {
-                _checkUsernameAvailability(value);
+                setState(() {
+                  if (_errorMessage.contains('mobile') || _errorMessage.contains('exists')) {
+                    _errorMessage = '';
+                  }
+                });
               },
             ),
             
@@ -226,8 +300,8 @@ class _RegisterPageState extends State<RegisterPage> {
                 if (value?.isEmpty ?? true) {
                   return 'Password is required';
                 }
-                if (value!.length < 6) {
-                  return 'Password must be at least 6 characters';
+                if (value!.length < 8) {
+                  return 'Password must be at least 8 characters';
                 }
                 return null;
               },
@@ -271,36 +345,6 @@ class _RegisterPageState extends State<RegisterPage> {
                 return null;
               },
             ),
-            
-            const SizedBox(height: 20),
-            
-            // Mobile Number Field
-            TextFormField(
-              controller: _mobileController,
-              keyboardType: TextInputType.phone,
-              decoration: InputDecoration(
-                labelText: 'Mobile Number *',
-                hintText: 'Enter 10-digit mobile number',
-                prefixIcon: const Icon(Icons.phone_outlined),
-                prefixText: '+91 ',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: Color(0xFF2E7D32), width: 2),
-                ),
-              ),
-              validator: (value) {
-                if (value?.isEmpty ?? true) {
-                  return 'Mobile number is required';
-                }
-                if (value!.length < 10) {
-                  return 'Enter valid mobile number';
-                }
-                return null;
-              },
-            ),
           ],
         ),
       ),
@@ -316,11 +360,80 @@ class _RegisterPageState extends State<RegisterPage> {
           // Header
           _buildStepHeader(
             'Personal Details',
-            'Tell us more about yourself (Optional)',
+            'Tell us more about yourself',
             Icons.badge,
           ),
           
           const SizedBox(height: 30),
+
+          // First Name Field - Required
+          TextFormField(
+            controller: _firstNameController,
+            decoration: InputDecoration(
+              labelText: 'First Name *',
+              hintText: 'Enter your first name',
+              prefixIcon: const Icon(Icons.person_outline),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: Color(0xFF2E7D32), width: 2),
+              ),
+            ),
+            validator: (value) {
+              if (value?.isEmpty ?? true) {
+                return 'First name is required';
+              }
+              return null;
+            },
+          ),
+          
+          const SizedBox(height: 20),
+          
+          // Last Name Field - Required
+          TextFormField(
+            controller: _lastNameController,
+            decoration: InputDecoration(
+              labelText: 'Last Name *',
+              hintText: 'Enter your last name',
+              prefixIcon: const Icon(Icons.person_outline),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: Color(0xFF2E7D32), width: 2),
+              ),
+            ),
+            validator: (value) {
+              if (value?.isEmpty ?? true) {
+                return 'Last name is required';
+              }
+              return null;
+            },
+          ),
+
+          const SizedBox(height: 20),
+
+          // Middle Name Field - Optional
+          TextFormField(
+            controller: _middleNameController,
+            decoration: InputDecoration(
+              labelText: 'Middle Name (Optional)',
+              hintText: 'Enter your middle name',
+              prefixIcon: const Icon(Icons.person_outline),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: Color(0xFF2E7D32), width: 2),
+              ),
+            ),
+          ),
+          
+          const SizedBox(height: 20),
           
           // Email Field
           TextFormField(
@@ -338,49 +451,20 @@ class _RegisterPageState extends State<RegisterPage> {
                 borderSide: const BorderSide(color: Color(0xFF2E7D32), width: 2),
               ),
             ),
+            validator: (value) {
+              if (value != null && value.isNotEmpty) {
+                final emailRegex = RegExp(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$');
+                if (!emailRegex.hasMatch(value)) {
+                  return 'Please enter a valid email address';
+                }
+              }
+              return null;
+            },
           ),
           
           const SizedBox(height: 20),
           
-          // First Name Field
-          TextFormField(
-            controller: _firstNameController,
-            decoration: InputDecoration(
-              labelText: 'First Name (Optional)',
-              hintText: 'Enter your first name',
-              prefixIcon: const Icon(Icons.person_outline),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: Color(0xFF2E7D32), width: 2),
-              ),
-            ),
-          ),
-          
-          const SizedBox(height: 20),
-          
-          // Last Name Field
-          TextFormField(
-            controller: _lastNameController,
-            decoration: InputDecoration(
-              labelText: 'Last Name (Optional)',
-              hintText: 'Enter your last name',
-              prefixIcon: const Icon(Icons.person_outline),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: Color(0xFF2E7D32), width: 2),
-              ),
-            ),
-          ),
-          
-          const SizedBox(height: 20),
-          
-          // Date of Birth Field
+          // Date of Birth Field - Required
           GestureDetector(
             onTap: _selectDateOfBirth,
             child: Container(
@@ -397,7 +481,7 @@ class _RegisterPageState extends State<RegisterPage> {
                     child: Text(
                       _selectedDate != null
                           ? '${_selectedDate!.day}/${_selectedDate!.month}/${_selectedDate!.year}'
-                          : 'Date of Birth (Optional)',
+                          : 'Date of Birth *',
                       style: TextStyle(
                         fontSize: 16,
                         color: _selectedDate != null 
@@ -409,6 +493,35 @@ class _RegisterPageState extends State<RegisterPage> {
                 ],
               ),
             ),
+          ),
+
+          const SizedBox(height: 20),
+
+          // Gender Field - Optional
+          DropdownButtonFormField<String>(
+            value: _selectedGender,
+            decoration: InputDecoration(
+              labelText: 'Gender (Optional)',
+              prefixIcon: const Icon(Icons.person),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: Color(0xFF2E7D32), width: 2),
+              ),
+            ),
+            items: ['Male', 'Female', 'Other'].map((String gender) {
+              return DropdownMenuItem<String>(
+                value: gender,
+                child: Text(gender),
+              );
+            }).toList(),
+            onChanged: (String? newValue) {
+              setState(() {
+                _selectedGender = newValue;
+              });
+            },
           ),
         ],
       ),
@@ -447,6 +560,81 @@ class _RegisterPageState extends State<RegisterPage> {
               ),
             ),
           ),
+
+          const SizedBox(height: 20),
+
+          // City and State Row
+          Row(
+            children: [
+              Expanded(
+                child: TextFormField(
+                  controller: _cityController,
+                  decoration: InputDecoration(
+                    labelText: 'City (Optional)',
+                    hintText: 'Enter city',
+                    prefixIcon: const Icon(Icons.location_city),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: Color(0xFF2E7D32), width: 2),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: DropdownButtonFormField<String>(
+                  value: _selectedState,
+                  decoration: InputDecoration(
+                    labelText: 'State (Optional)',
+                    prefixIcon: const Icon(Icons.location_on),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: Color(0xFF2E7D32), width: 2),
+                    ),
+                  ),
+                  items: _states.map((String state) {
+                    return DropdownMenuItem<String>(
+                      value: state,
+                      child: Text(state, overflow: TextOverflow.ellipsis),
+                    );
+                  }).toList(),
+                  onChanged: (String? newValue) {
+                    setState(() {
+                      _selectedState = newValue;
+                    });
+                  },
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 20),
+
+          // Postal Code Field
+          TextFormField(
+            controller: _postalCodeController,
+            keyboardType: TextInputType.number,
+            maxLength: 6,
+            decoration: InputDecoration(
+              labelText: 'Postal Code (Optional)',
+              hintText: 'Enter postal code',
+              prefixIcon: const Icon(Icons.local_post_office),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: Color(0xFF2E7D32), width: 2),
+              ),
+              counterText: '',
+            ),
+          ),
           
           const SizedBox(height: 30),
           
@@ -471,12 +659,12 @@ class _RegisterPageState extends State<RegisterPage> {
                   ),
                 ),
                 const SizedBox(height: 16),
-                Text('Username: ${_usernameController.text}'),
+                Text('Name: ${_firstNameController.text} ${_lastNameController.text}'),
                 Text('Mobile: +91 ${_mobileController.text}'),
                 if (_emailController.text.isNotEmpty)
                   Text('Email: ${_emailController.text}'),
-                if (_firstNameController.text.isNotEmpty)
-                  Text('Name: ${_firstNameController.text} ${_lastNameController.text}'),
+                if (_selectedDate != null)
+                  Text('DOB: ${_selectedDate!.day}/${_selectedDate!.month}/${_selectedDate!.year}'),
               ],
             ),
           ),
@@ -570,6 +758,10 @@ class _RegisterPageState extends State<RegisterPage> {
   }
 
   void _nextStep() {
+    setState(() {
+      _errorMessage = '';
+    });
+
     if (_currentStep < 2) {
       if (_validateCurrentStep()) {
         setState(() {
@@ -588,6 +780,7 @@ class _RegisterPageState extends State<RegisterPage> {
   void _previousStep() {
     setState(() {
       _currentStep--;
+      _errorMessage = '';
     });
     _pageController.previousPage(
       duration: const Duration(milliseconds: 300),
@@ -596,45 +789,217 @@ class _RegisterPageState extends State<RegisterPage> {
   }
 
   bool _validateCurrentStep() {
-    if (_currentStep == 0) {
-      return _formKey.currentState?.validate() ?? false;
+    switch (_currentStep) {
+      case 0:
+        return _formKey.currentState?.validate() ?? false;
+      case 1:
+        // Validate required fields for step 2
+        if (_firstNameController.text.isEmpty) {
+          setState(() => _errorMessage = 'First name is required');
+          return false;
+        }
+        if (_lastNameController.text.isEmpty) {
+          setState(() => _errorMessage = 'Last name is required');
+          return false;
+        }
+        if (_selectedDate == null) {
+          setState(() => _errorMessage = 'Date of birth is required');
+          return false;
+        }
+        // Validate email if provided
+        if (_emailController.text.isNotEmpty) {
+          final emailRegex = RegExp(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$');
+          if (!emailRegex.hasMatch(_emailController.text)) {
+            setState(() => _errorMessage = 'Please enter a valid email address');
+            return false;
+          }
+        }
+        return true;
+      case 2:
+        return true; // Address step is optional
+      default:
+        return false;
     }
-    return true;
   }
 
   Future<void> _registerUser() async {
+    if (!_validateCurrentStep()) return;
+
     setState(() {
       _isLoading = true;
+      _errorMessage = '';
     });
 
-    // Simulate API call
-    await Future.delayed(const Duration(seconds: 2));
+    try {
+      // Get admin token for making authenticated requests
+      final token = await AuthService.invokeLogin(
+          mobileNumber: '9999999999', password: 'Admin@123', stayLoggedIn: false);
 
-    setState(() {
-      _isLoading = false;
-    });
+      if (token != null) {
+        // Prepare registration data matching the DTO
+        final registrationData = {
+          'customerFirstName': _firstNameController.text.trim(),
+          'customerLastName': _lastNameController.text.trim(),
+          'customerMiddleName': _middleNameController.text.trim().isNotEmpty 
+              ? _middleNameController.text.trim() 
+              : null,
+          'mobileNumber': _mobileController.text.trim(),
+          'password': _passwordController.text.trim(),
+          'alternativeMobileNumber': null, // Not collected in this form
+          'emailId': _emailController.text.trim().isNotEmpty 
+              ? _emailController.text.trim() 
+              : null,
+          'address': _addressController.text.trim().isNotEmpty 
+              ? _addressController.text.trim() 
+              : null,
+          'city': _cityController.text.trim().isNotEmpty 
+              ? _cityController.text.trim() 
+              : null,
+          'state': _selectedState,
+          'postalCode': _postalCodeController.text.trim().isNotEmpty 
+              ? _postalCodeController.text.trim() 
+              : null,
+          'dateOfBirth': _selectedDate!.toIso8601String(),
+          'gender': _selectedGender,
+        };
 
-    // Show success and go back to login
-    _showSuccessDialog();
+        print('Registration Data: ${jsonEncode(registrationData)}');
+
+        // Make API call
+        final response = await http.post(
+          Uri.parse('${AppConstants.apiBaseUrl}/Customers/register'),
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'Authorization': 'Bearer $token',
+          },
+          body: jsonEncode(registrationData),
+        );
+
+        setState(() {
+          _isLoading = false;
+        });
+
+        print('Response status: ${response.statusCode}');
+        print('Response body: ${response.body}');
+
+        if (response.statusCode == 200 || response.statusCode == 201) {
+          final responseData = jsonDecode(response.body);
+
+          if (responseData['success'] == true) {
+            _showSuccessDialog();
+          } else {
+            final errors = responseData['errors'] as List<dynamic>?;
+            setState(() {
+              _errorMessage = errors?.isNotEmpty == true
+                  ? errors!.first.toString()
+                  : 'Registration failed. Please try again.';
+            });
+          }
+        } else if (response.statusCode == 400) {
+          try {
+            final errorData = jsonDecode(response.body);
+            final errors = errorData['errors'] as List<dynamic>?;
+            setState(() {
+              _errorMessage = errors?.isNotEmpty == true
+                  ? errors!.first.toString()
+                  : 'Invalid registration data. Please check your inputs.';
+            });
+          } catch (e) {
+            setState(() {
+              _errorMessage = 'Invalid registration data. Please check your inputs.';
+            });
+          }
+        } else if (response.statusCode == 409) {
+          setState(() {
+            _errorMessage = 'A customer with this mobile number already exists.';
+          });
+        } else {
+          setState(() {
+            _errorMessage = 'Server error. Please try again later.';
+          });
+        }
+      } else {
+        setState(() {
+          _isLoading = false;
+          _errorMessage = 'Authentication token not found. Please try again.';
+        });
+      }
+    } catch (e) {
+      print('Error during registration: $e');
+      setState(() {
+        _isLoading = false;
+        _errorMessage = 'Network error. Please check your connection.';
+      });
+    }
   }
 
   void _showSuccessDialog() {
     showDialog(
       context: context,
+      barrierDismissible: false,
       builder: (context) => AlertDialog(
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        title: Row(
           children: [
-            const Icon(Icons.check_circle, color: Colors.green, size: 60),
-            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: const BoxDecoration(
+                color: Color(0xFF2E7D32),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.check,
+                color: Colors.white,
+                size: 24,
+              ),
+            ),
+            const SizedBox(width: 12),
             const Text(
               'Registration Successful!',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              style: TextStyle(
+                color: Color(0xFF2E7D32),
+                fontWeight: FontWeight.bold,
+              ),
             ),
-            const SizedBox(height: 8),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
             Text(
-              'Welcome ${_firstNameController.text.isNotEmpty ? _firstNameController.text : _usernameController.text}!',
-              style: TextStyle(color: Colors.grey.shade600),
+              'Welcome ${_firstNameController.text}!',
+              style: const TextStyle(fontSize: 16),
+            ),
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFF2E7D32).withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Next Steps:',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF2E7D32),
+                    ),
+                  ),
+                  SizedBox(height: 8),
+                  Text(
+                    '• Your account has been created successfully\n'
+                    '• You can now login with your mobile number\n'
+                    '• Start exploring medicines and place orders',
+                    style: TextStyle(fontSize: 14),
+                  ),
+                ],
+              ),
             ),
           ],
         ),
@@ -646,8 +1011,12 @@ class _RegisterPageState extends State<RegisterPage> {
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF2E7D32),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
             ),
-            child: const Text('Login Now', style: TextStyle(color: Colors.white)),
+            child: const Text('Login Now'),
           ),
         ],
       ),
@@ -686,6 +1055,8 @@ class _RegisterPageState extends State<RegisterPage> {
     _lastNameController.dispose();
     _middleNameController.dispose();
     _addressController.dispose();
+    _cityController.dispose();
+    _postalCodeController.dispose();
     _pageController.dispose();
     super.dispose();
   }

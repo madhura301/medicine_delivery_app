@@ -148,7 +148,7 @@ namespace MedicineDelivery.API.Controllers
                 var result = await _customerService.RegisterCustomerAsync(request);
                 if (result.Success)
                 {
-                    return CreatedAtAction(nameof(GetCustomer), new { id = result.Customer?.CustomerId }, result.Customer);
+                    return CreatedAtAction(nameof(GetCustomer), new { id = result.Customer?.CustomerId }, result);
                 }
                 else
                 {
