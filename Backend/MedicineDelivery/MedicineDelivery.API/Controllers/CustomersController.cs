@@ -182,13 +182,10 @@ namespace MedicineDelivery.API.Controllers
                     MobileNumber = request.MobileNumber,
                     AlternativeMobileNumber = request.AlternativeMobileNumber,
                     EmailId = request.EmailId,
-                    Address = request.Address,
-                    City = request.City,
-                    State = request.State,
-                    PostalCode = request.PostalCode,
                     DateOfBirth = request.DateOfBirth,
                     Gender = request.Gender,
-                    Password = "TempPassword123!" // You might want to generate this or make it required
+                    Password = "TempPassword123!", // You might want to generate this or make it required
+                    Addresses = request.Addresses
                 };
 
                 var result = await _customerService.RegisterCustomerAsync(registrationDto);

@@ -130,6 +130,7 @@ namespace MedicineDelivery.Infrastructure.Services
                     PharmacistMobileNumber = registrationDto.PharmacistMobileNumber,
                     UserId = identityUser.Id,
                     CreatedOn = DateTime.UtcNow,
+                    UpdatedOn = DateTime.UtcNow,
                     IsActive = true,
                     IsDeleted = false
                 };

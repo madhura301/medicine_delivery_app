@@ -41,9 +41,15 @@ namespace MedicineDelivery.Application.Mappings
             CreateMap<ManagerRegistrationDto, Manager>();
 
             // Customer mappings
-            CreateMap<Customer, CustomerDto>();
+            CreateMap<Customer, CustomerDto>()
+                .ForMember(dest => dest.Addresses, opt => opt.Ignore()); // Addresses will be loaded separately
             CreateMap<CreateCustomerDto, Customer>();
             CreateMap<UpdateCustomerDto, Customer>();
+
+            // CustomerAddress mappings
+            CreateMap<CustomerAddress, CustomerAddressDto>();
+            CreateMap<CreateCustomerAddressDto, CustomerAddress>();
+            CreateMap<UpdateCustomerAddressDto, CustomerAddress>();
         }
     }
 }

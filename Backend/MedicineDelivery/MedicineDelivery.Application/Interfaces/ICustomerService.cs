@@ -29,10 +29,6 @@ namespace MedicineDelivery.Application.Interfaces
         public string MobileNumber { get; set; } = string.Empty;
         public string? AlternativeMobileNumber { get; set; }
         public string? EmailId { get; set; }
-        public string? Address { get; set; }
-        public string? City { get; set; }
-        public string? State { get; set; }
-        public string? PostalCode { get; set; }
         public DateTime DateOfBirth { get; set; }
         public string? Gender { get; set; }
         public string? CustomerPhoto { get; set; }
@@ -41,5 +37,6 @@ namespace MedicineDelivery.Application.Interfaces
         public DateTime? UpdatedOn { get; set; }
         public string? UserId { get; set; }
         public string? Password { get; set; }
+        public List<CustomerAddressDto>? Addresses { get; set; }
     }
 }

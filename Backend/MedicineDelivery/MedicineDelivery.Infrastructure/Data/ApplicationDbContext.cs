@@ -1,13 +1,17 @@
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using MedicineDelivery.Domain.Entities;
 
 namespace MedicineDelivery.Infrastructure.Data
 {
     public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     {
-        public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options) : base(options)
+        private readonly IConfiguration _configuration;
+
+        public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options, IConfiguration configuration = null) : base(options)
         {
+            _configuration = configuration;
         }
 
         public new DbSet<User> Users { get; set; }
@@ -22,10 +26,14 @@ namespace MedicineDelivery.Infrastructure.Data
         public DbSet<CustomerSupport> CustomerSupports { get; set; }
         public DbSet<Manager> Managers { get; set; }
         public DbSet<Customer> Customers { get; set; }
+        public DbSet<CustomerAddress> CustomerAddresses { get; set; }
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
             base.OnModelCreating(builder);
+
+            // Configure database provider-specific settings
+            ConfigureDatabaseProviderSpecific(builder);
 
             // Configure UserRole entity
             builder.Entity<UserRole>()
@@ -75,10 +83,6 @@ namespace MedicineDelivery.Infrastructure.Data
             // Configure MedicalStore entity
             builder.Entity<MedicalStore>()
                 .HasKey(ms => ms.MedicalStoreId);
-
-            builder.Entity<MedicalStore>()
-                .Property(ms => ms.MedicalStoreId)
-                .HasDefaultValueSql("NEWID()");
 
             builder.Entity<MedicalStore>()
                 .Property(ms => ms.MedicalName)
@@ -189,14 +193,6 @@ namespace MedicineDelivery.Infrastructure.Data
                 .IsRequired();
 
             builder.Entity<MedicalStore>()
-                .Property(ms => ms.CreatedOn)
-                .HasColumnType("datetime2(7)");
-
-            builder.Entity<MedicalStore>()
-                .Property(ms => ms.UpdatedOn)
-                .HasColumnType("datetime2(7)");
-
-            builder.Entity<MedicalStore>()
                 .HasOne(ms => ms.User)
                 .WithMany()
                 .HasForeignKey(ms => ms.UserId)
@@ -205,10 +201,6 @@ namespace MedicineDelivery.Infrastructure.Data
             // Configure CustomerSupport entity
             builder.Entity<CustomerSupport>()
                 .HasKey(cs => cs.CustomerSupportId);
-
-            builder.Entity<CustomerSupport>()
-                .Property(cs => cs.CustomerSupportId)
-                .HasDefaultValueSql("NEWID()");
 
             builder.Entity<CustomerSupport>()
                 .Property(cs => cs.CustomerSupportFirstName)
@@ -264,14 +256,6 @@ namespace MedicineDelivery.Infrastructure.Data
                 .HasMaxLength(255);
 
             builder.Entity<CustomerSupport>()
-                .Property(cs => cs.CreatedOn)
-                .HasColumnType("datetime2(7)");
-
-            builder.Entity<CustomerSupport>()
-                .Property(cs => cs.UpdatedOn)
-                .HasColumnType("datetime2(7)");
-
-            builder.Entity<CustomerSupport>()
                 .HasOne(cs => cs.User)
                 .WithMany()
                 .HasForeignKey(cs => cs.UserId)
@@ -280,10 +264,6 @@ namespace MedicineDelivery.Infrastructure.Data
             // Configure Manager entity
             builder.Entity<Manager>()
                 .HasKey(m => m.ManagerId);
-
-            builder.Entity<Manager>()
-                .Property(m => m.ManagerId)
-                .HasDefaultValueSql("NEWID()");
 
             builder.Entity<Manager>()
                 .Property(m => m.ManagerFirstName)
@@ -339,14 +319,6 @@ namespace MedicineDelivery.Infrastructure.Data
                 .HasMaxLength(255);
 
             builder.Entity<Manager>()
-                .Property(m => m.CreatedOn)
-                .HasColumnType("datetime2(7)");
-
-            builder.Entity<Manager>()
-                .Property(m => m.UpdatedOn)
-                .HasColumnType("datetime2(7)");
-
-            builder.Entity<Manager>()
                 .HasOne(m => m.User)
                 .WithMany()
                 .HasForeignKey(m => m.UserId)
@@ -355,10 +327,6 @@ namespace MedicineDelivery.Infrastructure.Data
             // Configure Customer entity
             builder.Entity<Customer>()
                 .HasKey(c => c.CustomerId);
-
-            builder.Entity<Customer>()
-                .Property(c => c.CustomerId)
-                .HasDefaultValueSql("NEWID()");
 
             builder.Entity<Customer>()
                 .Property(c => c.CustomerFirstName)
@@ -387,21 +355,6 @@ namespace MedicineDelivery.Infrastructure.Data
                 .Property(c => c.EmailId)
                 .HasMaxLength(50);
 
-            builder.Entity<Customer>()
-                .Property(c => c.Address)
-                .HasMaxLength(300);
-
-            builder.Entity<Customer>()
-                .Property(c => c.City)
-                .HasMaxLength(100);
-
-            builder.Entity<Customer>()
-                .Property(c => c.State)
-                .HasMaxLength(100);
-
-            builder.Entity<Customer>()
-                .Property(c => c.PostalCode)
-                .HasMaxLength(20);
 
             builder.Entity<Customer>()
                 .Property(c => c.Gender)
@@ -412,18 +365,36 @@ namespace MedicineDelivery.Infrastructure.Data
                 .HasMaxLength(255);
 
             builder.Entity<Customer>()
-                .Property(c => c.CreatedOn)
-                .HasColumnType("datetime2(7)");
-
-            builder.Entity<Customer>()
-                .Property(c => c.UpdatedOn)
-                .HasColumnType("datetime2(7)");
-
-            builder.Entity<Customer>()
                 .HasOne(c => c.User)
                 .WithMany()
                 .HasForeignKey(c => c.UserId)
                 .OnDelete(DeleteBehavior.SetNull);
+
+            // Configure CustomerAddress entity
+            builder.Entity<CustomerAddress>()
+                .HasKey(ca => ca.Id);
+
+            builder.Entity<CustomerAddress>()
+                .Property(ca => ca.Address)
+                .HasMaxLength(300);
+
+            builder.Entity<CustomerAddress>()
+                .Property(ca => ca.City)
+                .HasMaxLength(100);
+
+            builder.Entity<CustomerAddress>()
+                .Property(ca => ca.State)
+                .HasMaxLength(100);
+
+            builder.Entity<CustomerAddress>()
+                .Property(ca => ca.PostalCode)
+                .HasMaxLength(20);
+
+            builder.Entity<CustomerAddress>()
+                .HasOne(ca => ca.Customer)
+                .WithMany(c => c.Addresses)
+                .HasForeignKey(ca => ca.CustomerId)
+                .OnDelete(DeleteBehavior.Cascade);
 
             // Seed permissions
             builder.Entity<Permission>().HasData(
@@ -682,6 +653,147 @@ namespace MedicineDelivery.Infrastructure.Data
                 new RolePermission { RoleId = 5, PermissionId = 33, GrantedAt = DateTime.UtcNow, IsActive = true }
                 // Note: Chemist doesn't get ChemistCreate permission as they can't create other chemists
             );
+        }
+
+        private void ConfigureDatabaseProviderSpecific(ModelBuilder builder)
+        {
+            var databaseProvider = _configuration?["DatabaseProvider"] ?? "SqlServer";
+            
+            if (databaseProvider == "PostgreSQL")
+            {
+                // PostgreSQL-specific configurations
+                ConfigureForPostgreSQL(builder);
+            }
+            else
+            {
+                // SQL Server-specific configurations (default)
+                ConfigureForSqlServer(builder);
+            }
+        }
+
+        private void ConfigureForSqlServer(ModelBuilder builder)
+        {
+            // SQL Server specific configurations (existing NEWID() calls)
+            builder.Entity<MedicalStore>()
+                .Property(ms => ms.MedicalStoreId)
+                .HasDefaultValueSql("NEWID()");
+
+            builder.Entity<CustomerSupport>()
+                .Property(cs => cs.CustomerSupportId)
+                .HasDefaultValueSql("NEWID()");
+
+            builder.Entity<Manager>()
+                .Property(m => m.ManagerId)
+                .HasDefaultValueSql("NEWID()");
+
+            builder.Entity<Customer>()
+                .Property(c => c.CustomerId)
+                .HasDefaultValueSql("NEWID()");
+        }
+
+        private void ConfigureForPostgreSQL(ModelBuilder builder)
+        {
+            // PostgreSQL specific configurations
+            builder.Entity<MedicalStore>()
+                .Property(ms => ms.MedicalStoreId)
+                .HasDefaultValueSql("gen_random_uuid()");
+
+            builder.Entity<CustomerSupport>()
+                .Property(cs => cs.CustomerSupportId)
+                .HasDefaultValueSql("gen_random_uuid()");
+
+            builder.Entity<Manager>()
+                .Property(m => m.ManagerId)
+                .HasDefaultValueSql("gen_random_uuid()");
+
+            builder.Entity<Customer>()
+                .Property(c => c.CustomerId)
+                .HasDefaultValueSql("gen_random_uuid()");
+
+            // PostgreSQL uses timestamp with time zone for UTC DateTime values
+            builder.Entity<MedicalStore>()
+                .Property(ms => ms.CreatedOn)
+                .HasColumnType("timestamp with time zone");
+
+            builder.Entity<MedicalStore>()
+                .Property(ms => ms.UpdatedOn)
+                .HasColumnType("timestamp with time zone");
+
+            builder.Entity<CustomerSupport>()
+                .Property(cs => cs.CreatedOn)
+                .HasColumnType("timestamp with time zone");
+
+            builder.Entity<CustomerSupport>()
+                .Property(cs => cs.UpdatedOn)
+                .HasColumnType("timestamp with time zone");
+
+            builder.Entity<Manager>()
+                .Property(m => m.CreatedOn)
+                .HasColumnType("timestamp with time zone");
+
+            builder.Entity<Manager>()
+                .Property(m => m.UpdatedOn)
+                .HasColumnType("timestamp with time zone");
+
+            builder.Entity<Customer>()
+                .Property(c => c.CreatedOn)
+                .HasColumnType("timestamp with time zone");
+
+            builder.Entity<Customer>()
+                .Property(c => c.UpdatedOn)
+                .HasColumnType("timestamp with time zone");
+
+            // Configure ApplicationUser DateTime properties for PostgreSQL
+            builder.Entity<ApplicationUser>()
+                .Property(au => au.CreatedAt)
+                .HasColumnType("timestamp with time zone");
+
+            builder.Entity<ApplicationUser>()
+                .Property(au => au.LastLoginAt)
+                .HasColumnType("timestamp with time zone");
+
+            // Configure User entity DateTime properties
+            builder.Entity<User>()
+                .Property(u => u.CreatedAt)
+                .HasColumnType("timestamp with time zone");
+
+            // Configure UserRole DateTime properties
+            builder.Entity<UserRole>()
+                .Property(ur => ur.AssignedAt)
+                .HasColumnType("timestamp with time zone");
+
+            // Configure RolePermission DateTime properties
+            builder.Entity<RolePermission>()
+                .Property(rp => rp.GrantedAt)
+                .HasColumnType("timestamp with time zone");
+
+            // Configure Permission DateTime properties
+            builder.Entity<Permission>()
+                .Property(p => p.CreatedAt)
+                .HasColumnType("timestamp with time zone");
+
+            // Configure Role DateTime properties
+            builder.Entity<Role>()
+                .Property(r => r.CreatedAt)
+                .HasColumnType("timestamp with time zone");
+
+            // Configure Product DateTime properties
+            builder.Entity<Product>()
+                .Property(p => p.CreatedAt)
+                .HasColumnType("timestamp with time zone");
+
+            builder.Entity<Product>()
+                .Property(p => p.UpdatedAt)
+                .HasColumnType("timestamp with time zone");
+
+            // Configure Order DateTime properties
+            builder.Entity<Order>()
+                .Property(o => o.CreatedAt)
+                .HasColumnType("timestamp with time zone");
+
+            builder.Entity<Order>()
+                .Property(o => o.UpdatedAt)
+                .HasColumnType("timestamp with time zone");
         }
     }
 

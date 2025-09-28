@@ -13,10 +13,26 @@ using MedicineDelivery.Application.Features.Users.Queries.GetUsers;
 using MedicineDelivery.API.Data;
 using MedicineDelivery.API.Authorization;
 using MedicineDelivery.API.Services;
+using MedicineDelivery.API.Middleware;
 using System.Reflection;
 using Microsoft.AspNetCore.Authorization;
+using Serilog;
 
-var builder = WebApplication.CreateBuilder(args);
+// Configure Serilog - This will be configured later with the builder's configuration
+
+try
+{
+    Log.Information("Starting Medicine Delivery API application");
+
+    var builder = WebApplication.CreateBuilder(args);
+
+    // Configure Serilog with the builder's configuration
+    Log.Logger = new LoggerConfiguration()
+        .ReadFrom.Configuration(builder.Configuration)
+        .CreateLogger();
+
+    // Add Serilog
+    builder.Host.UseSerilog();
 
 // Add services to the container.
 builder.Services.AddControllers();
@@ -53,9 +69,28 @@ builder.Services.AddSwaggerGen(c =>
     });
 });
 
-// Add Entity Framework
-builder.Services.AddDbContext<MedicineDelivery.Infrastructure.Data.ApplicationDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+// Add Entity Framework with configurable database provider
+var databaseProvider = builder.Configuration["DatabaseProvider"];
+var connectionString = databaseProvider switch
+{
+    "PostgreSQL" => builder.Configuration.GetConnectionString("PostgresConnection"),
+    "SqlServer" => builder.Configuration.GetConnectionString("DefaultConnection"),
+    _ => builder.Configuration.GetConnectionString("DefaultConnection")
+};
+
+builder.Services.AddDbContext<MedicineDelivery.Infrastructure.Data.ApplicationDbContext>((serviceProvider, options) =>
+{
+    switch (databaseProvider)
+    {
+        case "PostgreSQL":
+            options.UseNpgsql(connectionString);
+            break;
+        case "SqlServer":
+        default:
+            options.UseSqlServer(connectionString);
+            break;
+    }
+});
 
 // Add Identity
 builder.Services.AddIdentity<MedicineDelivery.Infrastructure.Data.ApplicationUser, IdentityRole>(options =>
@@ -273,7 +308,7 @@ builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(Creat
 
 // Add custom services
 builder.Services.AddScoped<MedicineDelivery.Domain.Interfaces.IUnitOfWork, UnitOfWork>();
-builder.Services.AddScoped<MedicineDelivery.Domain.Interfaces.IAuthService, MedicineDelivery.Infrastructure.Services.AuthService>();
+builder.Services.AddScoped<MedicineDelivery.Domain.Interfaces.IAuthService, MedicineDelivery.API.Services.AuthService>();
 builder.Services.AddScoped<MedicineDelivery.Domain.Interfaces.IRoleService, MedicineDelivery.Infrastructure.Services.RoleService>();
 builder.Services.AddScoped<MedicineDelivery.Domain.Interfaces.IPermissionService, MedicineDelivery.Infrastructure.Services.PermissionService>();
 builder.Services.AddScoped<MedicineDelivery.API.Services.IPermissionService, MedicineDelivery.API.Services.PermissionService>();
@@ -282,6 +317,7 @@ builder.Services.AddScoped<MedicineDelivery.Application.Interfaces.IMedicalStore
 builder.Services.AddScoped<MedicineDelivery.Application.Interfaces.ICustomerSupportService, MedicineDelivery.Infrastructure.Services.CustomerSupportService>();
 builder.Services.AddScoped<MedicineDelivery.Application.Interfaces.IManagerService, MedicineDelivery.Infrastructure.Services.ManagerService>();
 builder.Services.AddScoped<MedicineDelivery.Application.Interfaces.ICustomerService, MedicineDelivery.Infrastructure.Services.CustomerService>();
+builder.Services.AddScoped<MedicineDelivery.Application.Interfaces.ICustomerAddressService, MedicineDelivery.Infrastructure.Services.CustomerAddressService>();
 builder.Services.AddScoped<MedicineDelivery.Application.Interfaces.IPhotoUploadService, MedicineDelivery.Infrastructure.Services.PhotoUploadService>();
 builder.Services.AddScoped<MedicineDelivery.Application.Interfaces.IPermissionCheckerService, MedicineDelivery.Infrastructure.Services.PermissionCheckerService>();
 
@@ -295,12 +331,16 @@ if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
+    Log.Information("Swagger UI enabled for development environment");
 }
 
 app.UseSwagger();
 app.UseSwaggerUI();
 
 app.UseHttpsRedirection();
+
+// Add global exception handling middleware
+app.UseMiddleware<GlobalExceptionMiddleware>();
 
 app.UseCors(builder =>
 {
@@ -315,23 +355,46 @@ app.UseAuthorization();
 
 app.MapControllers();
 
+Log.Information("Application configured and ready to start");
+
+// Add a test logging endpoint for debugging
+app.MapGet("/test-logging", () =>
+{
+    Log.Information("Test logging endpoint called at {Timestamp}", DateTime.UtcNow);
+    Log.Warning("This is a test warning log");
+    Log.Error("This is a test error log");
+    return Results.Ok(new { message = "Test logs written successfully", timestamp = DateTime.UtcNow });
+});
+
 // Seed the database
 using (var scope = app.Services.CreateScope())
 {
     var services = scope.ServiceProvider;
     try
     {
+        Log.Information("Starting database seeding process");
         var context = services.GetRequiredService<MedicineDelivery.Infrastructure.Data.ApplicationDbContext>();
         var userManager = services.GetRequiredService<UserManager<MedicineDelivery.Infrastructure.Data.ApplicationUser>>();
         var roleManager = services.GetRequiredService<RoleManager<IdentityRole>>();
         var roleService = services.GetRequiredService<MedicineDelivery.Domain.Interfaces.IRoleService>();
         await SeedData.Initialize(context, userManager, roleManager, roleService);
+        Log.Information("Database seeding completed successfully");
     }
     catch (Exception ex)
     {
-        var logger = services.GetRequiredService<ILogger<Program>>();
-        logger.LogError(ex, "An error occurred seeding the DB.");
+        Log.Error(ex, "An error occurred seeding the database");
+        throw;
     }
 }
 
+Log.Information("Medicine Delivery API is starting up");
 app.Run();
+}
+catch (Exception ex)
+{
+    Log.Fatal(ex, "Application terminated unexpectedly");
+}
+finally
+{
+    Log.CloseAndFlush();
+}

@@ -3,17 +3,17 @@ using System;
 using MedicineDelivery.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
-using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
+using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 #nullable disable
 
 namespace MedicineDelivery.Infrastructure.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20250920112548_AddAllCustomerPermissions")]
-    partial class AddAllCustomerPermissions
+    [Migration("20250925193954_InitialPostgreSQLMigration")]
+    partial class InitialPostgreSQLMigration
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -21,82 +21,82 @@ namespace MedicineDelivery.Infrastructure.Migrations
 #pragma warning disable 612, 618
             modelBuilder
                 .HasAnnotation("ProductVersion", "8.0.0")
-                .HasAnnotation("Relational:MaxIdentifierLength", 128);
+                .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
-            SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
+            NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
             modelBuilder.Entity("MedicineDelivery.Domain.Entities.Customer", b =>
                 {
                     b.Property<Guid>("CustomerId")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier")
-                        .HasDefaultValueSql("NEWID()");
+                        .HasColumnType("uuid")
+                        .HasDefaultValueSql("gen_random_uuid()");
 
                     b.Property<string>("Address")
                         .HasMaxLength(300)
-                        .HasColumnType("nvarchar(300)");
+                        .HasColumnType("character varying(300)");
 
                     b.Property<string>("AlternativeMobileNumber")
                         .HasMaxLength(15)
-                        .HasColumnType("nvarchar(15)");
+                        .HasColumnType("character varying(15)");
 
                     b.Property<string>("City")
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasColumnType("character varying(100)");
 
                     b.Property<DateTime>("CreatedOn")
-                        .HasColumnType("datetime2(7)");
+                        .HasColumnType("timestamp");
 
                     b.Property<string>("CustomerFirstName")
                         .IsRequired()
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasColumnType("character varying(100)");
 
                     b.Property<string>("CustomerLastName")
                         .IsRequired()
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasColumnType("character varying(100)");
 
                     b.Property<string>("CustomerMiddleName")
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasColumnType("character varying(100)");
 
                     b.Property<string>("CustomerPhoto")
                         .HasMaxLength(255)
-                        .HasColumnType("nvarchar(255)");
+                        .HasColumnType("character varying(255)");
 
                     b.Property<DateTime>("DateOfBirth")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("EmailId")
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
+                        .HasColumnType("character varying(50)");
 
                     b.Property<string>("Gender")
                         .HasMaxLength(10)
-                        .HasColumnType("nvarchar(10)");
+                        .HasColumnType("character varying(10)");
 
                     b.Property<bool>("IsActive")
-                        .HasColumnType("bit");
+                        .HasColumnType("boolean");
 
                     b.Property<string>("MobileNumber")
                         .IsRequired()
                         .HasMaxLength(15)
-                        .HasColumnType("nvarchar(15)");
+                        .HasColumnType("character varying(15)");
 
                     b.Property<string>("PostalCode")
                         .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
+                        .HasColumnType("character varying(20)");
 
                     b.Property<string>("State")
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasColumnType("character varying(100)");
 
                     b.Property<DateTime?>("UpdatedOn")
-                        .HasColumnType("datetime2(7)");
+                        .HasColumnType("timestamp");
 
                     b.Property<string>("UserId")
-                        .HasColumnType("nvarchar(450)");
+                        .HasColumnType("text");
 
                     b.HasKey("CustomerId");
 
@@ -109,84 +109,84 @@ namespace MedicineDelivery.Infrastructure.Migrations
                 {
                     b.Property<Guid>("CustomerSupportId")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier")
-                        .HasDefaultValueSql("NEWID()");
+                        .HasColumnType("uuid")
+                        .HasDefaultValueSql("gen_random_uuid()");
 
                     b.Property<string>("Address")
                         .IsRequired()
                         .HasMaxLength(300)
-                        .HasColumnType("nvarchar(300)");
+                        .HasColumnType("character varying(300)");
 
                     b.Property<string>("AlternativeMobileNumber")
                         .IsRequired()
                         .HasMaxLength(15)
-                        .HasColumnType("nvarchar(15)");
+                        .HasColumnType("character varying(15)");
 
                     b.Property<string>("City")
                         .IsRequired()
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasColumnType("character varying(100)");
 
                     b.Property<Guid?>("CreatedBy")
-                        .HasColumnType("uniqueidentifier");
+                        .HasColumnType("uuid");
 
                     b.Property<DateTime>("CreatedOn")
-                        .HasColumnType("datetime2(7)");
+                        .HasColumnType("timestamp");
 
                     b.Property<string>("CustomerSupportFirstName")
                         .IsRequired()
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasColumnType("character varying(100)");
 
                     b.Property<string>("CustomerSupportLastName")
                         .IsRequired()
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasColumnType("character varying(100)");
 
                     b.Property<string>("CustomerSupportMiddleName")
                         .IsRequired()
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasColumnType("character varying(100)");
 
                     b.Property<string>("CustomerSupportPhoto")
                         .IsRequired()
                         .HasMaxLength(255)
-                        .HasColumnType("nvarchar(255)");
+                        .HasColumnType("character varying(255)");
 
                     b.Property<string>("EmailId")
                         .IsRequired()
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
+                        .HasColumnType("character varying(50)");
 
                     b.Property<string>("EmployeeId")
                         .IsRequired()
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
+                        .HasColumnType("character varying(50)");
 
                     b.Property<bool>("IsActive")
-                        .HasColumnType("bit");
+                        .HasColumnType("boolean");
 
                     b.Property<bool>("IsDeleted")
-                        .HasColumnType("bit");
+                        .HasColumnType("boolean");
 
                     b.Property<string>("MobileNumber")
                         .IsRequired()
                         .HasMaxLength(15)
-                        .HasColumnType("nvarchar(15)");
+                        .HasColumnType("character varying(15)");
 
                     b.Property<string>("State")
                         .IsRequired()
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasColumnType("character varying(100)");
 
                     b.Property<Guid?>("UpdatedBy")
-                        .HasColumnType("uniqueidentifier");
+                        .HasColumnType("uuid");
 
                     b.Property<DateTime?>("UpdatedOn")
-                        .HasColumnType("datetime2(7)");
+                        .HasColumnType("timestamp");
 
                     b.Property<string>("UserId")
-                        .HasColumnType("nvarchar(450)");
+                        .HasColumnType("text");
 
                     b.HasKey("CustomerSupportId");
 
@@ -199,84 +199,84 @@ namespace MedicineDelivery.Infrastructure.Migrations
                 {
                     b.Property<Guid>("ManagerId")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier")
-                        .HasDefaultValueSql("NEWID()");
+                        .HasColumnType("uuid")
+                        .HasDefaultValueSql("gen_random_uuid()");
 
                     b.Property<string>("Address")
                         .IsRequired()
                         .HasMaxLength(300)
-                        .HasColumnType("nvarchar(300)");
+                        .HasColumnType("character varying(300)");
 
                     b.Property<string>("AlternativeMobileNumber")
                         .IsRequired()
                         .HasMaxLength(15)
-                        .HasColumnType("nvarchar(15)");
+                        .HasColumnType("character varying(15)");
 
                     b.Property<string>("City")
                         .IsRequired()
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasColumnType("character varying(100)");
 
                     b.Property<Guid?>("CreatedBy")
-                        .HasColumnType("uniqueidentifier");
+                        .HasColumnType("uuid");
 
                     b.Property<DateTime>("CreatedOn")
-                        .HasColumnType("datetime2(7)");
+                        .HasColumnType("timestamp");
 
                     b.Property<string>("EmailId")
                         .IsRequired()
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
+                        .HasColumnType("character varying(50)");
 
                     b.Property<string>("EmployeeId")
                         .IsRequired()
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
+                        .HasColumnType("character varying(50)");
 
                     b.Property<bool>("IsActive")
-                        .HasColumnType("bit");
+                        .HasColumnType("boolean");
 
                     b.Property<bool>("IsDeleted")
-                        .HasColumnType("bit");
+                        .HasColumnType("boolean");
 
                     b.Property<string>("ManagerFirstName")
                         .IsRequired()
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasColumnType("character varying(100)");
 
                     b.Property<string>("ManagerLastName")
                         .IsRequired()
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasColumnType("character varying(100)");
 
                     b.Property<string>("ManagerMiddleName")
                         .IsRequired()
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasColumnType("character varying(100)");
 
                     b.Property<string>("ManagerPhoto")
                         .IsRequired()
                         .HasMaxLength(255)
-                        .HasColumnType("nvarchar(255)");
+                        .HasColumnType("character varying(255)");
 
                     b.Property<string>("MobileNumber")
                         .IsRequired()
                         .HasMaxLength(15)
-                        .HasColumnType("nvarchar(15)");
+                        .HasColumnType("character varying(15)");
 
                     b.Property<string>("State")
                         .IsRequired()
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasColumnType("character varying(100)");
 
                     b.Property<Guid?>("UpdatedBy")
-                        .HasColumnType("uniqueidentifier");
+                        .HasColumnType("uuid");
 
                     b.Property<DateTime?>("UpdatedOn")
-                        .HasColumnType("datetime2(7)");
+                        .HasColumnType("timestamp");
 
                     b.Property<string>("UserId")
-                        .HasColumnType("nvarchar(450)");
+                        .HasColumnType("text");
 
                     b.HasKey("ManagerId");
 
@@ -289,59 +289,59 @@ namespace MedicineDelivery.Infrastructure.Migrations
                 {
                     b.Property<Guid>("MedicalStoreId")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier")
-                        .HasDefaultValueSql("NEWID()");
+                        .HasColumnType("uuid")
+                        .HasDefaultValueSql("gen_random_uuid()");
 
                     b.Property<string>("AddressLine1")
                         .IsRequired()
                         .HasMaxLength(300)
-                        .HasColumnType("nvarchar(300)");
+                        .HasColumnType("character varying(300)");
 
                     b.Property<string>("AddressLine2")
                         .IsRequired()
                         .HasMaxLength(300)
-                        .HasColumnType("nvarchar(300)");
+                        .HasColumnType("character varying(300)");
 
                     b.Property<string>("AlternativeMobileNumber")
                         .IsRequired()
                         .HasMaxLength(15)
-                        .HasColumnType("nvarchar(15)");
+                        .HasColumnType("character varying(15)");
 
                     b.Property<string>("City")
                         .IsRequired()
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasColumnType("character varying(100)");
 
                     b.Property<Guid?>("CreatedBy")
-                        .HasColumnType("uniqueidentifier");
+                        .HasColumnType("uuid");
 
                     b.Property<DateTime>("CreatedOn")
-                        .HasColumnType("datetime2(7)");
+                        .HasColumnType("timestamp");
 
                     b.Property<string>("DLNo")
                         .IsRequired()
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasColumnType("character varying(100)");
 
                     b.Property<string>("EmailId")
                         .IsRequired()
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
+                        .HasColumnType("character varying(50)");
 
                     b.Property<string>("FSSAINo")
                         .IsRequired()
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasColumnType("character varying(100)");
 
                     b.Property<string>("GSTIN")
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasColumnType("character varying(100)");
 
                     b.Property<bool>("IsActive")
-                        .HasColumnType("bit");
+                        .HasColumnType("boolean");
 
                     b.Property<bool>("IsDeleted")
-                        .HasColumnType("bit");
+                        .HasColumnType("boolean");
 
                     b.Property<decimal?>("Latitude")
                         .HasColumnType("decimal(18,6)");
@@ -352,74 +352,74 @@ namespace MedicineDelivery.Infrastructure.Migrations
                     b.Property<string>("MedicalName")
                         .IsRequired()
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasColumnType("character varying(100)");
 
                     b.Property<string>("MobileNumber")
                         .IsRequired()
                         .HasMaxLength(15)
-                        .HasColumnType("nvarchar(15)");
+                        .HasColumnType("character varying(15)");
 
                     b.Property<string>("OwnerFirstName")
                         .IsRequired()
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasColumnType("character varying(100)");
 
                     b.Property<string>("OwnerLastName")
                         .IsRequired()
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasColumnType("character varying(100)");
 
                     b.Property<string>("OwnerMiddleName")
                         .IsRequired()
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasColumnType("character varying(100)");
 
                     b.Property<string>("PAN")
                         .IsRequired()
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasColumnType("character varying(100)");
 
                     b.Property<string>("PharmacistFirstName")
                         .IsRequired()
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasColumnType("character varying(100)");
 
                     b.Property<string>("PharmacistLastName")
                         .IsRequired()
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasColumnType("character varying(100)");
 
                     b.Property<string>("PharmacistMobileNumber")
                         .IsRequired()
                         .HasMaxLength(15)
-                        .HasColumnType("nvarchar(15)");
+                        .HasColumnType("character varying(15)");
 
                     b.Property<string>("PharmacistRegistrationNumber")
                         .IsRequired()
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasColumnType("character varying(100)");
 
                     b.Property<string>("PostalCode")
                         .IsRequired()
                         .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
+                        .HasColumnType("character varying(20)");
 
                     b.Property<bool>("RegistrationStatus")
-                        .HasColumnType("bit");
+                        .HasColumnType("boolean");
 
                     b.Property<string>("State")
                         .IsRequired()
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasColumnType("character varying(100)");
 
                     b.Property<Guid?>("UpdatedBy")
-                        .HasColumnType("uniqueidentifier");
+                        .HasColumnType("uuid");
 
                     b.Property<DateTime?>("UpdatedOn")
-                        .HasColumnType("datetime2(7)");
+                        .HasColumnType("timestamp");
 
                     b.Property<string>("UserId")
-                        .HasColumnType("nvarchar(450)");
+                        .HasColumnType("text");
 
                     b.HasKey("MedicalStoreId");
 
@@ -432,30 +432,30 @@ namespace MedicineDelivery.Infrastructure.Migrations
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
+                        .HasColumnType("integer");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("CustomerEmail")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("text");
 
                     b.Property<string>("CustomerName")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("text");
 
                     b.Property<string>("Status")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("text");
 
                     b.Property<decimal>("TotalAmount")
-                        .HasColumnType("decimal(18,2)");
+                        .HasColumnType("numeric");
 
                     b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("timestamp with time zone");
 
                     b.HasKey("Id");
 
@@ -466,24 +466,24 @@ namespace MedicineDelivery.Infrastructure.Migrations
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
+                        .HasColumnType("integer");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<int>("OrderId")
-                        .HasColumnType("int");
+                        .HasColumnType("integer");
 
                     b.Property<int>("ProductId")
-                        .HasColumnType("int");
+                        .HasColumnType("integer");
 
                     b.Property<int>("Quantity")
-                        .HasColumnType("int");
+                        .HasColumnType("integer");
 
                     b.Property<decimal>("TotalPrice")
-                        .HasColumnType("decimal(18,2)");
+                        .HasColumnType("numeric");
 
                     b.Property<decimal>("UnitPrice")
-                        .HasColumnType("decimal(18,2)");
+                        .HasColumnType("numeric");
 
                     b.HasKey("Id");
 
@@ -498,27 +498,27 @@ namespace MedicineDelivery.Infrastructure.Migrations
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
+                        .HasColumnType("integer");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("Description")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("text");
 
                     b.Property<bool>("IsActive")
-                        .HasColumnType("bit");
+                        .HasColumnType("boolean");
 
                     b.Property<string>("Module")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("text");
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("text");
 
                     b.HasKey("Id");
 
@@ -528,7 +528,7 @@ namespace MedicineDelivery.Infrastructure.Migrations
                         new
                         {
                             Id = 1,
-                            CreatedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1069),
+                            CreatedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6087),
                             Description = "Can view user information",
                             IsActive = true,
                             Module = "Users",
@@ -537,7 +537,7 @@ namespace MedicineDelivery.Infrastructure.Migrations
                         new
                         {
                             Id = 2,
-                            CreatedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1070),
+                            CreatedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6091),
                             Description = "Can create new users",
                             IsActive = true,
                             Module = "Users",
@@ -546,7 +546,7 @@ namespace MedicineDelivery.Infrastructure.Migrations
                         new
                         {
                             Id = 3,
-                            CreatedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1072),
+                            CreatedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6092),
                             Description = "Can update user information",
                             IsActive = true,
                             Module = "Users",
@@ -555,7 +555,7 @@ namespace MedicineDelivery.Infrastructure.Migrations
                         new
                         {
                             Id = 4,
-                            CreatedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1073),
+                            CreatedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6094),
                             Description = "Can delete users",
                             IsActive = true,
                             Module = "Users",
@@ -564,7 +564,7 @@ namespace MedicineDelivery.Infrastructure.Migrations
                         new
                         {
                             Id = 5,
-                            CreatedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1074),
+                            CreatedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6095),
                             Description = "Can view products",
                             IsActive = true,
                             Module = "Products",
@@ -573,7 +573,7 @@ namespace MedicineDelivery.Infrastructure.Migrations
                         new
                         {
                             Id = 6,
-                            CreatedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1076),
+                            CreatedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6096),
                             Description = "Can create new products",
                             IsActive = true,
                             Module = "Products",
@@ -582,7 +582,7 @@ namespace MedicineDelivery.Infrastructure.Migrations
                         new
                         {
                             Id = 7,
-                            CreatedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1077),
+                            CreatedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6098),
                             Description = "Can update products",
                             IsActive = true,
                             Module = "Products",
@@ -591,7 +591,7 @@ namespace MedicineDelivery.Infrastructure.Migrations
                         new
                         {
                             Id = 8,
-                            CreatedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1078),
+                            CreatedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6099),
                             Description = "Can delete products",
                             IsActive = true,
                             Module = "Products",
@@ -600,7 +600,7 @@ namespace MedicineDelivery.Infrastructure.Migrations
                         new
                         {
                             Id = 9,
-                            CreatedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1079),
+                            CreatedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6100),
                             Description = "Can view orders",
                             IsActive = true,
                             Module = "Orders",
@@ -609,7 +609,7 @@ namespace MedicineDelivery.Infrastructure.Migrations
                         new
                         {
                             Id = 10,
-                            CreatedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1081),
+                            CreatedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6101),
                             Description = "Can create new orders",
                             IsActive = true,
                             Module = "Orders",
@@ -618,7 +618,7 @@ namespace MedicineDelivery.Infrastructure.Migrations
                         new
                         {
                             Id = 11,
-                            CreatedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1082),
+                            CreatedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6103),
                             Description = "Can update orders",
                             IsActive = true,
                             Module = "Orders",
@@ -627,7 +627,7 @@ namespace MedicineDelivery.Infrastructure.Migrations
                         new
                         {
                             Id = 12,
-                            CreatedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1083),
+                            CreatedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6104),
                             Description = "Can delete orders",
                             IsActive = true,
                             Module = "Orders",
@@ -636,7 +636,7 @@ namespace MedicineDelivery.Infrastructure.Migrations
                         new
                         {
                             Id = 13,
-                            CreatedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1084),
+                            CreatedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6106),
                             Description = "Admin can view all user information",
                             IsActive = true,
                             Module = "UserManagement",
@@ -645,7 +645,7 @@ namespace MedicineDelivery.Infrastructure.Migrations
                         new
                         {
                             Id = 14,
-                            CreatedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1085),
+                            CreatedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6107),
                             Description = "Admin can create users",
                             IsActive = true,
                             Module = "UserManagement",
@@ -654,7 +654,7 @@ namespace MedicineDelivery.Infrastructure.Migrations
                         new
                         {
                             Id = 15,
-                            CreatedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1086),
+                            CreatedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6108),
                             Description = "Admin can update user information",
                             IsActive = true,
                             Module = "UserManagement",
@@ -663,7 +663,7 @@ namespace MedicineDelivery.Infrastructure.Migrations
                         new
                         {
                             Id = 16,
-                            CreatedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1087),
+                            CreatedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6109),
                             Description = "Admin can delete users",
                             IsActive = true,
                             Module = "UserManagement",
@@ -672,7 +672,7 @@ namespace MedicineDelivery.Infrastructure.Migrations
                         new
                         {
                             Id = 17,
-                            CreatedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1089),
+                            CreatedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6110),
                             Description = "Manager can view user information",
                             IsActive = true,
                             Module = "UserManagement",
@@ -681,7 +681,7 @@ namespace MedicineDelivery.Infrastructure.Migrations
                         new
                         {
                             Id = 18,
-                            CreatedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1090),
+                            CreatedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6111),
                             Description = "Manager can create users",
                             IsActive = true,
                             Module = "UserManagement",
@@ -690,7 +690,7 @@ namespace MedicineDelivery.Infrastructure.Migrations
                         new
                         {
                             Id = 19,
-                            CreatedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1091),
+                            CreatedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6112),
                             Description = "Manager can update user information",
                             IsActive = true,
                             Module = "UserManagement",
@@ -699,7 +699,7 @@ namespace MedicineDelivery.Infrastructure.Migrations
                         new
                         {
                             Id = 20,
-                            CreatedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1092),
+                            CreatedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6113),
                             Description = "Manager can delete users",
                             IsActive = true,
                             Module = "UserManagement",
@@ -708,7 +708,7 @@ namespace MedicineDelivery.Infrastructure.Migrations
                         new
                         {
                             Id = 21,
-                            CreatedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1093),
+                            CreatedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6115),
                             Description = "CustomerSupport can view user information",
                             IsActive = true,
                             Module = "UserManagement",
@@ -717,7 +717,7 @@ namespace MedicineDelivery.Infrastructure.Migrations
                         new
                         {
                             Id = 22,
-                            CreatedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1094),
+                            CreatedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6116),
                             Description = "CustomerSupport can create users",
                             IsActive = true,
                             Module = "UserManagement",
@@ -726,7 +726,7 @@ namespace MedicineDelivery.Infrastructure.Migrations
                         new
                         {
                             Id = 23,
-                            CreatedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1096),
+                            CreatedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6117),
                             Description = "CustomerSupport can update user information",
                             IsActive = true,
                             Module = "UserManagement",
@@ -735,7 +735,7 @@ namespace MedicineDelivery.Infrastructure.Migrations
                         new
                         {
                             Id = 24,
-                            CreatedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1097),
+                            CreatedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6118),
                             Description = "CustomerSupport can delete users",
                             IsActive = true,
                             Module = "UserManagement",
@@ -744,7 +744,7 @@ namespace MedicineDelivery.Infrastructure.Migrations
                         new
                         {
                             Id = 25,
-                            CreatedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1099),
+                            CreatedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6119),
                             Description = "Chemist can view user information",
                             IsActive = true,
                             Module = "UserManagement",
@@ -753,7 +753,7 @@ namespace MedicineDelivery.Infrastructure.Migrations
                         new
                         {
                             Id = 26,
-                            CreatedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1100),
+                            CreatedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6121),
                             Description = "Chemist can create users",
                             IsActive = true,
                             Module = "UserManagement",
@@ -762,7 +762,7 @@ namespace MedicineDelivery.Infrastructure.Migrations
                         new
                         {
                             Id = 27,
-                            CreatedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1103),
+                            CreatedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6122),
                             Description = "Chemist can update user information",
                             IsActive = true,
                             Module = "UserManagement",
@@ -771,7 +771,7 @@ namespace MedicineDelivery.Infrastructure.Migrations
                         new
                         {
                             Id = 28,
-                            CreatedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1104),
+                            CreatedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6123),
                             Description = "Chemist can delete users",
                             IsActive = true,
                             Module = "UserManagement",
@@ -780,7 +780,7 @@ namespace MedicineDelivery.Infrastructure.Migrations
                         new
                         {
                             Id = 29,
-                            CreatedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1105),
+                            CreatedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6125),
                             Description = "Can manage role permissions",
                             IsActive = true,
                             Module = "RoleManagement",
@@ -789,7 +789,7 @@ namespace MedicineDelivery.Infrastructure.Migrations
                         new
                         {
                             Id = 30,
-                            CreatedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1106),
+                            CreatedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6126),
                             Description = "Can read chemist information",
                             IsActive = true,
                             Module = "Chemist",
@@ -798,7 +798,7 @@ namespace MedicineDelivery.Infrastructure.Migrations
                         new
                         {
                             Id = 31,
-                            CreatedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1107),
+                            CreatedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6127),
                             Description = "Can create chemist accounts",
                             IsActive = true,
                             Module = "Chemist",
@@ -807,7 +807,7 @@ namespace MedicineDelivery.Infrastructure.Migrations
                         new
                         {
                             Id = 32,
-                            CreatedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1108),
+                            CreatedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6128),
                             Description = "Can update chemist information",
                             IsActive = true,
                             Module = "Chemist",
@@ -816,7 +816,7 @@ namespace MedicineDelivery.Infrastructure.Migrations
                         new
                         {
                             Id = 33,
-                            CreatedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1109),
+                            CreatedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6129),
                             Description = "Can delete chemist accounts",
                             IsActive = true,
                             Module = "Chemist",
@@ -825,7 +825,7 @@ namespace MedicineDelivery.Infrastructure.Migrations
                         new
                         {
                             Id = 34,
-                            CreatedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1110),
+                            CreatedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6130),
                             Description = "Can read customer support information",
                             IsActive = true,
                             Module = "CustomerSupport",
@@ -834,7 +834,7 @@ namespace MedicineDelivery.Infrastructure.Migrations
                         new
                         {
                             Id = 35,
-                            CreatedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1112),
+                            CreatedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6131),
                             Description = "Can create customer support accounts",
                             IsActive = true,
                             Module = "CustomerSupport",
@@ -843,7 +843,7 @@ namespace MedicineDelivery.Infrastructure.Migrations
                         new
                         {
                             Id = 36,
-                            CreatedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1113),
+                            CreatedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6132),
                             Description = "Can update customer support information",
                             IsActive = true,
                             Module = "CustomerSupport",
@@ -852,7 +852,7 @@ namespace MedicineDelivery.Infrastructure.Migrations
                         new
                         {
                             Id = 37,
-                            CreatedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1114),
+                            CreatedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6134),
                             Description = "Can delete customer support accounts",
                             IsActive = true,
                             Module = "CustomerSupport",
@@ -861,7 +861,7 @@ namespace MedicineDelivery.Infrastructure.Migrations
                         new
                         {
                             Id = 38,
-                            CreatedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1115),
+                            CreatedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6135),
                             Description = "Can read manager information",
                             IsActive = true,
                             Module = "Manager",
@@ -870,7 +870,7 @@ namespace MedicineDelivery.Infrastructure.Migrations
                         new
                         {
                             Id = 39,
-                            CreatedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1116),
+                            CreatedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6136),
                             Description = "Can create manager accounts",
                             IsActive = true,
                             Module = "Manager",
@@ -879,7 +879,7 @@ namespace MedicineDelivery.Infrastructure.Migrations
                         new
                         {
                             Id = 40,
-                            CreatedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1117),
+                            CreatedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6137),
                             Description = "Can update manager information",
                             IsActive = true,
                             Module = "Manager",
@@ -888,7 +888,7 @@ namespace MedicineDelivery.Infrastructure.Migrations
                         new
                         {
                             Id = 41,
-                            CreatedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1119),
+                            CreatedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6138),
                             Description = "Can delete manager accounts",
                             IsActive = true,
                             Module = "Manager",
@@ -897,7 +897,7 @@ namespace MedicineDelivery.Infrastructure.Migrations
                         new
                         {
                             Id = 42,
-                            CreatedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1120),
+                            CreatedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6139),
                             Description = "Can read own customer information",
                             IsActive = true,
                             Module = "Customer",
@@ -906,7 +906,7 @@ namespace MedicineDelivery.Infrastructure.Migrations
                         new
                         {
                             Id = 43,
-                            CreatedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1121),
+                            CreatedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6141),
                             Description = "Can create customer accounts",
                             IsActive = true,
                             Module = "Customer",
@@ -915,7 +915,7 @@ namespace MedicineDelivery.Infrastructure.Migrations
                         new
                         {
                             Id = 44,
-                            CreatedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1122),
+                            CreatedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6142),
                             Description = "Can update own customer information",
                             IsActive = true,
                             Module = "Customer",
@@ -924,7 +924,7 @@ namespace MedicineDelivery.Infrastructure.Migrations
                         new
                         {
                             Id = 45,
-                            CreatedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1123),
+                            CreatedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6143),
                             Description = "Can delete own customer account",
                             IsActive = true,
                             Module = "Customer",
@@ -933,7 +933,7 @@ namespace MedicineDelivery.Infrastructure.Migrations
                         new
                         {
                             Id = 46,
-                            CreatedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1125),
+                            CreatedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6144),
                             Description = "Can read all customer information",
                             IsActive = true,
                             Module = "Customer",
@@ -942,7 +942,7 @@ namespace MedicineDelivery.Infrastructure.Migrations
                         new
                         {
                             Id = 47,
-                            CreatedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1126),
+                            CreatedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6146),
                             Description = "Can update any customer information",
                             IsActive = true,
                             Module = "Customer",
@@ -951,11 +951,38 @@ namespace MedicineDelivery.Infrastructure.Migrations
                         new
                         {
                             Id = 48,
-                            CreatedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1127),
+                            CreatedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6147),
                             Description = "Can delete any customer account",
                             IsActive = true,
                             Module = "Customer",
                             Name = "AllCustomerDelete"
+                        },
+                        new
+                        {
+                            Id = 49,
+                            CreatedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6149),
+                            Description = "Can read all Chemist information",
+                            IsActive = true,
+                            Module = "Chemist",
+                            Name = "AllChemistRead"
+                        },
+                        new
+                        {
+                            Id = 50,
+                            CreatedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6150),
+                            Description = "Can update any Chemist information",
+                            IsActive = true,
+                            Module = "Chemist",
+                            Name = "AllChemistUpdate"
+                        },
+                        new
+                        {
+                            Id = 51,
+                            CreatedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6151),
+                            Description = "Can delete any Chemist account",
+                            IsActive = true,
+                            Module = "Chemist",
+                            Name = "AllChemistDelete"
                         });
                 });
 
@@ -963,36 +990,36 @@ namespace MedicineDelivery.Infrastructure.Migrations
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
+                        .HasColumnType("integer");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<string>("Category")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("text");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("Description")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("text");
 
                     b.Property<bool>("IsActive")
-                        .HasColumnType("bit");
+                        .HasColumnType("boolean");
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("text");
 
                     b.Property<decimal>("Price")
-                        .HasColumnType("decimal(18,2)");
+                        .HasColumnType("numeric");
 
                     b.Property<int>("StockQuantity")
-                        .HasColumnType("int");
+                        .HasColumnType("integer");
 
                     b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("timestamp with time zone");
 
                     b.HasKey("Id");
 
@@ -1003,23 +1030,23 @@ namespace MedicineDelivery.Infrastructure.Migrations
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
+                        .HasColumnType("integer");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("Description")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("text");
 
                     b.Property<bool>("IsActive")
-                        .HasColumnType("bit");
+                        .HasColumnType("boolean");
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("text");
 
                     b.HasKey("Id");
 
@@ -1029,7 +1056,7 @@ namespace MedicineDelivery.Infrastructure.Migrations
                         new
                         {
                             Id = 1,
-                            CreatedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1328),
+                            CreatedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6434),
                             Description = "Full system access",
                             IsActive = true,
                             Name = "Admin"
@@ -1037,7 +1064,7 @@ namespace MedicineDelivery.Infrastructure.Migrations
                         new
                         {
                             Id = 2,
-                            CreatedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1330),
+                            CreatedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6436),
                             Description = "Management level access",
                             IsActive = true,
                             Name = "Manager"
@@ -1045,7 +1072,7 @@ namespace MedicineDelivery.Infrastructure.Migrations
                         new
                         {
                             Id = 3,
-                            CreatedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1331),
+                            CreatedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6438),
                             Description = "Customer support access",
                             IsActive = true,
                             Name = "CustomerSupport"
@@ -1053,7 +1080,7 @@ namespace MedicineDelivery.Infrastructure.Migrations
                         new
                         {
                             Id = 4,
-                            CreatedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1333),
+                            CreatedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6439),
                             Description = "Customer access",
                             IsActive = true,
                             Name = "Customer"
@@ -1061,7 +1088,7 @@ namespace MedicineDelivery.Infrastructure.Migrations
                         new
                         {
                             Id = 5,
-                            CreatedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1334),
+                            CreatedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6440),
                             Description = "Chemist/pharmacist access",
                             IsActive = true,
                             Name = "Chemist"
@@ -1071,19 +1098,19 @@ namespace MedicineDelivery.Infrastructure.Migrations
             modelBuilder.Entity("MedicineDelivery.Domain.Entities.RolePermission", b =>
                 {
                     b.Property<int>("RoleId")
-                        .HasColumnType("int");
+                        .HasColumnType("integer");
 
                     b.Property<int>("PermissionId")
-                        .HasColumnType("int");
+                        .HasColumnType("integer");
 
                     b.Property<DateTime>("GrantedAt")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("GrantedBy")
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("text");
 
                     b.Property<bool>("IsActive")
-                        .HasColumnType("bit");
+                        .HasColumnType("boolean");
 
                     b.HasKey("RoleId", "PermissionId");
 
@@ -1096,819 +1123,882 @@ namespace MedicineDelivery.Infrastructure.Migrations
                         {
                             RoleId = 1,
                             PermissionId = 1,
-                            GrantedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1357),
+                            GrantedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6484),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = 1,
                             PermissionId = 2,
-                            GrantedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1359),
+                            GrantedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6485),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = 1,
                             PermissionId = 3,
-                            GrantedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1360),
+                            GrantedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6486),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = 1,
                             PermissionId = 4,
-                            GrantedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1362),
+                            GrantedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6487),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = 1,
                             PermissionId = 5,
-                            GrantedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1362),
+                            GrantedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6488),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = 1,
                             PermissionId = 6,
-                            GrantedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1364),
+                            GrantedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6489),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = 1,
                             PermissionId = 7,
-                            GrantedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1365),
+                            GrantedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6490),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = 1,
                             PermissionId = 8,
-                            GrantedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1366),
+                            GrantedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6491),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = 1,
                             PermissionId = 9,
-                            GrantedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1367),
+                            GrantedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6492),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = 1,
                             PermissionId = 10,
-                            GrantedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1367),
+                            GrantedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6493),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = 1,
                             PermissionId = 11,
-                            GrantedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1368),
+                            GrantedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6495),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = 1,
                             PermissionId = 12,
-                            GrantedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1369),
+                            GrantedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6496),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = 1,
                             PermissionId = 13,
-                            GrantedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1370),
+                            GrantedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6497),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = 1,
                             PermissionId = 14,
-                            GrantedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1371),
+                            GrantedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6497),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = 1,
                             PermissionId = 15,
-                            GrantedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1372),
+                            GrantedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6498),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = 1,
                             PermissionId = 16,
-                            GrantedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1373),
+                            GrantedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6500),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = 1,
                             PermissionId = 17,
-                            GrantedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1374),
+                            GrantedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6501),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = 1,
                             PermissionId = 18,
-                            GrantedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1375),
+                            GrantedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6501),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = 1,
                             PermissionId = 19,
-                            GrantedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1376),
+                            GrantedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6502),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = 1,
                             PermissionId = 20,
-                            GrantedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1377),
+                            GrantedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6503),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = 1,
                             PermissionId = 21,
-                            GrantedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1377),
+                            GrantedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6504),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = 1,
                             PermissionId = 22,
-                            GrantedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1378),
+                            GrantedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6505),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = 1,
                             PermissionId = 23,
-                            GrantedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1379),
+                            GrantedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6506),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = 1,
                             PermissionId = 24,
-                            GrantedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1380),
+                            GrantedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6507),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = 1,
                             PermissionId = 25,
-                            GrantedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1381),
+                            GrantedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6507),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = 1,
                             PermissionId = 26,
-                            GrantedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1382),
+                            GrantedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6508),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = 1,
                             PermissionId = 27,
-                            GrantedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1383),
+                            GrantedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6509),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = 1,
                             PermissionId = 28,
-                            GrantedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1383),
+                            GrantedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6510),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = 1,
                             PermissionId = 29,
-                            GrantedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1384),
+                            GrantedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6511),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = 1,
                             PermissionId = 30,
-                            GrantedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1386),
+                            GrantedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6512),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = 1,
                             PermissionId = 31,
-                            GrantedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1387),
+                            GrantedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6513),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = 1,
                             PermissionId = 32,
-                            GrantedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1388),
+                            GrantedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6513),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = 1,
                             PermissionId = 33,
-                            GrantedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1388),
+                            GrantedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6514),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = 1,
                             PermissionId = 34,
-                            GrantedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1389),
+                            GrantedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6516),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = 1,
                             PermissionId = 35,
-                            GrantedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1390),
+                            GrantedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6517),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = 1,
                             PermissionId = 36,
-                            GrantedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1391),
+                            GrantedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6518),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = 1,
                             PermissionId = 37,
-                            GrantedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1392),
+                            GrantedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6519),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = 1,
                             PermissionId = 38,
-                            GrantedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1393),
+                            GrantedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6519),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = 1,
                             PermissionId = 39,
-                            GrantedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1394),
+                            GrantedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6520),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = 1,
                             PermissionId = 40,
-                            GrantedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1395),
+                            GrantedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6521),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = 1,
                             PermissionId = 41,
-                            GrantedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1395),
+                            GrantedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6522),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = 1,
                             PermissionId = 46,
-                            GrantedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1396),
+                            GrantedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6523),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = 1,
                             PermissionId = 47,
-                            GrantedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1397),
+                            GrantedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6524),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = 1,
                             PermissionId = 48,
-                            GrantedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1398),
+                            GrantedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6524),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = 1,
                             PermissionId = 43,
-                            GrantedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1399),
+                            GrantedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6525),
+                            IsActive = true
+                        },
+                        new
+                        {
+                            RoleId = 1,
+                            PermissionId = 49,
+                            GrantedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6526),
+                            IsActive = true
+                        },
+                        new
+                        {
+                            RoleId = 1,
+                            PermissionId = 50,
+                            GrantedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6527),
+                            IsActive = true
+                        },
+                        new
+                        {
+                            RoleId = 1,
+                            PermissionId = 51,
+                            GrantedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6528),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = 2,
                             PermissionId = 1,
-                            GrantedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1400),
+                            GrantedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6529),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = 2,
                             PermissionId = 3,
-                            GrantedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1401),
+                            GrantedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6530),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = 2,
                             PermissionId = 5,
-                            GrantedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1402),
+                            GrantedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6531),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = 2,
                             PermissionId = 7,
-                            GrantedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1402),
+                            GrantedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6532),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = 2,
                             PermissionId = 9,
-                            GrantedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1403),
+                            GrantedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6532),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = 2,
                             PermissionId = 11,
-                            GrantedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1404),
+                            GrantedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6533),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = 2,
                             PermissionId = 17,
-                            GrantedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1406),
+                            GrantedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6534),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = 2,
                             PermissionId = 18,
-                            GrantedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1406),
+                            GrantedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6535),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = 2,
                             PermissionId = 19,
-                            GrantedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1407),
+                            GrantedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6536),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = 2,
                             PermissionId = 20,
-                            GrantedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1408),
+                            GrantedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6538),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = 2,
                             PermissionId = 21,
-                            GrantedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1409),
+                            GrantedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6538),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = 2,
                             PermissionId = 22,
-                            GrantedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1410),
+                            GrantedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6539),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = 2,
                             PermissionId = 23,
-                            GrantedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1411),
+                            GrantedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6540),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = 2,
                             PermissionId = 24,
-                            GrantedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1412),
+                            GrantedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6541),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = 2,
                             PermissionId = 25,
-                            GrantedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1413),
+                            GrantedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6542),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = 2,
                             PermissionId = 26,
-                            GrantedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1414),
+                            GrantedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6543),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = 2,
                             PermissionId = 27,
-                            GrantedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1414),
+                            GrantedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6544),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = 2,
                             PermissionId = 28,
-                            GrantedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1415),
+                            GrantedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6545),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = 2,
                             PermissionId = 30,
-                            GrantedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1416),
+                            GrantedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6545),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = 2,
                             PermissionId = 31,
-                            GrantedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1417),
+                            GrantedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6546),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = 2,
                             PermissionId = 32,
-                            GrantedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1418),
+                            GrantedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6547),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = 2,
                             PermissionId = 33,
-                            GrantedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1419),
+                            GrantedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6551),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = 2,
                             PermissionId = 34,
-                            GrantedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1420),
+                            GrantedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6551),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = 2,
                             PermissionId = 35,
-                            GrantedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1421),
+                            GrantedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6552),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = 2,
                             PermissionId = 36,
-                            GrantedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1422),
+                            GrantedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6553),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = 2,
                             PermissionId = 37,
-                            GrantedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1423),
+                            GrantedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6554),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = 2,
                             PermissionId = 38,
-                            GrantedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1423),
+                            GrantedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6555),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = 2,
                             PermissionId = 40,
-                            GrantedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1424),
+                            GrantedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6556),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = 2,
                             PermissionId = 41,
-                            GrantedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1425),
+                            GrantedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6556),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = 2,
                             PermissionId = 46,
-                            GrantedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1426),
+                            GrantedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6557),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = 2,
                             PermissionId = 47,
-                            GrantedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1427),
+                            GrantedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6558),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = 2,
                             PermissionId = 48,
-                            GrantedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1428),
+                            GrantedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6559),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = 2,
                             PermissionId = 43,
-                            GrantedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1430),
+                            GrantedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6560),
+                            IsActive = true
+                        },
+                        new
+                        {
+                            RoleId = 2,
+                            PermissionId = 49,
+                            GrantedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6561),
+                            IsActive = true
+                        },
+                        new
+                        {
+                            RoleId = 2,
+                            PermissionId = 50,
+                            GrantedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6562),
+                            IsActive = true
+                        },
+                        new
+                        {
+                            RoleId = 2,
+                            PermissionId = 51,
+                            GrantedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6563),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = 3,
                             PermissionId = 5,
-                            GrantedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1430),
+                            GrantedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6564),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = 3,
                             PermissionId = 9,
-                            GrantedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1431),
+                            GrantedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6565),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = 3,
                             PermissionId = 10,
-                            GrantedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1432),
+                            GrantedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6566),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = 3,
                             PermissionId = 21,
-                            GrantedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1433),
+                            GrantedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6570),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = 3,
                             PermissionId = 22,
-                            GrantedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1434),
+                            GrantedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6572),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = 3,
                             PermissionId = 23,
-                            GrantedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1435),
+                            GrantedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6573),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = 3,
                             PermissionId = 24,
-                            GrantedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1436),
+                            GrantedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6582),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = 3,
                             PermissionId = 25,
-                            GrantedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1437),
+                            GrantedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6582),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = 3,
                             PermissionId = 26,
-                            GrantedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1438),
+                            GrantedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6583),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = 3,
                             PermissionId = 27,
-                            GrantedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1438),
+                            GrantedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6584),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = 3,
                             PermissionId = 28,
-                            GrantedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1460),
+                            GrantedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6585),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = 3,
                             PermissionId = 30,
-                            GrantedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1461),
+                            GrantedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6586),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = 3,
                             PermissionId = 31,
-                            GrantedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1462),
+                            GrantedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6587),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = 3,
                             PermissionId = 32,
-                            GrantedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1463),
+                            GrantedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6588),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = 3,
                             PermissionId = 33,
-                            GrantedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1464),
+                            GrantedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6589),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = 3,
                             PermissionId = 34,
-                            GrantedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1464),
+                            GrantedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6590),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = 3,
                             PermissionId = 36,
-                            GrantedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1465),
+                            GrantedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6590),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = 3,
                             PermissionId = 37,
-                            GrantedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1466),
+                            GrantedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6591),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = 3,
                             PermissionId = 46,
-                            GrantedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1467),
+                            GrantedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6592),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = 3,
                             PermissionId = 47,
-                            GrantedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1468),
+                            GrantedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6593),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = 3,
                             PermissionId = 48,
-                            GrantedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1469),
+                            GrantedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6594),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = 3,
                             PermissionId = 43,
-                            GrantedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1470),
+                            GrantedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6595),
+                            IsActive = true
+                        },
+                        new
+                        {
+                            RoleId = 3,
+                            PermissionId = 49,
+                            GrantedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6596),
+                            IsActive = true
+                        },
+                        new
+                        {
+                            RoleId = 3,
+                            PermissionId = 50,
+                            GrantedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6597),
+                            IsActive = true
+                        },
+                        new
+                        {
+                            RoleId = 3,
+                            PermissionId = 51,
+                            GrantedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6598),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = 4,
                             PermissionId = 5,
-                            GrantedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1471),
+                            GrantedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6598),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = 4,
                             PermissionId = 9,
-                            GrantedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1475),
+                            GrantedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6599),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = 4,
                             PermissionId = 10,
-                            GrantedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1476),
+                            GrantedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6600),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = 4,
                             PermissionId = 42,
-                            GrantedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1478),
+                            GrantedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6601),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = 4,
                             PermissionId = 44,
-                            GrantedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1479),
+                            GrantedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6602),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = 4,
                             PermissionId = 45,
-                            GrantedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1480),
+                            GrantedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6603),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = 5,
                             PermissionId = 5,
-                            GrantedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1481),
+                            GrantedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6604),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = 5,
                             PermissionId = 6,
-                            GrantedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1482),
+                            GrantedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6605),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = 5,
                             PermissionId = 7,
-                            GrantedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1482),
+                            GrantedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6606),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = 5,
                             PermissionId = 8,
-                            GrantedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1483),
+                            GrantedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6607),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = 5,
                             PermissionId = 9,
-                            GrantedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1484),
+                            GrantedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6608),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = 5,
                             PermissionId = 10,
-                            GrantedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1485),
+                            GrantedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6630),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = 5,
                             PermissionId = 11,
-                            GrantedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1486),
+                            GrantedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6631),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = 5,
                             PermissionId = 12,
-                            GrantedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1487),
+                            GrantedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6632),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = 5,
                             PermissionId = 30,
-                            GrantedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1488),
+                            GrantedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6633),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = 5,
                             PermissionId = 32,
-                            GrantedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1488),
+                            GrantedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6634),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = 5,
                             PermissionId = 33,
-                            GrantedAt = new DateTime(2025, 9, 20, 11, 25, 47, 313, DateTimeKind.Utc).AddTicks(1489),
+                            GrantedAt = new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6635),
                             IsActive = true
                         });
                 });
@@ -1916,28 +2006,28 @@ namespace MedicineDelivery.Infrastructure.Migrations
             modelBuilder.Entity("MedicineDelivery.Domain.Entities.User", b =>
                 {
                     b.Property<string>("Id")
-                        .HasColumnType("nvarchar(450)");
+                        .HasColumnType("text");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("Email")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("text");
 
                     b.Property<string>("FirstName")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("text");
 
                     b.Property<bool>("IsActive")
-                        .HasColumnType("bit");
+                        .HasColumnType("boolean");
 
                     b.Property<DateTime?>("LastLoginAt")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("LastName")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("text");
 
                     b.HasKey("Id");
 
@@ -1947,19 +2037,19 @@ namespace MedicineDelivery.Infrastructure.Migrations
             modelBuilder.Entity("MedicineDelivery.Domain.Entities.UserRole", b =>
                 {
                     b.Property<string>("UserId")
-                        .HasColumnType("nvarchar(450)");
+                        .HasColumnType("text");
 
                     b.Property<int>("RoleId")
-                        .HasColumnType("int");
+                        .HasColumnType("integer");
 
                     b.Property<DateTime>("AssignedAt")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("AssignedBy")
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("text");
 
                     b.Property<bool>("IsActive")
-                        .HasColumnType("bit");
+                        .HasColumnType("boolean");
 
                     b.HasKey("UserId", "RoleId");
 
@@ -1971,69 +2061,69 @@ namespace MedicineDelivery.Infrastructure.Migrations
             modelBuilder.Entity("MedicineDelivery.Infrastructure.Data.ApplicationUser", b =>
                 {
                     b.Property<string>("Id")
-                        .HasColumnType("nvarchar(450)");
+                        .HasColumnType("text");
 
                     b.Property<int>("AccessFailedCount")
-                        .HasColumnType("int");
+                        .HasColumnType("integer");
 
                     b.Property<string>("ConcurrencyStamp")
                         .IsConcurrencyToken()
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("text");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("Email")
                         .HasMaxLength(256)
-                        .HasColumnType("nvarchar(256)");
+                        .HasColumnType("character varying(256)");
 
                     b.Property<bool>("EmailConfirmed")
-                        .HasColumnType("bit");
+                        .HasColumnType("boolean");
 
                     b.Property<string>("FirstName")
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("text");
 
                     b.Property<bool>("IsActive")
-                        .HasColumnType("bit");
+                        .HasColumnType("boolean");
 
                     b.Property<DateTime?>("LastLoginAt")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("LastName")
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("text");
 
                     b.Property<bool>("LockoutEnabled")
-                        .HasColumnType("bit");
+                        .HasColumnType("boolean");
 
                     b.Property<DateTimeOffset?>("LockoutEnd")
-                        .HasColumnType("datetimeoffset");
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("NormalizedEmail")
                         .HasMaxLength(256)
-                        .HasColumnType("nvarchar(256)");
+                        .HasColumnType("character varying(256)");
 
                     b.Property<string>("NormalizedUserName")
                         .HasMaxLength(256)
-                        .HasColumnType("nvarchar(256)");
+                        .HasColumnType("character varying(256)");
 
                     b.Property<string>("PasswordHash")
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("text");
 
                     b.Property<string>("PhoneNumber")
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("text");
 
                     b.Property<bool>("PhoneNumberConfirmed")
-                        .HasColumnType("bit");
+                        .HasColumnType("boolean");
 
                     b.Property<string>("SecurityStamp")
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("text");
 
                     b.Property<bool>("TwoFactorEnabled")
-                        .HasColumnType("bit");
+                        .HasColumnType("boolean");
 
                     b.Property<string>("UserName")
                         .HasMaxLength(256)
-                        .HasColumnType("nvarchar(256)");
+                        .HasColumnType("character varying(256)");
 
                     b.HasKey("Id");
 
@@ -2042,8 +2132,7 @@ namespace MedicineDelivery.Infrastructure.Migrations
 
                     b.HasIndex("NormalizedUserName")
                         .IsUnique()
-                        .HasDatabaseName("UserNameIndex")
-                        .HasFilter("[NormalizedUserName] IS NOT NULL");
+                        .HasDatabaseName("UserNameIndex");
 
                     b.ToTable("AspNetUsers", (string)null);
                 });
@@ -2051,26 +2140,25 @@ namespace MedicineDelivery.Infrastructure.Migrations
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRole", b =>
                 {
                     b.Property<string>("Id")
-                        .HasColumnType("nvarchar(450)");
+                        .HasColumnType("text");
 
                     b.Property<string>("ConcurrencyStamp")
                         .IsConcurrencyToken()
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("text");
 
                     b.Property<string>("Name")
                         .HasMaxLength(256)
-                        .HasColumnType("nvarchar(256)");
+                        .HasColumnType("character varying(256)");
 
                     b.Property<string>("NormalizedName")
                         .HasMaxLength(256)
-                        .HasColumnType("nvarchar(256)");
+                        .HasColumnType("character varying(256)");
 
                     b.HasKey("Id");
 
                     b.HasIndex("NormalizedName")
                         .IsUnique()
-                        .HasDatabaseName("RoleNameIndex")
-                        .HasFilter("[NormalizedName] IS NOT NULL");
+                        .HasDatabaseName("RoleNameIndex");
 
                     b.ToTable("AspNetRoles", (string)null);
                 });
@@ -2079,19 +2167,19 @@ namespace MedicineDelivery.Infrastructure.Migrations
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
+                        .HasColumnType("integer");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<string>("ClaimType")
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("text");
 
                     b.Property<string>("ClaimValue")
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("text");
 
                     b.Property<string>("RoleId")
                         .IsRequired()
-                        .HasColumnType("nvarchar(450)");
+                        .HasColumnType("text");
 
                     b.HasKey("Id");
 
@@ -2104,19 +2192,19 @@ namespace MedicineDelivery.Infrastructure.Migrations
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
+                        .HasColumnType("integer");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<string>("ClaimType")
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("text");
 
                     b.Property<string>("ClaimValue")
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("text");
 
                     b.Property<string>("UserId")
                         .IsRequired()
-                        .HasColumnType("nvarchar(450)");
+                        .HasColumnType("text");
 
                     b.HasKey("Id");
 
@@ -2128,17 +2216,17 @@ namespace MedicineDelivery.Infrastructure.Migrations
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserLogin<string>", b =>
                 {
                     b.Property<string>("LoginProvider")
-                        .HasColumnType("nvarchar(450)");
+                        .HasColumnType("text");
 
                     b.Property<string>("ProviderKey")
-                        .HasColumnType("nvarchar(450)");
+                        .HasColumnType("text");
 
                     b.Property<string>("ProviderDisplayName")
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("text");
 
                     b.Property<string>("UserId")
                         .IsRequired()
-                        .HasColumnType("nvarchar(450)");
+                        .HasColumnType("text");
 
                     b.HasKey("LoginProvider", "ProviderKey");
 
@@ -2150,10 +2238,10 @@ namespace MedicineDelivery.Infrastructure.Migrations
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserRole<string>", b =>
                 {
                     b.Property<string>("UserId")
-                        .HasColumnType("nvarchar(450)");
+                        .HasColumnType("text");
 
                     b.Property<string>("RoleId")
-                        .HasColumnType("nvarchar(450)");
+                        .HasColumnType("text");
 
                     b.HasKey("UserId", "RoleId");
 
@@ -2165,16 +2253,16 @@ namespace MedicineDelivery.Infrastructure.Migrations
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserToken<string>", b =>
                 {
                     b.Property<string>("UserId")
-                        .HasColumnType("nvarchar(450)");
+                        .HasColumnType("text");
 
                     b.Property<string>("LoginProvider")
-                        .HasColumnType("nvarchar(450)");
+                        .HasColumnType("text");
 
                     b.Property<string>("Name")
-                        .HasColumnType("nvarchar(450)");
+                        .HasColumnType("text");
 
                     b.Property<string>("Value")
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("text");
 
                     b.HasKey("UserId", "LoginProvider", "Name");
 

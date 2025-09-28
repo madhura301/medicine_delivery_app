@@ -9,10 +9,6 @@ namespace MedicineDelivery.Domain.Entities
         public string MobileNumber { get; set; } = string.Empty;
         public string? AlternativeMobileNumber { get; set; }
         public string? EmailId { get; set; }
-        public string? Address { get; set; }
-        public string? City { get; set; }
-        public string? State { get; set; }
-        public string? PostalCode { get; set; }
         public DateTime DateOfBirth { get; set; }
         public string? Gender { get; set; }
         public string? CustomerPhoto { get; set; }
@@ -21,7 +17,8 @@ namespace MedicineDelivery.Domain.Entities
         public DateTime? UpdatedOn { get; set; }
         public string? UserId { get; set; } // Foreign key to ApplicationUser
         
-        // Navigation property
+        // Navigation properties
         public User? User { get; set; }
+        public ICollection<CustomerAddress>? Addresses { get; set; }
     }
 }

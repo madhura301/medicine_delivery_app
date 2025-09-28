@@ -13,15 +13,18 @@ namespace MedicineDelivery.Infrastructure.Services
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly IUnitOfWork _unitOfWork;
         private readonly IMapper _mapper;
+        private readonly ICustomerAddressService _customerAddressService;
 
         public CustomerService(
             UserManager<ApplicationUser> userManager,
             IUnitOfWork unitOfWork,
-            IMapper mapper)
+            IMapper mapper,
+            ICustomerAddressService customerAddressService)
         {
             _userManager = userManager;
             _unitOfWork = unitOfWork;
             _mapper = mapper;
+            _customerAddressService = customerAddressService;
         }
 
         public async Task<CustomerRegistrationResult> RegisterCustomerAsync(CustomerRegistrationDto registrationDto)
@@ -108,10 +111,6 @@ namespace MedicineDelivery.Infrastructure.Services
                     MobileNumber = registrationDto.MobileNumber,
                     AlternativeMobileNumber = registrationDto.AlternativeMobileNumber,
                     EmailId = registrationDto.EmailId,
-                    Address = registrationDto.Address,
-                    City = registrationDto.City,
-                    State = registrationDto.State,
-                    PostalCode = registrationDto.PostalCode,
                     DateOfBirth = registrationDto.DateOfBirth,
                     Gender = registrationDto.Gender,
                     UserId = identityUser.Id,
@@ -121,6 +120,24 @@ namespace MedicineDelivery.Infrastructure.Services
 
                 await _unitOfWork.Customers.AddAsync(customer);
                 await _unitOfWork.SaveChangesAsync();
+
+                // Create addresses if provided
+                if (registrationDto.Addresses != null && registrationDto.Addresses.Any())
+                {
+                    foreach (var addressDto in registrationDto.Addresses)
+                    {
+                        var createAddressDto = new CreateCustomerAddressDto
+                        {
+                            CustomerId = customer.CustomerId,
+                            Address = addressDto.Address,
+                            City = addressDto.City,
+                            State = addressDto.State,
+                            PostalCode = addressDto.PostalCode,
+                            IsDefault = addressDto.IsDefault
+                        };
+                        await _customerAddressService.CreateCustomerAddressAsync(createAddressDto);
+                    }
+                }
 
                 // Create response
                 var response = new CustomerResponseDto
@@ -132,17 +149,14 @@ namespace MedicineDelivery.Infrastructure.Services
                     MobileNumber = customer.MobileNumber,
                     AlternativeMobileNumber = customer.AlternativeMobileNumber,
                     EmailId = customer.EmailId,
-                    Address = customer.Address,
-                    City = customer.City,
-                    State = customer.State,
-                    PostalCode = customer.PostalCode,
                     DateOfBirth = customer.DateOfBirth,
                     Gender = customer.Gender,
                     CustomerPhoto = customer.CustomerPhoto,
                     IsActive = customer.IsActive,
                     CreatedOn = customer.CreatedOn,
                     UpdatedOn = customer.UpdatedOn,
-                    UserId = customer.UserId
+                    UserId = customer.UserId,
+                    Addresses = await _customerAddressService.GetCustomerAddressesByCustomerIdAsync(customer.CustomerId)
                 };
 
                 return new CustomerRegistrationResult
@@ -164,25 +178,45 @@ namespace MedicineDelivery.Infrastructure.Services
         public async Task<CustomerDto?> GetCustomerByIdAsync(Guid id)
         {
             var customer = await _unitOfWork.Customers.FirstOrDefaultAsync(c => c.CustomerId == id);
-            return customer != null ? _mapper.Map<CustomerDto>(customer) : null;
+            if (customer == null) return null;
+
+            var customerDto = _mapper.Map<CustomerDto>(customer);
+            customerDto.Addresses = await _customerAddressService.GetCustomerAddressesByCustomerIdAsync(id);
+            return customerDto;
         }
 
         public async Task<CustomerDto?> GetCustomerByMobileNumberAsync(string mobileNumber)
         {
             var customer = await _unitOfWork.Customers.FirstOrDefaultAsync(c => c.MobileNumber == mobileNumber);
-            return customer != null ? _mapper.Map<CustomerDto>(customer) : null;
+            if (customer == null) return null;
+
+            var customerDto = _mapper.Map<CustomerDto>(customer);
+            customerDto.Addresses = await _customerAddressService.GetCustomerAddressesByCustomerIdAsync(customer.CustomerId);
+            return customerDto;
         }
 
         public async Task<CustomerDto?> GetCustomerByUserIdAsync(string userId)
         {
             var customer = await _unitOfWork.Customers.FirstOrDefaultAsync(c => c.UserId == userId);
-            return customer != null ? _mapper.Map<CustomerDto>(customer) : null;
+            if (customer == null) return null;
+
+            var customerDto = _mapper.Map<CustomerDto>(customer);
+            customerDto.Addresses = await _customerAddressService.GetCustomerAddressesByCustomerIdAsync(customer.CustomerId);
+            return customerDto;
         }
 
         public async Task<List<CustomerDto>> GetAllCustomersAsync()
         {
             var customers = await _unitOfWork.Customers.GetAllAsync();
-            return _mapper.Map<List<CustomerDto>>(customers);
+            var customerDtos = _mapper.Map<List<CustomerDto>>(customers);
+            
+            // Load addresses for each customer
+            foreach (var customerDto in customerDtos)
+            {
+                customerDto.Addresses = await _customerAddressService.GetCustomerAddressesByCustomerIdAsync(customerDto.CustomerId);
+            }
+            
+            return customerDtos;
         }
 
         public async Task<CustomerDto?> UpdateCustomerAsync(Guid id, UpdateCustomerDto updateDto)
@@ -197,10 +231,6 @@ namespace MedicineDelivery.Infrastructure.Services
             customer.MobileNumber = updateDto.MobileNumber;
             customer.AlternativeMobileNumber = updateDto.AlternativeMobileNumber;
             customer.EmailId = updateDto.EmailId;
-            customer.Address = updateDto.Address;
-            customer.City = updateDto.City;
-            customer.State = updateDto.State;
-            customer.PostalCode = updateDto.PostalCode;
             customer.DateOfBirth = updateDto.DateOfBirth;
             customer.Gender = updateDto.Gender;
             customer.CustomerPhoto = updateDto.CustomerPhoto;
@@ -208,7 +238,37 @@ namespace MedicineDelivery.Infrastructure.Services
             customer.UpdatedOn = DateTime.UtcNow;
 
             await _unitOfWork.SaveChangesAsync();
-            return _mapper.Map<CustomerDto>(customer);
+
+            // Handle address updates if provided
+            if (updateDto.Addresses != null && updateDto.Addresses.Any())
+            {
+                // For simplicity, we'll delete existing addresses and create new ones
+                // In a real scenario, you might want more sophisticated update logic
+                var existingAddresses = await _customerAddressService.GetCustomerAddressesByCustomerIdAsync(id);
+                foreach (var existingAddress in existingAddresses)
+                {
+                    await _customerAddressService.DeleteCustomerAddressAsync(existingAddress.Id);
+                }
+
+                // Create new addresses
+                foreach (var addressDto in updateDto.Addresses)
+                {
+                    var createAddressDto = new CreateCustomerAddressDto
+                    {
+                        CustomerId = id,
+                        Address = addressDto.Address,
+                        City = addressDto.City,
+                        State = addressDto.State,
+                        PostalCode = addressDto.PostalCode,
+                        IsDefault = addressDto.IsDefault
+                    };
+                    await _customerAddressService.CreateCustomerAddressAsync(createAddressDto);
+                }
+            }
+
+            var customerDto = _mapper.Map<CustomerDto>(customer);
+            customerDto.Addresses = await _customerAddressService.GetCustomerAddressesByCustomerIdAsync(id);
+            return customerDto;
         }
 
         public async Task<bool> DeleteCustomerAsync(Guid id)
