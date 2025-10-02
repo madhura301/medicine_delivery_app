@@ -111,7 +111,7 @@ namespace MedicineDelivery.Infrastructure.Services
                     MobileNumber = registrationDto.MobileNumber,
                     AlternativeMobileNumber = registrationDto.AlternativeMobileNumber,
                     EmailId = registrationDto.EmailId,
-                    DateOfBirth = registrationDto.DateOfBirth,
+                    DateOfBirth = DateTime.Parse(registrationDto.DateOfBirth.ToString()).ToUniversalTime(),
                     Gender = registrationDto.Gender,
                     UserId = identityUser.Id,
                     CreatedOn = DateTime.UtcNow,
@@ -231,7 +231,7 @@ namespace MedicineDelivery.Infrastructure.Services
             customer.MobileNumber = updateDto.MobileNumber;
             customer.AlternativeMobileNumber = updateDto.AlternativeMobileNumber;
             customer.EmailId = updateDto.EmailId;
-            customer.DateOfBirth = updateDto.DateOfBirth;
+            customer.DateOfBirth = DateTime.Parse(updateDto.DateOfBirth.ToString()).ToUniversalTime();
             customer.Gender = updateDto.Gender;
             customer.CustomerPhoto = updateDto.CustomerPhoto;
             customer.IsActive = updateDto.IsActive;
