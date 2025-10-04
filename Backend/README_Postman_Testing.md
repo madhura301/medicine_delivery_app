@@ -32,8 +32,8 @@ This guide explains how to use the provided Postman collection to test all API e
 
 After importing, you should see:
 - **Collection Name:** "Medicine Delivery API Tests"
-- **Folders:** Authentication, Medical Stores, Customer Support, Managers, Users Management, Customer Addresses, Cleanup
-- **Total Requests:** 25+ API endpoints
+- **Folders:** Authentication, Medical Stores, Customer Support, Managers, Users Management, Customers, Customer Addresses, Cleanup
+- **Total Requests:** 30+ API endpoints
 
 ### Step 3: Set Environment Variables (Optional)
 
@@ -44,6 +44,8 @@ The collection uses these variables automatically:
 - `medical_store_id`: Automatically set after medical store creation
 - `customer_support_id`: Automatically set after customer support creation
 - `manager_id`: Automatically set after manager creation
+- `customer_id`: Automatically set after customer registration
+- `admin_created_customer_id`: Automatically set after admin creates customer
 - `customer_address_id`: Automatically set after customer address creation
 
 ## ▶️ Running the Tests
@@ -95,6 +97,16 @@ The collection uses these variables automatically:
 ### 👤 Users Management (2 tests)
 - **Get All Users** - Retrieves all users
 - **Get User by ID** - Retrieves specific user
+
+### 👥 Customers (8 tests)
+- **Register Customer (Anonymous)** - Customer self-registration with addresses
+- **Create Customer (Admin)** - Admin creates customer with addresses
+- **Get All Customers** - Retrieves all customers
+- **Get Customer by ID** - Retrieves specific customer
+- **Get Customer by Mobile Number** - Retrieves customer by mobile
+- **Get My Profile** - Customer gets their own profile
+- **Update Customer** - Updates customer information
+- **Delete Customer** - Deletes customer
 
 ### 🏠 Customer Addresses (6 tests)
 - **Create Customer Address** - Creates new customer address with address lines
@@ -222,6 +234,16 @@ Invalid photo file format
 - `GET /api/users` - Get all users
 - `GET /api/users/{id}` - Get user by ID
 
+### Customer Endpoints
+- `POST /api/customers/register` - Register customer (anonymous)
+- `POST /api/customers` - Create customer (admin)
+- `GET /api/customers` - Get all customers
+- `GET /api/customers/{id}` - Get customer by ID
+- `GET /api/customers/by-mobile/{mobileNumber}` - Get customer by mobile
+- `GET /api/customers/my-profile` - Get my profile
+- `PUT /api/customers/{id}` - Update customer
+- `DELETE /api/customers/{id}` - Delete customer
+
 ### Customer Address Endpoints
 - `POST /api/customeraddresses` - Create customer address
 - `GET /api/customeraddresses/{id}` - Get customer address by ID
@@ -250,6 +272,14 @@ The collection uses realistic test data:
 - **Name**: Bob Robert Wilson
 - **Address**: 321 Manager Avenue, Bangalore, Karnataka
 - **Employee ID**: MGR001
+
+### Customer Data
+- **Name**: John William Doe
+- **Mobile**: 9876543210
+- **Email**: john.doe@example.com
+- **Date of Birth**: 1990-05-15
+- **Gender**: Male
+- **Addresses**: Includes address lines 1, 2, 3
 
 ### Customer Address Data
 - **Address**: 123 Main Street

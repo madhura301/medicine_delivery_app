@@ -2,7 +2,7 @@
 	"info": {
 		"_postman_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
 		"name": "Medicine Delivery API Tests",
-		"description": "Comprehensive test collection for Medicine Delivery API endpoints including authentication, user management, medical stores, customer support, managers, and customer addresses. Updated to match latest DTO changes and new by-email endpoints.",
+		"description": "Comprehensive test collection for Medicine Delivery API endpoints including authentication, user management, medical stores, customer support, managers, customers, and customer addresses. Updated to match latest DTO changes and new by-email endpoints.",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
 	},
 	"event": [
@@ -52,6 +52,16 @@
 		},
 		{
 			"key": "customer_address_id",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "customer_id",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "admin_created_customer_id",
 			"value": "",
 			"type": "string"
 		}
@@ -1226,6 +1236,407 @@
 								"api",
 								"users",
 								"{{admin_user_id}}"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Customers",
+			"item": [
+				{
+					"name": "Register Customer (Anonymous)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 201 (Created)', function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"pm.test('Response contains customer data', function () {",
+									"    const jsonData = pm.response.json();",
+									"    pm.expect(jsonData.customer).to.exist;",
+									"    pm.expect(jsonData.customer.customerId).to.exist;",
+									"    pm.environment.set('customer_id', jsonData.customer.customerId);",
+									"    console.log('Customer ID set:', jsonData.customer.customerId);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"customerFirstName\": \"John\",\n    \"customerLastName\": \"Doe\",\n    \"customerMiddleName\": \"William\",\n    \"mobileNumber\": \"9876543210\",\n    \"password\": \"Customer@123\",\n    \"alternativeMobileNumber\": \"9876543211\",\n    \"emailId\": \"john.doe@example.com\",\n    \"dateOfBirth\": \"1990-05-15T00:00:00Z\",\n    \"gender\": \"Male\",\n    \"addresses\": [\n        {\n            \"address\": \"123 Customer Street\",\n            \"addressLine1\": \"Building C\",\n            \"addressLine2\": \"Floor 1\",\n            \"addressLine3\": \"Unit 101\",\n            \"city\": \"Mumbai\",\n            \"state\": \"Maharashtra\",\n            \"postalCode\": \"400001\",\n            \"isDefault\": true\n        }\n    ]\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/customers/register",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"customers",
+								"register"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create Customer (Admin)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 201 (Created)', function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"pm.test('Response contains customer data', function () {",
+									"    const jsonData = pm.response.json();",
+									"    pm.expect(jsonData.customerId).to.exist;",
+									"    pm.environment.set('admin_created_customer_id', jsonData.customerId);",
+									"    console.log('Admin created customer ID set:', jsonData.customerId);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{auth_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"customerFirstName\": \"Jane\",\n    \"customerLastName\": \"Smith\",\n    \"customerMiddleName\": \"Marie\",\n    \"mobileNumber\": \"9876543212\",\n    \"alternativeMobileNumber\": \"9876543213\",\n    \"emailId\": \"jane.smith@example.com\",\n    \"dateOfBirth\": \"1985-08-20T00:00:00Z\",\n    \"gender\": \"Female\",\n    \"customerPhoto\": null,\n    \"userId\": null,\n    \"addresses\": [\n        {\n            \"address\": \"456 Admin Created Street\",\n            \"addressLine1\": \"Building D\",\n            \"addressLine2\": \"Floor 2\",\n            \"addressLine3\": \"Unit 202\",\n            \"city\": \"Delhi\",\n            \"state\": \"Delhi\",\n            \"postalCode\": \"110001\",\n            \"isDefault\": true\n        }\n    ]\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/customers",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"customers"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get All Customers",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Response is an array', function () {",
+									"    const jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.be.an('array');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{auth_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/customers",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"customers"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Customer by ID",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Response contains customer data', function () {",
+									"    const jsonData = pm.response.json();",
+									"    pm.expect(jsonData.customerId).to.exist;",
+									"    pm.expect(jsonData.customerFirstName).to.exist;",
+									"    pm.expect(jsonData.customerLastName).to.exist;",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{auth_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/customers/{{customer_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"customers",
+								"{{customer_id}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Customer by Mobile Number",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Response contains customer data', function () {",
+									"    const jsonData = pm.response.json();",
+									"    pm.expect(jsonData.mobileNumber).to.equal('9876543210');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{auth_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/customers/by-mobile/9876543210",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"customers",
+								"by-mobile",
+								"9876543210"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get My Profile",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Response contains profile data', function () {",
+									"    const jsonData = pm.response.json();",
+									"    pm.expect(jsonData.customerId).to.exist;",
+									"    pm.expect(jsonData.customerFirstName).to.exist;",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{auth_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/customers/my-profile",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"customers",
+								"my-profile"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update Customer",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Response contains updated customer data', function () {",
+									"    const jsonData = pm.response.json();",
+									"    pm.expect(jsonData.customerFirstName).to.equal('John Updated');",
+									"    pm.expect(jsonData.customerLastName).to.equal('Doe Updated');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{auth_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"customerFirstName\": \"John Updated\",\n    \"customerLastName\": \"Doe Updated\",\n    \"customerMiddleName\": \"William Updated\",\n    \"mobileNumber\": \"9876543210\",\n    \"alternativeMobileNumber\": \"9876543211\",\n    \"emailId\": \"john.updated@example.com\",\n    \"dateOfBirth\": \"1990-05-15T00:00:00Z\",\n    \"gender\": \"Male\",\n    \"customerPhoto\": null,\n    \"isActive\": true,\n    \"addresses\": [\n        {\n            \"address\": \"123 Updated Customer Street\",\n            \"addressLine1\": \"Updated Building C\",\n            \"addressLine2\": \"Updated Floor 1\",\n            \"addressLine3\": \"Updated Unit 101\",\n            \"city\": \"Mumbai\",\n            \"state\": \"Maharashtra\",\n            \"postalCode\": \"400001\",\n            \"isDefault\": true\n        }\n    ]\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/customers/{{customer_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"customers",
+								"{{customer_id}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Customer",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 204 (No Content)', function () {",
+									"    pm.response.to.have.status(204);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{auth_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/customers/{{admin_created_customer_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"customers",
+								"{{admin_created_customer_id}}"
 							]
 						}
 					},

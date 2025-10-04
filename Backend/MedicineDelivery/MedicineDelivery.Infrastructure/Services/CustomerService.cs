@@ -114,6 +114,9 @@ namespace MedicineDelivery.Infrastructure.Services
                             {
                                 CustomerId = customer.CustomerId,
                                 Address = addressDto.Address,
+                                AddressLine1 = addressDto.AddressLine1,
+                                AddressLine2 = addressDto.AddressLine2,
+                                AddressLine3 = addressDto.AddressLine3,
                                 City = addressDto.City,
                                 State = addressDto.State,
                                 PostalCode = addressDto.PostalCode,
