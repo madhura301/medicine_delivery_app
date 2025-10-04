@@ -2,7 +2,7 @@
 	"info": {
 		"_postman_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
 		"name": "Medicine Delivery API Tests",
-		"description": "Comprehensive test collection for Medicine Delivery API endpoints including authentication, user management, medical stores, customer support, and managers. Updated to match latest DTO changes and new by-email endpoints.",
+		"description": "Comprehensive test collection for Medicine Delivery API endpoints including authentication, user management, medical stores, customer support, managers, and customer addresses. Updated to match latest DTO changes and new by-email endpoints.",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
 	},
 	"event": [
@@ -47,6 +47,11 @@
 		},
 		{
 			"key": "manager_id",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "customer_address_id",
 			"value": "",
 			"type": "string"
 		}
@@ -1221,6 +1226,316 @@
 								"api",
 								"users",
 								"{{admin_user_id}}"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Customer Addresses",
+			"item": [
+				{
+					"name": "Create Customer Address",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 201 (Created)', function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"pm.test('Response contains customer address data', function () {",
+									"    const jsonData = pm.response.json();",
+									"    pm.expect(jsonData.id).to.exist;",
+									"    pm.expect(jsonData.customerId).to.exist;",
+									"    pm.environment.set('customer_address_id', jsonData.id);",
+									"    console.log('Customer address ID set:', jsonData.id);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{auth_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"customerId\": \"{{admin_user_id}}\",\n    \"address\": \"123 Main Street\",\n    \"addressLine1\": \"Building A\",\n    \"addressLine2\": \"Floor 2\",\n    \"addressLine3\": \"Unit 201\",\n    \"city\": \"Mumbai\",\n    \"state\": \"Maharashtra\",\n    \"postalCode\": \"400001\",\n    \"isDefault\": true\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/customeraddresses",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"customeraddresses"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Customer Address by ID",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Response contains address data', function () {",
+									"    const jsonData = pm.response.json();",
+									"    pm.expect(jsonData.id).to.exist;",
+									"    pm.expect(jsonData.addressLine1).to.exist;",
+									"    pm.expect(jsonData.addressLine2).to.exist;",
+									"    pm.expect(jsonData.addressLine3).to.exist;",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{auth_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/customeraddresses/{{customer_address_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"customeraddresses",
+								"{{customer_address_id}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Customer Addresses by Customer ID",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Response is an array', function () {",
+									"    const jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.be.an('array');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{auth_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/customeraddresses/customer/{{admin_user_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"customeraddresses",
+								"customer",
+								"{{admin_user_id}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update Customer Address",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Response contains updated address data', function () {",
+									"    const jsonData = pm.response.json();",
+									"    pm.expect(jsonData.addressLine1).to.equal('Updated Building A');",
+									"    pm.expect(jsonData.addressLine2).to.equal('Updated Floor 3');",
+									"    pm.expect(jsonData.addressLine3).to.equal('Updated Unit 301');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{auth_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"address\": \"456 Updated Street\",\n    \"addressLine1\": \"Updated Building A\",\n    \"addressLine2\": \"Updated Floor 3\",\n    \"addressLine3\": \"Updated Unit 301\",\n    \"city\": \"Delhi\",\n    \"state\": \"Delhi\",\n    \"postalCode\": \"110001\",\n    \"isDefault\": true,\n    \"isActive\": true\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/customeraddresses/{{customer_address_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"customeraddresses",
+								"{{customer_address_id}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Set Default Customer Address",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Response indicates success', function () {",
+									"    const jsonData = pm.response.json();",
+									"    pm.expect(jsonData.success).to.be.true;",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{auth_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PUT",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/customeraddresses/{{admin_user_id}}/default/{{customer_address_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"customeraddresses",
+								"{{admin_user_id}}",
+								"default",
+								"{{customer_address_id}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Customer Address",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 204 (No Content)', function () {",
+									"    pm.response.to.have.status(204);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{auth_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/customeraddresses/{{customer_address_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"customeraddresses",
+								"{{customer_address_id}}"
 							]
 						}
 					},
