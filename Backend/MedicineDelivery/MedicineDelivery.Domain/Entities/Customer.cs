@@ -18,7 +18,6 @@ namespace MedicineDelivery.Domain.Entities
         public string? UserId { get; set; } // Foreign key to ApplicationUser
         
         // Navigation properties
-        public User? User { get; set; }
         public ICollection<CustomerAddress>? Addresses { get; set; }
     }
 }

@@ -30,65 +30,69 @@ namespace MedicineDelivery.Application.Features.Users.Commands.CreateUserWithRol
                 throw new InvalidOperationException("User with this email already exists.");
             }
 
-            // Validate role exists
-            var role = await _unitOfWork.Roles.GetByIdAsync(request.RoleId);
-            if (role == null || !role.IsActive)
+            // Validate role exists (using Identity roles)
+            var roleName = await _roleService.GetRoleByIdAsync(request.RoleId);
+            if (string.IsNullOrEmpty(roleName))
             {
                 throw new InvalidOperationException("Invalid or inactive role specified.");
             }
 
-            // Create Identity user using the wrapper
-            var identityUser = new ApplicationUserImpl
+            IApplicationUser? identityUser = null;
+            try
             {
-                UserName = request.Email,
-                Email = request.Email,
-                FirstName = request.FirstName,
-                LastName = request.LastName,
-                PhoneNumber = request.PhoneNumber,
-                EmailConfirmed = request.EmailConfirmed,
-                IsActive = request.IsActive
-            };
+                // Create Identity user using the wrapper
+                identityUser = new ApplicationUserImpl
+                {
+                    UserName = request.Email,
+                    Email = request.Email,
+                    FirstName = request.FirstName,
+                    LastName = request.LastName,
+                    PhoneNumber = request.PhoneNumber,
+                    EmailConfirmed = request.EmailConfirmed,
+                    IsActive = request.IsActive
+                };
 
-            var result = await _userManager.CreateAsync(identityUser, request.Password);
-            if (!result.Succeeded)
-            {
-                var errors = string.Join(", ", result.Errors.Select(e => e.Description));
-                throw new InvalidOperationException($"Failed to create user: {errors}");
+                var result = await _userManager.CreateAsync(identityUser, request.Password);
+                if (!result.Succeeded)
+                {
+                    var errors = string.Join(", ", result.Errors.Select(e => e.Description));
+                    throw new InvalidOperationException($"Failed to create user: {errors}");
+                }
+
+                // Add to Identity role
+                await _userManager.AddToRoleAsync(identityUser, roleName);
+
+                // Return response
+                return new CreateUserWithRoleResponseDto
+                {
+                    Id = identityUser.Id,
+                    Email = identityUser.Email,
+                    FirstName = identityUser.FirstName ?? string.Empty,
+                    LastName = identityUser.LastName ?? string.Empty,
+                    RoleId = request.RoleId,
+                    RoleName = roleName,
+                    IsActive = identityUser.IsActive,
+                    CreatedAt = DateTime.UtcNow
+                };
             }
-
-            // Add to Identity role
-            var identityRoleName = role.Name;
-            await _userManager.AddToRoleAsync(identityUser, identityRoleName);
-
-            // Create domain user
-            var domainUser = new User
+            catch (Exception)
             {
-                Id = identityUser.Id,
-                Email = identityUser.Email,
-                FirstName = identityUser.FirstName ?? string.Empty,
-                LastName = identityUser.LastName ?? string.Empty,
-                CreatedAt = DateTime.UtcNow,
-                IsActive = identityUser.IsActive
-            };
-
-            await _unitOfWork.Users.AddAsync(domainUser);
-            await _unitOfWork.SaveChangesAsync();
-
-            // Assign role using role service
-            await _roleService.AssignRoleToUserAsync(identityUser.Id, request.RoleId, "system");
-
-            // Return response
-            return new CreateUserWithRoleResponseDto
-            {
-                Id = identityUser.Id,
-                Email = identityUser.Email,
-                FirstName = identityUser.FirstName ?? string.Empty,
-                LastName = identityUser.LastName ?? string.Empty,
-                RoleId = request.RoleId,
-                RoleName = role.Name,
-                IsActive = identityUser.IsActive,
-                CreatedAt = DateTime.UtcNow
-            };
+                // Clean up the Identity user if it was created
+                if (identityUser != null && !string.IsNullOrEmpty(identityUser.Id))
+                {
+                    try
+                    {
+                        await _userManager.DeleteAsync(identityUser);
+                    }
+                    catch (Exception ex)
+                    {
+                        // Log the cleanup failure but don't throw
+                        Console.WriteLine($"Failed to cleanup Identity user {identityUser.Id}: {ex.Message}");
+                    }
+                }
+                
+                throw; // Re-throw the original exception
+            }
         }
     }
 

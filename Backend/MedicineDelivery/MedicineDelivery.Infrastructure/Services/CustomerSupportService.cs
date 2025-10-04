@@ -50,107 +50,114 @@ namespace MedicineDelivery.Infrastructure.Services
                     };
                 }
 
-                // Generate random password
-                var generatedPassword = GenerateRandomPassword();
-
-                // Create Identity user
-                var identityUser = new ApplicationUser
+                // Begin transaction to ensure atomicity
+                await _unitOfWork.BeginTransactionAsync();
+                
+                ApplicationUser? identityUser = null;
+                try
                 {
-                    UserName = registrationDto.MobileNumber,
-                    Email = registrationDto.EmailId,
-                    PhoneNumber = registrationDto.MobileNumber,
-                    FirstName = registrationDto.CustomerSupportFirstName,
-                    LastName = registrationDto.CustomerSupportLastName,
-                    EmailConfirmed = true
-                };
+                    // Generate random password
+                    var generatedPassword = GenerateRandomPassword();
 
-                var userResult = await _userManager.CreateAsync(identityUser, generatedPassword);
-                if (!userResult.Succeeded)
-                {
+                    // Create Identity user
+                    identityUser = new ApplicationUser
+                    {
+                        UserName = registrationDto.MobileNumber,
+                        Email = registrationDto.EmailId,
+                        PhoneNumber = registrationDto.MobileNumber,
+                        FirstName = registrationDto.CustomerSupportFirstName,
+                        LastName = registrationDto.CustomerSupportLastName,
+                        EmailConfirmed = true
+                    };
+
+                    var userResult = await _userManager.CreateAsync(identityUser, generatedPassword);
+                    if (!userResult.Succeeded)
+                    {
+                        await _unitOfWork.RollbackTransactionAsync();
+                        return new CustomerSupportRegistrationResult
+                        {
+                            Success = false,
+                            Errors = userResult.Errors.Select(e => e.Description).ToList()
+                        };
+                    }
+
+                    // Add to CustomerSupport Identity role
+                    await _userManager.AddToRoleAsync(identityUser, "CustomerSupport");
+
+                    // Create customer support
+                    var customerSupport = new CustomerSupport
+                    {
+                        CustomerSupportId = Guid.NewGuid(),
+                        CustomerSupportFirstName = registrationDto.CustomerSupportFirstName,
+                        CustomerSupportLastName = registrationDto.CustomerSupportLastName,
+                        CustomerSupportMiddleName = registrationDto.CustomerSupportMiddleName,
+                        Address = registrationDto.Address,
+                        City = registrationDto.City,
+                        State = registrationDto.State,
+                        MobileNumber = registrationDto.MobileNumber,
+                        EmailId = registrationDto.EmailId,
+                        AlternativeMobileNumber = registrationDto.AlternativeMobileNumber,
+                        UserId = identityUser.Id,
+                        CreatedOn = DateTime.UtcNow,
+                        IsActive = true,
+                        IsDeleted = false
+                    };
+
+                    await _unitOfWork.CustomerSupports.AddAsync(customerSupport);
+                    await _unitOfWork.SaveChangesAsync();
+                    await _unitOfWork.CommitTransactionAsync();
+
+                    // Create response
+                    var response = new CustomerSupportResponseDto
+                    {
+                        CustomerSupportId = customerSupport.CustomerSupportId,
+                        CustomerSupportFirstName = customerSupport.CustomerSupportFirstName,
+                        CustomerSupportLastName = customerSupport.CustomerSupportLastName,
+                        CustomerSupportMiddleName = customerSupport.CustomerSupportMiddleName,
+                        Address = customerSupport.Address,
+                        City = customerSupport.City,
+                        State = customerSupport.State,
+                        MobileNumber = customerSupport.MobileNumber,
+                        EmailId = customerSupport.EmailId,
+                        AlternativeMobileNumber = customerSupport.AlternativeMobileNumber,
+                        IsActive = customerSupport.IsActive,
+                        IsDeleted = customerSupport.IsDeleted,
+                        CreatedOn = customerSupport.CreatedOn,
+                        CreatedBy = customerSupport.CreatedBy,
+                        UpdatedOn = customerSupport.UpdatedOn,
+                        UpdatedBy = customerSupport.UpdatedBy,
+                        UserId = customerSupport.UserId,
+                        Password = generatedPassword
+                    };
+
                     return new CustomerSupportRegistrationResult
                     {
-                        Success = false,
-                        Errors = userResult.Errors.Select(e => e.Description).ToList()
+                        Success = true,
+                        CustomerSupport = response
                     };
                 }
-
-                // Create domain user
-                var domainUser = new User
+                catch (Exception)
                 {
-                    Id = identityUser.Id,
-                    Email = identityUser.Email,
-                    FirstName = identityUser.FirstName ?? string.Empty,
-                    LastName = identityUser.LastName ?? string.Empty,
-                    CreatedAt = DateTime.UtcNow,
-                    IsActive = true
-                };
-
-                await _unitOfWork.Users.AddAsync(domainUser);
-
-                // Assign CustomerSupport role to the user
-                var customerSupportRole = await _unitOfWork.Roles.FirstOrDefaultAsync(r => r.Name == "CustomerSupport");
-                if (customerSupportRole != null)
-                {
-                    var userRole = new UserRole
+                    // Rollback the transaction
+                    await _unitOfWork.RollbackTransactionAsync();
+                    
+                    // Clean up the Identity user if it was created
+                    if (identityUser != null)
                     {
-                        UserId = domainUser.Id,
-                        RoleId = customerSupportRole.Id,
-                        AssignedAt = DateTime.UtcNow,
-                        IsActive = true
-                    };
-                    await _unitOfWork.UserRoles.AddAsync(userRole);
+                        try
+                        {
+                            await _userManager.DeleteAsync(identityUser);
+                        }
+                        catch (Exception ex)
+                        {
+                            // Log the cleanup failure but don't throw - the main transaction is already rolled back
+                            // This could be logged to a proper logging system
+                            Console.WriteLine($"Failed to cleanup Identity user {identityUser.Id}: {ex.Message}");
+                        }
+                    }
+                    
+                    throw; // Re-throw the original exception
                 }
-
-                // Create customer support
-                var customerSupport = new CustomerSupport
-                {
-                    CustomerSupportId = Guid.NewGuid(),
-                    CustomerSupportFirstName = registrationDto.CustomerSupportFirstName,
-                    CustomerSupportLastName = registrationDto.CustomerSupportLastName,
-                    CustomerSupportMiddleName = registrationDto.CustomerSupportMiddleName,
-                    Address = registrationDto.Address,
-                    City = registrationDto.City,
-                    State = registrationDto.State,
-                    MobileNumber = registrationDto.MobileNumber,
-                    EmailId = registrationDto.EmailId,
-                    AlternativeMobileNumber = registrationDto.AlternativeMobileNumber,
-                    UserId = identityUser.Id,
-                    CreatedOn = DateTime.UtcNow,
-                    IsActive = true,
-                    IsDeleted = false
-                };
-
-                await _unitOfWork.CustomerSupports.AddAsync(customerSupport);
-                await _unitOfWork.SaveChangesAsync();
-
-                // Create response
-                var response = new CustomerSupportResponseDto
-                {
-                    CustomerSupportId = customerSupport.CustomerSupportId,
-                    CustomerSupportFirstName = customerSupport.CustomerSupportFirstName,
-                    CustomerSupportLastName = customerSupport.CustomerSupportLastName,
-                    CustomerSupportMiddleName = customerSupport.CustomerSupportMiddleName,
-                    Address = customerSupport.Address,
-                    City = customerSupport.City,
-                    State = customerSupport.State,
-                    MobileNumber = customerSupport.MobileNumber,
-                    EmailId = customerSupport.EmailId,
-                    AlternativeMobileNumber = customerSupport.AlternativeMobileNumber,
-                    IsActive = customerSupport.IsActive,
-                    IsDeleted = customerSupport.IsDeleted,
-                    CreatedOn = customerSupport.CreatedOn,
-                    CreatedBy = customerSupport.CreatedBy,
-                    UpdatedOn = customerSupport.UpdatedOn,
-                    UpdatedBy = customerSupport.UpdatedBy,
-                    UserId = customerSupport.UserId,
-                    Password = generatedPassword
-                };
-
-                return new CustomerSupportRegistrationResult
-                {
-                    Success = true,
-                    CustomerSupport = response
-                };
             }
             catch (Exception ex)
             {

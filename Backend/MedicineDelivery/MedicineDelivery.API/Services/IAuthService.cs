@@ -1,4 +1,4 @@
-using MedicineDelivery.Infrastructure.Data;
+using MedicineDelivery.Domain.Entities;
 
 namespace MedicineDelivery.API.Services
 {

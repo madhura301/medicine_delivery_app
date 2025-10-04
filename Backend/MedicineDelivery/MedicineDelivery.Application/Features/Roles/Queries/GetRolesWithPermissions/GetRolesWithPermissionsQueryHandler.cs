@@ -7,19 +7,18 @@ namespace MedicineDelivery.Application.Features.Roles.Queries.GetRolesWithPermis
     public class GetRolesWithPermissionsQueryHandler : IRequestHandler<GetRolesWithPermissionsQuery, RolesWithPermissionsResponseDto>
     {
         private readonly IUnitOfWork _unitOfWork;
+        private readonly IRoleService _roleService;
 
-        public GetRolesWithPermissionsQueryHandler(IUnitOfWork unitOfWork)
+        public GetRolesWithPermissionsQueryHandler(IUnitOfWork unitOfWork, IRoleService roleService)
         {
             _unitOfWork = unitOfWork;
+            _roleService = roleService;
         }
 
         public async Task<RolesWithPermissionsResponseDto> Handle(GetRolesWithPermissionsQuery request, CancellationToken cancellationToken)
         {
-            // Get all roles
-            var allRoles = await _unitOfWork.Roles.GetAllAsync();
-            var roles = request.IncludeInactiveRoles 
-                ? allRoles 
-                : allRoles.Where(r => r.IsActive).ToList();
+            // Get all roles (using Identity roles)
+            var allRoleNames = await _roleService.GetAllRolesAsync();
 
             // Get all permissions
             var allPermissions = await _unitOfWork.Permissions.GetAllAsync();
@@ -29,10 +28,11 @@ namespace MedicineDelivery.Application.Features.Roles.Queries.GetRolesWithPermis
             var allRolePermissions = await _unitOfWork.RolePermissions.GetAllAsync();
             var activeRolePermissions = allRolePermissions.Where(rp => rp.IsActive).ToList();
 
-            var rolesWithPermissions = roles.Select(role =>
+            var rolesWithPermissions = allRoleNames.Select(roleName =>
             {
+                // Find the role ID for this role name
                 var rolePermissionIds = activeRolePermissions
-                    .Where(rp => rp.RoleId == role.Id)
+                    .Where(rp => rp.RoleId == roleName) // RoleId is now string
                     .Select(rp => rp.PermissionId)
                     .ToList();
 
@@ -51,11 +51,11 @@ namespace MedicineDelivery.Application.Features.Roles.Queries.GetRolesWithPermis
 
                 return new RoleWithPermissionsDto
                 {
-                    Id = role.Id,
-                    Name = role.Name,
-                    Description = role.Description,
-                    CreatedAt = role.CreatedAt,
-                    IsActive = role.IsActive,
+                    Id = 0, // Using 0 as placeholder since Identity roles use string IDs but DTO expects int
+                    Name = roleName,
+                    Description = $"Role: {roleName}", // Identity roles don't have descriptions
+                    CreatedAt = DateTime.UtcNow, // Identity roles don't track creation date
+                    IsActive = true, // All Identity roles are considered active
                     Permissions = rolePermissions
                 };
             }).ToList();

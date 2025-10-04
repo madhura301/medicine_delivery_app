@@ -42,7 +42,6 @@ namespace MedicineDelivery.Domain.Entities
         public Guid? UpdatedBy { get; set; }
         public string? UserId { get; set; } // Reference to the associated user account
         
-        // Navigation property
-        public User? User { get; set; }
+        // Navigation property removed - UserId references ApplicationUser directly
     }
 }

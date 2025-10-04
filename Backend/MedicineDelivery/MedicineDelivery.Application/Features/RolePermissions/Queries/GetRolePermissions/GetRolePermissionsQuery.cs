@@ -5,6 +5,6 @@ namespace MedicineDelivery.Application.Features.RolePermissions.Queries.GetRoleP
 {
     public class GetRolePermissionsQuery : IRequest<RolePermissionsListDto>
     {
-        public int RoleId { get; set; }
+        public string RoleId { get; set; } = string.Empty;
     }
 }

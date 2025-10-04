@@ -3,6 +3,7 @@ using System;
 using MedicineDelivery.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace MedicineDelivery.Infrastructure.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20251004154633_DropRedundantTables")]
+    partial class DropRedundantTables
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -172,18 +175,6 @@ namespace MedicineDelivery.Infrastructure.Migrations
                         .HasColumnType("uuid");
 
                     b.Property<string>("Address")
-                        .HasMaxLength(300)
-                        .HasColumnType("character varying(300)");
-
-                    b.Property<string>("AddressLine1")
-                        .HasMaxLength(300)
-                        .HasColumnType("character varying(300)");
-
-                    b.Property<string>("AddressLine2")
-                        .HasMaxLength(300)
-                        .HasColumnType("character varying(300)");
-
-                    b.Property<string>("AddressLine3")
                         .HasMaxLength(300)
                         .HasColumnType("character varying(300)");
 
@@ -644,7 +635,7 @@ namespace MedicineDelivery.Infrastructure.Migrations
                         new
                         {
                             Id = 1,
-                            CreatedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8167),
+                            CreatedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7161),
                             Description = "Can view user information",
                             IsActive = true,
                             Module = "Users",
@@ -653,7 +644,7 @@ namespace MedicineDelivery.Infrastructure.Migrations
                         new
                         {
                             Id = 2,
-                            CreatedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8169),
+                            CreatedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7163),
                             Description = "Can create new users",
                             IsActive = true,
                             Module = "Users",
@@ -662,7 +653,7 @@ namespace MedicineDelivery.Infrastructure.Migrations
                         new
                         {
                             Id = 3,
-                            CreatedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8171),
+                            CreatedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7164),
                             Description = "Can update user information",
                             IsActive = true,
                             Module = "Users",
@@ -671,7 +662,7 @@ namespace MedicineDelivery.Infrastructure.Migrations
                         new
                         {
                             Id = 4,
-                            CreatedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8172),
+                            CreatedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7167),
                             Description = "Can delete users",
                             IsActive = true,
                             Module = "Users",
@@ -680,7 +671,7 @@ namespace MedicineDelivery.Infrastructure.Migrations
                         new
                         {
                             Id = 5,
-                            CreatedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8173),
+                            CreatedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7169),
                             Description = "Can view products",
                             IsActive = true,
                             Module = "Products",
@@ -689,7 +680,7 @@ namespace MedicineDelivery.Infrastructure.Migrations
                         new
                         {
                             Id = 6,
-                            CreatedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8174),
+                            CreatedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7170),
                             Description = "Can create new products",
                             IsActive = true,
                             Module = "Products",
@@ -698,7 +689,7 @@ namespace MedicineDelivery.Infrastructure.Migrations
                         new
                         {
                             Id = 7,
-                            CreatedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8176),
+                            CreatedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7171),
                             Description = "Can update products",
                             IsActive = true,
                             Module = "Products",
@@ -707,7 +698,7 @@ namespace MedicineDelivery.Infrastructure.Migrations
                         new
                         {
                             Id = 8,
-                            CreatedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8177),
+                            CreatedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7172),
                             Description = "Can delete products",
                             IsActive = true,
                             Module = "Products",
@@ -716,7 +707,7 @@ namespace MedicineDelivery.Infrastructure.Migrations
                         new
                         {
                             Id = 9,
-                            CreatedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8178),
+                            CreatedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7174),
                             Description = "Can view orders",
                             IsActive = true,
                             Module = "Orders",
@@ -725,7 +716,7 @@ namespace MedicineDelivery.Infrastructure.Migrations
                         new
                         {
                             Id = 10,
-                            CreatedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8179),
+                            CreatedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7175),
                             Description = "Can create new orders",
                             IsActive = true,
                             Module = "Orders",
@@ -734,7 +725,7 @@ namespace MedicineDelivery.Infrastructure.Migrations
                         new
                         {
                             Id = 11,
-                            CreatedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8181),
+                            CreatedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7176),
                             Description = "Can update orders",
                             IsActive = true,
                             Module = "Orders",
@@ -743,7 +734,7 @@ namespace MedicineDelivery.Infrastructure.Migrations
                         new
                         {
                             Id = 12,
-                            CreatedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8182),
+                            CreatedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7178),
                             Description = "Can delete orders",
                             IsActive = true,
                             Module = "Orders",
@@ -752,7 +743,7 @@ namespace MedicineDelivery.Infrastructure.Migrations
                         new
                         {
                             Id = 13,
-                            CreatedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8183),
+                            CreatedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7179),
                             Description = "Admin can view all user information",
                             IsActive = true,
                             Module = "UserManagement",
@@ -761,7 +752,7 @@ namespace MedicineDelivery.Infrastructure.Migrations
                         new
                         {
                             Id = 14,
-                            CreatedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8184),
+                            CreatedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7180),
                             Description = "Admin can create users",
                             IsActive = true,
                             Module = "UserManagement",
@@ -770,7 +761,7 @@ namespace MedicineDelivery.Infrastructure.Migrations
                         new
                         {
                             Id = 15,
-                            CreatedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8185),
+                            CreatedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7182),
                             Description = "Admin can update user information",
                             IsActive = true,
                             Module = "UserManagement",
@@ -779,7 +770,7 @@ namespace MedicineDelivery.Infrastructure.Migrations
                         new
                         {
                             Id = 16,
-                            CreatedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8187),
+                            CreatedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7183),
                             Description = "Admin can delete users",
                             IsActive = true,
                             Module = "UserManagement",
@@ -788,7 +779,7 @@ namespace MedicineDelivery.Infrastructure.Migrations
                         new
                         {
                             Id = 17,
-                            CreatedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8188),
+                            CreatedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7185),
                             Description = "Manager can view user information",
                             IsActive = true,
                             Module = "UserManagement",
@@ -797,7 +788,7 @@ namespace MedicineDelivery.Infrastructure.Migrations
                         new
                         {
                             Id = 18,
-                            CreatedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8189),
+                            CreatedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7186),
                             Description = "Manager can create users",
                             IsActive = true,
                             Module = "UserManagement",
@@ -806,7 +797,7 @@ namespace MedicineDelivery.Infrastructure.Migrations
                         new
                         {
                             Id = 19,
-                            CreatedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8190),
+                            CreatedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7188),
                             Description = "Manager can update user information",
                             IsActive = true,
                             Module = "UserManagement",
@@ -815,7 +806,7 @@ namespace MedicineDelivery.Infrastructure.Migrations
                         new
                         {
                             Id = 20,
-                            CreatedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8191),
+                            CreatedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7189),
                             Description = "Manager can delete users",
                             IsActive = true,
                             Module = "UserManagement",
@@ -824,7 +815,7 @@ namespace MedicineDelivery.Infrastructure.Migrations
                         new
                         {
                             Id = 21,
-                            CreatedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8192),
+                            CreatedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7190),
                             Description = "CustomerSupport can view user information",
                             IsActive = true,
                             Module = "UserManagement",
@@ -833,7 +824,7 @@ namespace MedicineDelivery.Infrastructure.Migrations
                         new
                         {
                             Id = 22,
-                            CreatedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8193),
+                            CreatedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7217),
                             Description = "CustomerSupport can create users",
                             IsActive = true,
                             Module = "UserManagement",
@@ -842,7 +833,7 @@ namespace MedicineDelivery.Infrastructure.Migrations
                         new
                         {
                             Id = 23,
-                            CreatedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8194),
+                            CreatedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7219),
                             Description = "CustomerSupport can update user information",
                             IsActive = true,
                             Module = "UserManagement",
@@ -851,7 +842,7 @@ namespace MedicineDelivery.Infrastructure.Migrations
                         new
                         {
                             Id = 24,
-                            CreatedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8196),
+                            CreatedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7220),
                             Description = "CustomerSupport can delete users",
                             IsActive = true,
                             Module = "UserManagement",
@@ -860,7 +851,7 @@ namespace MedicineDelivery.Infrastructure.Migrations
                         new
                         {
                             Id = 25,
-                            CreatedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8197),
+                            CreatedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7221),
                             Description = "Chemist can view user information",
                             IsActive = true,
                             Module = "UserManagement",
@@ -869,7 +860,7 @@ namespace MedicineDelivery.Infrastructure.Migrations
                         new
                         {
                             Id = 26,
-                            CreatedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8198),
+                            CreatedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7222),
                             Description = "Chemist can create users",
                             IsActive = true,
                             Module = "UserManagement",
@@ -878,7 +869,7 @@ namespace MedicineDelivery.Infrastructure.Migrations
                         new
                         {
                             Id = 27,
-                            CreatedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8199),
+                            CreatedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7224),
                             Description = "Chemist can update user information",
                             IsActive = true,
                             Module = "UserManagement",
@@ -887,7 +878,7 @@ namespace MedicineDelivery.Infrastructure.Migrations
                         new
                         {
                             Id = 28,
-                            CreatedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8200),
+                            CreatedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7226),
                             Description = "Chemist can delete users",
                             IsActive = true,
                             Module = "UserManagement",
@@ -896,7 +887,7 @@ namespace MedicineDelivery.Infrastructure.Migrations
                         new
                         {
                             Id = 29,
-                            CreatedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8201),
+                            CreatedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7227),
                             Description = "Can manage role permissions",
                             IsActive = true,
                             Module = "RoleManagement",
@@ -905,7 +896,7 @@ namespace MedicineDelivery.Infrastructure.Migrations
                         new
                         {
                             Id = 30,
-                            CreatedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8203),
+                            CreatedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7228),
                             Description = "Can read chemist information",
                             IsActive = true,
                             Module = "Chemist",
@@ -914,7 +905,7 @@ namespace MedicineDelivery.Infrastructure.Migrations
                         new
                         {
                             Id = 31,
-                            CreatedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8204),
+                            CreatedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7229),
                             Description = "Can create chemist accounts",
                             IsActive = true,
                             Module = "Chemist",
@@ -923,7 +914,7 @@ namespace MedicineDelivery.Infrastructure.Migrations
                         new
                         {
                             Id = 32,
-                            CreatedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8205),
+                            CreatedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7232),
                             Description = "Can update chemist information",
                             IsActive = true,
                             Module = "Chemist",
@@ -932,7 +923,7 @@ namespace MedicineDelivery.Infrastructure.Migrations
                         new
                         {
                             Id = 33,
-                            CreatedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8207),
+                            CreatedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7234),
                             Description = "Can delete chemist accounts",
                             IsActive = true,
                             Module = "Chemist",
@@ -941,7 +932,7 @@ namespace MedicineDelivery.Infrastructure.Migrations
                         new
                         {
                             Id = 34,
-                            CreatedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8208),
+                            CreatedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7235),
                             Description = "Can read customer support information",
                             IsActive = true,
                             Module = "CustomerSupport",
@@ -950,7 +941,7 @@ namespace MedicineDelivery.Infrastructure.Migrations
                         new
                         {
                             Id = 35,
-                            CreatedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8209),
+                            CreatedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7236),
                             Description = "Can create customer support accounts",
                             IsActive = true,
                             Module = "CustomerSupport",
@@ -959,7 +950,7 @@ namespace MedicineDelivery.Infrastructure.Migrations
                         new
                         {
                             Id = 36,
-                            CreatedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8210),
+                            CreatedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7237),
                             Description = "Can update customer support information",
                             IsActive = true,
                             Module = "CustomerSupport",
@@ -968,7 +959,7 @@ namespace MedicineDelivery.Infrastructure.Migrations
                         new
                         {
                             Id = 37,
-                            CreatedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8211),
+                            CreatedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7238),
                             Description = "Can delete customer support accounts",
                             IsActive = true,
                             Module = "CustomerSupport",
@@ -977,7 +968,7 @@ namespace MedicineDelivery.Infrastructure.Migrations
                         new
                         {
                             Id = 38,
-                            CreatedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8213),
+                            CreatedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7240),
                             Description = "Can read manager information",
                             IsActive = true,
                             Module = "Manager",
@@ -986,7 +977,7 @@ namespace MedicineDelivery.Infrastructure.Migrations
                         new
                         {
                             Id = 39,
-                            CreatedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8214),
+                            CreatedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7241),
                             Description = "Can create manager accounts",
                             IsActive = true,
                             Module = "Manager",
@@ -995,7 +986,7 @@ namespace MedicineDelivery.Infrastructure.Migrations
                         new
                         {
                             Id = 40,
-                            CreatedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8215),
+                            CreatedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7244),
                             Description = "Can update manager information",
                             IsActive = true,
                             Module = "Manager",
@@ -1004,7 +995,7 @@ namespace MedicineDelivery.Infrastructure.Migrations
                         new
                         {
                             Id = 41,
-                            CreatedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8216),
+                            CreatedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7246),
                             Description = "Can delete manager accounts",
                             IsActive = true,
                             Module = "Manager",
@@ -1013,7 +1004,7 @@ namespace MedicineDelivery.Infrastructure.Migrations
                         new
                         {
                             Id = 42,
-                            CreatedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8217),
+                            CreatedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7248),
                             Description = "Can read own customer information",
                             IsActive = true,
                             Module = "Customer",
@@ -1022,7 +1013,7 @@ namespace MedicineDelivery.Infrastructure.Migrations
                         new
                         {
                             Id = 43,
-                            CreatedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8218),
+                            CreatedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7250),
                             Description = "Can create customer accounts",
                             IsActive = true,
                             Module = "Customer",
@@ -1031,7 +1022,7 @@ namespace MedicineDelivery.Infrastructure.Migrations
                         new
                         {
                             Id = 44,
-                            CreatedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8220),
+                            CreatedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7251),
                             Description = "Can update own customer information",
                             IsActive = true,
                             Module = "Customer",
@@ -1040,7 +1031,7 @@ namespace MedicineDelivery.Infrastructure.Migrations
                         new
                         {
                             Id = 45,
-                            CreatedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8221),
+                            CreatedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7252),
                             Description = "Can delete own customer account",
                             IsActive = true,
                             Module = "Customer",
@@ -1049,7 +1040,7 @@ namespace MedicineDelivery.Infrastructure.Migrations
                         new
                         {
                             Id = 46,
-                            CreatedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8222),
+                            CreatedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7255),
                             Description = "Can read all customer information",
                             IsActive = true,
                             Module = "Customer",
@@ -1058,7 +1049,7 @@ namespace MedicineDelivery.Infrastructure.Migrations
                         new
                         {
                             Id = 47,
-                            CreatedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8223),
+                            CreatedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7256),
                             Description = "Can update any customer information",
                             IsActive = true,
                             Module = "Customer",
@@ -1067,7 +1058,7 @@ namespace MedicineDelivery.Infrastructure.Migrations
                         new
                         {
                             Id = 48,
-                            CreatedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8224),
+                            CreatedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7257),
                             Description = "Can delete any customer account",
                             IsActive = true,
                             Module = "Customer",
@@ -1076,7 +1067,7 @@ namespace MedicineDelivery.Infrastructure.Migrations
                         new
                         {
                             Id = 49,
-                            CreatedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8225),
+                            CreatedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7258),
                             Description = "Can read all Chemist information",
                             IsActive = true,
                             Module = "Chemist",
@@ -1085,7 +1076,7 @@ namespace MedicineDelivery.Infrastructure.Migrations
                         new
                         {
                             Id = 50,
-                            CreatedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8226),
+                            CreatedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7260),
                             Description = "Can update any Chemist information",
                             IsActive = true,
                             Module = "Chemist",
@@ -1094,7 +1085,7 @@ namespace MedicineDelivery.Infrastructure.Migrations
                         new
                         {
                             Id = 51,
-                            CreatedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8227),
+                            CreatedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7261),
                             Description = "Can delete any Chemist account",
                             IsActive = true,
                             Module = "Chemist",
@@ -1170,882 +1161,882 @@ namespace MedicineDelivery.Infrastructure.Migrations
                         {
                             RoleId = "1",
                             PermissionId = 1,
-                            GrantedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8524),
+                            GrantedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7529),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = "1",
                             PermissionId = 2,
-                            GrantedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8526),
+                            GrantedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7532),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = "1",
                             PermissionId = 3,
-                            GrantedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8527),
+                            GrantedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7533),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = "1",
                             PermissionId = 4,
-                            GrantedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8528),
+                            GrantedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7534),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = "1",
                             PermissionId = 5,
-                            GrantedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8529),
+                            GrantedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7535),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = "1",
                             PermissionId = 6,
-                            GrantedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8530),
+                            GrantedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7536),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = "1",
                             PermissionId = 7,
-                            GrantedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8532),
+                            GrantedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7537),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = "1",
                             PermissionId = 8,
-                            GrantedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8533),
+                            GrantedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7539),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = "1",
                             PermissionId = 9,
-                            GrantedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8534),
+                            GrantedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7540),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = "1",
                             PermissionId = 10,
-                            GrantedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8535),
+                            GrantedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7541),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = "1",
                             PermissionId = 11,
-                            GrantedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8536),
+                            GrantedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7544),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = "1",
                             PermissionId = 12,
-                            GrantedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8537),
+                            GrantedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7545),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = "1",
                             PermissionId = 13,
-                            GrantedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8538),
+                            GrantedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7546),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = "1",
                             PermissionId = 14,
-                            GrantedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8539),
+                            GrantedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7547),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = "1",
                             PermissionId = 15,
-                            GrantedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8540),
+                            GrantedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7549),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = "1",
                             PermissionId = 16,
-                            GrantedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8540),
+                            GrantedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7550),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = "1",
                             PermissionId = 17,
-                            GrantedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8541),
+                            GrantedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7551),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = "1",
                             PermissionId = 18,
-                            GrantedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8543),
+                            GrantedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7552),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = "1",
                             PermissionId = 19,
-                            GrantedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8544),
+                            GrantedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7554),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = "1",
                             PermissionId = 20,
-                            GrantedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8545),
+                            GrantedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7555),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = "1",
                             PermissionId = 21,
-                            GrantedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8546),
+                            GrantedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7556),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = "1",
                             PermissionId = 22,
-                            GrantedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8547),
+                            GrantedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7557),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = "1",
                             PermissionId = 23,
-                            GrantedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8548),
+                            GrantedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7558),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = "1",
                             PermissionId = 24,
-                            GrantedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8549),
+                            GrantedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7559),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = "1",
                             PermissionId = 25,
-                            GrantedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8549),
+                            GrantedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7560),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = "1",
                             PermissionId = 26,
-                            GrantedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8550),
+                            GrantedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7561),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = "1",
                             PermissionId = 27,
-                            GrantedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8552),
+                            GrantedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7562),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = "1",
                             PermissionId = 28,
-                            GrantedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8552),
+                            GrantedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7563),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = "1",
                             PermissionId = 29,
-                            GrantedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8553),
+                            GrantedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7564),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = "1",
                             PermissionId = 30,
-                            GrantedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8554),
+                            GrantedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7565),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = "1",
                             PermissionId = 31,
-                            GrantedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8555),
+                            GrantedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7566),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = "1",
                             PermissionId = 32,
-                            GrantedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8556),
+                            GrantedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7567),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = "1",
                             PermissionId = 33,
-                            GrantedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8557),
+                            GrantedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7568),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = "1",
                             PermissionId = 34,
-                            GrantedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8558),
+                            GrantedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7618),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = "1",
                             PermissionId = 35,
-                            GrantedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8559),
+                            GrantedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7619),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = "1",
                             PermissionId = 36,
-                            GrantedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8560),
+                            GrantedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7621),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = "1",
                             PermissionId = 37,
-                            GrantedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8560),
+                            GrantedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7622),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = "1",
                             PermissionId = 38,
-                            GrantedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8562),
+                            GrantedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7623),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = "1",
                             PermissionId = 39,
-                            GrantedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8562),
+                            GrantedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7624),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = "1",
                             PermissionId = 40,
-                            GrantedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8563),
+                            GrantedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7625),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = "1",
                             PermissionId = 41,
-                            GrantedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8565),
+                            GrantedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7626),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = "1",
                             PermissionId = 46,
-                            GrantedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8566),
+                            GrantedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7627),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = "1",
                             PermissionId = 47,
-                            GrantedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8567),
+                            GrantedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7628),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = "1",
                             PermissionId = 48,
-                            GrantedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8568),
+                            GrantedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7629),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = "1",
                             PermissionId = 43,
-                            GrantedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8569),
+                            GrantedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7630),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = "1",
                             PermissionId = 49,
-                            GrantedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8570),
+                            GrantedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7631),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = "1",
                             PermissionId = 50,
-                            GrantedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8571),
+                            GrantedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7632),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = "1",
                             PermissionId = 51,
-                            GrantedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8572),
+                            GrantedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7634),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = "2",
                             PermissionId = 1,
-                            GrantedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8574),
+                            GrantedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7635),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = "2",
                             PermissionId = 3,
-                            GrantedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8575),
+                            GrantedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7636),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = "2",
                             PermissionId = 5,
-                            GrantedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8576),
+                            GrantedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7637),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = "2",
                             PermissionId = 7,
-                            GrantedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8577),
+                            GrantedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7638),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = "2",
                             PermissionId = 9,
-                            GrantedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8578),
+                            GrantedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7639),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = "2",
                             PermissionId = 11,
-                            GrantedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8579),
+                            GrantedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7640),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = "2",
                             PermissionId = 17,
-                            GrantedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8580),
+                            GrantedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7641),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = "2",
                             PermissionId = 18,
-                            GrantedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8581),
+                            GrantedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7642),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = "2",
                             PermissionId = 19,
-                            GrantedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8582),
+                            GrantedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7643),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = "2",
                             PermissionId = 20,
-                            GrantedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8583),
+                            GrantedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7644),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = "2",
                             PermissionId = 21,
-                            GrantedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8583),
+                            GrantedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7645),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = "2",
                             PermissionId = 22,
-                            GrantedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8584),
+                            GrantedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7646),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = "2",
                             PermissionId = 23,
-                            GrantedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8585),
+                            GrantedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7646),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = "2",
                             PermissionId = 24,
-                            GrantedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8586),
+                            GrantedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7647),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = "2",
                             PermissionId = 25,
-                            GrantedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8587),
+                            GrantedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7648),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = "2",
                             PermissionId = 26,
-                            GrantedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8589),
+                            GrantedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7650),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = "2",
                             PermissionId = 27,
-                            GrantedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8589),
+                            GrantedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7651),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = "2",
                             PermissionId = 28,
-                            GrantedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8590),
+                            GrantedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7652),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = "2",
                             PermissionId = 30,
-                            GrantedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8591),
+                            GrantedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7653),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = "2",
                             PermissionId = 31,
-                            GrantedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8592),
+                            GrantedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7654),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = "2",
                             PermissionId = 32,
-                            GrantedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8593),
+                            GrantedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7655),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = "2",
                             PermissionId = 33,
-                            GrantedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8594),
+                            GrantedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7656),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = "2",
                             PermissionId = 34,
-                            GrantedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8595),
+                            GrantedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7658),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = "2",
                             PermissionId = 35,
-                            GrantedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8596),
+                            GrantedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7659),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = "2",
                             PermissionId = 36,
-                            GrantedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8597),
+                            GrantedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7660),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = "2",
                             PermissionId = 37,
-                            GrantedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8597),
+                            GrantedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7661),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = "2",
                             PermissionId = 38,
-                            GrantedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8598),
+                            GrantedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7662),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = "2",
                             PermissionId = 40,
-                            GrantedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8599),
+                            GrantedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7663),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = "2",
                             PermissionId = 41,
-                            GrantedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8600),
+                            GrantedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7664),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = "2",
                             PermissionId = 46,
-                            GrantedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8601),
+                            GrantedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7665),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = "2",
                             PermissionId = 47,
-                            GrantedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8602),
+                            GrantedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7666),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = "2",
                             PermissionId = 48,
-                            GrantedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8603),
+                            GrantedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7667),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = "2",
                             PermissionId = 43,
-                            GrantedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8604),
+                            GrantedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7668),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = "2",
                             PermissionId = 49,
-                            GrantedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8605),
+                            GrantedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7669),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = "2",
                             PermissionId = 50,
-                            GrantedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8605),
+                            GrantedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7670),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = "2",
                             PermissionId = 51,
-                            GrantedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8606),
+                            GrantedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7671),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = "3",
                             PermissionId = 5,
-                            GrantedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8607),
+                            GrantedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7672),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = "3",
                             PermissionId = 9,
-                            GrantedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8608),
+                            GrantedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7673),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = "3",
                             PermissionId = 10,
-                            GrantedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8610),
+                            GrantedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7675),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = "3",
                             PermissionId = 21,
-                            GrantedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8610),
+                            GrantedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7676),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = "3",
                             PermissionId = 22,
-                            GrantedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8611),
+                            GrantedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7677),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = "3",
                             PermissionId = 23,
-                            GrantedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8612),
+                            GrantedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7678),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = "3",
                             PermissionId = 24,
-                            GrantedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8613),
+                            GrantedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7679),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = "3",
                             PermissionId = 25,
-                            GrantedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8614),
+                            GrantedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7680),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = "3",
                             PermissionId = 26,
-                            GrantedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8615),
+                            GrantedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7681),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = "3",
                             PermissionId = 27,
-                            GrantedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8616),
+                            GrantedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7682),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = "3",
                             PermissionId = 28,
-                            GrantedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8616),
+                            GrantedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7683),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = "3",
                             PermissionId = 30,
-                            GrantedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8617),
+                            GrantedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7684),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = "3",
                             PermissionId = 31,
-                            GrantedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8618),
+                            GrantedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7685),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = "3",
                             PermissionId = 32,
-                            GrantedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8619),
+                            GrantedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7686),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = "3",
                             PermissionId = 33,
-                            GrantedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8620),
+                            GrantedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7687),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = "3",
                             PermissionId = 34,
-                            GrantedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8621),
+                            GrantedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7688),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = "3",
                             PermissionId = 36,
-                            GrantedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8621),
+                            GrantedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7689),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = "3",
                             PermissionId = 37,
-                            GrantedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8622),
+                            GrantedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7690),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = "3",
                             PermissionId = 46,
-                            GrantedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8623),
+                            GrantedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7690),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = "3",
                             PermissionId = 47,
-                            GrantedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8624),
+                            GrantedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7691),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = "3",
                             PermissionId = 48,
-                            GrantedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8625),
+                            GrantedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7692),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = "3",
                             PermissionId = 43,
-                            GrantedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8625),
+                            GrantedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7693),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = "3",
                             PermissionId = 49,
-                            GrantedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8626),
+                            GrantedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7694),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = "3",
                             PermissionId = 50,
-                            GrantedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8627),
+                            GrantedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7695),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = "3",
                             PermissionId = 51,
-                            GrantedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8628),
+                            GrantedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7696),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = "4",
                             PermissionId = 5,
-                            GrantedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8630),
+                            GrantedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7697),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = "4",
                             PermissionId = 9,
-                            GrantedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8631),
+                            GrantedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7698),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = "4",
                             PermissionId = 10,
-                            GrantedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8631),
+                            GrantedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7700),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = "4",
                             PermissionId = 42,
-                            GrantedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8632),
+                            GrantedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7701),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = "4",
                             PermissionId = 44,
-                            GrantedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8633),
+                            GrantedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7702),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = "4",
                             PermissionId = 45,
-                            GrantedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8634),
+                            GrantedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7703),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = "5",
                             PermissionId = 5,
-                            GrantedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8635),
+                            GrantedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7704),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = "5",
                             PermissionId = 6,
-                            GrantedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8636),
+                            GrantedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7706),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = "5",
                             PermissionId = 7,
-                            GrantedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8636),
+                            GrantedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7707),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = "5",
                             PermissionId = 8,
-                            GrantedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8637),
+                            GrantedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7707),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = "5",
                             PermissionId = 9,
-                            GrantedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8638),
+                            GrantedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7708),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = "5",
                             PermissionId = 10,
-                            GrantedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8639),
+                            GrantedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7709),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = "5",
                             PermissionId = 11,
-                            GrantedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8640),
+                            GrantedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7710),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = "5",
                             PermissionId = 12,
-                            GrantedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8641),
+                            GrantedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7711),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = "5",
                             PermissionId = 30,
-                            GrantedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8664),
+                            GrantedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7712),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = "5",
                             PermissionId = 32,
-                            GrantedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8665),
+                            GrantedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7713),
                             IsActive = true
                         },
                         new
                         {
                             RoleId = "5",
                             PermissionId = 33,
-                            GrantedAt = new DateTime(2025, 10, 4, 16, 18, 54, 796, DateTimeKind.Utc).AddTicks(8666),
+                            GrantedAt = new DateTime(2025, 10, 4, 15, 46, 33, 385, DateTimeKind.Utc).AddTicks(7714),
                             IsActive = true
                         });
                 });

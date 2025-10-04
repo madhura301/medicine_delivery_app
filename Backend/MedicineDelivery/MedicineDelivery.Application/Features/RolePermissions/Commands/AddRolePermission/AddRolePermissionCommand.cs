@@ -5,7 +5,7 @@ namespace MedicineDelivery.Application.Features.RolePermissions.Commands.AddRole
 {
     public class AddRolePermissionCommand : IRequest<RolePermissionResponseDto>
     {
-        public int RoleId { get; set; }
+        public string RoleId { get; set; } = string.Empty;
         public int PermissionId { get; set; }
         public bool IsActive { get; set; } = true;
         public string? GrantedBy { get; set; }

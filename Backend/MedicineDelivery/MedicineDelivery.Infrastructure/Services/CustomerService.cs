@@ -53,117 +53,124 @@ namespace MedicineDelivery.Infrastructure.Services
                     };
                 }
 
-                // Create Identity user using mobile number as username
-                var identityUser = new ApplicationUser
+                // Begin transaction to ensure atomicity
+                await _unitOfWork.BeginTransactionAsync();
+                
+                ApplicationUser? identityUser = null;
+                try
                 {
-                    UserName = registrationDto.MobileNumber,
-                    Email = registrationDto.EmailId ?? $"{registrationDto.MobileNumber}@customer.local",
-                    FirstName = registrationDto.CustomerFirstName,
-                    LastName = registrationDto.CustomerLastName,
-                    PhoneNumber = registrationDto.MobileNumber,
-                    EmailConfirmed = true
-                };
-
-                var userResult = await _userManager.CreateAsync(identityUser, registrationDto.Password);
-                if (!userResult.Succeeded)
-                {
-                    return new CustomerRegistrationResult
+                    // Create Identity user using mobile number as username
+                    identityUser = new ApplicationUser
                     {
-                        Success = false,
-                        Errors = userResult.Errors.Select(e => e.Description).ToList()
+                        UserName = registrationDto.MobileNumber,
+                        Email = registrationDto.EmailId ?? $"{registrationDto.MobileNumber}@customer.local",
+                        FirstName = registrationDto.CustomerFirstName,
+                        LastName = registrationDto.CustomerLastName,
+                        PhoneNumber = registrationDto.MobileNumber,
+                        EmailConfirmed = true
                     };
-                }
 
-                // Create domain user
-                var domainUser = new User
-                {
-                    Id = identityUser.Id,
-                    Email = identityUser.Email,
-                    FirstName = identityUser.FirstName ?? string.Empty,
-                    LastName = identityUser.LastName ?? string.Empty,
-                    CreatedAt = DateTime.UtcNow,
-                    IsActive = true
-                };
-
-                await _unitOfWork.Users.AddAsync(domainUser);
-
-                // Assign Customer role to the user
-                var customerRole = await _unitOfWork.Roles.FirstOrDefaultAsync(r => r.Name == "Customer");
-                if (customerRole != null)
-                {
-                    var userRole = new UserRole
+                    var userResult = await _userManager.CreateAsync(identityUser, registrationDto.Password);
+                    if (!userResult.Succeeded)
                     {
-                        UserId = domainUser.Id,
-                        RoleId = customerRole.Id,
-                        AssignedAt = DateTime.UtcNow,
+                        await _unitOfWork.RollbackTransactionAsync();
+                        return new CustomerRegistrationResult
+                        {
+                            Success = false,
+                            Errors = userResult.Errors.Select(e => e.Description).ToList()
+                        };
+                    }
+
+                    // Add to Customer Identity role
+                    await _userManager.AddToRoleAsync(identityUser, "Customer");
+
+                    // Create customer
+                    var customer = new Customer
+                    {
+                        CustomerId = Guid.NewGuid(),
+                        CustomerFirstName = registrationDto.CustomerFirstName,
+                        CustomerLastName = registrationDto.CustomerLastName,
+                        CustomerMiddleName = registrationDto.CustomerMiddleName,
+                        MobileNumber = registrationDto.MobileNumber,
+                        AlternativeMobileNumber = registrationDto.AlternativeMobileNumber,
+                        EmailId = registrationDto.EmailId,
+                        DateOfBirth = registrationDto.DateOfBirth,
+                        Gender = registrationDto.Gender,
+                        UserId = identityUser.Id,
+                        CreatedOn = DateTime.UtcNow,
                         IsActive = true
                     };
-                    await _unitOfWork.UserRoles.AddAsync(userRole);
-                }
 
-                // Create customer
-                var customer = new Customer
-                {
-                    CustomerId = Guid.NewGuid(),
-                    CustomerFirstName = registrationDto.CustomerFirstName,
-                    CustomerLastName = registrationDto.CustomerLastName,
-                    CustomerMiddleName = registrationDto.CustomerMiddleName,
-                    MobileNumber = registrationDto.MobileNumber,
-                    AlternativeMobileNumber = registrationDto.AlternativeMobileNumber,
-                    EmailId = registrationDto.EmailId,
-                    DateOfBirth = registrationDto.DateOfBirth,
-                    Gender = registrationDto.Gender,
-                    UserId = identityUser.Id,
-                    CreatedOn = DateTime.UtcNow,
-                    IsActive = true
-                };
+                    await _unitOfWork.Customers.AddAsync(customer);
+                    await _unitOfWork.SaveChangesAsync();
+                    await _unitOfWork.CommitTransactionAsync();
 
-                await _unitOfWork.Customers.AddAsync(customer);
-                await _unitOfWork.SaveChangesAsync();
-
-                // Create addresses if provided
-                if (registrationDto.Addresses != null && registrationDto.Addresses.Any())
-                {
-                    foreach (var addressDto in registrationDto.Addresses)
+                    // Create addresses if provided
+                    if (registrationDto.Addresses != null && registrationDto.Addresses.Any())
                     {
-                        var createAddressDto = new CreateCustomerAddressDto
+                        foreach (var addressDto in registrationDto.Addresses)
                         {
-                            CustomerId = customer.CustomerId,
-                            Address = addressDto.Address,
-                            City = addressDto.City,
-                            State = addressDto.State,
-                            PostalCode = addressDto.PostalCode,
-                            IsDefault = addressDto.IsDefault
-                        };
-                        await _customerAddressService.CreateCustomerAddressAsync(createAddressDto);
+                            var createAddressDto = new CreateCustomerAddressDto
+                            {
+                                CustomerId = customer.CustomerId,
+                                Address = addressDto.Address,
+                                City = addressDto.City,
+                                State = addressDto.State,
+                                PostalCode = addressDto.PostalCode,
+                                IsDefault = addressDto.IsDefault
+                            };
+                            await _customerAddressService.CreateCustomerAddressAsync(createAddressDto);
+                        }
                     }
+
+                    // Create response
+                    var response = new CustomerResponseDto
+                    {
+                        CustomerId = customer.CustomerId,
+                        CustomerFirstName = customer.CustomerFirstName,
+                        CustomerLastName = customer.CustomerLastName,
+                        CustomerMiddleName = customer.CustomerMiddleName,
+                        MobileNumber = customer.MobileNumber,
+                        AlternativeMobileNumber = customer.AlternativeMobileNumber,
+                        EmailId = customer.EmailId,
+                        DateOfBirth = customer.DateOfBirth,
+                        Gender = customer.Gender,
+                        CustomerPhoto = customer.CustomerPhoto,
+                        IsActive = customer.IsActive,
+                        CreatedOn = customer.CreatedOn,
+                        UpdatedOn = customer.UpdatedOn,
+                        UserId = customer.UserId,
+                        Addresses = await _customerAddressService.GetCustomerAddressesByCustomerIdAsync(customer.CustomerId)
+                    };
+
+                    return new CustomerRegistrationResult
+                    {
+                        Success = true,
+                        Customer = response
+                    };
                 }
-
-                // Create response
-                var response = new CustomerResponseDto
+                catch (Exception)
                 {
-                    CustomerId = customer.CustomerId,
-                    CustomerFirstName = customer.CustomerFirstName,
-                    CustomerLastName = customer.CustomerLastName,
-                    CustomerMiddleName = customer.CustomerMiddleName,
-                    MobileNumber = customer.MobileNumber,
-                    AlternativeMobileNumber = customer.AlternativeMobileNumber,
-                    EmailId = customer.EmailId,
-                    DateOfBirth = customer.DateOfBirth,
-                    Gender = customer.Gender,
-                    CustomerPhoto = customer.CustomerPhoto,
-                    IsActive = customer.IsActive,
-                    CreatedOn = customer.CreatedOn,
-                    UpdatedOn = customer.UpdatedOn,
-                    UserId = customer.UserId,
-                    Addresses = await _customerAddressService.GetCustomerAddressesByCustomerIdAsync(customer.CustomerId)
-                };
-
-                return new CustomerRegistrationResult
-                {
-                    Success = true,
-                    Customer = response
-                };
+                    // Rollback the transaction
+                    await _unitOfWork.RollbackTransactionAsync();
+                    
+                    // Clean up the Identity user if it was created
+                    if (identityUser != null)
+                    {
+                        try
+                        {
+                            await _userManager.DeleteAsync(identityUser);
+                        }
+                        catch (Exception ex)
+                        {
+                            // Log the cleanup failure but don't throw - the main transaction is already rolled back
+                            // This could be logged to a proper logging system
+                            Console.WriteLine($"Failed to cleanup Identity user {identityUser.Id}: {ex.Message}");
+                        }
+                    }
+                    
+                    throw; // Re-throw the original exception
+                }
             }
             catch (Exception ex)
             {

@@ -6,9 +6,9 @@ namespace MedicineDelivery.Infrastructure.Services
 {
     public class UserManagerService : IUserManager
     {
-        private readonly UserManager<ApplicationUser> _userManager;
+        private readonly UserManager<Domain.Entities.ApplicationUser> _userManager;
 
-        public UserManagerService(UserManager<ApplicationUser> userManager)
+        public UserManagerService(UserManager<Domain.Entities.ApplicationUser> userManager)
         {
             _userManager = userManager;
         }
@@ -21,7 +21,7 @@ namespace MedicineDelivery.Infrastructure.Services
 
         public async Task<MedicineDelivery.Domain.Interfaces.IdentityResult> CreateAsync(IApplicationUser user, string password)
         {
-            var appUser = new ApplicationUser
+            var appUser = new Domain.Entities.ApplicationUser
             {
                 UserName = user.UserName,
                 Email = user.Email,
@@ -78,6 +78,18 @@ namespace MedicineDelivery.Infrastructure.Services
             return ConvertToDomainResult(result);
         }
 
+        public async Task<MedicineDelivery.Domain.Interfaces.IdentityResult> DeleteAsync(IApplicationUser user)
+        {
+            var appUser = await _userManager.FindByIdAsync(user.Id);
+            if (appUser == null)
+            {
+                return new MedicineDelivery.Domain.Interfaces.IdentityResult { Succeeded = false, Errors = new[] { new MedicineDelivery.Domain.Interfaces.IdentityError { Description = "User not found" } } };
+            }
+
+            var result = await _userManager.DeleteAsync(appUser);
+            return ConvertToDomainResult(result);
+        }
+
         private static MedicineDelivery.Domain.Interfaces.IdentityResult ConvertToDomainResult(Microsoft.AspNetCore.Identity.IdentityResult aspNetResult)
         {
             return new MedicineDelivery.Domain.Interfaces.IdentityResult
@@ -94,9 +106,9 @@ namespace MedicineDelivery.Infrastructure.Services
 
     public class ApplicationUserWrapper : IApplicationUser
     {
-        private readonly ApplicationUser _user;
+        private readonly Domain.Entities.ApplicationUser _user;
 
-        public ApplicationUserWrapper(ApplicationUser user)
+        public ApplicationUserWrapper(Domain.Entities.ApplicationUser user)
         {
             _user = user;
         }

@@ -24,7 +24,7 @@ namespace MedicineDelivery.API.Controllers
 
         [HttpGet("{roleId}")]
         [Authorize(Policy = "RequireManageRolePermission")]
-        public async Task<IActionResult> GetRolePermissions(int roleId)
+        public async Task<IActionResult> GetRolePermissions(string roleId)
         {
             try
             {

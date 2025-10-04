@@ -50,107 +50,114 @@ namespace MedicineDelivery.Infrastructure.Services
                     };
                 }
 
-                // Generate random password
-                var generatedPassword = GenerateRandomPassword();
-
-                // Create Identity user
-                var identityUser = new ApplicationUser
+                // Begin transaction to ensure atomicity
+                await _unitOfWork.BeginTransactionAsync();
+                
+                ApplicationUser? identityUser = null;
+                try
                 {
-                    UserName = registrationDto.MobileNumber,
-                    Email = registrationDto.EmailId,
-                    PhoneNumber = registrationDto.MobileNumber,
-                    FirstName = registrationDto.ManagerFirstName,
-                    LastName = registrationDto.ManagerLastName,
-                    EmailConfirmed = true
-                };
+                    // Generate random password
+                    var generatedPassword = GenerateRandomPassword();
 
-                var userResult = await _userManager.CreateAsync(identityUser, generatedPassword);
-                if (!userResult.Succeeded)
-                {
+                    // Create Identity user
+                    identityUser = new ApplicationUser
+                    {
+                        UserName = registrationDto.MobileNumber,
+                        Email = registrationDto.EmailId,
+                        PhoneNumber = registrationDto.MobileNumber,
+                        FirstName = registrationDto.ManagerFirstName,
+                        LastName = registrationDto.ManagerLastName,
+                        EmailConfirmed = true
+                    };
+
+                    var userResult = await _userManager.CreateAsync(identityUser, generatedPassword);
+                    if (!userResult.Succeeded)
+                    {
+                        await _unitOfWork.RollbackTransactionAsync();
+                        return new ManagerRegistrationResult
+                        {
+                            Success = false,
+                            Errors = userResult.Errors.Select(e => e.Description).ToList()
+                        };
+                    }
+
+                    // Add to Manager Identity role
+                    await _userManager.AddToRoleAsync(identityUser, "Manager");
+
+                    // Create manager
+                    var manager = new Manager
+                    {
+                        ManagerId = Guid.NewGuid(),
+                        ManagerFirstName = registrationDto.ManagerFirstName,
+                        ManagerLastName = registrationDto.ManagerLastName,
+                        ManagerMiddleName = registrationDto.ManagerMiddleName,
+                        Address = registrationDto.Address,
+                        City = registrationDto.City,
+                        State = registrationDto.State,
+                        MobileNumber = registrationDto.MobileNumber,
+                        EmailId = registrationDto.EmailId,
+                        AlternativeMobileNumber = registrationDto.AlternativeMobileNumber,
+                        UserId = identityUser.Id,
+                        CreatedOn = DateTime.UtcNow,
+                        IsActive = true,
+                        IsDeleted = false
+                    };
+
+                    await _unitOfWork.Managers.AddAsync(manager);
+                    await _unitOfWork.SaveChangesAsync();
+                    await _unitOfWork.CommitTransactionAsync();
+
+                    // Create response
+                    var response = new ManagerResponseDto
+                    {
+                        ManagerId = manager.ManagerId,
+                        ManagerFirstName = manager.ManagerFirstName,
+                        ManagerLastName = manager.ManagerLastName,
+                        ManagerMiddleName = manager.ManagerMiddleName,
+                        Address = manager.Address,
+                        City = manager.City,
+                        State = manager.State,
+                        MobileNumber = manager.MobileNumber,
+                        EmailId = manager.EmailId,
+                        AlternativeMobileNumber = manager.AlternativeMobileNumber,
+                        IsActive = manager.IsActive,
+                        IsDeleted = manager.IsDeleted,
+                        CreatedOn = manager.CreatedOn,
+                        CreatedBy = manager.CreatedBy,
+                        UpdatedOn = manager.UpdatedOn,
+                        UpdatedBy = manager.UpdatedBy,
+                        UserId = manager.UserId,
+                        Password = generatedPassword
+                    };
+
                     return new ManagerRegistrationResult
                     {
-                        Success = false,
-                        Errors = userResult.Errors.Select(e => e.Description).ToList()
+                        Success = true,
+                        Manager = response
                     };
                 }
-
-                // Create domain user
-                var domainUser = new User
+                catch (Exception)
                 {
-                    Id = identityUser.Id,
-                    Email = identityUser.Email,
-                    FirstName = identityUser.FirstName ?? string.Empty,
-                    LastName = identityUser.LastName ?? string.Empty,
-                    CreatedAt = DateTime.UtcNow,
-                    IsActive = true
-                };
-
-                await _unitOfWork.Users.AddAsync(domainUser);
-
-                // Assign Manager role to the user
-                var managerRole = await _unitOfWork.Roles.FirstOrDefaultAsync(r => r.Name == "Manager");
-                if (managerRole != null)
-                {
-                    var userRole = new UserRole
+                    // Rollback the transaction
+                    await _unitOfWork.RollbackTransactionAsync();
+                    
+                    // Clean up the Identity user if it was created
+                    if (identityUser != null)
                     {
-                        UserId = domainUser.Id,
-                        RoleId = managerRole.Id,
-                        AssignedAt = DateTime.UtcNow,
-                        IsActive = true
-                    };
-                    await _unitOfWork.UserRoles.AddAsync(userRole);
+                        try
+                        {
+                            await _userManager.DeleteAsync(identityUser);
+                        }
+                        catch (Exception ex)
+                        {
+                            // Log the cleanup failure but don't throw - the main transaction is already rolled back
+                            // This could be logged to a proper logging system
+                            Console.WriteLine($"Failed to cleanup Identity user {identityUser.Id}: {ex.Message}");
+                        }
+                    }
+                    
+                    throw; // Re-throw the original exception
                 }
-
-                // Create manager
-                var manager = new Manager
-                {
-                    ManagerId = Guid.NewGuid(),
-                    ManagerFirstName = registrationDto.ManagerFirstName,
-                    ManagerLastName = registrationDto.ManagerLastName,
-                    ManagerMiddleName = registrationDto.ManagerMiddleName,
-                    Address = registrationDto.Address,
-                    City = registrationDto.City,
-                    State = registrationDto.State,
-                    MobileNumber = registrationDto.MobileNumber,
-                    EmailId = registrationDto.EmailId,
-                    AlternativeMobileNumber = registrationDto.AlternativeMobileNumber,
-                    UserId = identityUser.Id,
-                    CreatedOn = DateTime.UtcNow,
-                    IsActive = true,
-                    IsDeleted = false
-                };
-
-                await _unitOfWork.Managers.AddAsync(manager);
-                await _unitOfWork.SaveChangesAsync();
-
-                // Create response
-                var response = new ManagerResponseDto
-                {
-                    ManagerId = manager.ManagerId,
-                    ManagerFirstName = manager.ManagerFirstName,
-                    ManagerLastName = manager.ManagerLastName,
-                    ManagerMiddleName = manager.ManagerMiddleName,
-                    Address = manager.Address,
-                    City = manager.City,
-                    State = manager.State,
-                    MobileNumber = manager.MobileNumber,
-                    EmailId = manager.EmailId,
-                    AlternativeMobileNumber = manager.AlternativeMobileNumber,
-                    IsActive = manager.IsActive,
-                    IsDeleted = manager.IsDeleted,
-                    CreatedOn = manager.CreatedOn,
-                    CreatedBy = manager.CreatedBy,
-                    UpdatedOn = manager.UpdatedOn,
-                    UpdatedBy = manager.UpdatedBy,
-                    UserId = manager.UserId,
-                    Password = generatedPassword
-                };
-
-                return new ManagerRegistrationResult
-                {
-                    Success = true,
-                    Manager = response
-                };
             }
             catch (Exception ex)
             {

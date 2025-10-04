@@ -10,14 +10,14 @@ namespace MedicineDelivery.API.Services
 {
     public class AuthService : Domain.Interfaces.IAuthService
     {
-        private readonly UserManager<ApplicationUser> _userManager;
-        private readonly SignInManager<ApplicationUser> _signInManager;
+        private readonly UserManager<Domain.Entities.ApplicationUser> _userManager;
+        private readonly SignInManager<Domain.Entities.ApplicationUser> _signInManager;
         private readonly IConfiguration _configuration;
         private readonly ILogger<AuthService> _logger;
 
         public AuthService(
-            UserManager<ApplicationUser> userManager,
-            SignInManager<ApplicationUser> signInManager,
+            UserManager<Domain.Entities.ApplicationUser> userManager,
+            SignInManager<Domain.Entities.ApplicationUser> signInManager,
             IConfiguration configuration,
             ILogger<AuthService> logger)
         {
@@ -82,7 +82,7 @@ namespace MedicineDelivery.API.Services
             
             try
             {
-                var user = new ApplicationUser
+                var user = new Domain.Entities.ApplicationUser
                 {
                     UserName = request.MobileNumber,
                     Email = request.Email,
@@ -123,7 +123,7 @@ namespace MedicineDelivery.API.Services
             }
         }
 
-        public async Task<string> GenerateJwtTokenAsync(ApplicationUser user)
+        public async Task<string> GenerateJwtTokenAsync(Domain.Entities.ApplicationUser user)
         {
             _logger.LogDebug("Generating JWT token for user ID: {UserId}", user.Id);
             

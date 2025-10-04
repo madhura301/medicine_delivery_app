@@ -57,6 +57,9 @@ namespace MedicineDelivery.Infrastructure.Services
                 Id = Guid.NewGuid(),
                 CustomerId = createDto.CustomerId,
                 Address = createDto.Address,
+                AddressLine1 = createDto.AddressLine1,
+                AddressLine2 = createDto.AddressLine2,
+                AddressLine3 = createDto.AddressLine3,
                 City = createDto.City,
                 State = createDto.State,
                 PostalCode = createDto.PostalCode,
@@ -92,6 +95,9 @@ namespace MedicineDelivery.Infrastructure.Services
             }
 
             customerAddress.Address = updateDto.Address;
+            customerAddress.AddressLine1 = updateDto.AddressLine1;
+            customerAddress.AddressLine2 = updateDto.AddressLine2;
+            customerAddress.AddressLine3 = updateDto.AddressLine3;
             customerAddress.City = updateDto.City;
             customerAddress.State = updateDto.State;
             customerAddress.PostalCode = updateDto.PostalCode;

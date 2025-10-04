@@ -60,17 +60,9 @@ namespace MedicineDelivery.Infrastructure.Services
                 };
             }
 
-            var domainUser = await _unitOfWork.Users.FirstOrDefaultAsync(u => u.Id == user.Id);
-            if (domainUser == null)
-            {
-                return new AuthResult
-                {
-                    Success = false,
-                    Errors = new List<string> { "User not found" }
-                };
-            }
+            // User validation is now handled by Identity directly
 
-            var tokenResult = await GenerateJwtTokenAsync(domainUser, stayLoggedIn);
+            var tokenResult = await GenerateJwtTokenAsync(user, stayLoggedIn);
             return new AuthResult
             {
                 Success = true,
@@ -106,20 +98,7 @@ namespace MedicineDelivery.Infrastructure.Services
             // Assign Admin role to the user
             await _userManager.AddToRoleAsync(user, "Admin");
 
-            var domainUser = new User
-            {
-                Id = user.Id,
-                Email = user.Email,
-                FirstName = user.FirstName ?? string.Empty,
-                LastName = user.LastName ?? string.Empty,
-                CreatedAt = DateTime.UtcNow,
-                IsActive = true
-            };
-
-            await _unitOfWork.Users.AddAsync(domainUser);
-            await _unitOfWork.SaveChangesAsync();
-
-            var tokenResult = await GenerateJwtTokenAsync(domainUser, false);
+            var tokenResult = await GenerateJwtTokenAsync(user, false);
             return new AuthResult
             {
                 Success = true,
@@ -131,7 +110,7 @@ namespace MedicineDelivery.Infrastructure.Services
             };
         }
 
-        public async Task<TokenResult> GenerateJwtTokenAsync(User user, bool stayLoggedIn = false)
+        public async Task<TokenResult> GenerateJwtTokenAsync(Domain.Entities.ApplicationUser user, bool stayLoggedIn = false)
         {
             var jwtSettings = _configuration.GetSection("JwtSettings");
             var secretKey = jwtSettings["SecretKey"];
@@ -152,24 +131,7 @@ namespace MedicineDelivery.Infrastructure.Services
                 // Debug: Log the roles found
                 Console.WriteLine($"User {user.Id} has Identity roles: {string.Join(", ", roles)}");
                 
-                // If no roles from Identity, try to get from domain UserRole table
-                if (!roles.Any())
-                {
-                    Console.WriteLine("No Identity roles found, checking domain UserRole table...");
-                    var domainUserRoles = await _unitOfWork.UserRoles.GetAllAsync();
-                    var userDomainRoles = domainUserRoles.Where(ur => ur.UserId == user.Id && ur.IsActive);
-                    
-                    if (userDomainRoles.Any())
-                    {
-                        // Get role names from role IDs
-                        var allRoles = await _unitOfWork.Roles.GetAllAsync();
-                        var userRoleIds = userDomainRoles.Select(ur => ur.RoleId).ToList();
-                        var userRoleNames = allRoles.Where(r => userRoleIds.Contains(r.Id) && r.IsActive).Select(r => r.Name).ToList();
-                        roles = userRoleNames;
-                        primaryRole = roles.FirstOrDefault() ?? "";
-                        Console.WriteLine($"User {user.Id} has domain roles: {string.Join(", ", roles)}");
-                    }
-                }
+                // All roles are now managed through Identity
             }
 
             // Get entity-specific ID based on role

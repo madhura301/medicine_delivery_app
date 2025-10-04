@@ -4,7 +4,7 @@ namespace MedicineDelivery.Application.Features.RolePermissions.Commands.RemoveR
 {
     public class RemoveRolePermissionCommand : IRequest<bool>
     {
-        public int RoleId { get; set; }
+        public string RoleId { get; set; } = string.Empty;
         public int PermissionId { get; set; }
     }
 }

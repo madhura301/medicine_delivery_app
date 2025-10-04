@@ -9,7 +9,6 @@ namespace MedicineDelivery.Domain.Entities
         public bool IsActive { get; set; } = true;
 
         // Navigation properties
-        public User User { get; set; } = null!;
         public Permission Permission { get; set; } = null!;
     }
 }

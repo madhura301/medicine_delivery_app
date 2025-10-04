@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Identity;
 using MedicineDelivery.Domain.Entities;
 using MedicineDelivery.Domain.Interfaces;
 using MedicineDelivery.Infrastructure.Data;
@@ -9,102 +10,80 @@ namespace MedicineDelivery.Infrastructure.Services
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly ApplicationDbContext _context;
+        private readonly UserManager<Domain.Entities.ApplicationUser> _userManager;
 
-        public RoleService(IUnitOfWork unitOfWork, ApplicationDbContext context)
+        public RoleService(IUnitOfWork unitOfWork, ApplicationDbContext context, UserManager<Domain.Entities.ApplicationUser> userManager)
         {
             _unitOfWork = unitOfWork;
             _context = context;
+            _userManager = userManager;
         }
 
         public async Task<bool> HasPermissionAsync(string userId, string permissionName)
         {
-            // Check if user has any role that contains the specified permission
-            return await _context.UserRoles
-                .Include(ur => ur.Role)
-                .ThenInclude(r => r.RolePermissions)
-                .ThenInclude(rp => rp.Permission)
-                .AnyAsync(ur => ur.UserId == userId && 
-                               ur.IsActive && 
-                               ur.Role.IsActive &&
-                               ur.Role.RolePermissions.Any(rp => 
-                                   rp.IsActive && 
-                                   rp.Permission.IsActive && 
-                                   rp.Permission.Name == permissionName));
+            // Get user's Identity roles
+            var user = await _userManager.FindByIdAsync(userId);
+            if (user == null) return false;
+
+            var userRoles = await _userManager.GetRolesAsync(user);
+            
+            // Check if any of the user's roles have the specified permission
+            return await _context.RolePermissions
+                .Include(rp => rp.Permission)
+                .AnyAsync(rp => userRoles.Contains(rp.RoleId) && 
+                               rp.IsActive && 
+                               rp.Permission.IsActive && 
+                               rp.Permission.Name == permissionName);
         }
 
         public async Task<List<Permission>> GetUserPermissionsAsync(string userId)
         {
-            var userRoles = await _context.UserRoles
-                .Include(ur => ur.Role)
-                .ThenInclude(r => r.RolePermissions)
-                .ThenInclude(rp => rp.Permission)
-                .Where(ur => ur.UserId == userId && ur.IsActive && ur.Role.IsActive)
-                .ToListAsync();
+            // Get user's Identity roles
+            var user = await _userManager.FindByIdAsync(userId);
+            if (user == null) return new List<Permission>();
 
-            var permissions = userRoles
-                .SelectMany(ur => ur.Role.RolePermissions)
-                .Where(rp => rp.IsActive && rp.Permission.IsActive)
+            var userRoles = await _userManager.GetRolesAsync(user);
+            
+            // Get permissions for all user roles
+            var permissions = await _context.RolePermissions
+                .Include(rp => rp.Permission)
+                .Where(rp => userRoles.Contains(rp.RoleId) && rp.IsActive && rp.Permission.IsActive)
                 .Select(rp => rp.Permission)
                 .Distinct()
-                .ToList();
+                .ToListAsync();
 
             return permissions;
         }
 
-        public async Task<List<Role>> GetUserRolesAsync(string userId)
+        public async Task<List<string>> GetUserRolesAsync(string userId)
         {
-            var userRoles = await _context.UserRoles
-                .Include(ur => ur.Role)
-                .Where(ur => ur.UserId == userId && ur.IsActive && ur.Role.IsActive)
-                .Select(ur => ur.Role)
-                .ToListAsync();
+            // Get user's Identity roles
+            var user = await _userManager.FindByIdAsync(userId);
+            if (user == null) return new List<string>();
 
-            return userRoles;
+            var userRoles = await _userManager.GetRolesAsync(user);
+            return userRoles.ToList();
         }
 
-        public async Task<bool> AssignRoleToUserAsync(string userId, int roleId, string assignedBy)
+        public async Task<bool> AssignRoleToUserAsync(string userId, string roleName, string assignedBy)
         {
-            var existingUserRole = await _unitOfWork.UserRoles
-                .FirstOrDefaultAsync(ur => ur.UserId == userId && ur.RoleId == roleId);
+            var user = await _userManager.FindByIdAsync(userId);
+            if (user == null) return false;
 
-            if (existingUserRole != null)
-            {
-                existingUserRole.IsActive = true;
-                existingUserRole.AssignedAt = DateTime.UtcNow;
-                existingUserRole.AssignedBy = assignedBy;
-            }
-            else
-            {
-                var userRole = new UserRole
-                {
-                    UserId = userId,
-                    RoleId = roleId,
-                    AssignedBy = assignedBy,
-                    IsActive = true
-                };
-                await _unitOfWork.UserRoles.AddAsync(userRole);
-            }
-
-            await _unitOfWork.SaveChangesAsync();
-            return true;
+            var result = await _userManager.AddToRoleAsync(user, roleName);
+            return result.Succeeded;
         }
 
-        public async Task<bool> RemoveRoleFromUserAsync(string userId, int roleId)
+        public async Task<bool> RemoveRoleFromUserAsync(string userId, string roleName)
         {
-            var userRole = await _unitOfWork.UserRoles
-                .FirstOrDefaultAsync(ur => ur.UserId == userId && ur.RoleId == roleId);
+            var user = await _userManager.FindByIdAsync(userId);
+            if (user == null) return false;
 
-            if (userRole != null)
-            {
-                userRole.IsActive = false;
-                await _unitOfWork.SaveChangesAsync();
-                return true;
-            }
-
-            return false;
+            var result = await _userManager.RemoveFromRoleAsync(user, roleName);
+            return result.Succeeded;
         }
 
-        public async Task<bool> AddPermissionToRoleAsync(int roleId, int permissionId, string grantedBy)
+        public async Task<bool> AddPermissionToRoleAsync(string roleId, int permissionId, string grantedBy)
         {
             var existingRolePermission = await _unitOfWork.RolePermissions
                 .FirstOrDefaultAsync(rp => rp.RoleId == roleId && rp.PermissionId == permissionId);
@@ -131,7 +110,7 @@ namespace MedicineDelivery.Infrastructure.Services
             return true;
         }
 
-        public async Task<bool> RemovePermissionFromRoleAsync(int roleId, int permissionId)
+        public async Task<bool> RemovePermissionFromRoleAsync(string roleId, int permissionId)
         {
             var rolePermission = await _unitOfWork.RolePermissions
                 .FirstOrDefaultAsync(rp => rp.RoleId == roleId && rp.PermissionId == permissionId);
@@ -146,51 +125,16 @@ namespace MedicineDelivery.Infrastructure.Services
             return false;
         }
 
-        public async Task<List<Role>> GetAllRolesAsync()
+        public async Task<List<string>> GetAllRolesAsync()
         {
-            return (await _unitOfWork.Roles.GetAllAsync()).ToList();
+            var roles = await _context.Roles.ToListAsync();
+            return roles.Select(r => r.Name).ToList();
         }
 
-        public async Task<Role?> GetRoleByIdAsync(int roleId)
+        public async Task<string?> GetRoleByIdAsync(string roleId)
         {
-            return await _unitOfWork.Roles.GetByIdAsync(roleId);
-        }
-
-        public async Task<Role> CreateRoleAsync(string name, string description)
-        {
-            var role = new Role
-            {
-                Name = name,
-                Description = description,
-                IsActive = true
-            };
-
-            await _unitOfWork.Roles.AddAsync(role);
-            await _unitOfWork.SaveChangesAsync();
-            return role;
-        }
-
-        public async Task<bool> UpdateRoleAsync(int roleId, string name, string description)
-        {
-            var role = await _unitOfWork.Roles.GetByIdAsync(roleId);
-            if (role == null)
-                return false;
-
-            role.Name = name;
-            role.Description = description;
-            await _unitOfWork.SaveChangesAsync();
-            return true;
-        }
-
-        public async Task<bool> DeleteRoleAsync(int roleId)
-        {
-            var role = await _unitOfWork.Roles.GetByIdAsync(roleId);
-            if (role == null)
-                return false;
-
-            role.IsActive = false;
-            await _unitOfWork.SaveChangesAsync();
-            return true;
+            var role = await _context.Roles.FindAsync(roleId);
+            return role?.Name;
         }
 
         public async Task<List<Permission>> GetAllPermissionsAsync()

@@ -7,6 +7,7 @@ namespace MedicineDelivery.Domain.Interfaces
         Task<IdentityResult> AddToRoleAsync(IApplicationUser user, string role);
         Task<string> GenerateEmailConfirmationTokenAsync(IApplicationUser user);
         Task<IdentityResult> ConfirmEmailAsync(IApplicationUser user, string token);
+        Task<IdentityResult> DeleteAsync(IApplicationUser user);
     }
 
     public interface IApplicationUser

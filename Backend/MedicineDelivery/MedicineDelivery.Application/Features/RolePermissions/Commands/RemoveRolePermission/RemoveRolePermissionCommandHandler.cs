@@ -5,35 +5,22 @@ namespace MedicineDelivery.Application.Features.RolePermissions.Commands.RemoveR
 {
     public class RemoveRolePermissionCommandHandler : IRequestHandler<RemoveRolePermissionCommand, bool>
     {
-        private readonly IUnitOfWork _unitOfWork;
+        private readonly IRoleService _roleService;
 
-        public RemoveRolePermissionCommandHandler(IUnitOfWork unitOfWork)
+        public RemoveRolePermissionCommandHandler(IRoleService roleService)
         {
-            _unitOfWork = unitOfWork;
+            _roleService = roleService;
         }
 
         public async Task<bool> Handle(RemoveRolePermissionCommand request, CancellationToken cancellationToken)
         {
-            // Find the role-permission
-            var rolePermissions = await _unitOfWork.RolePermissions.GetAllAsync();
-            var rolePermission = rolePermissions
-                .FirstOrDefault(rp => rp.RoleId == request.RoleId && rp.PermissionId == request.PermissionId);
-
-            if (rolePermission == null)
-            {
-                throw new InvalidOperationException("Role-permission not found.");
-            }
-
-            if (!rolePermission.IsActive)
-            {
-                throw new InvalidOperationException("Role-permission is already inactive.");
-            }
-
-            // Deactivate the role-permission instead of deleting it
-            rolePermission.IsActive = false;
-            _unitOfWork.RolePermissions.Update(rolePermission);
+            // Remove permission from role using RoleService
+            var success = await _roleService.RemovePermissionFromRoleAsync(request.RoleId, request.PermissionId);
             
-            await _unitOfWork.SaveChangesAsync();
+            if (!success)
+            {
+                throw new InvalidOperationException("Failed to remove permission from role.");
+            }
 
             return true;
         }

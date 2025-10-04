@@ -5,8 +5,7 @@ namespace MedicineDelivery.Application.DTOs
     public class AddRolePermissionDto
     {
         [Required]
-        [Range(1, int.MaxValue, ErrorMessage = "RoleId must be a positive number")]
-        public int RoleId { get; set; }
+        public string RoleId { get; set; } = string.Empty;
 
         [Required]
         [Range(1, int.MaxValue, ErrorMessage = "PermissionId must be a positive number")]
@@ -18,8 +17,7 @@ namespace MedicineDelivery.Application.DTOs
     public class RemoveRolePermissionDto
     {
         [Required]
-        [Range(1, int.MaxValue, ErrorMessage = "RoleId must be a positive number")]
-        public int RoleId { get; set; }
+        public string RoleId { get; set; } = string.Empty;
 
         [Required]
         [Range(1, int.MaxValue, ErrorMessage = "PermissionId must be a positive number")]
@@ -28,7 +26,7 @@ namespace MedicineDelivery.Application.DTOs
 
     public class RolePermissionResponseDto
     {
-        public int RoleId { get; set; }
+        public string RoleId { get; set; } = string.Empty;
         public string RoleName { get; set; } = string.Empty;
         public int PermissionId { get; set; }
         public string PermissionName { get; set; } = string.Empty;
@@ -40,7 +38,7 @@ namespace MedicineDelivery.Application.DTOs
 
     public class RolePermissionsListDto
     {
-        public int RoleId { get; set; }
+        public string RoleId { get; set; } = string.Empty;
         public string RoleName { get; set; } = string.Empty;
         public List<PermissionWithAssignmentDto> Permissions { get; set; } = new();
     }

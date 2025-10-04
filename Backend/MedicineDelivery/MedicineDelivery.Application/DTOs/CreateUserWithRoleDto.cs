@@ -19,8 +19,7 @@ namespace MedicineDelivery.Application.DTOs
         public string LastName { get; set; } = string.Empty;
 
         [Required]
-        [Range(1, 5, ErrorMessage = "Role must be between 1 and 5")]
-        public int RoleId { get; set; }
+        public string RoleId { get; set; } = string.Empty;
 
         public string? PhoneNumber { get; set; }
 
@@ -35,7 +34,7 @@ namespace MedicineDelivery.Application.DTOs
         public string Email { get; set; } = string.Empty;
         public string FirstName { get; set; } = string.Empty;
         public string LastName { get; set; } = string.Empty;
-        public int RoleId { get; set; }
+        public string RoleId { get; set; } = string.Empty;
         public string RoleName { get; set; } = string.Empty;
         public bool IsActive { get; set; }
         public DateTime CreatedAt { get; set; }

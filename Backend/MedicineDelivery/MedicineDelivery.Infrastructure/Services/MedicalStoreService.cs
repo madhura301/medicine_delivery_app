@@ -50,136 +50,143 @@ namespace MedicineDelivery.Infrastructure.Services
                     };
                 }
 
-                // Use provided password
-                var password = registrationDto.Password;
-
-                // Create Identity user
-                var identityUser = new ApplicationUser
+                // Begin transaction to ensure atomicity
+                await _unitOfWork.BeginTransactionAsync();
+                
+                ApplicationUser? identityUser = null;
+                try
                 {
-                    UserName = registrationDto.MobileNumber,
-                    Email = registrationDto.EmailId,
-                    PhoneNumber = registrationDto.MobileNumber,
-                    FirstName = registrationDto.OwnerFirstName,
-                    LastName = registrationDto.OwnerLastName,
-                    EmailConfirmed = true
-                };
+                    // Use provided password
+                    var password = registrationDto.Password;
 
-                var userResult = await _userManager.CreateAsync(identityUser, password);
-                if (!userResult.Succeeded)
-                {
+                    // Create Identity user
+                    identityUser = new ApplicationUser
+                    {
+                        UserName = registrationDto.MobileNumber,
+                        Email = registrationDto.EmailId,
+                        PhoneNumber = registrationDto.MobileNumber,
+                        FirstName = registrationDto.OwnerFirstName,
+                        LastName = registrationDto.OwnerLastName,
+                        EmailConfirmed = true
+                    };
+
+                    var userResult = await _userManager.CreateAsync(identityUser, password);
+                    if (!userResult.Succeeded)
+                    {
+                        await _unitOfWork.RollbackTransactionAsync();
+                        return new MedicalStoreRegistrationResult
+                        {
+                            Success = false,
+                            Errors = userResult.Errors.Select(e => e.Description).ToList()
+                        };
+                    }
+
+                    // Add to Chemist Identity role
+                    await _userManager.AddToRoleAsync(identityUser, "Chemist");
+
+                    // Create medical store
+                    var medicalStore = new MedicalStore
+                    {
+                        MedicalStoreId = Guid.NewGuid(),
+                        MedicalName = registrationDto.MedicalName,
+                        OwnerFirstName = registrationDto.OwnerFirstName,
+                        OwnerLastName = registrationDto.OwnerLastName,
+                        OwnerMiddleName = registrationDto.OwnerMiddleName,
+                        AddressLine1 = registrationDto.AddressLine1,
+                        AddressLine2 = registrationDto.AddressLine2,
+                        City = registrationDto.City,
+                        State = registrationDto.State,
+                        PostalCode = registrationDto.PostalCode,
+                        Latitude = registrationDto.Latitude,
+                        Longitude = registrationDto.Longitude,
+                        MobileNumber = registrationDto.MobileNumber,
+                        EmailId = registrationDto.EmailId,
+                        AlternativeMobileNumber = registrationDto.AlternativeMobileNumber,
+                        RegistrationStatus = registrationDto.RegistrationStatus,
+                        GSTIN = registrationDto.GSTIN,
+                        PAN = registrationDto.PAN,
+                        FSSAINo = registrationDto.FSSAINo,
+                        DLNo = registrationDto.DLNo,
+                        PharmacistFirstName = registrationDto.PharmacistFirstName,
+                        PharmacistLastName = registrationDto.PharmacistLastName,
+                        PharmacistRegistrationNumber = registrationDto.PharmacistRegistrationNumber,
+                        PharmacistMobileNumber = registrationDto.PharmacistMobileNumber,
+                        UserId = identityUser.Id,
+                        CreatedOn = DateTime.UtcNow,
+                        UpdatedOn = DateTime.UtcNow,
+                        IsActive = true,
+                        IsDeleted = false
+                    };
+
+                    await _unitOfWork.MedicalStores.AddAsync(medicalStore);
+                    await _unitOfWork.SaveChangesAsync();
+                    await _unitOfWork.CommitTransactionAsync();
+
+                    // Create response
+                    var response = new MedicalStoreResponseDto
+                    {
+                        MedicalStoreId = medicalStore.MedicalStoreId,
+                        MedicalName = medicalStore.MedicalName,
+                        OwnerFirstName = medicalStore.OwnerFirstName,
+                        OwnerLastName = medicalStore.OwnerLastName,
+                        OwnerMiddleName = medicalStore.OwnerMiddleName,
+                        AddressLine1 = medicalStore.AddressLine1,
+                        AddressLine2 = medicalStore.AddressLine2,
+                        City = medicalStore.City,
+                        State = medicalStore.State,
+                        PostalCode = medicalStore.PostalCode,
+                        Latitude = medicalStore.Latitude,
+                        Longitude = medicalStore.Longitude,
+                        MobileNumber = medicalStore.MobileNumber,
+                        EmailId = medicalStore.EmailId,
+                        AlternativeMobileNumber = medicalStore.AlternativeMobileNumber,
+                        RegistrationStatus = medicalStore.RegistrationStatus,
+                        GSTIN = medicalStore.GSTIN,
+                        PAN = medicalStore.PAN,
+                        FSSAINo = medicalStore.FSSAINo,
+                        DLNo = medicalStore.DLNo,
+                        PharmacistFirstName = medicalStore.PharmacistFirstName,
+                        PharmacistLastName = medicalStore.PharmacistLastName,
+                        PharmacistRegistrationNumber = medicalStore.PharmacistRegistrationNumber,
+                        PharmacistMobileNumber = medicalStore.PharmacistMobileNumber,
+                        IsActive = medicalStore.IsActive,
+                        IsDeleted = medicalStore.IsDeleted,
+                        CreatedOn = medicalStore.CreatedOn,
+                        CreatedBy = medicalStore.CreatedBy,
+                        UpdatedOn = medicalStore.UpdatedOn,
+                        UpdatedBy = medicalStore.UpdatedBy,
+                        UserId = medicalStore.UserId,
+                        Password = password
+                    };
+
                     return new MedicalStoreRegistrationResult
                     {
-                        Success = false,
-                        Errors = userResult.Errors.Select(e => e.Description).ToList()
+                        Success = true,
+                        MedicalStore = response
                     };
                 }
-
-                // Create domain user
-                var domainUser = new User
+                catch (Exception)
                 {
-                    Id = identityUser.Id,
-                    Email = identityUser.Email,
-                    FirstName = identityUser.FirstName ?? string.Empty,
-                    LastName = identityUser.LastName ?? string.Empty,
-                    CreatedAt = DateTime.UtcNow,
-                    IsActive = true
-                };
-
-                await _unitOfWork.Users.AddAsync(domainUser);
-
-                // Assign Chemist role to the user
-                var chemistRole = await _unitOfWork.Roles.FirstOrDefaultAsync(r => r.Name == "Chemist");
-                if (chemistRole != null)
-                {
-                    var userRole = new UserRole
+                    // Rollback the transaction
+                    await _unitOfWork.RollbackTransactionAsync();
+                    
+                    // Clean up the Identity user if it was created
+                    if (identityUser != null)
                     {
-                        UserId = domainUser.Id,
-                        RoleId = chemistRole.Id,
-                        AssignedAt = DateTime.UtcNow,
-                        IsActive = true
-                    };
-                    await _unitOfWork.UserRoles.AddAsync(userRole);
+                        try
+                        {
+                            await _userManager.DeleteAsync(identityUser);
+                        }
+                        catch (Exception ex)
+                        {
+                            // Log the cleanup failure but don't throw - the main transaction is already rolled back
+                            // This could be logged to a proper logging system
+                            Console.WriteLine($"Failed to cleanup Identity user {identityUser.Id}: {ex.Message}");
+                        }
+                    }
+                    
+                    throw; // Re-throw the original exception
                 }
-
-                // Create medical store
-                var medicalStore = new MedicalStore
-                {
-                    MedicalStoreId = Guid.NewGuid(),
-                    MedicalName = registrationDto.MedicalName,
-                    OwnerFirstName = registrationDto.OwnerFirstName,
-                    OwnerLastName = registrationDto.OwnerLastName,
-                    OwnerMiddleName = registrationDto.OwnerMiddleName,
-                    AddressLine1 = registrationDto.AddressLine1,
-                    AddressLine2 = registrationDto.AddressLine2,
-                    City = registrationDto.City,
-                    State = registrationDto.State,
-                    PostalCode = registrationDto.PostalCode,
-                    Latitude = registrationDto.Latitude,
-                    Longitude = registrationDto.Longitude,
-                    MobileNumber = registrationDto.MobileNumber,
-                    EmailId = registrationDto.EmailId,
-                    AlternativeMobileNumber = registrationDto.AlternativeMobileNumber,
-                    RegistrationStatus = registrationDto.RegistrationStatus,
-                    GSTIN = registrationDto.GSTIN,
-                    PAN = registrationDto.PAN,
-                    FSSAINo = registrationDto.FSSAINo,
-                    DLNo = registrationDto.DLNo,
-                    PharmacistFirstName = registrationDto.PharmacistFirstName,
-                    PharmacistLastName = registrationDto.PharmacistLastName,
-                    PharmacistRegistrationNumber = registrationDto.PharmacistRegistrationNumber,
-                    PharmacistMobileNumber = registrationDto.PharmacistMobileNumber,
-                    UserId = identityUser.Id,
-                    CreatedOn = DateTime.UtcNow,
-                    UpdatedOn = DateTime.UtcNow,
-                    IsActive = true,
-                    IsDeleted = false
-                };
-
-                await _unitOfWork.MedicalStores.AddAsync(medicalStore);
-                await _unitOfWork.SaveChangesAsync();
-
-                // Create response
-                var response = new MedicalStoreResponseDto
-                {
-                    MedicalStoreId = medicalStore.MedicalStoreId,
-                    MedicalName = medicalStore.MedicalName,
-                    OwnerFirstName = medicalStore.OwnerFirstName,
-                    OwnerLastName = medicalStore.OwnerLastName,
-                    OwnerMiddleName = medicalStore.OwnerMiddleName,
-                    AddressLine1 = medicalStore.AddressLine1,
-                    AddressLine2 = medicalStore.AddressLine2,
-                    City = medicalStore.City,
-                    State = medicalStore.State,
-                    PostalCode = medicalStore.PostalCode,
-                    Latitude = medicalStore.Latitude,
-                    Longitude = medicalStore.Longitude,
-                    MobileNumber = medicalStore.MobileNumber,
-                    EmailId = medicalStore.EmailId,
-                    AlternativeMobileNumber = medicalStore.AlternativeMobileNumber,
-                    RegistrationStatus = medicalStore.RegistrationStatus,
-                    GSTIN = medicalStore.GSTIN,
-                    PAN = medicalStore.PAN,
-                    FSSAINo = medicalStore.FSSAINo,
-                    DLNo = medicalStore.DLNo,
-                    PharmacistFirstName = medicalStore.PharmacistFirstName,
-                    PharmacistLastName = medicalStore.PharmacistLastName,
-                    PharmacistRegistrationNumber = medicalStore.PharmacistRegistrationNumber,
-                    PharmacistMobileNumber = medicalStore.PharmacistMobileNumber,
-                    IsActive = medicalStore.IsActive,
-                    IsDeleted = medicalStore.IsDeleted,
-                    CreatedOn = medicalStore.CreatedOn,
-                    CreatedBy = medicalStore.CreatedBy,
-                    UpdatedOn = medicalStore.UpdatedOn,
-                    UpdatedBy = medicalStore.UpdatedBy,
-                    UserId = medicalStore.UserId,
-                    Password = password
-                };
-
-                return new MedicalStoreRegistrationResult
-                {
-                    Success = true,
-                    MedicalStore = response
-                };
             }
             catch (Exception ex)
             {

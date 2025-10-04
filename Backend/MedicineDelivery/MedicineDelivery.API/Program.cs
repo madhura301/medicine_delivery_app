@@ -93,7 +93,7 @@ builder.Services.AddDbContext<MedicineDelivery.Infrastructure.Data.ApplicationDb
 });
 
 // Add Identity
-builder.Services.AddIdentity<MedicineDelivery.Infrastructure.Data.ApplicationUser, IdentityRole>(options =>
+builder.Services.AddIdentity<MedicineDelivery.Domain.Entities.ApplicationUser, IdentityRole>(options =>
 {
     // Password settings
     options.Password.RequireDigit = true;
@@ -322,7 +322,7 @@ builder.Services.AddScoped<MedicineDelivery.Application.Interfaces.IPhotoUploadS
 builder.Services.AddScoped<MedicineDelivery.Application.Interfaces.IPermissionCheckerService, MedicineDelivery.Infrastructure.Services.PermissionCheckerService>();
 
 // Add SignInManager explicitly (not automatically registered with AddIdentity)
-builder.Services.AddScoped<SignInManager<MedicineDelivery.Infrastructure.Data.ApplicationUser>>();
+builder.Services.AddScoped<SignInManager<MedicineDelivery.Domain.Entities.ApplicationUser>>();
 
 var app = builder.Build();
 
@@ -374,7 +374,7 @@ using (var scope = app.Services.CreateScope())
     {
         Log.Information("Starting database seeding process");
         var context = services.GetRequiredService<MedicineDelivery.Infrastructure.Data.ApplicationDbContext>();
-        var userManager = services.GetRequiredService<UserManager<MedicineDelivery.Infrastructure.Data.ApplicationUser>>();
+        var userManager = services.GetRequiredService<UserManager<MedicineDelivery.Domain.Entities.ApplicationUser>>();
         var roleManager = services.GetRequiredService<RoleManager<IdentityRole>>();
         var roleService = services.GetRequiredService<MedicineDelivery.Domain.Interfaces.IRoleService>();
         await SeedData.Initialize(context, userManager, roleManager, roleService);

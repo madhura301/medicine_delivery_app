@@ -5,6 +5,9 @@ namespace MedicineDelivery.Application.DTOs
         public Guid Id { get; set; }
         public Guid CustomerId { get; set; }
         public string? Address { get; set; }
+        public string? AddressLine1 { get; set; }
+        public string? AddressLine2 { get; set; }
+        public string? AddressLine3 { get; set; }
         public string? City { get; set; }
         public string? State { get; set; }
         public string? PostalCode { get; set; }
@@ -18,6 +21,9 @@ namespace MedicineDelivery.Application.DTOs
     {
         public Guid CustomerId { get; set; }
         public string? Address { get; set; }
+        public string? AddressLine1 { get; set; }
+        public string? AddressLine2 { get; set; }
+        public string? AddressLine3 { get; set; }
         public string? City { get; set; }
         public string? State { get; set; }
         public string? PostalCode { get; set; }
@@ -27,6 +33,9 @@ namespace MedicineDelivery.Application.DTOs
     public class UpdateCustomerAddressDto
     {
         public string? Address { get; set; }
+        public string? AddressLine1 { get; set; }
+        public string? AddressLine2 { get; set; }
+        public string? AddressLine3 { get; set; }
         public string? City { get; set; }
         public string? State { get; set; }
         public string? PostalCode { get; set; }

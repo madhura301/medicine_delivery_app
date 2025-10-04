@@ -7,18 +7,19 @@ namespace MedicineDelivery.Application.Features.RolePermissions.Queries.GetRoleP
     public class GetRolePermissionsQueryHandler : IRequestHandler<GetRolePermissionsQuery, RolePermissionsListDto>
     {
         private readonly IUnitOfWork _unitOfWork;
+        private readonly IRoleService _roleService;
 
-        public GetRolePermissionsQueryHandler(IUnitOfWork unitOfWork)
+        public GetRolePermissionsQueryHandler(IUnitOfWork unitOfWork, IRoleService roleService)
         {
             _unitOfWork = unitOfWork;
+            _roleService = roleService;
         }
 
         public async Task<RolePermissionsListDto> Handle(GetRolePermissionsQuery request, CancellationToken cancellationToken)
         {
-            // Get role information
-            var role = await _unitOfWork.Roles.GetByIdAsync(request.RoleId);
-
-            if (role == null || !role.IsActive)
+            // Get role information (using Identity roles)
+            var roleName = await _roleService.GetRoleByIdAsync(request.RoleId);
+            if (string.IsNullOrEmpty(roleName))
             {
                 throw new InvalidOperationException("Role not found or inactive.");
             }
@@ -46,8 +47,8 @@ namespace MedicineDelivery.Application.Features.RolePermissions.Queries.GetRoleP
 
             return new RolePermissionsListDto
             {
-                RoleId = role.Id,
-                RoleName = role.Name,
+                RoleId = request.RoleId,
+                RoleName = roleName,
                 Permissions = permissions
             };
         }

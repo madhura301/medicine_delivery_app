@@ -8,10 +8,7 @@ namespace MedicineDelivery.Application.Mappings
     {
         public MappingProfile()
         {
-            // User mappings
-            CreateMap<User, UserDto>();
-            CreateMap<CreateUserDto, User>();
-            CreateMap<UpdateUserDto, User>();
+            // User mappings removed - using ApplicationUser directly
 
             // Permission mappings
             CreateMap<Permission, PermissionDto>();
