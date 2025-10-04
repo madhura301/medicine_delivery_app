@@ -238,7 +238,7 @@ namespace MedicineDelivery.Infrastructure.Services
             customer.MobileNumber = updateDto.MobileNumber;
             customer.AlternativeMobileNumber = updateDto.AlternativeMobileNumber;
             customer.EmailId = updateDto.EmailId;
-            customer.DateOfBirth = updateDto.DateOfBirth;
+            customer.DateOfBirth = DateTime.Parse(updateDto.DateOfBirth.ToString()).ToUniversalTime();
             customer.Gender = updateDto.Gender;
             customer.CustomerPhoto = updateDto.CustomerPhoto;
             customer.IsActive = updateDto.IsActive;
