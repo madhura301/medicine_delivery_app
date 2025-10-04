@@ -32,8 +32,8 @@ This guide explains how to use the provided Postman collection to test all API e
 
 After importing, you should see:
 - **Collection Name:** "Medicine Delivery API Tests"
-- **Folders:** Authentication, Medical Stores, Customer Support, Managers, Users Management, Cleanup
-- **Total Requests:** 20+ API endpoints
+- **Folders:** Authentication, Medical Stores, Customer Support, Managers, Users Management, Customer Addresses, Cleanup
+- **Total Requests:** 25+ API endpoints
 
 ### Step 3: Set Environment Variables (Optional)
 
@@ -44,6 +44,7 @@ The collection uses these variables automatically:
 - `medical_store_id`: Automatically set after medical store creation
 - `customer_support_id`: Automatically set after customer support creation
 - `manager_id`: Automatically set after manager creation
+- `customer_address_id`: Automatically set after customer address creation
 
 ## ▶️ Running the Tests
 
@@ -94,6 +95,14 @@ The collection uses these variables automatically:
 ### 👤 Users Management (2 tests)
 - **Get All Users** - Retrieves all users
 - **Get User by ID** - Retrieves specific user
+
+### 🏠 Customer Addresses (6 tests)
+- **Create Customer Address** - Creates new customer address with address lines
+- **Get Customer Address by ID** - Retrieves specific customer address
+- **Get Customer Addresses by Customer ID** - Retrieves all addresses for a customer
+- **Update Customer Address** - Updates customer address information
+- **Set Default Customer Address** - Sets an address as default for a customer
+- **Delete Customer Address** - Deletes customer address
 
 ### 🧹 Cleanup (Optional) (3 tests)
 - **Delete Medical Store** - Soft deletes medical store
@@ -213,6 +222,14 @@ Invalid photo file format
 - `GET /api/users` - Get all users
 - `GET /api/users/{id}` - Get user by ID
 
+### Customer Address Endpoints
+- `POST /api/customeraddresses` - Create customer address
+- `GET /api/customeraddresses/{id}` - Get customer address by ID
+- `GET /api/customeraddresses/customer/{customerId}` - Get addresses by customer ID
+- `PUT /api/customeraddresses/{id}` - Update customer address
+- `PUT /api/customeraddresses/{customerId}/default/{addressId}` - Set default address
+- `DELETE /api/customeraddresses/{id}` - Delete customer address
+
 ## 🎯 Test Data
 
 The collection uses realistic test data:
@@ -233,6 +250,15 @@ The collection uses realistic test data:
 - **Name**: Bob Robert Wilson
 - **Address**: 321 Manager Avenue, Bangalore, Karnataka
 - **Employee ID**: MGR001
+
+### Customer Address Data
+- **Address**: 123 Main Street
+- **Address Line 1**: Building A
+- **Address Line 2**: Floor 2
+- **Address Line 3**: Unit 201
+- **City**: Mumbai, Maharashtra
+- **Postal Code**: 400001
+- **Default**: true
 
 ## 📈 Performance Testing
 
