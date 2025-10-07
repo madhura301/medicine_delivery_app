@@ -25,12 +25,19 @@ namespace MedicineDelivery.Infrastructure.Services
             var user = await _userManager.FindByIdAsync(userId);
             if (user == null) return false;
 
-            var userRoles = await _userManager.GetRolesAsync(user);
+            // Get user's role names
+            var userRoleNames = await _userManager.GetRolesAsync(user);
             
+            // Get the role IDs for these role names from AspNetRoles
+            var userRoleIds = await _context.Roles
+                .Where(r => userRoleNames.Contains(r.Name))
+                .Select(r => r.Id)
+                .ToListAsync();
+
             // Check if any of the user's roles have the specified permission
             return await _context.RolePermissions
                 .Include(rp => rp.Permission)
-                .AnyAsync(rp => userRoles.Contains(rp.RoleId) && 
+                .AnyAsync(rp => userRoleIds.Contains(rp.RoleId) && 
                                rp.IsActive && 
                                rp.Permission.IsActive && 
                                rp.Permission.Name == permissionName);
@@ -42,12 +49,19 @@ namespace MedicineDelivery.Infrastructure.Services
             var user = await _userManager.FindByIdAsync(userId);
             if (user == null) return new List<Permission>();
 
-            var userRoles = await _userManager.GetRolesAsync(user);
+            // Get user's role names
+            var userRoleNames = await _userManager.GetRolesAsync(user);
+            
+            // Get the role IDs for these role names from AspNetRoles
+            var userRoleIds = await _context.Roles
+                .Where(r => userRoleNames.Contains(r.Name))
+                .Select(r => r.Id)
+                .ToListAsync();
             
             // Get permissions for all user roles
             var permissions = await _context.RolePermissions
                 .Include(rp => rp.Permission)
-                .Where(rp => userRoles.Contains(rp.RoleId) && rp.IsActive && rp.Permission.IsActive)
+                .Where(rp => userRoleIds.Contains(rp.RoleId) && rp.IsActive && rp.Permission.IsActive)
                 .Select(rp => rp.Permission)
                 .Distinct()
                 .ToListAsync();
