@@ -94,10 +94,11 @@ namespace MedicineDelivery.Infrastructure.Services
                         MobileNumber = registrationDto.MobileNumber,
                         AlternativeMobileNumber = registrationDto.AlternativeMobileNumber,
                         EmailId = registrationDto.EmailId,
-                        DateOfBirth = registrationDto.DateOfBirth,
+                        DateOfBirth = registrationDto.DateOfBirth.ToUniversalTime(),
                         Gender = registrationDto.Gender,
                         UserId = identityUser.Id,
                         CreatedOn = DateTime.UtcNow,
+                        UpdatedOn = DateTime.UtcNow,
                         IsActive = true
                     };
 
@@ -152,7 +153,7 @@ namespace MedicineDelivery.Infrastructure.Services
                         Customer = response
                     };
                 }
-                catch (Exception)
+                catch (Exception ex1)
                 {
                     // Rollback the transaction
                     await _unitOfWork.RollbackTransactionAsync();
