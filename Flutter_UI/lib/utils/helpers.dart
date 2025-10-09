@@ -44,4 +44,15 @@ class AppHelpers {
       ),
     );
   }
+
+  // static Future<void> disableScreenshots() async {
+  //   if (Platform.isIOS) {
+  //     // Detect screenshots (iOS only)
+  //     ScreenProtector.protectDataLeakageOn(); // Shows warning
+  //   } else if (Platform.isAndroid) {
+  //     await FlutterWindowManager.addFlags(FlutterWindowManager.FLAG_SECURE);
+  //   } else {
+  //     // Other platforms - no action needed
+  //   }
+  // }
 }

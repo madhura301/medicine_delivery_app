@@ -2,18 +2,31 @@
 import 'dart:io';
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
+import 'package:pharmaish/utils/app_logger.dart';
 
 class LocationResult {
   final double latitude;
   final double longitude;
   final String? address;
   final String? error;
-
+// Add these new fields
+  final String? street;
+  final String? locality;
+  final String? city;
+  final String? state;
+  final String? postalCode;
+  final String? country;
   LocationResult({
     required this.latitude,
     required this.longitude,
     this.address,
     this.error,
+    this.street,
+    this.locality,
+    this.city,
+    this.state,
+    this.postalCode,
+    this.country,
   });
 
   bool get hasError => error != null;
@@ -37,7 +50,8 @@ class LocationService {
         return LocationResult(
           latitude: 0,
           longitude: 0,
-          error: 'Location services are disabled. Please enable GPS in your device settings.',
+          error:
+              'Location services are disabled. Please enable GPS in your device settings.',
         );
       }
 
@@ -49,45 +63,85 @@ class LocationService {
           return LocationResult(
             latitude: 0,
             longitude: 0,
-            error: 'Location permission denied. Please grant location access to continue.',
+            error:
+                'Location permission denied. Please grant location access to continue.',
           );
         }
       }
 
       if (permission == LocationPermission.deniedForever) {
-        // Optionally open app settings
         await Geolocator.openAppSettings();
         return LocationResult(
           latitude: 0,
           longitude: 0,
-          error: 'Location permission permanently denied. Please enable location access in device settings.',
+          error:
+              'Location permission permanently denied. Please enable location access in device settings.',
         );
       }
 
       // Get current position with platform-specific settings
       Position position = await _getCurrentPosition(timeLimit);
 
-      // Get address if requested
-      String? address;
+      // Get address components if requested
       if (includeAddress) {
-        address = await _getAddressFromCoordinates(
-          position.latitude,
-          position.longitude,
-        );
+        return await _getAddressComponents(
+            position.latitude, position.longitude);
       }
 
       return LocationResult(
         latitude: position.latitude,
         longitude: position.longitude,
-        address: address,
       );
     } catch (e) {
       return LocationResult(
         latitude: 0,
         longitude: 0,
-        error: 'Unable to get location. Please check your GPS settings and try again.',
+        error:
+            'Unable to get location. Please check your GPS settings and try again.',
       );
     }
+  }
+
+  /// Get address components from coordinates
+  Future<LocationResult> _getAddressComponents(double lat, double lng) async {
+    try {
+      List<Placemark> placemarks = await placemarkFromCoordinates(lat, lng)
+          .timeout(const Duration(seconds: 5));
+
+      if (placemarks.isNotEmpty) {
+        Placemark place = placemarks.first;
+
+        // Build formatted address string
+        String address = '';
+        if (place.street?.isNotEmpty == true) address += '${place.street}, ';
+        if (place.locality?.isNotEmpty == true)
+          address += '${place.locality}, ';
+        if (place.administrativeArea?.isNotEmpty == true) {
+          address += '${place.administrativeArea}';
+        }
+
+        return LocationResult(
+          latitude: lat,
+          longitude: lng,
+          address: address.isNotEmpty ? address : null,
+          street: place.street,
+          locality: place.subLocality ?? place.locality,
+          city: place.locality,
+          state: place.administrativeArea,
+          postalCode: place.postalCode,
+          country: place.country,
+        );
+      }
+    } catch (e) {
+      AppLogger.error('Geocoding error: $e');
+    }
+
+    // Return with coordinates only if geocoding fails
+    return LocationResult(
+      latitude: lat,
+      longitude: lng,
+      error: 'Could not get address for this location',
+    );
   }
 
   /// Get position with platform-specific optimizations
@@ -108,26 +162,30 @@ class LocationService {
   }
 
   /// Get formatted address from coordinates
-  Future<String?> _getAddressFromCoordinates(double lat, double lng) async {
-    try {
-      List<Placemark> placemarks = await placemarkFromCoordinates(lat, lng)
-          .timeout(const Duration(seconds: 5));
+  // Future<String?> _getAddressFromCoordinates(double lat, double lng) async {
+  //   try {
+  //     List<Placemark> placemarks = await placemarkFromCoordinates(lat, lng)
+  //         .timeout(const Duration(seconds: 5));
 
-      if (placemarks.isNotEmpty) {
-        Placemark place = placemarks.first;
-        String address = '';
+  //     if (placemarks.isNotEmpty) {
+  //       Placemark place = placemarks.first;
+  //       String address = '';
 
-        if (place.street?.isNotEmpty == true) address += '${place.street}, ';
-        if (place.locality?.isNotEmpty == true) address += '${place.locality}, ';
-        if (place.administrativeArea?.isNotEmpty == true) address += '${place.administrativeArea}';
+  //       if (place.street?.isNotEmpty == true) address += '${place.street}, ';
+  //       if (place.locality?.isNotEmpty == true) {
+  //         address += '${place.locality}, ';
+  //       }
+  //       if (place.administrativeArea?.isNotEmpty == true) {
+  //         address += '${place.administrativeArea}';
+  //       }
 
-        return address.isNotEmpty ? address : null;
-      }
-    } catch (e) {
-      print('Geocoding error: $e');
-    }
-    return null;
-  }
+  //       return address.isNotEmpty ? address : null;
+  //     }
+  //   } catch (e) {
+  //     AppLogger.error('Geocoding error: $e');
+  //   }
+  //   return null;
+  // }
 
   /// Just get coordinates without address (faster)
   Future<LocationResult> getCoordinatesOnly({
@@ -145,8 +203,8 @@ class LocationService {
     if (!serviceEnabled) return false;
 
     LocationPermission permission = await Geolocator.checkPermission();
-    return permission != LocationPermission.denied && 
-           permission != LocationPermission.deniedForever;
+    return permission != LocationPermission.denied &&
+        permission != LocationPermission.deniedForever;
   }
 
   /// Request location permission
@@ -155,8 +213,8 @@ class LocationService {
     if (permission == LocationPermission.denied) {
       permission = await Geolocator.requestPermission();
     }
-    
-    return permission != LocationPermission.denied && 
-           permission != LocationPermission.deniedForever;
+
+    return permission != LocationPermission.denied &&
+        permission != LocationPermission.deniedForever;
   }
 }

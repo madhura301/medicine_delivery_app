@@ -1,4 +1,4 @@
-# medicine_delivery_app
+# Pharmaish Mobile App
 
 A new Flutter project.
 

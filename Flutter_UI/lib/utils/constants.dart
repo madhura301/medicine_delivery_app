@@ -1,5 +1,5 @@
-
 import 'package:flutter/material.dart';
+import '../config/environment_config.dart';
 
 class AppConstants {
   // Colors
@@ -15,33 +15,14 @@ class AppConstants {
   static const Duration splashDuration = Duration(seconds: 3);
   static const Duration animationDuration = Duration(milliseconds: 300);
 
-  // Demo Users
-  static const Map<String, Map<String, String>> demoUsers = {
-    'customer': {
-      'password': 'CUstomer12!',
-      'role': 'Customer',
-      'email': 'customer@example.com',
-      'mobile': '9876543210'
-    },
-    'chemist': {
-      'password': 'CHemist12!',
-      'role': 'Chemist',
-      'email': 'chemist@example.com',
-      'mobile': '9876543211'
-    },
-    'admin': {
-      'password': 'ADmin12!',
-      'role': 'Admin',
-      'email': 'admin@example.com',
-      'mobile': '9876543212'
-    },
-    'support': {
-      'password': 'SUpport12!',
-      'role': 'Customer Support',
-      'email': 'support@example.com',
-      'mobile': '9876543213'
-    },
-  };
-  
-  static const String apiBaseUrl = "https://10.0.2.2:7000/api";
+  // Environment-based API Configuration
+  static String get apiBaseUrl => EnvironmentConfig.apiBaseUrl;
+  static String get environmentName => EnvironmentConfig.environmentName;
+  static bool get isProduction => EnvironmentConfig.isProduction;
+  static bool get isDevelopment => EnvironmentConfig.isDevelopment;
+  static bool get isStaging => EnvironmentConfig.isStaging;
+
+  // Admin Credentials for Testing
+  static const String adminMobileNumber = '9999999999';
+  static const String adminPassword = 'Admin@123';
 }

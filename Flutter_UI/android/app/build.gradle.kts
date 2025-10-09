@@ -28,15 +28,35 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        // Optimize for smaller APK - ABI filters handled by splits
     }
 
     buildTypes {
+        debug {
+            // Debug optimizations
+            isMinifyEnabled = false
+            isShrinkResources = false
+            isDebuggable = true
+        }
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
+            // Release optimizations for smaller APK
+            isMinifyEnabled = true
+            isShrinkResources = true
+            isDebuggable = false
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
             signingConfig = signingConfigs.getByName("debug")
         }
     }
+
+    // APK splitting for different architectures - disabled for single arch builds
+    // splits {
+    //     abi {
+    //         isEnable = true
+    //         reset()
+    //         include("arm64-v8a", "armeabi-v7a", "x86_64")
+    //         isUniversalApk = false
+    //     }
+    // }
 }
 
 flutter {

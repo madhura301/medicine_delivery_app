@@ -1,12 +1,12 @@
 import 'dart:async';
-import 'dart:io';
+import 'package:pharmaish/core/theme/app_theme.dart';
+import 'package:pharmaish/utils/app_logger.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import 'package:geolocator/geolocator.dart';
-import 'package:geocoding/geocoding.dart';
-import 'package:medicine_delivery_app/core/services/location-service.dart';
-import 'package:medicine_delivery_app/utils/constants.dart';
+import 'package:pharmaish/core/services/location_service.dart';
+import 'package:pharmaish/utils/constants.dart';
+import 'package:pharmaish/utils/storage.dart';
 
 class PharmacistProfilePage extends StatefulWidget {
   final String pharmacistId;
@@ -19,6 +19,7 @@ class PharmacistProfilePage extends StatefulWidget {
 
 class _PharmacistProfilePageState extends State<PharmacistProfilePage> {
   final _formKey = GlobalKey<FormState>();
+  String _pharmacistId = '';
   final LocationService _locationService = LocationService();
   // Controllers for all form fields
   final _pharmacyNameController = TextEditingController();
@@ -53,49 +54,112 @@ class _PharmacistProfilePageState extends State<PharmacistProfilePage> {
   String _userName = ''; // Store username (cannot be edited)
 
   final List<String> _states = [
-    'Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar', 'Chhattisgarh',
-    'Goa', 'Gujarat', 'Haryana', 'Himachal Pradesh', 'Jharkhand',
-    'Karnataka', 'Kerala', 'Madhya Pradesh', 'Maharashtra', 'Manipur',
-    'Meghalaya', 'Mizoram', 'Nagaland', 'Odisha', 'Punjab', 'Rajasthan',
-    'Sikkim', 'Tamil Nadu', 'Telangana', 'Tripura', 'Uttar Pradesh',
-    'Uttarakhand', 'West Bengal', 'Delhi', 'Jammu and Kashmir', 'Ladakh',
-    'Lakshadweep', 'Puducherry'
+    'Andhra Pradesh',
+    'Arunachal Pradesh',
+    'Assam',
+    'Bihar',
+    'Chhattisgarh',
+    'Goa',
+    'Gujarat',
+    'Haryana',
+    'Himachal Pradesh',
+    'Jharkhand',
+    'Karnataka',
+    'Kerala',
+    'Madhya Pradesh',
+    'Maharashtra',
+    'Manipur',
+    'Meghalaya',
+    'Mizoram',
+    'Nagaland',
+    'Odisha',
+    'Punjab',
+    'Rajasthan',
+    'Sikkim',
+    'Tamil Nadu',
+    'Telangana',
+    'Tripura',
+    'Uttar Pradesh',
+    'Uttarakhand',
+    'West Bengal',
+    'Delhi',
+    'Jammu and Kashmir',
+    'Ladakh',
+    'Lakshadweep',
+    'Puducherry'
   ];
 
   @override
   void initState() {
     super.initState();
+    //AppHelpers.disableScreenshots();
     _loadPharmacistProfile();
   }
 
   Future<void> _loadPharmacistProfile() async {
+    final adminToken = await StorageService.getAuthToken();
     setState(() {
       _isLoadingProfile = true;
       _errorMessage = '';
     });
 
     try {
+      final pharmacistEmail = await StorageService.getUserEmail();
+      if (adminToken == null) {
+        setState(() {
+          _errorMessage = 'Authentication token not found. Please login again.';
+          _isLoading = false;
+        });
+        return;
+      }
       final response = await http.get(
-        Uri.parse('${AppConstants.apiBaseUrl}/Pharmacist/profile/${widget.pharmacistId}'),
+        Uri.parse(
+            '${AppConstants.apiBaseUrl}/MedicalStores/by-email/$pharmacistEmail'),
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
+          'Authorization': 'Bearer $adminToken'
         },
       );
+      AppLogger.apiResponse(
+        response.statusCode,
+        '${AppConstants.apiBaseUrl}/MedicalStores/by-email/$pharmacistEmail',
+        jsonDecode(response.body),
+      );
 
-      if (response.statusCode == 200) {
-        final profileData = jsonDecode(response.body);
-        _populateFormFields(profileData);
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        // Check if response body is not empty before parsing
+        if (response.body.isEmpty) {
+          setState(() {
+            _errorMessage = 'No profile data received from server';
+          });
+          return;
+        }
+
+        try {
+          final profileData = jsonDecode(response.body);
+          _populateFormFields(profileData);
+        } catch (e) {
+          AppLogger.error('JSON parse error: $e');
+          setState(() {
+            _errorMessage = 'Invalid data format received from server';
+          });
+        }
+      } else if (response.statusCode == 404) {
+        setState(() {
+          _errorMessage = 'Profile not found';
+        });
       } else {
         setState(() {
-          _errorMessage = 'Failed to load profile data';
+          _errorMessage =
+              'Failed to load profile data (Status: ${response.statusCode})';
         });
       }
     } catch (e) {
       setState(() {
-        _errorMessage = 'Network error. Please check your connection.';
+        _errorMessage = 'Network error. Please check your connection. $e';
       });
-      print('Profile load error: $e');
+      AppLogger.error('Profile load error: $e');
     } finally {
       setState(() {
         _isLoadingProfile = false;
@@ -105,31 +169,36 @@ class _PharmacistProfilePageState extends State<PharmacistProfilePage> {
 
   void _populateFormFields(Map<String, dynamic> data) {
     setState(() {
-      _pharmacyNameController.text = data['pharmacyName'] ?? '';
+      _pharmacistId = data['medicalStoreId'] ?? '';
+      _pharmacyNameController.text = data['medicalName'] ?? '';
       _ownerFirstNameController.text = data['ownerFirstName'] ?? '';
       _ownerLastNameController.text = data['ownerLastName'] ?? '';
       _ownerMiddleNameController.text = data['ownerMiddleName'] ?? '';
-      _isGstRegistered = data['isGstRegistered'] ?? false;
-      _gstNumberController.text = data['gstNumber'] ?? '';
-      _userName = data['userName'] ?? '';
-      _emailController.text = data['email'] ?? '';
-      _alternativeMobileController.text = data['alternativeMobile'] ?? '';
-      _panController.text = data['panNumber'] ?? '';
-      _fssaiController.text = data['fssaiNumber'] ?? '';
-      _dlController.text = data['dlNumber'] ?? '';
+      _isGstRegistered = data['registrationStatus'] ?? false;
+      _gstNumberController.text = data['gstin'] ?? '';
+      _userName = data['mobileNumber'] ?? '';
+      _emailController.text = data['emailId'] ?? '';
+      _alternativeMobileController.text = data['alternativeMobileNumber'] ?? '';
+      _panController.text = data['pan'] ?? '';
+      _fssaiController.text = data['fssaiNo'] ?? '';
+      _dlController.text = data['dlNo'] ?? '';
       _addressLine1Controller.text = data['addressLine1'] ?? '';
       _addressLine2Controller.text = data['addressLine2'] ?? '';
       _cityController.text = data['city'] ?? '';
       _selectedState = data['state'];
+      AppLogger.info('State from API: "$_selectedState"'); // ADD THIS LINE
+
       _latitude = data['latitude']?.toDouble();
       _longitude = data['longitude']?.toDouble();
       _pharmacistFirstNameController.text = data['pharmacistFirstName'] ?? '';
       _pharmacistLastNameController.text = data['pharmacistLastName'] ?? '';
-      _pharmacistRegNumberController.text = data['pharmacistRegNumber'] ?? '';
-      _pharmacistMobileController.text = data['pharmacistMobile'] ?? '';
-      
+      _pharmacistRegNumberController.text =
+          data['pharmacistRegistrationNumber'] ?? '';
+      _pharmacistMobileController.text = data['pharmacistMobileNumber'] ?? '';
+
       if (_latitude != null && _longitude != null) {
-        _locationText = 'Lat: ${_latitude!.toStringAsFixed(6)}, Long: ${_longitude!.toStringAsFixed(6)}';
+        _locationText =
+            'Lat: ${_latitude!.toStringAsFixed(6)}, Long: ${_longitude!.toStringAsFixed(6)}';
       }
     });
   }
@@ -140,7 +209,7 @@ class _PharmacistProfilePageState extends State<PharmacistProfilePage> {
       backgroundColor: Colors.grey.shade50,
       appBar: AppBar(
         title: const Text('My Profile'),
-        backgroundColor: const Color(0xFF2E7D32),
+        backgroundColor: AppTheme.primaryColor,
         foregroundColor: Colors.white,
         elevation: 0,
         actions: [
@@ -182,7 +251,7 @@ class _PharmacistProfilePageState extends State<PharmacistProfilePage> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  CircularProgressIndicator(color: Color(0xFF2E7D32)),
+                  CircularProgressIndicator(color: AppTheme.primaryColor),
                   SizedBox(height: 16),
                   Text('Loading profile...'),
                 ],
@@ -195,15 +264,16 @@ class _PharmacistProfilePageState extends State<PharmacistProfilePage> {
                   Container(
                     width: double.infinity,
                     padding: const EdgeInsets.all(12),
-                    color: const Color(0xFF2E7D32).withOpacity(0.1),
+                    color: AppTheme.primaryColor.withValues(alpha: 0.1),
                     child: Row(
                       children: [
-                        const Icon(Icons.edit, color: Color(0xFF2E7D32), size: 16),
+                        Icon(Icons.edit,
+                            color: AppTheme.primaryColor, size: 16),
                         const SizedBox(width: 8),
                         const Text(
                           'Edit Mode - Make changes to your profile',
                           style: TextStyle(
-                            color: Color(0xFF2E7D32),
+                            color: AppTheme.primaryColor,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
@@ -224,12 +294,14 @@ class _PharmacistProfilePageState extends State<PharmacistProfilePage> {
                     ),
                     child: Row(
                       children: [
-                        Icon(Icons.error_outline, color: Colors.red.shade600, size: 20),
+                        Icon(Icons.error_outline,
+                            color: Colors.red.shade600, size: 20),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
                             _errorMessage,
-                            style: TextStyle(color: Colors.red.shade600, fontSize: 14),
+                            style: TextStyle(
+                                color: Colors.red.shade600, fontSize: 14),
                           ),
                         ),
                       ],
@@ -248,12 +320,14 @@ class _PharmacistProfilePageState extends State<PharmacistProfilePage> {
                     ),
                     child: Row(
                       children: [
-                        Icon(Icons.check_circle_outline, color: Colors.green.shade600, size: 20),
+                        Icon(Icons.check_circle_outline,
+                            color: Colors.green.shade600, size: 20),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
                             _successMessage,
-                            style: TextStyle(color: Colors.green.shade600, fontSize: 14),
+                            style: TextStyle(
+                                color: Colors.green.shade600, fontSize: 14),
                           ),
                         ),
                       ],
@@ -279,7 +353,8 @@ class _PharmacistProfilePageState extends State<PharmacistProfilePage> {
                                 label: 'Pharmacy/Firm Name',
                                 icon: Icons.store,
                                 enabled: _isEditMode,
-                                validator: (value) => value?.isEmpty ?? true ? 'Required' : null,
+                                validator: (value) =>
+                                    value?.isEmpty ?? true ? 'Required' : null,
                               ),
                               const SizedBox(height: 16),
                               Row(
@@ -290,7 +365,10 @@ class _PharmacistProfilePageState extends State<PharmacistProfilePage> {
                                       label: 'Owner First Name',
                                       icon: Icons.person,
                                       enabled: _isEditMode,
-                                      validator: (value) => value?.isEmpty ?? true ? 'Required' : null,
+                                      validator: (value) =>
+                                          value?.isEmpty ?? true
+                                              ? 'Required'
+                                              : null,
                                     ),
                                   ),
                                   const SizedBox(width: 12),
@@ -300,7 +378,10 @@ class _PharmacistProfilePageState extends State<PharmacistProfilePage> {
                                       label: 'Owner Last Name',
                                       icon: Icons.person,
                                       enabled: _isEditMode,
-                                      validator: (value) => value?.isEmpty ?? true ? 'Required' : null,
+                                      validator: (value) =>
+                                          value?.isEmpty ?? true
+                                              ? 'Required'
+                                              : null,
                                     ),
                                   ),
                                 ],
@@ -313,7 +394,7 @@ class _PharmacistProfilePageState extends State<PharmacistProfilePage> {
                                 enabled: _isEditMode,
                               ),
                               const SizedBox(height: 16),
-                              
+
                               // GST Section
                               if (_isEditMode) ...[
                                 const Text(
@@ -321,13 +402,14 @@ class _PharmacistProfilePageState extends State<PharmacistProfilePage> {
                                   style: TextStyle(
                                     fontSize: 16,
                                     fontWeight: FontWeight.bold,
-                                    color: Color(0xFF2E7D32),
+                                    color: AppTheme.primaryColor,
                                   ),
                                 ),
                                 const SizedBox(height: 8),
                                 Container(
                                   decoration: BoxDecoration(
-                                    border: Border.all(color: Colors.grey.shade300),
+                                    border:
+                                        Border.all(color: Colors.grey.shade300),
                                     borderRadius: BorderRadius.circular(12),
                                   ),
                                   child: Column(
@@ -336,7 +418,7 @@ class _PharmacistProfilePageState extends State<PharmacistProfilePage> {
                                         title: const Text('GST Registered'),
                                         value: true,
                                         groupValue: _isGstRegistered,
-                                        activeColor: const Color(0xFF2E7D32),
+                                        activeColor: AppTheme.primaryColor,
                                         onChanged: (value) {
                                           setState(() {
                                             _isGstRegistered = value!;
@@ -347,7 +429,7 @@ class _PharmacistProfilePageState extends State<PharmacistProfilePage> {
                                         title: const Text('GST Un-Registered'),
                                         value: false,
                                         groupValue: _isGstRegistered,
-                                        activeColor: const Color(0xFF2E7D32),
+                                        activeColor: AppTheme.primaryColor,
                                         onChanged: (value) {
                                           setState(() {
                                             _isGstRegistered = value!;
@@ -362,7 +444,11 @@ class _PharmacistProfilePageState extends State<PharmacistProfilePage> {
                                 ),
                                 const SizedBox(height: 16),
                               ] else ...[
-                                _buildReadOnlyField('GST Status', _isGstRegistered ? 'Registered' : 'Un-Registered'),
+                                _buildReadOnlyField(
+                                    'GST Status',
+                                    _isGstRegistered
+                                        ? 'Registered'
+                                        : 'Un-Registered'),
                                 const SizedBox(height: 16),
                               ],
 
@@ -373,7 +459,8 @@ class _PharmacistProfilePageState extends State<PharmacistProfilePage> {
                                   icon: Icons.receipt_long,
                                   enabled: _isEditMode,
                                   validator: (value) {
-                                    if (_isGstRegistered && (value?.isEmpty ?? true)) {
+                                    if (_isGstRegistered &&
+                                        (value?.isEmpty ?? true)) {
                                       return 'GST number is required';
                                     }
                                     return null;
@@ -382,7 +469,8 @@ class _PharmacistProfilePageState extends State<PharmacistProfilePage> {
                                 const SizedBox(height: 16),
                               ],
 
-                              _buildReadOnlyField('Mobile Number (Username)', _userName),
+                              _buildReadOnlyField(
+                                  'Mobile Number (Username)', _userName),
                               const SizedBox(height: 16),
                               _buildTextField(
                                 controller: _emailController,
@@ -391,9 +479,13 @@ class _PharmacistProfilePageState extends State<PharmacistProfilePage> {
                                 enabled: _isEditMode,
                                 keyboardType: TextInputType.emailAddress,
                                 validator: (value) {
-                                  if (value == null || value.isEmpty) return null;
-                                  final emailRegex = RegExp(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$');
-                                  return emailRegex.hasMatch(value) ? null : 'Invalid email';
+                                  if (value == null || value.isEmpty)
+                                    return null;
+                                  final emailRegex = RegExp(
+                                      r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$');
+                                  return emailRegex.hasMatch(value)
+                                      ? null
+                                      : 'Invalid email';
                                 },
                               ),
                               const SizedBox(height: 16),
@@ -407,7 +499,9 @@ class _PharmacistProfilePageState extends State<PharmacistProfilePage> {
                                 validator: (value) {
                                   if (value?.isEmpty ?? true) return 'Required';
                                   final phoneRegex = RegExp(r'^[6-9]\d{9}$');
-                                  return phoneRegex.hasMatch(value!) ? null : 'Invalid mobile number';
+                                  return phoneRegex.hasMatch(value!)
+                                      ? null
+                                      : 'Invalid mobile number';
                                 },
                               ),
                             ],
@@ -425,11 +519,15 @@ class _PharmacistProfilePageState extends State<PharmacistProfilePage> {
                                 label: 'PAN Number',
                                 icon: Icons.credit_card,
                                 enabled: _isEditMode,
-                                textCapitalization: TextCapitalization.characters,
+                                textCapitalization:
+                                    TextCapitalization.characters,
                                 validator: (value) {
                                   if (value?.isEmpty ?? true) return 'Required';
-                                  final panRegex = RegExp(r'^[A-Z]{5}[0-9]{4}[A-Z]{1}$');
-                                  return panRegex.hasMatch(value!) ? null : 'Invalid PAN format';
+                                  final panRegex =
+                                      RegExp(r'^[A-Z]{5}[0-9]{4}[A-Z]{1}$');
+                                  return panRegex.hasMatch(value!)
+                                      ? null
+                                      : 'Invalid PAN format';
                                 },
                               ),
                               const SizedBox(height: 16),
@@ -438,7 +536,8 @@ class _PharmacistProfilePageState extends State<PharmacistProfilePage> {
                                 label: 'FSSAI Number',
                                 icon: Icons.verified_user,
                                 enabled: _isEditMode,
-                                validator: (value) => value?.isEmpty ?? true ? 'Required' : null,
+                                validator: (value) =>
+                                    value?.isEmpty ?? true ? 'Required' : null,
                               ),
                               const SizedBox(height: 16),
                               _buildTextField(
@@ -446,7 +545,8 @@ class _PharmacistProfilePageState extends State<PharmacistProfilePage> {
                                 label: 'Drug License Number',
                                 icon: Icons.medical_services,
                                 enabled: _isEditMode,
-                                validator: (value) => value?.isEmpty ?? true ? 'Required' : null,
+                                validator: (value) =>
+                                    value?.isEmpty ?? true ? 'Required' : null,
                               ),
                             ],
                           ),
@@ -463,7 +563,8 @@ class _PharmacistProfilePageState extends State<PharmacistProfilePage> {
                                 label: 'Address Line 1',
                                 icon: Icons.home,
                                 enabled: _isEditMode,
-                                validator: (value) => value?.isEmpty ?? true ? 'Required' : null,
+                                validator: (value) =>
+                                    value?.isEmpty ?? true ? 'Required' : null,
                               ),
                               const SizedBox(height: 16),
                               _buildTextField(
@@ -481,15 +582,19 @@ class _PharmacistProfilePageState extends State<PharmacistProfilePage> {
                                       label: 'City',
                                       icon: Icons.location_city,
                                       enabled: _isEditMode,
-                                      validator: (value) => value?.isEmpty ?? true ? 'Required' : null,
+                                      validator: (value) =>
+                                          value?.isEmpty ?? true
+                                              ? 'Required'
+                                              : null,
                                     ),
                                   ),
                                   const SizedBox(width: 12),
                                   Expanded(
-                                    child: _isEditMode 
+                                    child: _isEditMode
                                         ? _buildDropdownField()
                                         : _buildTextField(
-                                            controller: TextEditingController(text: _selectedState ?? ''),
+                                            controller: TextEditingController(
+                                                text: _selectedState ?? ''),
                                             label: 'State',
                                             icon: Icons.map,
                                             enabled: false,
@@ -503,35 +608,43 @@ class _PharmacistProfilePageState extends State<PharmacistProfilePage> {
                                   width: double.infinity,
                                   padding: const EdgeInsets.all(16),
                                   decoration: BoxDecoration(
-                                    border: Border.all(color: Colors.grey.shade300),
+                                    border:
+                                        Border.all(color: Colors.grey.shade300),
                                     borderRadius: BorderRadius.circular(12),
                                   ),
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       Row(
                                         children: [
-                                          const Icon(Icons.map, color: Color(0xFF2E7D32)),
+                                          const Icon(Icons.map,
+                                              color: AppTheme.primaryColor),
                                           const SizedBox(width: 8),
-                                          const Text('Location:', style: TextStyle(fontWeight: FontWeight.bold)),
+                                          const Text('Location:',
+                                              style: TextStyle(
+                                                  fontWeight: FontWeight.bold)),
                                         ],
                                       ),
                                       const SizedBox(height: 8),
                                       Text(_locationText),
                                       const SizedBox(height: 12),
                                       ElevatedButton.icon(
-                                        onPressed: _checkLocationAndRequest,//_getCurrentLocation,
+                                        onPressed:
+                                            _checkLocationAndRequest, //_getCurrentLocation,
                                         icon: const Icon(Icons.my_location),
                                         label: const Text('Update Location'),
                                         style: ElevatedButton.styleFrom(
-                                          backgroundColor: const Color(0xFF2E7D32),
+                                          backgroundColor:
+                                              AppTheme.primaryColor,
                                           foregroundColor: Colors.white,
                                         ),
                                       ),
                                     ],
                                   ),
                                 ),
-                              ] else if (_latitude != null && _longitude != null) ...[
+                              ] else if (_latitude != null &&
+                                  _longitude != null) ...[
                                 const SizedBox(height: 16),
                                 _buildReadOnlyField('Location', _locationText),
                               ],
@@ -549,11 +662,15 @@ class _PharmacistProfilePageState extends State<PharmacistProfilePage> {
                                 children: [
                                   Expanded(
                                     child: _buildTextField(
-                                      controller: _pharmacistFirstNameController,
+                                      controller:
+                                          _pharmacistFirstNameController,
                                       label: 'Pharmacist First Name',
                                       icon: Icons.person,
                                       enabled: _isEditMode,
-                                      validator: (value) => value?.isEmpty ?? true ? 'Required' : null,
+                                      validator: (value) =>
+                                          value?.isEmpty ?? true
+                                              ? 'Required'
+                                              : null,
                                     ),
                                   ),
                                   const SizedBox(width: 12),
@@ -563,7 +680,10 @@ class _PharmacistProfilePageState extends State<PharmacistProfilePage> {
                                       label: 'Pharmacist Last Name',
                                       icon: Icons.person,
                                       enabled: _isEditMode,
-                                      validator: (value) => value?.isEmpty ?? true ? 'Required' : null,
+                                      validator: (value) =>
+                                          value?.isEmpty ?? true
+                                              ? 'Required'
+                                              : null,
                                     ),
                                   ),
                                 ],
@@ -574,7 +694,8 @@ class _PharmacistProfilePageState extends State<PharmacistProfilePage> {
                                 label: 'Registration Number',
                                 icon: Icons.badge,
                                 enabled: _isEditMode,
-                                validator: (value) => value?.isEmpty ?? true ? 'Required' : null,
+                                validator: (value) =>
+                                    value?.isEmpty ?? true ? 'Required' : null,
                               ),
                               const SizedBox(height: 16),
                               _buildTextField(
@@ -587,7 +708,9 @@ class _PharmacistProfilePageState extends State<PharmacistProfilePage> {
                                 validator: (value) {
                                   if (value?.isEmpty ?? true) return 'Required';
                                   final phoneRegex = RegExp(r'^[6-9]\d{9}$');
-                                  return phoneRegex.hasMatch(value!) ? null : 'Invalid mobile number';
+                                  return phoneRegex.hasMatch(value!)
+                                      ? null
+                                      : 'Invalid mobile number';
                                 },
                               ),
                             ],
@@ -618,7 +741,7 @@ class _PharmacistProfilePageState extends State<PharmacistProfilePage> {
                     child: ElevatedButton(
                       onPressed: _isLoading ? null : _updateProfile,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF2E7D32),
+                        backgroundColor: AppTheme.primaryColor,
                         foregroundColor: Colors.white,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
@@ -630,13 +753,15 @@ class _PharmacistProfilePageState extends State<PharmacistProfilePage> {
                               width: 20,
                               height: 20,
                               child: CircularProgressIndicator(
-                                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                valueColor:
+                                    AlwaysStoppedAnimation<Color>(Colors.white),
                                 strokeWidth: 2,
                               ),
                             )
                           : const Text(
                               'Save Changes',
-                              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                              style: TextStyle(
+                                  fontSize: 16, fontWeight: FontWeight.bold),
                             ),
                     ),
                   ),
@@ -657,7 +782,7 @@ class _PharmacistProfilePageState extends State<PharmacistProfilePage> {
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),
@@ -670,7 +795,7 @@ class _PharmacistProfilePageState extends State<PharmacistProfilePage> {
             width: double.infinity,
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: const Color(0xFF2E7D32).withOpacity(0.1),
+              color: AppTheme.primaryColor.withValues(alpha: 0.1),
               borderRadius: const BorderRadius.only(
                 topLeft: Radius.circular(12),
                 topRight: Radius.circular(12),
@@ -678,14 +803,14 @@ class _PharmacistProfilePageState extends State<PharmacistProfilePage> {
             ),
             child: Row(
               children: [
-                Icon(icon, color: const Color(0xFF2E7D32)),
+                Icon(icon, color: AppTheme.primaryColor),
                 const SizedBox(width: 8),
                 Text(
                   title,
                   style: const TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
-                    color: Color(0xFF2E7D32),
+                    color: AppTheme.primaryColor,
                   ),
                 ),
               ],
@@ -720,13 +845,13 @@ class _PharmacistProfilePageState extends State<PharmacistProfilePage> {
       textCapitalization: textCapitalization,
       decoration: InputDecoration(
         labelText: label,
-        prefixIcon: icon != null 
-            ? Icon(icon, color: enabled ? const Color(0xFF2E7D32) : Colors.grey) 
+        prefixIcon: icon != null
+            ? Icon(icon, color: enabled ? AppTheme.primaryColor : Colors.grey)
             : null,
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFF2E7D32), width: 2),
+          borderSide: BorderSide(color: AppTheme.primaryColor, width: 2),
         ),
         disabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
@@ -776,15 +901,17 @@ class _PharmacistProfilePageState extends State<PharmacistProfilePage> {
 
   Widget _buildDropdownField() {
     return DropdownButtonFormField<String>(
-      value: _selectedState,
+      value: _selectedState != null && _states.contains(_selectedState)
+          ? _selectedState
+          : null,
       isExpanded: true,
       decoration: InputDecoration(
         labelText: 'State',
-        prefixIcon: const Icon(Icons.map, color: Color(0xFF2E7D32)),
+        prefixIcon: const Icon(Icons.map, color: AppTheme.primaryColor),
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFF2E7D32), width: 2),
+          borderSide: BorderSide(color: AppTheme.primaryColor, width: 2),
         ),
       ),
       items: _states.map((String state) {
@@ -802,8 +929,7 @@ class _PharmacistProfilePageState extends State<PharmacistProfilePage> {
     );
   }
 
-
-Future<void> _getCurrentLocation() async {
+  Future<void> _getCurrentLocation() async {
     setState(() {
       _locationText = 'Getting your location...';
       _errorMessage = '';
@@ -819,6 +945,30 @@ Future<void> _getCurrentLocation() async {
         if (result.isValid) {
           _latitude = result.latitude;
           _longitude = result.longitude;
+
+          // Auto-populate with structured data
+          if (result.street != null) {
+            _addressLine1Controller.text = result.street!;
+          }
+          if (result.locality != null) {
+            _addressLine2Controller.text = result.locality!;
+          }
+          if (result.city != null) {
+            _cityController.text = result.city!;
+          }
+          if (result.state != null) {
+            // Match with dropdown options
+            final matchedState = _states.firstWhere(
+              (state) => state.toLowerCase() == result.state!.toLowerCase(),
+              orElse: () => '',
+            );
+            if (matchedState.isNotEmpty) {
+              _selectedState = matchedState;
+            }
+          }
+          // if (result.postalCode != null) {
+          //   _postalCodeController.text = result.postalCode!;
+          // }
           
           // Format the location text based on whether we have an address
           if (result.address != null && result.address!.isNotEmpty) {
@@ -838,16 +988,17 @@ Future<void> _getCurrentLocation() async {
       });
     } catch (e) {
       setState(() {
-        _errorMessage = 'Network error. Please check your connection and try again.';
+        _errorMessage =
+            'Network error. Please check your connection and try again.';
         _locationText = 'Tap to select location';
       });
-      print('Location error: $e');
+      AppLogger.error('Location error: $e');
     }
   }
 
-Future<void> _checkLocationAndRequest() async {
+  Future<void> _checkLocationAndRequest() async {
     bool isAvailable = await _locationService.isLocationServiceAvailable();
-    
+
     if (!isAvailable) {
       // Try to request permission first
       bool granted = await _locationService.requestLocationPermission();
@@ -864,15 +1015,21 @@ Future<void> _checkLocationAndRequest() async {
     }
   }
 
-
   Future<void> _updateProfile() async {
-    if (widget.pharmacistId == null) {
+    final adminToken = await StorageService.getAuthToken();
+    if (_pharmacistId.isEmpty) {
       setState(() {
         _errorMessage = 'Profile not available. Please login again.';
       });
       return;
     }
 
+    if (adminToken == null) {
+      setState(() {
+        _errorMessage = 'Authentication token not found. Please login again.';
+      });
+      return;
+    }
     if (!_formKey.currentState!.validate()) {
       setState(() {
         _errorMessage = 'Please fix the errors above';
@@ -888,61 +1045,64 @@ Future<void> _checkLocationAndRequest() async {
 
     try {
       final updateData = {
-        'pharmacistId': widget.pharmacistId,
-        'pharmacyDetails': {
-          'pharmacyName': _pharmacyNameController.text.trim(),
-          'ownerFirstName': _ownerFirstNameController.text.trim(),
-          'ownerLastName': _ownerLastNameController.text.trim(),
-          'ownerMiddleName': _ownerMiddleNameController.text.trim(),
-          'isGstRegistered': _isGstRegistered,
-          'gstNumber': _isGstRegistered ? _gstNumberController.text.trim() : null,
-          'email': _emailController.text.trim().isNotEmpty
-              ? _emailController.text.trim()
-              : null,
-          'alternativeMobile': _alternativeMobileController.text.trim(),
-          'panNumber': _panController.text.trim(),
-          'fssaiNumber': _fssaiController.text.trim(),
-          'dlNumber': _dlController.text.trim(),
-        },
-        'addressDetails': {
-          'addressLine1': _addressLine1Controller.text.trim(),
-          'addressLine2': _addressLine2Controller.text.trim(),
-          'city': _cityController.text.trim(),
-          'state': _selectedState,
-          'latitude': _latitude,
-          'longitude': _longitude,
-        },
-        'pharmacistDetails': {
-          'firstName': _pharmacistFirstNameController.text.trim(),
-          'lastName': _pharmacistLastNameController.text.trim(),
-          'registrationNumber': _pharmacistRegNumberController.text.trim(),
-          'mobileNumber': _pharmacistMobileController.text.trim(),
-        }
+        'medicalStoreId': _pharmacistId,
+        'medicalName': _pharmacyNameController.text.trim(),
+        'ownerFirstName': _ownerFirstNameController.text.trim(),
+        'ownerLastName': _ownerLastNameController.text.trim(),
+        'ownerMiddleName': _ownerMiddleNameController.text.trim(),
+        'registrationStatus': _isGstRegistered,
+        'gSTIN': _isGstRegistered ? _gstNumberController.text.trim() : '',
+        'mobileNumber': _userName, // Username cannot be changed
+        'emailId': _emailController.text.trim(),
+        'alternativeMobileNumber': _alternativeMobileController.text.trim(),
+        'pAN': _panController.text.trim(),
+        'fSSAINo': _fssaiController.text.trim(),
+        'dLNo': _dlController.text.trim(),
+        'addressLine1': _addressLine1Controller.text.trim(),
+        'addressLine2': _addressLine2Controller.text.trim(),
+        'city': _cityController.text.trim(),
+        'state': _selectedState ?? '',
+        'latitude': _latitude,
+        'longitude': _longitude,
+        'pharmacistFirstName': _pharmacistFirstNameController.text.trim(),
+        'pharmacistLastName': _pharmacistLastNameController.text.trim(),
+        'pharmacistRegistrationNumber':
+            _pharmacistRegNumberController.text.trim(),
+        'pharmacistMobileNumber': _pharmacistMobileController.text.trim(),
       };
 
+      AppLogger.info('Update Data: ${jsonEncode(updateData)}');
+
       final response = await http.put(
-        Uri.parse('${AppConstants.apiBaseUrl}/Pharmacist/update-profile/${widget.pharmacistId}'),
+        Uri.parse('${AppConstants.apiBaseUrl}/MedicalStores/$_pharmacistId'),
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
-          // Add authorization header if needed
-          // 'Authorization': 'Bearer $token',
+          'Authorization': 'Bearer $adminToken',
         },
         body: jsonEncode(updateData),
+      );
+
+      AppLogger.apiResponse(
+        response.statusCode,
+        '${AppConstants.apiBaseUrl}/MedicalStores/$_pharmacistId',
+        response.body.isNotEmpty ? jsonDecode(response.body) : {},
       );
 
       setState(() {
         _isLoading = false;
       });
 
-      if (response.statusCode == 200) {
+      if (response.statusCode == 200 || response.statusCode == 204) {
         setState(() {
           _successMessage = 'Profile updated successfully!';
           _isEditMode = false;
         });
-        
+
         // Optional: Show success dialog
         _showSuccessDialog();
+        // Reload profile to get fresh data
+        await _loadPharmacistProfile();
       } else if (response.statusCode == 400) {
         try {
           final errorData = jsonDecode(response.body);
@@ -967,7 +1127,7 @@ Future<void> _checkLocationAndRequest() async {
         _isLoading = false;
         _errorMessage = 'Network error. Please check your connection.';
       });
-      print('Update error: $e');
+      AppLogger.error('Update error: $e');
     }
   }
 
@@ -976,13 +1136,14 @@ Future<void> _checkLocationAndRequest() async {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           title: Row(
             children: [
               Container(
                 padding: const EdgeInsets.all(8),
-                decoration: const BoxDecoration(
-                  color: Color(0xFF2E7D32),
+                decoration: BoxDecoration(
+                  color: AppTheme.primaryColor,
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(Icons.check, color: Colors.white, size: 20),
@@ -991,7 +1152,7 @@ Future<void> _checkLocationAndRequest() async {
               const Text(
                 'Success!',
                 style: TextStyle(
-                  color: Color(0xFF2E7D32),
+                  color: AppTheme.primaryColor,
                   fontWeight: FontWeight.bold,
                 ),
               ),
@@ -1005,9 +1166,10 @@ Future<void> _checkLocationAndRequest() async {
             ElevatedButton(
               onPressed: () => Navigator.of(context).pop(),
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF2E7D32),
+                backgroundColor: AppTheme.primaryColor,
                 foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8)),
               ),
               child: const Text('OK'),
             ),

@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:medicine_delivery_app/core/app_routes.dart';
+import 'package:pharmaish/core/app_routes.dart';
 
 class SplashPage extends StatefulWidget {
   const SplashPage({super.key});
@@ -13,6 +13,7 @@ class _SplashPageState extends State<SplashPage> {
   @override
   void initState() {
     super.initState();
+    //AppHelpers.disableScreenshots();
     
     // Navigate to login after 2 seconds
     Timer(const Duration(seconds: 2), () {
@@ -29,57 +30,22 @@ class _SplashPageState extends State<SplashPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF2E7D32), // Medical green
+      backgroundColor: Colors.white,//White background for splash screen
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // App Icon
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(20),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha:0.2),
-                    blurRadius: 20,
-                    offset: const Offset(0, 10),
-                  ),
-                ],
-              ),
-              child: const Icon(
-                Icons.local_pharmacy,
-                size: 80,
-                color: Color(0xFF2E7D32),
+            // App Logo with proper constraints to prevent stretching
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 280, maxHeight: 150),
+              child: Image.asset(
+                'assets/images/full_logo_animated.png',
+                fit: BoxFit.contain,
+                width: 280,
+                height: 150,
               ),
             ),
-            
-            const SizedBox(height: 30),
-            
-            // App Name
-            const Text(
-              'Medicine Delivery',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 32,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            
-            const SizedBox(height: 10),
-            
-            // Tagline
-            const Text(
-              'Your Health, Delivered Fast',
-              style: TextStyle(
-                color: Colors.white70,
-                fontSize: 18,
-              ),
-            ),
-            
             const SizedBox(height: 50),
-            
             // Loading Indicator
             const CircularProgressIndicator(
               valueColor: AlwaysStoppedAnimation<Color>(Colors.white),

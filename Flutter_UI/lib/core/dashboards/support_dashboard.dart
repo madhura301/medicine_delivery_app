@@ -1,6 +1,8 @@
 // Customer Support Dashboard
 import 'package:flutter/material.dart';
-import 'package:medicine_delivery_app/utils/helpers.dart';
+import 'package:pharmaish/core/theme/app_theme.dart';
+import 'package:pharmaish/utils/helpers.dart';
+
 class CustomerSupportDashboard extends StatelessWidget {
   const CustomerSupportDashboard({super.key});
 
@@ -9,7 +11,7 @@ class CustomerSupportDashboard extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Customer Support'),
-        backgroundColor: const Color(0xFF2E7D32),
+        backgroundColor: AppTheme.primaryColor,
         foregroundColor: Colors.white,
         automaticallyImplyLeading: false,
         actions: [
@@ -33,9 +35,9 @@ class CustomerSupportDashboard extends StatelessWidget {
                 color: Colors.grey.shade800,
               ),
             ),
-            
+
             const SizedBox(height: 8),
-            
+
             Text(
               'Manage rejected orders and chemist operations',
               style: TextStyle(
@@ -43,9 +45,9 @@ class CustomerSupportDashboard extends StatelessWidget {
                 color: Colors.grey.shade600,
               ),
             ),
-            
+
             const SizedBox(height: 30),
-            
+
             // Support Options
             Expanded(
               child: GridView.count(
@@ -58,28 +60,32 @@ class CustomerSupportDashboard extends StatelessWidget {
                     title: 'Rejected Orders',
                     subtitle: 'Handle chemist rejections',
                     color: Colors.red,
-                    onTap: () => AppHelpers.showComingSoon(context, 'Rejected Orders Management'),
+                    onTap: () => AppHelpers.showComingSoon(
+                        context, 'Rejected Orders Management'),
                   ),
                   _buildSupportOption(
                     icon: Icons.store,
                     title: 'Manage Chemists',
                     subtitle: 'Edit chemist profiles',
                     color: Colors.blue,
-                    onTap: () => AppHelpers.showComingSoon(context, 'Chemist Management'),
+                    onTap: () => AppHelpers.showComingSoon(
+                        context, 'Chemist Management'),
                   ),
                   _buildSupportOption(
                     icon: Icons.person_add,
                     title: 'Register Chemist',
                     subtitle: 'Add new chemist',
                     color: Colors.green,
-                    onTap: () => AppHelpers.showComingSoon(context, 'Chemist Registration'),
+                    onTap: () => AppHelpers.showComingSoon(
+                        context, 'Chemist Registration'),
                   ),
                   _buildSupportOption(
                     icon: Icons.assignment_late,
                     title: 'Customer Complaints',
                     subtitle: 'Handle delivery issues',
                     color: Colors.orange,
-                    onTap: () => AppHelpers.showComingSoon(context, 'Customer Complaints'),
+                    onTap: () => AppHelpers.showComingSoon(
+                        context, 'Customer Complaints'),
                   ),
                 ],
               ),
@@ -111,7 +117,7 @@ class CustomerSupportDashboard extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: color.withValues(alpha:0.1),
+                  color: color.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(
@@ -120,9 +126,7 @@ class CustomerSupportDashboard extends StatelessWidget {
                   color: color,
                 ),
               ),
-              
               const SizedBox(height: 16),
-              
               Text(
                 title,
                 style: const TextStyle(
@@ -131,9 +135,7 @@ class CustomerSupportDashboard extends StatelessWidget {
                 ),
                 textAlign: TextAlign.center,
               ),
-              
               const SizedBox(height: 4),
-              
               Text(
                 subtitle,
                 style: TextStyle(

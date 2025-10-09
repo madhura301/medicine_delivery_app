@@ -1,14 +1,15 @@
 import 'package:flutter/material.dart';
-import 'package:medicine_delivery_app/core/dashboards/admin_dashboard.dart';
-import 'package:medicine_delivery_app/core/dashboards/chemist_dashboard.dart';
-import 'package:medicine_delivery_app/core/dashboards/customer_dashboard.dart';
-import 'package:medicine_delivery_app/core/dashboards/manager_dashboard.dart';
-import 'package:medicine_delivery_app/core/dashboards/support_dashboard.dart';
-import 'package:medicine_delivery_app/core/screens/profiles/chemist_profile_page.dart';
-import 'package:medicine_delivery_app/core/screens/profiles/customer_profile_page.dart';
-import 'package:medicine_delivery_app/core/screens/profiles/pharmacist_profile_page.dart';
-import 'package:medicine_delivery_app/core/screens/auth/register_customer_page.dart';
-import 'package:medicine_delivery_app/core/screens/auth/register_pharmacist_page.dart';
+import 'package:pharmaish/core/dashboards/admin_dashboard.dart';
+import 'package:pharmaish/core/dashboards/chemist_dashboard.dart';
+import 'package:pharmaish/core/dashboards/customer_dashboard.dart';
+import 'package:pharmaish/core/dashboards/manager_dashboard.dart';
+import 'package:pharmaish/core/dashboards/support_dashboard.dart';
+import 'package:pharmaish/core/screens/profiles/customer_profile_page.dart';
+import 'package:pharmaish/core/screens/profiles/pharmacist_profile_page.dart';
+import 'package:pharmaish/core/screens/auth/register_customer_page.dart';
+import 'package:pharmaish/core/screens/auth/register_pharmacist_page.dart';
+import 'package:pharmaish/core/theme/app_theme.dart';
+import 'package:pharmaish/utils/app_logger.dart';
 
 import 'screens/auth/login_page.dart';
 
@@ -30,20 +31,19 @@ class AppRoutes {
     login: (context) => const LoginPage(),
     registerCustomer: (context) => const CustomerRegisterPage(),
     registerPharmacist: (context) => const PharmacistRegistrationPage(),
-    chemistProfile: (context) => const ChemistProfilePage(),
     customerProfile: (context) => const CustomerProfilePage(),
     pharmacistProfile: (context) {
       final args =
           ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
       final pharmacistId = args?['pharmacistId'] as String?;
 
-      print("pharmacistId: ${pharmacistId ?? 'null'}");
+      AppLogger.info("pharmacistId: ${pharmacistId ?? 'null'}");
 
       if (pharmacistId == null) {
         return Scaffold(
           appBar: AppBar(
             title: const Text('Error'),
-            backgroundColor: const Color(0xFF2E7D32),
+            backgroundColor: AppTheme.primaryColor,
             foregroundColor: Colors.white,
           ),
           body: const Center(

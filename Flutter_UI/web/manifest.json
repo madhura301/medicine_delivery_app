@@ -1,6 +1,6 @@
 {
-    "name": "medicine_delivery_app",
-    "short_name": "medicine_delivery_app",
+    "name": "Pharmaish",
+    "short_name": "Pharmaish",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",

@@ -1,15 +1,13 @@
 import 'dart:async';
-import 'dart:io';
-
+import 'package:pharmaish/core/theme/app_theme.dart';
+import 'package:pharmaish/shared/widgets/step_progress_indicator.dart';
+import 'package:pharmaish/utils/app_logger.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import 'package:geolocator/geolocator.dart';
-import 'package:geocoding/geocoding.dart';
-import 'package:medicine_delivery_app/core/services/auth_service.dart';
-import 'package:medicine_delivery_app/core/services/location-service.dart';
-import 'package:medicine_delivery_app/utils/constants.dart';
-import 'package:medicine_delivery_app/utils/storage.dart';
+import 'package:pharmaish/core/services/auth_service.dart';
+import 'package:pharmaish/core/services/location_service.dart';
+import 'package:pharmaish/utils/constants.dart';
 
 class PharmacistRegistrationPage extends StatefulWidget {
   const PharmacistRegistrationPage({super.key});
@@ -26,32 +24,37 @@ class _PharmacistRegistrationPageState
   final _pageController = PageController();
   int _currentStep = 0;
 
-  // Pharmacy Details Controllers
-  final _pharmacyNameController = TextEditingController();
+  // Business Type Selection
+  String? _businessType; // 'Retailer', 'Distributor/Wholesaler', 'Both'
+
+  // Firm Details Controllers
+  final _firmNameController = TextEditingController();
   final _ownerFirstNameController = TextEditingController();
   final _ownerLastNameController = TextEditingController();
   final _ownerMiddleNameController = TextEditingController();
+  final _dlRetailerController = TextEditingController();
+  final _dlWholesalerController = TextEditingController();
   final _gstNumberController = TextEditingController();
-  final _userNameController = TextEditingController(); // Mobile Number
-  final _postalCodeController = TextEditingController();
-  final _passwordController = TextEditingController();
-  final _emailController = TextEditingController();
-  final _alternativeMobileController = TextEditingController();
-  final _panController = TextEditingController();
   final _fssaiController = TextEditingController();
-  final _dlController = TextEditingController();
-
-  // Address Controllers
   final _addressLine1Controller = TextEditingController();
   final _addressLine2Controller = TextEditingController();
-  final _cityController = TextEditingController();
-  final _stateController = TextEditingController();
+  final _postalCodeController = TextEditingController();
+  final _contactNumberController = TextEditingController();
+  final _panController = TextEditingController();
 
-  // Pharmacist Details Controllers
+  // Address Controllers
+  final _cityController = TextEditingController();
+
+  // Registered Pharmacist Controllers
   final _pharmacistFirstNameController = TextEditingController();
   final _pharmacistLastNameController = TextEditingController();
   final _pharmacistRegNumberController = TextEditingController();
-  final _pharmacistMobileController = TextEditingController();
+  final _spcController = TextEditingController();
+
+  // Login Credentials Controllers
+  final _userNameController = TextEditingController();
+  final _passwordController = TextEditingController();
+  final _emailController = TextEditingController();
 
   // Form States
   bool _isGstRegistered = false;
@@ -105,28 +108,25 @@ class _PharmacistRegistrationPageState
       backgroundColor: Colors.grey.shade50,
       appBar: AppBar(
         title: const Text('Pharmacist Registration'),
-        backgroundColor: const Color(0xFF2E7D32),
+        backgroundColor: AppTheme.primaryColor,
         foregroundColor: Colors.white,
         elevation: 0,
       ),
       body: Column(
         children: [
-          // Progress Indicator
           _buildProgressIndicator(),
-
-          // Form Content
           Expanded(
             child: PageView(
               controller: _pageController,
               physics: const NeverScrollableScrollPhysics(),
               children: [
-                _buildPharmacyDetailsStep(),
-                _buildAddressStep(),
+                _buildBusinessTypeStep(),
+                _buildFirmDetailsStep(),
                 _buildPharmacistDetailsStep(),
+                _buildLoginCredentialsStep(),
               ],
             ),
           ),
-
           // Error Message
           if (_errorMessage.isNotEmpty)
             Container(
@@ -153,720 +153,713 @@ class _PharmacistRegistrationPageState
                 ],
               ),
             ),
-
-          // Navigation Buttons
-          _buildNavigationButtons(),
         ],
       ),
     );
   }
 
   Widget _buildProgressIndicator() {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black12,
-            blurRadius: 4,
-            offset: Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          _buildStepIndicator(0, 'Pharmacy\nDetails'),
-          Expanded(child: _buildStepConnector(0)),
-          _buildStepIndicator(1, 'Address'),
-          Expanded(child: _buildStepConnector(1)),
-          _buildStepIndicator(2, 'Pharmacist\nDetails'),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStepIndicator(int step, String title) {
-    bool isActive = _currentStep >= step;
-    bool isCurrent = _currentStep == step;
-
-    return Column(
-      children: [
-        Container(
-          width: 40,
-          height: 40,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: isActive ? const Color(0xFF2E7D32) : Colors.grey.shade300,
-            border: Border.all(
-              color: isCurrent ? const Color(0xFF2E7D32) : Colors.grey.shade300,
-              width: 2,
-            ),
-          ),
-          child: Center(
-            child: isActive && _currentStep > step
-                ? const Icon(Icons.check, color: Colors.white, size: 20)
-                : Text(
-                    '${step + 1}',
-                    style: TextStyle(
-                      color: isCurrent ? Colors.white : Colors.grey.shade600,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-          ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          title,
-          style: TextStyle(
-            fontSize: 12,
-            color: isActive ? const Color(0xFF2E7D32) : Colors.grey.shade600,
-            fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
-          ),
-          textAlign: TextAlign.center,
-        ),
+    return StepProgressIndicator(
+      currentStep: _currentStep,
+      steps: const [
+        StepItem(label: 'Business\nType', icon: Icons.business),
+        StepItem(label: 'Firm\nDetails', icon: Icons.store),
+        StepItem(label: 'Pharmacist\nInfo', icon: Icons.person),
+        StepItem(label: 'Credentials', icon: Icons.lock),
       ],
     );
   }
 
-  Widget _buildStepConnector(int step) {
-    bool isCompleted = _currentStep > step;
-    return Container(
-      height: 2,
-      margin: const EdgeInsets.only(bottom: 30),
-      color: isCompleted ? const Color(0xFF2E7D32) : Colors.grey.shade300,
-    );
-  }
-
-  Widget _buildPharmacyDetailsStep() {
+  // Step 1: Business Type Selection
+  Widget _buildBusinessTypeStep() {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            'About Pharmacy',
+            'Select Business Type',
             style: TextStyle(
               fontSize: 24,
               fontWeight: FontWeight.bold,
-              color: Color(0xFF2E7D32),
+              color: AppTheme.primaryColor,
             ),
           ),
-          const SizedBox(height: 20),
-
-          // Pharmacy/Firm Name
-          _buildTextField(
-            controller: _pharmacyNameController,
-            label: 'Pharmacy/Firm Name *',
-            hint: 'Enter pharmacy or firm name',
-            icon: Icons.local_pharmacy,
-            validator: (value) =>
-                value?.isEmpty ?? true ? 'Pharmacy name is required' : null,
-          ),
-
-          const SizedBox(height: 20),
-
-          // Owner Details Section
+          const SizedBox(height: 8),
           const Text(
-            'Owner Details',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: Color(0xFF2E7D32),
-            ),
+            'Choose your business category',
+            style: TextStyle(color: Colors.grey),
           ),
+          const SizedBox(height: 32),
+          _buildBusinessTypeOption('Retailer', Icons.store),
           const SizedBox(height: 16),
+          _buildBusinessTypeOption('Distributor/Wholesaler', Icons.warehouse),
+          const SizedBox(height: 16),
+          _buildBusinessTypeOption('Both', Icons.business),
+          const SizedBox(height: 32),
+          _buildNavigationButtons(),
+        ],
+      ),
+    );
+  }
 
-          Row(
-            children: [
-              Expanded(
-                child: _buildTextField(
-                  controller: _ownerFirstNameController,
-                  label: 'First Name *',
-                  hint: 'First name',
-                  icon: Icons.person,
-                  validator: (value) =>
-                      value?.isEmpty ?? true ? 'First name is required' : null,
+  Widget _buildBusinessTypeOption(String type, IconData icon) {
+    final isSelected = _businessType == type;
+    return InkWell(
+      onTap: () => setState(() => _businessType = type),
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: isSelected ? AppTheme.primaryColor.withOpacity(0.1) : Colors.white,
+          border: Border.all(
+            color: isSelected ? AppTheme.primaryColor : Colors.grey.shade300,
+            width: isSelected ? 2 : 1,
+          ),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              icon,
+              size: 32,
+              color: isSelected ? AppTheme.primaryColor : Colors.grey,
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Text(
+                type,
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                  color: isSelected ? AppTheme.primaryColor : Colors.black87,
                 ),
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _buildTextField(
-                  controller: _ownerLastNameController,
-                  label: 'Last Name *',
-                  hint: 'Last name',
-                  icon: Icons.person,
-                  validator: (value) =>
-                      value?.isEmpty ?? true ? 'Last name is required' : null,
-                ),
+            ),
+            if (isSelected)
+              const Icon(
+                Icons.check_circle,
+                color: AppTheme.primaryColor,
+                size: 28,
               ),
-            ],
-          ),
+          ],
+        ),
+      ),
+    );
+  }
 
-          const SizedBox(height: 16),
-
-          _buildTextField(
-            controller: _ownerMiddleNameController,
-            label: 'Middle Name (Optional)',
-            hint: 'Middle name',
-            icon: Icons.person_outline,
-          ),
-
-          const SizedBox(height: 20),
-
-          // GST Registration Section
-          const Text(
-            'GST Registration',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: Color(0xFF2E7D32),
+  // Step 2: Firm Details
+  Widget _buildFirmDetailsStep() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(24),
+      child: Form(
+        key: _formKey,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Firm Details',
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: AppTheme.primaryColor,
+              ),
             ),
-          ),
-          const SizedBox(height: 16),
+            const SizedBox(height: 24),
 
-          Container(
-            decoration: BoxDecoration(
-              border: Border.all(color: Colors.grey.shade300),
-              borderRadius: BorderRadius.circular(12),
+            // 1. Firm Name
+            _buildTextField(
+              controller: _firmNameController,
+              label: 'Firm Name*',
+              hint: 'Enter firm name',
+              icon: Icons.business,
+              validator: (value) =>
+                  value?.isEmpty ?? true ? 'Firm name is required' : null,
             ),
-            child: Column(
+            const SizedBox(height: 16),
+
+            // 2. Owner Name
+            Row(
               children: [
-                RadioListTile<bool>(
-                  title: const Text('GST Registered'),
-                  value: true,
-                  groupValue: _isGstRegistered,
-                  activeColor: const Color(0xFF2E7D32),
-                  onChanged: (value) {
-                    setState(() {
-                      _isGstRegistered = value!;
-                    });
-                  },
+                Expanded(
+                  child: _buildTextField(
+                    controller: _ownerFirstNameController,
+                    label: 'Owner First Name*',
+                    hint: 'First name',
+                    icon: Icons.person,
+                    validator: (value) =>
+                        value?.isEmpty ?? true ? 'First name is required' : null,
+                  ),
                 ),
-                RadioListTile<bool>(
-                  title: const Text('GST Un-Registered'),
-                  value: false,
-                  groupValue: _isGstRegistered,
-                  activeColor: const Color(0xFF2E7D32),
-                  onChanged: (value) {
-                    setState(() {
-                      _isGstRegistered = value!;
-                      if (!_isGstRegistered) {
-                        _gstNumberController.clear();
-                      }
-                    });
-                  },
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _buildTextField(
+                    controller: _ownerLastNameController,
+                    label: 'Last Name*',
+                    hint: 'Last name',
+                    icon: Icons.person,
+                    validator: (value) =>
+                        value?.isEmpty ?? true ? 'Last name is required' : null,
+                  ),
                 ),
               ],
             ),
-          ),
-
-          if (_isGstRegistered) ...[
             const SizedBox(height: 16),
+
             _buildTextField(
-              controller: _gstNumberController,
-              label: 'GST Number *',
-              hint: 'Enter GST number',
-              icon: Icons.receipt_long,
+              controller: _ownerMiddleNameController,
+              label: 'Owner Middle Name (Optional)',
+              hint: 'Middle name',
+              icon: Icons.person_outline,
+            ),
+            const SizedBox(height: 16),
+
+            // 3. Drug Licence Numbers based on business type
+            if (_businessType == 'Retailer' || _businessType == 'Both')
+              _buildTextField(
+                controller: _dlRetailerController,
+                label: 'Drug Licence Number - Retailer*',
+                hint: 'Enter retailer drug license',
+                icon: Icons.card_membership,
+                validator: (value) =>
+                    value?.isEmpty ?? true ? 'Retailer Drug Licence No. is required' : null,
+              ),
+            if (_businessType == 'Retailer' || _businessType == 'Both')
+              const SizedBox(height: 16),
+
+            if (_businessType == 'Distributor/Wholesaler' || _businessType == 'Both')
+              _buildTextField(
+                controller: _dlWholesalerController,
+                label: 'Drug Licence Number - Wholeseller*',
+                hint: 'Enter wholeseller drug license',
+                icon: Icons.card_membership,
+                validator: (value) =>
+                    value?.isEmpty ?? true ? 'Wholeseller Drug Licence No. is required' : null,
+              ),
+            if (_businessType == 'Distributor/Wholeseller' || _businessType == 'Both')
+              const SizedBox(height: 16),
+
+            // 4. GST No - Registered/Unregistered
+            const Text(
+              'GST Registration',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: AppTheme.primaryColor,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Container(
+              decoration: BoxDecoration(
+                border: Border.all(color: Colors.grey.shade300),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Column(
+                children: [
+                  RadioListTile<bool>(
+                    title: const Text('GST Registered'),
+                    value: true,
+                    groupValue: _isGstRegistered,
+                    activeColor: AppTheme.primaryColor,
+                    onChanged: (value) {
+                      setState(() => _isGstRegistered = value!);
+                    },
+                  ),
+                  RadioListTile<bool>(
+                    title: const Text('GST Un-Registered'),
+                    value: false,
+                    groupValue: _isGstRegistered,
+                    activeColor: AppTheme.primaryColor,
+                    onChanged: (value) {
+                      setState(() {
+                        _isGstRegistered = value!;
+                        if (!_isGstRegistered) {
+                          _gstNumberController.clear();
+                        }
+                      });
+                    },
+                  ),
+                ],
+              ),
+            ),
+            if (_isGstRegistered) ...[
+              const SizedBox(height: 16),
+              _buildTextField(
+                controller: _gstNumberController,
+                label: 'GST Number*',
+                hint: 'Enter 15-digit GST number',
+                icon: Icons.receipt_long,
+                validator: (value) {
+                  if (_isGstRegistered && (value?.isEmpty ?? true)) {
+                    return 'GST number is required';
+                  }
+                  if (_isGstRegistered && value!.length != 15) {
+                    return 'GST number should be 15 characters';
+                  }
+                  return null;
+                },
+              ),
+            ],
+            const SizedBox(height: 16),
+
+            // 5. FSSAI
+            _buildTextField(
+              controller: _fssaiController,
+              label: 'FSSAI Number*',
+              hint: 'Enter FSSAI license number',
+              icon: Icons.verified_user,
+              validator: (value) =>
+                  value?.isEmpty ?? true ? 'FSSAI number is required' : null,
+            ),
+            const SizedBox(height: 16),
+
+            // 6. Address
+            const Text(
+              'Address Details',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: AppTheme.primaryColor,
+              ),
+            ),
+            const SizedBox(height: 12),
+
+            _buildTextField(
+              controller: _addressLine1Controller,
+              label: 'Address Line 1*',
+              hint: 'Building name, street',
+              icon: Icons.location_on,
+              validator: (value) =>
+                  value?.isEmpty ?? true ? 'Address is required' : null,
+            ),
+            const SizedBox(height: 16),
+
+            _buildTextField(
+              controller: _addressLine2Controller,
+              label: 'Address Line 2',
+              hint: 'Area, landmark',
+              icon: Icons.location_on_outlined,
+            ),
+            const SizedBox(height: 16),
+
+            Row(
+              children: [
+                Expanded(
+                  child: _buildTextField(
+                    controller: _cityController,
+                    label: 'City*',
+                    hint: 'City',
+                    icon: Icons.location_city,
+                    validator: (value) =>
+                        value?.isEmpty ?? true ? 'City is required' : null,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _buildDropdownField(),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+
+            // 7. Pin Code
+            _buildTextField(
+              controller: _postalCodeController,
+              label: 'Pin Code*',
+              hint: 'Enter 6-digit pin code',
+              icon: Icons.pin,
+              keyboardType: TextInputType.number,
+              maxLength: 6,
               validator: (value) {
-                if (_isGstRegistered && (value?.isEmpty ?? true)) {
-                  return 'GST number is required';
-                }
-                if (_isGstRegistered && value!.length != 15) {
-                  return 'GST number should be 15 characters';
+                if (value?.isEmpty ?? true) return 'Pin code is required';
+                if (value!.length != 6) return 'Pin code must be 6 digits';
+                if (!RegExp(r'^\d{6}$').hasMatch(value)) {
+                  return 'Pin code should contain only numbers';
                 }
                 return null;
               },
             ),
-          ],
+            const SizedBox(height: 16),
 
-          const SizedBox(height: 20),
-
-          // Login Details Section
-          const Text(
-            'Login Details',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: Color(0xFF2E7D32),
-            ),
-          ),
-          const SizedBox(height: 16),
-
-          // Main mobile number field
-          _buildTextField(
-            controller: _userNameController,
-            label: 'User Name (Mobile Number) *',
-            hint: 'Enter 10-digit mobile number',
-            icon: Icons.phone,
-            keyboardType: TextInputType.phone,
-            maxLength: 10,
-            validator: (value) {
-              if (value?.isEmpty ?? true) {
-                return 'Mobile number is required';
-              }
-              final phoneRegex = RegExp(r'^[6-9]\d{9}$');
-              if (!phoneRegex.hasMatch(value!)) {
-                return 'Enter valid 10-digit mobile number';
-              }
-              if (value == _alternativeMobileController.text &&
-                  _alternativeMobileController.text.isNotEmpty) {
-                return 'Mobile number cannot be same as alternative number';
-              }
-              return null;
-            },
-            onChanged: (value) {
-              // Clear any previous errors and trigger validation refresh
-              setState(() {
-                if (_errorMessage.contains('same')) {
-                  _errorMessage = '';
+            // 8. Contact Number
+            _buildTextField(
+              controller: _contactNumberController,
+              label: 'Contact Number*',
+              hint: 'Enter 10-digit mobile',
+              icon: Icons.phone,
+              keyboardType: TextInputType.phone,
+              maxLength: 10,
+              validator: (value) {
+                if (value?.isEmpty ?? true) return 'Contact number is required';
+                final phoneRegex = RegExp(r'^[6-9]\d{9}$');
+                if (!phoneRegex.hasMatch(value!)) {
+                  return 'Enter valid 10-digit mobile number';
                 }
-              });
-            },
-          ),
-
-          const SizedBox(height: 16),
-
-          _buildTextField(
-            controller: _passwordController,
-            label: 'Password *',
-            hint: 'Enter password',
-            icon: Icons.lock,
-            obscureText: _obscurePassword,
-            suffixIcon: IconButton(
-              icon: Icon(
-                  _obscurePassword ? Icons.visibility_off : Icons.visibility),
-              onPressed: () {
-                setState(() {
-                  _obscurePassword = !_obscurePassword;
-                });
+                return null;
               },
             ),
-            validator: (value) {
-              if (value?.isEmpty ?? true) {
-                return 'Password is required';
-              }
-              if (value!.length < 8) {
-                return 'Password must be at least 8 characters';
-              }
-              return null;
-            },
-          ),
+            const SizedBox(height: 16),
 
-          const SizedBox(height: 16),
-
-          _buildTextField(
-            controller: _emailController,
-            label: 'Email ID (Optional)',
-            hint: 'Enter email address',
-            icon: Icons.email,
-            keyboardType: TextInputType.emailAddress,
-            validator: (value) {
-              // Since it's optional, allow empty values
-              if (value == null || value.isEmpty) {
-                return null; // No validation error for empty optional field
-              }
-
-              // If user enters something, validate email format
-              final emailRegex =
-                  RegExp(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$');
-              if (!emailRegex.hasMatch(value)) {
-                return 'Please enter a valid email address';
-              }
-
-              // Check for reasonable email length
-              if (value.length > 50) {
-                return 'Email address is too long';
-              }
-
-              // Basic format checks
-              if (!value.contains('@') || !value.contains('.')) {
-                return 'Please enter a valid email address';
-              }
-
-              // Check for multiple @ signs
-              if (value.split('@').length > 2) {
-                return 'Email address can only contain one @ symbol';
-              }
-
-              // Check domain has at least one dot after @
-              String domain = value.split('@').last;
-              if (!domain.contains('.') ||
-                  domain.startsWith('.') ||
-                  domain.endsWith('.')) {
-                return 'Please enter a valid email domain';
-              }
-
-              return null;
-            },
-            onChanged: (value) {
-              // Clear email-related error messages when user types
-              setState(() {
-                if (_errorMessage.contains('email') ||
-                    _errorMessage.contains('Email')) {
-                  _errorMessage = '';
+            // 9. PAN
+            _buildTextField(
+              controller: _panController,
+              label: 'PAN Number*',
+              hint: 'Enter PAN (e.g., ABCDE1234F)',
+              icon: Icons.credit_card,
+              textCapitalization: TextCapitalization.characters,
+              maxLength: 10,
+              validator: (value) {
+                if (value?.isEmpty ?? true) return 'PAN is required';
+                final panRegex = RegExp(r'^[A-Z]{5}[0-9]{4}[A-Z]{1}$');
+                if (!panRegex.hasMatch(value!)) {
+                  return 'Enter valid PAN (e.g., ABCDE1234F)';
                 }
-              });
-            },
-          ),
-          const SizedBox(height: 16),
-
-          // Alternative mobile number field
-          _buildTextField(
-            controller: _alternativeMobileController,
-            label: 'Alternative Mobile Number *',
-            hint: 'Enter alternative mobile number',
-            icon: Icons.phone_android,
-            keyboardType: TextInputType.phone,
-            maxLength: 10,
-            validator: (value) {
-              if (value?.isEmpty ?? true) {
-                return 'Alternative mobile number is required';
-              }
-              final phoneRegex = RegExp(r'^[6-9]\d{9}$');
-              if (!phoneRegex.hasMatch(value!)) {
-                return 'Enter valid 10-digit mobile number';
-              }
-              if (value == _userNameController.text &&
-                  _userNameController.text.isNotEmpty) {
-                return 'Alternative number cannot be same as main mobile number';
-              }
-              return null;
-            },
-            onChanged: (value) {
-              // Clear any previous errors and trigger validation refresh
-              setState(() {
-                if (_errorMessage.contains('same')) {
-                  _errorMessage = '';
-                }
-              });
-            },
-          ),
-          const SizedBox(height: 20),
-
-          // License Details Section
-          const Text(
-            'License Details',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: Color(0xFF2E7D32),
+                return null;
+              },
             ),
-          ),
-          const SizedBox(height: 16),
+            const SizedBox(height: 20),
 
-          _buildTextField(
-            controller: _panController,
-            label: 'PAN Number *',
-            hint: 'Enter PAN number',
-            icon: Icons.credit_card,
-            textCapitalization: TextCapitalization.characters,
-            validator: (value) {
-              if (value?.isEmpty ?? true) {
-                return 'PAN number is required';
-              }
-              final panRegex = RegExp(r'^[A-Z]{5}[0-9]{4}[A-Z]{1}$');
-              if (!panRegex.hasMatch(value!)) {
-                return 'Enter valid PAN number (e.g., ABCDE1234F)';
-              }
-              return null;
-            },
-          ),
-
-          const SizedBox(height: 16),
-
-          _buildTextField(
-            controller: _fssaiController,
-            label: 'FSSAI Number *',
-            hint: 'Enter FSSAI license number',
-            icon: Icons.verified_user,
-            validator: (value) =>
-                value?.isEmpty ?? true ? 'FSSAI number is required' : null,
-          ),
-
-          const SizedBox(height: 16),
-
-          _buildTextField(
-            controller: _dlController,
-            label: 'Drug License Number *',
-            hint: 'Enter drug license number',
-            icon: Icons.medical_services,
-            validator: (value) => value?.isEmpty ?? true
-                ? 'Drug license number is required'
-                : null,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildAddressStep() {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Address Details',
-            style: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-              color: Color(0xFF2E7D32),
-            ),
-          ),
-          const SizedBox(height: 20),
-
-          _buildTextField(
-            controller: _addressLine1Controller,
-            label: 'Address Line 1 *',
-            hint: 'Building name, street name',
-            icon: Icons.location_on,
-            validator: (value) =>
-                value?.isEmpty ?? true ? 'Address Line 1 is required' : null,
-          ),
-
-          const SizedBox(height: 16),
-
-          _buildTextField(
-            controller: _addressLine2Controller,
-            label: 'Address Line 2',
-            hint: 'Area, landmark',
-            icon: Icons.location_on_outlined,
-          ),
-
-          const SizedBox(height: 16),
-
-          Row(
-            children: [
-              Expanded(
-                flex: 1,
-                child: _buildTextField(
-                  controller: _cityController,
-                  label: 'City *',
-                  hint: 'Enter city',
-                  icon: Icons.location_city,
-                  validator: (value) =>
-                      value?.isEmpty ?? true ? 'City is required' : null,
-                ),
+            // Geolocation
+            const Text(
+              'Geolocation',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: AppTheme.primaryColor,
               ),
-              const SizedBox(width: 8), // Reduced from 12 to 8
-              Expanded(
-                flex: 1,
-                child: _buildDropdownField(),
+            ),
+            const SizedBox(height: 12),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                border: Border.all(color: Colors.grey.shade300),
+                borderRadius: BorderRadius.circular(12),
               ),
-            ],
-          ),
-
-          const SizedBox(height: 16),
-
-          _buildTextField(
-            controller: _postalCodeController,
-            label: 'Postal Code (Optional)',
-            hint: 'Enter postal code',
-            icon: Icons.local_post_office,
-            keyboardType: TextInputType.number,
-            maxLength: 6,
-            validator: (value) {
-              if (value != null && value.isNotEmpty) {
-                if (value.length != 6) {
-                  return 'Postal code should be 6 digits';
-                }
-                if (!RegExp(r'^\d{6}$').hasMatch(value)) {
-                  return 'Postal code should contain only numbers';
-                }
-              }
-              return null;
-            },
-          ),
-          const SizedBox(height: 20),
-
-          // Geolocation Section
-          const Text(
-            'Geolocation',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: Color(0xFF2E7D32),
-            ),
-          ),
-          const SizedBox(height: 16),
-
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              border: Border.all(color: Colors.grey.shade300),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    const Icon(Icons.map, color: Color(0xFF2E7D32)),
-                    const SizedBox(width: 8),
-                    const Text(
-                      'Location:',
-                      style: TextStyle(fontWeight: FontWeight.bold),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(Icons.map, color: AppTheme.primaryColor),
+                      const SizedBox(width: 8),
+                      const Text(
+                        'Location:',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    _locationText,
+                    style: TextStyle(
+                      color: _latitude != null ? Colors.black : Colors.grey.shade600,
                     ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  _locationText,
-                  style: TextStyle(
-                    color:
-                        _latitude != null ? Colors.black : Colors.grey.shade600,
                   ),
-                ),
-                const SizedBox(height: 12),
-                ElevatedButton.icon(
-                  onPressed: _checkLocationAndRequest, //_getCurrentLocation,
-                  icon: const Icon(Icons.my_location),
-                  label: Text(_latitude != null
-                      ? 'Update Location'
-                      : 'Select Current Location'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF2E7D32),
-                    foregroundColor: Colors.white,
+                  const SizedBox(height: 12),
+                  ElevatedButton.icon(
+                    onPressed: _checkLocationAndRequest,
+                    icon: const Icon(Icons.my_location),
+                    label: Text(_latitude != null
+                        ? 'Update Location'
+                        : 'Select Current Location'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppTheme.primaryColor,
+                      foregroundColor: Colors.white,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-        ],
+            const SizedBox(height: 24),
+
+            _buildNavigationButtons(),
+          ],
+        ),
       ),
     );
   }
 
+  // Step 3: Registered Pharmacist Details
   Widget _buildPharmacistDetailsStep() {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Pharmacist Details',
-            style: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-              color: Color(0xFF2E7D32),
-            ),
-          ),
-          const SizedBox(height: 20),
-
-          Row(
-            children: [
-              Expanded(
-                child: _buildTextField(
-                  controller: _pharmacistFirstNameController,
-                  label: 'First Name *',
-                  hint: 'First name',
-                  icon: Icons.person,
-                  validator: (value) => value?.isEmpty ?? true
-                      ? 'Pharmacist first name is required'
-                      : null,
-                ),
+      child: Form(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Registered Pharmacist Details',
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: AppTheme.primaryColor,
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _buildTextField(
-                  controller: _pharmacistLastNameController,
-                  label: 'Last Name *',
-                  hint: 'Last name',
-                  icon: Icons.person,
-                  validator: (value) => value?.isEmpty ?? true
-                      ? 'Pharmacist last name is required'
-                      : null,
-                ),
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 16),
-
-          _buildTextField(
-            controller: _pharmacistRegNumberController,
-            label: 'Pharmacist Registration Number *',
-            hint: 'Enter pharmacist registration number',
-            icon: Icons.badge,
-            validator: (value) => value?.isEmpty ?? true
-                ? 'Pharmacist registration number is required'
-                : null,
-          ),
-
-          const SizedBox(height: 16),
-
-          _buildTextField(
-            controller: _pharmacistMobileController,
-            label: 'Pharmacist Mobile Number *',
-            hint: 'Enter pharmacist mobile number',
-            icon: Icons.phone,
-            keyboardType: TextInputType.phone,
-            maxLength: 10,
-            validator: (value) {
-              if (value?.isEmpty ?? true) {
-                return 'Pharmacist mobile number is required';
-              }
-              final phoneRegex = RegExp(r'^[6-9]\d{9}$');
-              if (!phoneRegex.hasMatch(value!)) {
-                return 'Enter valid 10-digit mobile number';
-              }
-              return null;
-            },
-          ),
-
-          const SizedBox(height: 40),
-
-          // Summary Card
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: const Color(0xFF2E7D32).withOpacity(0.1),
-              borderRadius: BorderRadius.circular(12),
-              border:
-                  Border.all(color: const Color(0xFF2E7D32).withOpacity(0.3)),
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            const SizedBox(height: 24),
+
+            // 1. Pharmacist Name
+            Row(
               children: [
-                const Text(
-                  'Registration Summary',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF2E7D32),
+                Expanded(
+                  child: _buildTextField(
+                    controller: _pharmacistFirstNameController,
+                    label: 'First Name*',
+                    hint: 'First name',
+                    icon: Icons.person,
+                    validator: (value) =>
+                        value?.isEmpty ?? true ? 'First name is required' : null,
                   ),
                 ),
-                const SizedBox(height: 12),
-                Text(
-                    'Please review all information before submitting your registration.'),
-                const SizedBox(height: 8),
-                const Text(
-                  '• Your application will be reviewed by our team\n'
-                  '• You will receive a confirmation email/SMS once approved\n',
-                  style: TextStyle(fontSize: 14),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _buildTextField(
+                    controller: _pharmacistLastNameController,
+                    label: 'Last Name*',
+                    hint: 'Last name',
+                    icon: Icons.person,
+                    validator: (value) =>
+                        value?.isEmpty ?? true ? 'Last name is required' : null,
+                  ),
                 ),
               ],
             ),
-          ),
-        ],
+            const SizedBox(height: 16),
+
+            // 2. Registration Number
+            _buildTextField(
+              controller: _pharmacistRegNumberController,
+              label: 'Registration Number*',
+              hint: 'Pharmacist registration number',
+              icon: Icons.badge,
+              validator: (value) => value?.isEmpty ?? true
+                  ? 'Registration number is required'
+                  : null,
+            ),
+            const SizedBox(height: 16),
+
+            // 3. Single Point of Contact (SPC)
+            _buildTextField(
+              controller: _spcController,
+              label: 'Single Point of Contact (SPC)*',
+              hint: 'Enter 10-digit mobile',
+              icon: Icons.contact_phone,
+              keyboardType: TextInputType.phone,
+              maxLength: 10,
+              validator: (value) {
+                if (value?.isEmpty ?? true) return 'SPC is required';
+                final phoneRegex = RegExp(r'^[6-9]\d{9}$');
+                if (!phoneRegex.hasMatch(value!)) {
+                  return 'Enter valid 10-digit mobile number';
+                }
+                return null;
+              },
+            ),
+            const SizedBox(height: 40),
+
+            // Summary Card
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: AppTheme.primaryColor.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                    color: AppTheme.primaryColor.withOpacity(0.3)),
+              ),
+              child: const Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Registration Summary',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: AppTheme.primaryColor,
+                    ),
+                  ),
+                  SizedBox(height: 12),
+                  Text(
+                      'Please review all information before proceeding.'),
+                  SizedBox(height: 8),
+                  Text(
+                    '• Create login credentials in the next step\n'
+                    '• Your application will be reviewed by our team\n'
+                    '• You will receive confirmation email/SMS',
+                    style: TextStyle(fontSize: 14),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
+
+            _buildNavigationButtons(),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildTextField(
-      {required TextEditingController controller,
-      required String label,
-      String? hint,
-      IconData? icon,
-      Widget? suffixIcon,
-      bool obscureText = false,
-      TextInputType? keyboardType,
-      int? maxLength,
-      TextCapitalization textCapitalization = TextCapitalization.none,
-      String? Function(String?)? validator,
-      void Function(String)? onChanged}) {
+  // Step 4: Login Credentials
+  Widget _buildLoginCredentialsStep() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(24),
+      child: Form(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Create Login Credentials',
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: AppTheme.primaryColor,
+              ),
+            ),
+            const SizedBox(height: 24),
+
+            _buildTextField(
+              controller: _userNameController,
+              label: 'Username (Mobile Number)*',
+              hint: 'Enter 10-digit mobile',
+              icon: Icons.person_outline,
+              keyboardType: TextInputType.phone,
+              maxLength: 10,
+              validator: (value) {
+                if (value?.isEmpty ?? true) {
+                  return 'Mobile number is required';
+                }
+                final phoneRegex = RegExp(r'^[6-9]\d{9}$');
+                if (!phoneRegex.hasMatch(value!)) {
+                  return 'Enter valid 10-digit mobile number';
+                }
+                if (value == _spcController.text &&
+                    _spcController.text.isNotEmpty) {
+                  return 'Cannot be same as SPC number';
+                }
+                return null;
+              },
+            ),
+            const SizedBox(height: 16),
+
+            _buildTextField(
+              controller: _emailController,
+              label: 'Email (Optional)',
+              hint: 'Enter email address',
+              icon: Icons.email,
+              keyboardType: TextInputType.emailAddress,
+              validator: (value) {
+                if (value == null || value.isEmpty) {
+                  return null;
+                }
+                final emailRegex =
+                    RegExp(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$');
+                if (!emailRegex.hasMatch(value)) {
+                  return 'Please enter a valid email address';
+                }
+                if (value.length > 50) {
+                  return 'Email address is too long';
+                }
+                if (value.split('@').length > 2) {
+                  return 'Email address can only contain one @ symbol';
+                }
+                String domain = value.split('@').last;
+                if (!domain.contains('.') ||
+                    domain.startsWith('.') ||
+                    domain.endsWith('.')) {
+                  return 'Please enter a valid email domain';
+                }
+                return null;
+              },
+            ),
+            const SizedBox(height: 16),
+
+            _buildTextField(
+              controller: _passwordController,
+              label: 'Password*',
+              hint: 'Enter password',
+              icon: Icons.lock,
+              obscureText: _obscurePassword,
+              suffixIcon: IconButton(
+                icon: Icon(
+                    _obscurePassword ? Icons.visibility_off : Icons.visibility),
+                onPressed: () {
+                  setState(() => _obscurePassword = !_obscurePassword);
+                },
+              ),
+              validator: (value) {
+                if (value?.isEmpty ?? true) {
+                  return 'Password is required';
+                }
+                if (value!.length < 8) {
+                  return 'Password must be at least 8 characters';
+                }
+                if (!RegExp(r'[A-Z]').hasMatch(value)) {
+                  return 'Must contain at least 1 uppercase letter';
+                }
+                if (!RegExp(r'[a-z]').hasMatch(value)) {
+                  return 'Must contain at least 1 lowercase letter';
+                }
+                if (!RegExp(r'[0-9]').hasMatch(value)) {
+                  return 'Must contain at least 1 number';
+                }
+                if (!RegExp(r'[!@#$%^&*(),.?":{}|<>]').hasMatch(value)) {
+                  return 'Must contain at least 1 special character';
+                }
+                return null;
+              },
+            ),
+            const SizedBox(height: 12),
+
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.blue.shade50,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.blue.shade200),
+              ),
+              child: const Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Password Requirements:',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 13,
+                    ),
+                  ),
+                  SizedBox(height: 4),
+                  Text(
+                    '• At least 8 characters\n'
+                    '• 1 uppercase letter (A-Z)\n'
+                    '• 1 lowercase letter (a-z)\n'
+                    '• 1 number (0-9)\n'
+                    '• 1 special character (!@#\$%^&*)',
+                    style: TextStyle(fontSize: 12),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 32),
+
+            _buildNavigationButtons(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTextField({
+    required TextEditingController controller,
+    required String label,
+    String? hint,
+    IconData? icon,
+    Widget? suffixIcon,
+    bool obscureText = false,
+    TextInputType? keyboardType,
+    int? maxLength,
+    TextCapitalization textCapitalization = TextCapitalization.none,
+    String? Function(String?)? validator,
+    void Function(String)? onChanged,
+  }) {
     return TextFormField(
       controller: controller,
       obscureText: obscureText,
@@ -878,14 +871,14 @@ class _PharmacistRegistrationPageState
         labelText: label,
         hintText: hint,
         prefixIcon:
-            icon != null ? Icon(icon, color: const Color(0xFF2E7D32)) : null,
+            icon != null ? Icon(icon, color: AppTheme.primaryColor) : null,
         suffixIcon: suffixIcon,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFF2E7D32), width: 2),
+          borderSide: const BorderSide(color: AppTheme.primaryColor, width: 2),
         ),
         counterText: maxLength != null ? '' : null,
       ),
@@ -896,34 +889,31 @@ class _PharmacistRegistrationPageState
   Widget _buildDropdownField() {
     return DropdownButtonFormField<String>(
       value: _selectedState,
-      isExpanded: true, // Add this line to prevent overflow
+      isExpanded: true,
       decoration: InputDecoration(
         labelText: 'State *',
-        prefixIcon: const Icon(Icons.location_on, color: Color(0xFF2E7D32)),
+        prefixIcon: const Icon(Icons.map, color: AppTheme.primaryColor),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFF2E7D32), width: 2),
+          borderSide: const BorderSide(color: AppTheme.primaryColor, width: 2),
         ),
-        contentPadding: const EdgeInsets.symmetric(
-            horizontal: 12, vertical: 16), // Add this
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
       ),
       items: _states.map((String state) {
         return DropdownMenuItem<String>(
           value: state,
           child: Text(
             state,
-            overflow: TextOverflow.ellipsis, // Add this to handle long text
-            style: const TextStyle(fontSize: 14), // Smaller font if needed
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontSize: 14),
           ),
         );
       }).toList(),
       onChanged: (String? newValue) {
-        setState(() {
-          _selectedState = newValue;
-        });
+        setState(() => _selectedState = newValue);
       },
       validator: (value) => value == null ? 'Please select a state' : null,
     );
@@ -949,11 +939,8 @@ class _PharmacistRegistrationPageState
               child: OutlinedButton(
                 onPressed: _previousStep,
                 style: OutlinedButton.styleFrom(
-                  foregroundColor: const Color(0xFF2E7D32),
-                  side: const BorderSide(color: Color(0xFF2E7D32)),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
+                  foregroundColor: AppTheme.primaryColor,
+                  side: const BorderSide(color: AppTheme.primaryColor),
                   padding: const EdgeInsets.symmetric(vertical: 16),
                 ),
                 child: const Text('Previous'),
@@ -964,25 +951,22 @@ class _PharmacistRegistrationPageState
             child: ElevatedButton(
               onPressed: _isLoading
                   ? null
-                  : (_currentStep < 2 ? _nextStep : _submitRegistration),
+                  : (_currentStep < 3 ? _nextStep : _submitRegistration),
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF2E7D32),
+                backgroundColor: AppTheme.primaryColor,
                 foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
                 padding: const EdgeInsets.symmetric(vertical: 16),
               ),
               child: _isLoading
                   ? const SizedBox(
-                      width: 20,
                       height: 20,
+                      width: 20,
                       child: CircularProgressIndicator(
-                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                         strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                       ),
                     )
-                  : Text(_currentStep < 2 ? 'Next' : 'Submit Registration'),
+                  : Text(_currentStep < 3 ? 'Next' : 'Submit Registration'),
             ),
           ),
         ],
@@ -991,18 +975,14 @@ class _PharmacistRegistrationPageState
   }
 
   void _nextStep() {
-    setState(() {
-      _errorMessage = '';
-    });
+    setState(() => _errorMessage = '');
 
-    // Validate current step
     if (!_validateCurrentStep()) return;
 
-    if (_currentStep < 2) {
-      setState(() {
-        _currentStep++;
-      });
-      _pageController.nextPage(
+    if (_currentStep < 3) {
+      setState(() => _currentStep++);
+      _pageController.animateToPage(
+        _currentStep,
         duration: const Duration(milliseconds: 300),
         curve: Curves.easeInOut,
       );
@@ -1010,34 +990,45 @@ class _PharmacistRegistrationPageState
   }
 
   void _previousStep() {
-    if (_currentStep > 0) {
-      setState(() {
+    setState(() {
+      if (_currentStep > 0) {
         _currentStep--;
         _errorMessage = '';
-      });
-      _pageController.previousPage(
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeInOut,
-      );
-    }
+      }
+    });
+    _pageController.animateToPage(
+      _currentStep,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeInOut,
+    );
   }
 
   bool _validateCurrentStep() {
     switch (_currentStep) {
       case 0:
-        return _validatePharmacyDetails();
+        return _validateBusinessType();
       case 1:
-        return _validateAddressDetails();
+        return _validateFirmDetails();
       case 2:
         return _validatePharmacistDetails();
+      case 3:
+        return _validateLoginCredentials();
       default:
         return false;
     }
   }
 
-  bool _validatePharmacyDetails() {
-    if (_pharmacyNameController.text.isEmpty) {
-      setState(() => _errorMessage = 'Pharmacy name is required');
+  bool _validateBusinessType() {
+    if (_businessType == null) {
+      setState(() => _errorMessage = 'Please select a business type');
+      return false;
+    }
+    return true;
+  }
+
+  bool _validateFirmDetails() {
+    if (_firmNameController.text.isEmpty) {
+      setState(() => _errorMessage = 'Firm name is required');
       return false;
     }
     if (_ownerFirstNameController.text.isEmpty) {
@@ -1048,64 +1039,30 @@ class _PharmacistRegistrationPageState
       setState(() => _errorMessage = 'Owner last name is required');
       return false;
     }
+    if (_businessType == 'Retailer' || _businessType == 'Both') {
+      if (_dlRetailerController.text.isEmpty) {
+        setState(() => _errorMessage = 'Retailer Drug Licence number is required');
+        return false;
+      }
+    }
+    if (_businessType == 'Distributor/Wholeseller' || _businessType == 'Both') {
+      if (_dlWholesalerController.text.isEmpty) {
+        setState(() => _errorMessage = 'Wholeseller Drug Licence number is required');
+        return false;
+      }
+    }
     if (_isGstRegistered && _gstNumberController.text.isEmpty) {
-      setState(() =>
-          _errorMessage = 'GST number is required for registered pharmacy');
+      setState(() => _errorMessage = 'GST number is required for registered firms');
       return false;
     }
-    if (_userNameController.text.isEmpty) {
-      setState(() => _errorMessage = 'Mobile number is required');
-      return false;
-    }
-    final phoneRegex = RegExp(r'^[6-9]\d{9}$');
-    if (!phoneRegex.hasMatch(_userNameController.text)) {
-      setState(() => _errorMessage = 'Enter valid 10-digit mobile number');
-      return false;
-    }
-    if (_passwordController.text.isEmpty ||
-        _passwordController.text.length < 8) {
-      setState(() => _errorMessage = 'Password must be at least 8 characters');
-      return false;
-    }
-    if (_alternativeMobileController.text.isEmpty) {
-      setState(() => _errorMessage = 'Alternative mobile number is required');
-      return false;
-    }
-    if (_panController.text.isEmpty) {
-      setState(() => _errorMessage = 'PAN number is required');
+    if (_isGstRegistered && _gstNumberController.text.length != 15) {
+      setState(() => _errorMessage = 'GST number should be 15 characters');
       return false;
     }
     if (_fssaiController.text.isEmpty) {
       setState(() => _errorMessage = 'FSSAI number is required');
       return false;
     }
-    if (_dlController.text.isEmpty) {
-      setState(() => _errorMessage = 'Drug license number is required');
-      return false;
-    }
-    if (_userNameController.text == _alternativeMobileController.text) {
-      setState(() => _errorMessage =
-          'Mobile number and alternative mobile number must be different');
-      return false;
-    }
-    // Email validation (only if provided)
-    if (_emailController.text.isNotEmpty) {
-      final emailRegex =
-          RegExp(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$');
-      if (!emailRegex.hasMatch(_emailController.text)) {
-        setState(() => _errorMessage = 'Please enter a valid email address');
-        return false;
-      }
-      if (_emailController.text.length > 50) {
-        setState(() =>
-            _errorMessage = 'Email address must be less than 50 characters');
-        return false;
-      }
-    }
-    return true;
-  }
-
-  bool _validateAddressDetails() {
     if (_addressLine1Controller.text.isEmpty) {
       setState(() => _errorMessage = 'Address Line 1 is required');
       return false;
@@ -1116,6 +1073,36 @@ class _PharmacistRegistrationPageState
     }
     if (_selectedState == null) {
       setState(() => _errorMessage = 'Please select a state');
+      return false;
+    }
+    if (_postalCodeController.text.isEmpty) {
+      setState(() => _errorMessage = 'Pin code is required');
+      return false;
+    }
+    if (_postalCodeController.text.length != 6) {
+      setState(() => _errorMessage = 'Pin code must be 6 digits');
+      return false;
+    }
+    if (!RegExp(r'^\d{6}$').hasMatch(_postalCodeController.text)) {
+      setState(() => _errorMessage = 'Pin code should contain only numbers');
+      return false;
+    }
+    if (_contactNumberController.text.isEmpty) {
+      setState(() => _errorMessage = 'Contact number is required');
+      return false;
+    }
+    final phoneRegex = RegExp(r'^[6-9]\d{9}$');
+    if (!phoneRegex.hasMatch(_contactNumberController.text)) {
+      setState(() => _errorMessage = 'Enter valid 10-digit mobile number');
+      return false;
+    }
+    if (_panController.text.isEmpty) {
+      setState(() => _errorMessage = 'PAN number is required');
+      return false;
+    }
+    final panRegex = RegExp(r'^[A-Z]{5}[0-9]{4}[A-Z]{1}$');
+    if (!panRegex.hasMatch(_panController.text)) {
+      setState(() => _errorMessage = 'Enter valid PAN number (e.g., ABCDE1234F)');
       return false;
     }
     return true;
@@ -1131,20 +1118,83 @@ class _PharmacistRegistrationPageState
       return false;
     }
     if (_pharmacistRegNumberController.text.isEmpty) {
-      setState(
-          () => _errorMessage = 'Pharmacist registration number is required');
+      setState(() => _errorMessage = 'Pharmacist registration number is required');
       return false;
     }
-    if (_pharmacistMobileController.text.isEmpty) {
-      setState(() => _errorMessage = 'Pharmacist mobile number is required');
+    if (_spcController.text.isEmpty) {
+      setState(() => _errorMessage = 'Single Point of Contact is required');
       return false;
     }
     final phoneRegex = RegExp(r'^[6-9]\d{9}$');
-    if (!phoneRegex.hasMatch(_pharmacistMobileController.text)) {
-      setState(() => _errorMessage = 'Enter valid pharmacist mobile number');
+    if (!phoneRegex.hasMatch(_spcController.text)) {
+      setState(() => _errorMessage = 'Enter valid 10-digit SPC mobile number');
       return false;
     }
     return true;
+  }
+
+  bool _validateLoginCredentials() {
+    if (_userNameController.text.isEmpty) {
+      setState(() => _errorMessage = 'Mobile number is required');
+      return false;
+    }
+    final phoneRegex = RegExp(r'^[6-9]\d{9}$');
+    if (!phoneRegex.hasMatch(_userNameController.text)) {
+      setState(() => _errorMessage = 'Enter valid 10-digit mobile number');
+      return false;
+    }
+    if (_userNameController.text == _spcController.text) {
+      setState(() => _errorMessage = 'Username cannot be same as SPC number');
+      return false;
+    }
+    if (_passwordController.text.isEmpty) {
+      setState(() => _errorMessage = 'Password is required');
+      return false;
+    }
+    if (_passwordController.text.length < 8) {
+      setState(() => _errorMessage = 'Password must be at least 8 characters');
+      return false;
+    }
+    if (!RegExp(r'[A-Z]').hasMatch(_passwordController.text) ||
+        !RegExp(r'[a-z]').hasMatch(_passwordController.text) ||
+        !RegExp(r'[0-9]').hasMatch(_passwordController.text) ||
+        !RegExp(r'[!@#$%^&*(),.?":{}|<>]').hasMatch(_passwordController.text)) {
+      setState(() => _errorMessage =
+          'Password must contain 1 uppercase, 1 lowercase, 1 number, and 1 special character');
+      return false;
+    }
+    // Email validation (only if provided)
+    if (_emailController.text.isNotEmpty) {
+      final emailRegex =
+          RegExp(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$');
+      if (!emailRegex.hasMatch(_emailController.text)) {
+        setState(() => _errorMessage = 'Please enter a valid email address');
+        return false;
+      }
+      if (_emailController.text.length > 50) {
+        setState(() => _errorMessage = 'Email address must be less than 50 characters');
+        return false;
+      }
+    }
+    return true;
+  }
+
+  Future<void> _checkLocationAndRequest() async {
+    bool? isAvailable = await _locationService.isLocationServiceAvailable();
+
+    if (isAvailable == false || !isAvailable) {
+      bool? granted = await _locationService.requestLocationPermission();
+      if (granted == true) {
+        _getCurrentLocation();
+      } else {
+        setState(() {
+          _errorMessage = 'Location permission is required to continue.';
+          _locationText = 'Tap to select location';
+        });
+      }
+    } else {
+      _getCurrentLocation();
+    }
   }
 
   Future<void> _getCurrentLocation() async {
@@ -1158,13 +1208,35 @@ class _PharmacistRegistrationPageState
         includeAddress: true,
         timeLimit: const Duration(seconds: 20),
       );
-
+      AppLogger.info('Location result: ${result.latitude}, ${result.longitude} - ${result.address}');
       setState(() {
         if (result.isValid) {
           _latitude = result.latitude;
           _longitude = result.longitude;
 
-          // Format the location text based on whether we have an address
+          // Auto-populate address fields with structured data
+          if (result.street != null && result.street!.isNotEmpty) {
+            _addressLine1Controller.text = result.street!;
+          }
+          if (result.locality != null && result.locality!.isNotEmpty) {
+            _addressLine2Controller.text = result.locality!;
+          }
+          if (result.city != null && result.city!.isNotEmpty) {
+            _cityController.text = result.city!;
+          }
+          if (result.state != null && result.state!.isNotEmpty) {
+            final matchedState = _states.firstWhere(
+              (state) => state.toLowerCase() == result.state!.toLowerCase(),
+              orElse: () => '',
+            );
+            if (matchedState.isNotEmpty) {
+              _selectedState = matchedState;
+            }
+          }
+          if (result.postalCode != null && result.postalCode!.isNotEmpty) {
+            _postalCodeController.text = result.postalCode!;
+          }
+
           if (result.address != null && result.address!.isNotEmpty) {
             _locationText = '${result.address}\n'
                 'Lat: ${result.latitude.toStringAsFixed(6)}, '
@@ -1174,7 +1246,9 @@ class _PharmacistRegistrationPageState
                 'Lat: ${result.latitude.toStringAsFixed(6)}, '
                 'Long: ${result.longitude.toStringAsFixed(6)}';
           }
+
           _errorMessage = '';
+          AppLogger.info('Address auto-populated from location');
         } else {
           _errorMessage = result.error ?? 'Unable to get location';
           _locationText = 'Tap to select location';
@@ -1182,30 +1256,10 @@ class _PharmacistRegistrationPageState
       });
     } catch (e) {
       setState(() {
-        _errorMessage =
-            'Network error. Please check your connection and try again.';
+        _errorMessage = 'Network error. Please check your connection and try again.';
         _locationText = 'Tap to select location';
       });
-      print('Location error: $e');
-    }
-  }
-
-  Future<void> _checkLocationAndRequest() async {
-    bool isAvailable = await _locationService.isLocationServiceAvailable();
-
-    if (!isAvailable) {
-      // Try to request permission first
-      bool granted = await _locationService.requestLocationPermission();
-      if (granted) {
-        _getCurrentLocation();
-      } else {
-        setState(() {
-          _errorMessage = 'Location permission is required to continue.';
-          _locationText = 'Tap to select location';
-        });
-      }
-    } else {
-      _getCurrentLocation();
+      AppLogger.error('Location error: $e');
     }
   }
 
@@ -1217,46 +1271,45 @@ class _PharmacistRegistrationPageState
       _errorMessage = '';
     });
 
-// Get stored token for making authenticated requests
     final token = await AuthService.invokeLogin(
-        mobileNumber: '9999999999', password: 'Admin@123', stayLoggedIn: false);
+        mobileNumber: AppConstants.adminMobileNumber, password: AppConstants.adminPassword, stayLoggedIn: false);
 
     if (token != null) {
       try {
-        // Prepare registration data
         final registrationData = {
-          'medicalName': _pharmacyNameController.text.trim(),
+          'businessType': _businessType,
+          'medicalName': _firmNameController.text.trim(),
           'ownerFirstName': _ownerFirstNameController.text.trim(),
           'ownerLastName': _ownerLastNameController.text.trim(),
           'ownerMiddleName': _ownerMiddleNameController.text.trim(),
-          'mobileNumber': _userNameController.text.trim(),
-          'alternativeMobileNumber': _alternativeMobileController.text.trim(),
-          //'password': _passwordController.text.trim(),
-          'emailId': _emailController.text.trim().isNotEmpty
-              ? _emailController.text.trim()
-              : null,
+          'dlRetailer': _dlRetailerController.text.trim(),
+          'dlWholesaler': _dlWholesalerController.text.trim(),
           'registrationStatus': _isGstRegistered,
           'gSTIN': _isGstRegistered ? _gstNumberController.text.trim() : null,
-          'pAN': _panController.text.trim(),
           'fSSAINo': _fssaiController.text.trim(),
-          'dLNo': _dlController.text.trim(),
           'addressLine1': _addressLine1Controller.text.trim(),
           'addressLine2': _addressLine2Controller.text.trim(),
           'city': _cityController.text.trim(),
           'state': _selectedState,
-          'postalCode': _postalCodeController.text.trim().isNotEmpty
-              ? _postalCodeController.text.trim()
-              : null,
-          'latitude': _latitude,
-          'longitude': _longitude,
+          'postalCode': _postalCodeController.text.trim(),
+          'mobileNumber': _contactNumberController.text.trim(),
+          'pAN': _panController.text.trim(),
           'pharmacistFirstName': _pharmacistFirstNameController.text.trim(),
           'pharmacistLastName': _pharmacistLastNameController.text.trim(),
           'pharmacistRegistrationNumber':
               _pharmacistRegNumberController.text.trim(),
-          'pharmacistMobileNumber': _pharmacistMobileController.text.trim(),
+          'singlePointOfContact': _spcController.text.trim(),
+          'userName': _userNameController.text.trim(),
+          'emailId': _emailController.text.trim().isNotEmpty
+              ? _emailController.text.trim()
+              : null,
+          'password': _passwordController.text,
+          'latitude': _latitude,
+          'longitude': _longitude,
         };
-        print('Registration Data: ${jsonEncode(registrationData)}');
-        // Make API call
+
+        AppLogger.info('Registration Data: ${jsonEncode(registrationData)}');
+
         final response = await http.post(
           Uri.parse('${AppConstants.apiBaseUrl}/MedicalStores/register'),
           headers: {
@@ -1267,18 +1320,15 @@ class _PharmacistRegistrationPageState
           body: jsonEncode(registrationData),
         );
 
-        setState(() {
-          _isLoading = false;
-        });
-        print('Response status: ${response.statusCode}');
+        setState(() => _isLoading = false);
+        
+        AppLogger.info('Response status: ${response.statusCode}');
+        
         if (response.statusCode == 200 || response.statusCode == 201) {
           final responseData = jsonDecode(response.body);
-
           if (responseData['success'] == true) {
-            // Registration successful
             _showSuccessDialog();
           } else {
-            // API returned success: false
             final errors = responseData['errors'] as List<dynamic>?;
             setState(() {
               _errorMessage = errors?.isNotEmpty == true
@@ -1287,7 +1337,6 @@ class _PharmacistRegistrationPageState
             });
           }
         } else if (response.statusCode == 400) {
-          // Bad request - validation errors
           try {
             final errorData = jsonDecode(response.body);
             final errors = errorData['errors'] as List<dynamic>?;
@@ -1298,29 +1347,24 @@ class _PharmacistRegistrationPageState
             });
           } catch (e) {
             setState(() {
-              _errorMessage =
-                  'Invalid registration data. Please check your inputs.';
+              _errorMessage = 'Invalid registration data. Please check your inputs.';
             });
           }
         } else if (response.statusCode == 409) {
-          // Conflict - user already exists
           setState(() {
-            _errorMessage =
-                'A pharmacy with this mobile number already exists.';
+            _errorMessage = 'A pharmacy with this mobile number already exists.';
           });
         } else {
-          // Other server errors
           setState(() {
             _errorMessage = 'Server error. Please try again later.';
           });
         }
       } catch (e) {
-        print('Error during registration: $e');
+        AppLogger.error('Error during registration: $e');
         setState(() {
           _isLoading = false;
           _errorMessage = 'Network error. Please check your connection.';
         });
-        print('Registration error: $e');
       }
     } else {
       setState(() {
@@ -1336,46 +1380,44 @@ class _PharmacistRegistrationPageState
       barrierDismissible: false,
       builder: (BuildContext context) {
         return AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          title: Row(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          contentPadding: const EdgeInsets.all(24),
+          title: Column(
             children: [
               Container(
-                padding: const EdgeInsets.all(8),
+                padding: const EdgeInsets.all(12),
                 decoration: const BoxDecoration(
-                  color: Color(0xFF2E7D32),
+                  color: AppTheme.primaryColor,
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(
-                  Icons.check,
-                  color: Colors.white,
-                  size: 24,
-                ),
+                child: const Icon(Icons.check, color: Colors.white, size: 32),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(height: 16),
               const Text(
                 'Registration Submitted',
+                textAlign: TextAlign.center,
                 style: TextStyle(
-                  color: Color(0xFF2E7D32),
+                  color: AppTheme.primaryColor,
                   fontWeight: FontWeight.bold,
+                  fontSize: 20,
                 ),
               ),
             ],
           ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text(
                 'Your pharmacist registration has been submitted successfully!',
-                style: TextStyle(fontSize: 16),
+                style: TextStyle(fontSize: 15),
+                textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 20),
               Container(
-                padding: const EdgeInsets.all(12),
+                width: double.infinity,
+                padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF2E7D32).withOpacity(0.1),
+                  color: AppTheme.primaryColor.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: const Column(
@@ -1385,36 +1427,43 @@ class _PharmacistRegistrationPageState
                       'Next Steps:',
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
-                        color: Color(0xFF2E7D32),
+                        color: AppTheme.primaryColor,
+                        fontSize: 15,
                       ),
                     ),
                     SizedBox(height: 8),
                     Text(
                       '• Your application will be reviewed by our team\n'
-                      '• You will receive a confirmation email/SMS\n',
+                      '• You will receive a confirmation email/SMS',
                       style: TextStyle(fontSize: 14),
                     ),
                   ],
                 ),
               ),
-            ],
-          ),
-          actions: [
-            ElevatedButton(
-              onPressed: () {
-                Navigator.of(context).pop(); // Close dialog
-                Navigator.of(context).pop(); // Go back to login page
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF2E7D32),
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                    Navigator.of(context).pop();
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.primaryColor,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                  ),
+                  child: const Text(
+                    'Back to Login',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                  ),
                 ),
               ),
-              child: const Text('Back to Login'),
-            ),
-          ],
+            ],
+          ),
         );
       },
     );
@@ -1422,29 +1471,28 @@ class _PharmacistRegistrationPageState
 
   @override
   void dispose() {
-    // Dispose all controllers
-    _pharmacyNameController.dispose();
+    _pageController.dispose();
+    _firmNameController.dispose();
     _ownerFirstNameController.dispose();
     _ownerLastNameController.dispose();
     _ownerMiddleNameController.dispose();
+    _dlRetailerController.dispose();
+    _dlWholesalerController.dispose();
     _gstNumberController.dispose();
-    _userNameController.dispose();
-    _passwordController.dispose();
-    _emailController.dispose();
-    _alternativeMobileController.dispose();
-    _panController.dispose();
     _fssaiController.dispose();
-    _dlController.dispose();
     _addressLine1Controller.dispose();
     _addressLine2Controller.dispose();
     _cityController.dispose();
-    _stateController.dispose();
+    _postalCodeController.dispose();
+    _contactNumberController.dispose();
+    _panController.dispose();
     _pharmacistFirstNameController.dispose();
     _pharmacistLastNameController.dispose();
     _pharmacistRegNumberController.dispose();
-    _pharmacistMobileController.dispose();
-    _pageController.dispose();
-    _postalCodeController.dispose();
+    _spcController.dispose();
+    _userNameController.dispose();
+    _passwordController.dispose();
+    _emailController.dispose();
     super.dispose();
   }
 }

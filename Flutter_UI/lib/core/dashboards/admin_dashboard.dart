@@ -1,11 +1,12 @@
 // Admin Dashboard
+import 'package:pharmaish/core/theme/app_theme.dart';
+import 'package:pharmaish/utils/helpers.dart';
 import 'package:flutter/material.dart';
-import 'package:medicine_delivery_app/utils/helpers.dart';
 
 class AdminDashboard extends StatelessWidget {
   const AdminDashboard({super.key});
 
-void _goToAdminProfile(BuildContext context) {
+  void _goToAdminProfile(BuildContext context) {
     Navigator.pushNamed(context, '/customerProfile');
   }
 
@@ -14,7 +15,7 @@ void _goToAdminProfile(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Admin Dashboard'),
-        backgroundColor: const Color(0xFF2E7D32),
+        backgroundColor: AppTheme.primaryColor,
         foregroundColor: Colors.white,
         automaticallyImplyLeading: false,
         actions: [
@@ -33,7 +34,8 @@ void _goToAdminProfile(BuildContext context) {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.admin_panel_settings, size: 80, color: Color(0xFF2E7D32)),
+            Icon(Icons.admin_panel_settings,
+                size: 80, color: AppTheme.primaryColor),
             SizedBox(height: 20),
             Text(
               'Admin Dashboard',

@@ -1,15 +1,14 @@
+import 'package:pharmaish/utils/app_logger.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import 'dart:io';
-import 'dart:convert' show base64Url, json, utf8;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:medicine_delivery_app/core/app_routes.dart';
-import 'package:medicine_delivery_app/core/screens/auth/forgot_password_page.dart';
-import 'package:medicine_delivery_app/core/screens/auth/otp_verification_page.dart';
-import 'package:medicine_delivery_app/core/screens/auth/register_page.dart';
-import 'package:medicine_delivery_app/core/screens/auth/register_pharmacist_page.dart';
-import 'package:medicine_delivery_app/utils/constants.dart';
+import 'package:pharmaish/core/app_routes.dart';
+import 'package:pharmaish/core/screens/auth/forgot_password_page.dart';
+import 'package:pharmaish/core/screens/auth/otp_verification_page.dart';
+import 'package:pharmaish/core/screens/auth/register_customer_page.dart';
+import 'package:pharmaish/core/screens/auth/register_pharmacist_page.dart';
+import 'package:pharmaish/utils/constants.dart';
 
 class LoginWithOTPPage extends StatefulWidget {
   const LoginWithOTPPage({super.key});
@@ -379,7 +378,8 @@ class _LoginWithOTPPageState extends State<LoginWithOTPPage> {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                              builder: (context) => const CustomerRegisterPage()),
+                              builder: (context) =>
+                                  const CustomerRegisterPage()),
                         );
                       },
                       child: const Text(
@@ -485,7 +485,8 @@ class _LoginWithOTPPageState extends State<LoginWithOTPPage> {
     );
 
     _isOtpSent = true;
-    _successMessage = 'OTP sent successfully to +91 ${_phoneController.text.trim()}';
+    _successMessage =
+        'OTP sent successfully to +91 ${_phoneController.text.trim()}';
     // try {
     //   final phoneNumber = _phoneController.text.trim();
 
@@ -531,7 +532,7 @@ class _LoginWithOTPPageState extends State<LoginWithOTPPage> {
     //     _isOtpLoading = false;
     //     _errorMessage = 'Network error. Please check your connection.';
     //   });
-    //   print('Send OTP error: $e');
+    //   AppLogger.error('Send OTP error: $e');
     // }
   }
 
@@ -577,9 +578,9 @@ class _LoginWithOTPPageState extends State<LoginWithOTPPage> {
           // Store token securely
           await _storeToken(token, refreshToken);
 
-          print('Login successful!');
-          print('Token: $token');
-          print('Refresh Token: $refreshToken');
+          AppLogger.info('Login successful!');
+          AppLogger.info('Token: $token');
+          AppLogger.info('Refresh Token: $refreshToken');
 
           // Decode JWT token to get user information
           final userInfo = _decodeJwtToken(token);
@@ -627,7 +628,7 @@ class _LoginWithOTPPageState extends State<LoginWithOTPPage> {
         _isLoading = false;
         _errorMessage = 'Network error. Please check your connection.';
       });
-      print('Login error: $e');
+      AppLogger.error('Login error: $e');
     }
   }
 
@@ -643,9 +644,9 @@ class _LoginWithOTPPageState extends State<LoginWithOTPPage> {
         await _storage.write(key: 'refresh_token', value: refreshToken);
       }
 
-      print('Tokens stored successfully');
+      AppLogger.info('Tokens stored successfully');
     } catch (e) {
-      print('Error storing tokens: $e');
+      AppLogger.error('Error storing tokens: $e');
     }
   }
 
@@ -664,7 +665,7 @@ class _LoginWithOTPPageState extends State<LoginWithOTPPage> {
 
       return payloadMap;
     } catch (e) {
-      print('Error decoding token: $e');
+      AppLogger.error('Error decoding token: $e');
       return {};
     }
   }
@@ -678,7 +679,7 @@ class _LoginWithOTPPageState extends State<LoginWithOTPPage> {
     final firstName = userInfo['firstName'] ?? '';
     final lastName = userInfo['lastName'] ?? '';
 
-    print('User Info: Email: $email, Name: $firstName $lastName');
+    AppLogger.info('User Info: Email: $email, Name: $firstName $lastName');
 
     // Determine role based on email or other claims
     // You might have a role claim in the token, adjust this logic as needed

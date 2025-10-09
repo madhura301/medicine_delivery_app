@@ -1,6 +1,6 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'dart:convert' show base64Url, json, utf8;
+import 'app_logger.dart';
 
 class StorageService {
   static const _storage = FlutterSecureStorage();
@@ -31,9 +31,9 @@ class StorageService {
         await _storage.write(key: _refreshTokenKey, value: refreshToken);
       }
 
-      print('Tokens stored successfully');
+      AppLogger.info('Authentication tokens stored successfully');
     } catch (e) {
-      print('Error storing tokens: $e');
+      AppLogger.error('Error storing authentication tokens', e);
       rethrow;
     }
   }
@@ -43,7 +43,7 @@ class StorageService {
     try {
       return await _storage.read(key: _authTokenKey);
     } catch (e) {
-      print('Error retrieving auth token: $e');
+      AppLogger.error('Error retrieving authentication token', e);
       return null;
     }
   }
@@ -53,7 +53,7 @@ class StorageService {
     try {
       return await _storage.read(key: _refreshTokenKey);
     } catch (e) {
-      print('Error retrieving refresh token: $e');
+      AppLogger.error('Error retrieving refresh token', e);
       return null;
     }
   }
@@ -63,9 +63,9 @@ class StorageService {
     try {
       await _storage.delete(key: _authTokenKey);
       await _storage.delete(key: _refreshTokenKey);
-      print('Auth tokens cleared successfully');
+      AppLogger.info('Authentication tokens cleared successfully');
     } catch (e) {
-      print('Error clearing auth tokens: $e');
+      AppLogger.error('Error clearing authentication tokens', e);
       rethrow;
     }
   }
@@ -86,7 +86,7 @@ class StorageService {
         'rememberPassword': rememberPassword == 'true',
       };
     } catch (e) {
-      print('Error loading saved credentials: $e');
+      AppLogger.error('Error loading saved credentials', e);
       return {
         'username': '',
         'password': '',
@@ -112,9 +112,9 @@ class StorageService {
         await _storage.delete(key: _savedPasswordKey);
         await _storage.write(key: _rememberPasswordKey, value: 'false');
       }
-      print('Credentials saved/cleared successfully');
+      AppLogger.info('Credentials saved/cleared successfully');
     } catch (e) {
-      print('Error saving credentials: $e');
+      AppLogger.error('Error saving credentials', e);
       rethrow;
     }
   }
@@ -125,9 +125,9 @@ class StorageService {
       await _storage.delete(key: _savedUsernameKey);
       await _storage.delete(key: _savedPasswordKey);
       await _storage.delete(key: _rememberPasswordKey);
-      print('Saved credentials cleared successfully');
+      AppLogger.info('Saved credentials cleared successfully');
     } catch (e) {
-      print('Error clearing saved credentials: $e');
+      AppLogger.error('Error clearing saved credentials', e);
       rethrow;
     }
   }
@@ -150,7 +150,7 @@ class StorageService {
 
       return payloadMap;
     } catch (e) {
-      print('Error decoding JWT token: $e');
+      AppLogger.error('Error decoding JWT token', e);
       return {};
     }
   }
@@ -170,9 +170,12 @@ class StorageService {
 
     final firstName = userInfo['firstName'] ?? '';
     final lastName = userInfo['lastName'] ?? '';
-    final id = userInfo['id'] ?? '';
+    final id = userInfo['id'] ??
+    userInfo[
+            'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier'] ??'';
 
-    print('User Info: Role: $role, Email: $email, Name: $firstName $lastName, ID: $id');
+    AppLogger.info(
+        'User Info: Role: $role, Email: $email, Name: $firstName $lastName, ID: $id');
 
     // Determine role based on role claim
     final roleString = role.toString().toLowerCase();
@@ -195,14 +198,18 @@ class StorageService {
   /// Store user information securely
   static Future<void> storeUserInfo(Map<String, String> userInfo) async {
     try {
+      var userId = userInfo['id'] ??
+          userInfo[
+              'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier'] ??
+          '';
       await _storage.write(key: _userEmailKey, value: userInfo['email']);
       await _storage.write(
           key: _userFirstNameKey, value: userInfo['firstName']);
       await _storage.write(key: _userLastNameKey, value: userInfo['lastName']);
-      await _storage.write(key: _userIdKey, value: userInfo['id']);
+      await _storage.write(key: _userIdKey, value: userId);
       //await _storage.write(key: _userRoleKey, value: userInfo['role']);
     } catch (e) {
-      print('Error storing user information: $e');
+      AppLogger.error('Error storing user information: $e');
       rethrow;
     }
   }
@@ -224,9 +231,9 @@ class StorageService {
   static Future<void> storeUserId(String userId) async {
     try {
       await _storage.write(key: _userIdKey, value: userId);
-      print('User ID stored successfully');
+      AppLogger.info('User ID stored successfully');
     } catch (e) {
-      print('Error storing user ID: $e');
+      AppLogger.error('Error storing user ID: $e');
       rethrow;
     }
   }
@@ -236,7 +243,7 @@ class StorageService {
     try {
       return await _storage.read(key: _userIdKey);
     } catch (e) {
-      print('Error retrieving user ID: $e');
+      AppLogger.error('Error retrieving user ID: $e');
       return null;
     }
   }
@@ -245,7 +252,16 @@ class StorageService {
     try {
       return await _storage.read(key: _userFirstNameKey);
     } catch (e) {
-      print('Error retrieving user first name: $e');
+      AppLogger.error('Error retrieving user first name: $e');
+      return null;
+    }
+  }
+
+  static Future<String?> getUserEmail() async {
+    try {
+      return await _storage.read(key: _userEmailKey);
+    } catch (e) {
+      AppLogger.error('Error retrieving user email: $e');
       return null;
     }
   }
@@ -256,7 +272,7 @@ class StorageService {
     try {
       await _storage.write(key: key, value: value);
     } catch (e) {
-      print('Error storing data for key $key: $e');
+      AppLogger.error('Error storing data for key $key: $e');
       rethrow;
     }
   }
@@ -266,7 +282,7 @@ class StorageService {
     try {
       return await _storage.read(key: key);
     } catch (e) {
-      print('Error retrieving data for key $key: $e');
+      AppLogger.error('Error retrieving data for key $key: $e');
       return null;
     }
   }
@@ -276,7 +292,7 @@ class StorageService {
     try {
       await _storage.delete(key: key);
     } catch (e) {
-      print('Error deleting data for key $key: $e');
+      AppLogger.error('Error deleting data for key $key: $e');
       rethrow;
     }
   }
@@ -285,9 +301,9 @@ class StorageService {
   static Future<void> clearAll() async {
     try {
       await _storage.deleteAll();
-      print('All stored data cleared successfully');
+      AppLogger.info('All stored data cleared successfully');
     } catch (e) {
-      print('Error clearing all stored data: $e');
+      AppLogger.error('Error clearing all stored data: $e');
       rethrow;
     }
   }
@@ -298,7 +314,7 @@ class StorageService {
       final value = await _storage.read(key: key);
       return value != null;
     } catch (e) {
-      print('Error checking key existence for $key: $e');
+      AppLogger.error('Error checking key existence for $key: $e');
       return false;
     }
   }
@@ -308,7 +324,7 @@ class StorageService {
     try {
       return await _storage.readAll();
     } catch (e) {
-      print('Error retrieving all data: $e');
+      AppLogger.error('Error retrieving all data: $e');
       return {};
     }
   }

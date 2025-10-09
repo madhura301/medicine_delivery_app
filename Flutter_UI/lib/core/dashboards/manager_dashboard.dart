@@ -1,6 +1,7 @@
 // Admin Dashboard
+import 'package:pharmaish/core/theme/app_theme.dart';
+import 'package:pharmaish/utils/helpers.dart';
 import 'package:flutter/material.dart';
-import 'package:medicine_delivery_app/utils/helpers.dart';
 
 class ManagerDashboard extends StatelessWidget {
   const ManagerDashboard({super.key});
@@ -10,7 +11,7 @@ class ManagerDashboard extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Manager Dashboard'),
-        backgroundColor: const Color(0xFF2E7D32),
+        backgroundColor: AppTheme.primaryColor,
         foregroundColor: Colors.white,
         automaticallyImplyLeading: false,
         actions: [
@@ -24,7 +25,8 @@ class ManagerDashboard extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.admin_panel_settings, size: 80, color: Color(0xFF2E7D32)),
+            Icon(Icons.admin_panel_settings,
+                size: 80, color: AppTheme.primaryColor),
             SizedBox(height: 20),
             Text(
               'Manager Dashboard',
@@ -42,4 +44,3 @@ class ManagerDashboard extends StatelessWidget {
     );
   }
 }
-

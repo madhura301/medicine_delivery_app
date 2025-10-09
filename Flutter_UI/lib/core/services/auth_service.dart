@@ -1,12 +1,11 @@
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
-import 'package:medicine_delivery_app/shared/models/user_model.dart';
-import 'package:medicine_delivery_app/utils/constants.dart';
-import 'package:medicine_delivery_app/utils/storage.dart';
+import 'package:pharmaish/utils/constants.dart';
+import '../../utils/app_logger.dart';
 
 class AuthService {
-  static const String baseUrl = 'https://10.0.2.2:7000/api';
+  static Uri baseUrl = Uri.parse('${AppConstants.apiBaseUrl}/Auth/login');
   static Future<String?> invokeLogin({
     required String mobileNumber,
     required String password,
@@ -15,7 +14,7 @@ class AuthService {
     try {
       // Make API call
       final response = await http.post(
-        Uri.parse('$baseUrl/Auth/login'),
+        baseUrl,
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
@@ -27,9 +26,10 @@ class AuthService {
         }),
       );
 
-      if (response.statusCode == 200) {
+      if (response.statusCode == 200 || response.statusCode == 201) {
         final responseData = jsonDecode(response.body);
-        print('Login response data: $responseData');
+        AppLogger.apiResponse(
+            response.statusCode, '$baseUrl/Auth/login', responseData);
         if (responseData['success'] == true) {
           // Extract tokens and user data
           final token = responseData['token'];
@@ -62,52 +62,13 @@ class AuthService {
       // All error cases return null
       return null;
     } catch (e) {
-      print('Login error: $e');
+      AppLogger.error('Login API error : $e');
       return null;
     }
   }
 
-  static Future<User?> login(String username, String password) async {
-    // Simulate API call
-    await Future.delayed(const Duration(seconds: 1));
-
-    if (AppConstants.demoUsers.containsKey(username) &&
-        AppConstants.demoUsers[username]!['password'] == password) {
-     
-      final userInfo = AppConstants.demoUsers[username]!;
-      return User(
-        username: username,
-        role: userInfo['role']!,
-        email: userInfo['email']!,
-        mobile: userInfo['mobile']!,
-      );
-    }
-
-    return null;
-  }
-
-  static Future<bool> register(Map<String, dynamic> userData) async {
-    // Simulate API call
-    await Future.delayed(const Duration(seconds: 2));
-
-    // In a real app, this would save to a database
-    return true;
-  }
-
-  static Future<bool> sendResetCode(String username) async {
-    await Future.delayed(const Duration(seconds: 2));
-    return AppConstants.demoUsers.containsKey(username);
-  }
-
-  static Future<bool> verifyOTP(String otp, String expectedOtp) async {
-    await Future.delayed(const Duration(seconds: 1));
-    return otp == expectedOtp;
-  }
-
-  static Future<bool> resetPassword(String username, String newPassword) async {
-    await Future.delayed(const Duration(seconds: 2));
-    return true;
-  }
+  //   user methods removed - app now uses real API authentication
+  // All authentication is handled through the real API endpoints
 
   //  static Future<void> storeTokens(String token, String? refreshToken) async {
   //   final prefs = await SharedPreferences.getInstance();

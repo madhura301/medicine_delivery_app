@@ -4,13 +4,13 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:medicine_delivery_app/core/screens/auth/reset_password_page.dart';
+import 'package:pharmaish/core/screens/auth/reset_password_page.dart';
 
 class OTPVerificationPage extends StatefulWidget {
   final String username;
   final String email;
   final String mobile;
-  
+
   const OTPVerificationPage({
     super.key,
     required this.username,
@@ -23,9 +23,10 @@ class OTPVerificationPage extends StatefulWidget {
 }
 
 class _OTPVerificationPageState extends State<OTPVerificationPage> {
-  final List<TextEditingController> _otpControllers = List.generate(6, (index) => TextEditingController());
+  final List<TextEditingController> _otpControllers =
+      List.generate(6, (index) => TextEditingController());
   final List<FocusNode> _focusNodes = List.generate(6, (index) => FocusNode());
-  
+
   bool _isLoading = false;
   String _errorMessage = '';
   bool _isResending = false;
@@ -36,6 +37,7 @@ class _OTPVerificationPageState extends State<OTPVerificationPage> {
   @override
   void initState() {
     super.initState();
+    //AppHelpers.disableScreenshots();
     _generateOTP();
     _startResendTimer();
   }
@@ -43,7 +45,7 @@ class _OTPVerificationPageState extends State<OTPVerificationPage> {
   void _generateOTP() {
     final random = Random();
     _generatedOTP = List.generate(6, (index) => random.nextInt(10)).join();
-    
+
     // Show OTP in snackbar for demo
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -92,12 +94,12 @@ class _OTPVerificationPageState extends State<OTPVerificationPage> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             const SizedBox(height: 40),
-            
+
             // Header
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                color: const Color(0xFF2E7D32).withValues(alpha:0.1),
+                color: const Color(0xFF2E7D32).withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(20),
               ),
               child: const Icon(
@@ -106,9 +108,9 @@ class _OTPVerificationPageState extends State<OTPVerificationPage> {
                 color: Color(0xFF2E7D32),
               ),
             ),
-            
+
             const SizedBox(height: 24),
-            
+
             const Text(
               'Verify Your Identity',
               textAlign: TextAlign.center,
@@ -118,9 +120,9 @@ class _OTPVerificationPageState extends State<OTPVerificationPage> {
                 color: Color(0xFF2E7D32),
               ),
             ),
-            
+
             const SizedBox(height: 8),
-            
+
             Text(
               'Enter the 6-digit code sent to your registered email and mobile',
               textAlign: TextAlign.center,
@@ -129,15 +131,15 @@ class _OTPVerificationPageState extends State<OTPVerificationPage> {
                 color: Colors.grey.shade600,
               ),
             ),
-            
+
             const SizedBox(height: 40),
-            
+
             // OTP Input Fields
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: List.generate(6, (index) => _buildOTPField(index)),
             ),
-            
+
             // Error Message
             if (_errorMessage.isNotEmpty)
               Padding(
@@ -159,9 +161,9 @@ class _OTPVerificationPageState extends State<OTPVerificationPage> {
                   ),
                 ),
               ),
-            
+
             const SizedBox(height: 30),
-            
+
             // Verify Button
             SizedBox(
               width: double.infinity,
@@ -181,13 +183,14 @@ class _OTPVerificationPageState extends State<OTPVerificationPage> {
                       )
                     : const Text(
                         'Verify Code',
-                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+                        style: TextStyle(
+                            fontSize: 18, fontWeight: FontWeight.w600),
                       ),
               ),
             ),
-            
+
             const SizedBox(height: 20),
-            
+
             // Resend Section
             Column(
               children: [
@@ -251,7 +254,7 @@ class _OTPVerificationPageState extends State<OTPVerificationPage> {
           } else if (value.isEmpty && index > 0) {
             _focusNodes[index - 1].requestFocus();
           }
-          
+
           if (_errorMessage.isNotEmpty) {
             setState(() {
               _errorMessage = '';
@@ -263,22 +266,23 @@ class _OTPVerificationPageState extends State<OTPVerificationPage> {
   }
 
   Future<void> _verifyOTP() async {
-    final enteredOTP = _otpControllers.map((controller) => controller.text).join();
-    
+    final enteredOTP =
+        _otpControllers.map((controller) => controller.text).join();
+
     if (enteredOTP.length != 6) {
       setState(() {
         _errorMessage = 'Please enter the complete 6-digit code';
       });
       return;
     }
-    
+
     setState(() {
       _isLoading = true;
       _errorMessage = '';
     });
-    
+
     await Future.delayed(const Duration(seconds: 1));
-    
+
     if (enteredOTP == _generatedOTP) {
       setState(() {
         _isLoading = false;
@@ -295,7 +299,7 @@ class _OTPVerificationPageState extends State<OTPVerificationPage> {
         _isLoading = false;
         _errorMessage = 'Invalid code. Please try again.';
       });
-      
+
       for (var controller in _otpControllers) {
         controller.clear();
       }
@@ -307,16 +311,16 @@ class _OTPVerificationPageState extends State<OTPVerificationPage> {
     setState(() {
       _isResending = true;
     });
-    
+
     await Future.delayed(const Duration(seconds: 2));
     _generateOTP();
-    
+
     setState(() {
       _isResending = false;
     });
-    
+
     _startResendTimer();
-    
+
     for (var controller in _otpControllers) {
       controller.clear();
     }

@@ -1,32 +1,39 @@
-// Import the complete registration from the artifact above
-// For now, showing aimport 'package:flutter/material.dart';
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:medicine_delivery_app/core/app_routes.dart';
-import 'package:medicine_delivery_app/core/screens/splash/splash_page.dart';
+import 'package:pharmaish/config/environment_config.dart';
+//import 'package:pharmaish/config/environment_config.dart';
+import 'package:pharmaish/core/app_routes.dart';
+import 'package:pharmaish/core/screens/splash/splash_page.dart';
+import 'package:pharmaish/core/theme/app_theme.dart';
+import 'package:pharmaish/utils/app_logger.dart';
 
 void main() {
+  // Initialize logging framework
+  AppLogger.initialize();
+  AppLogger.info('Application starting');
+
   HttpOverrides.global = MyHttpOverrides();
-  runApp(const MedicineDeliveryApp());
+  // Force production environment only for debugging purposes
+  EnvironmentConfig.setEnvironment(Environment.production);
+  runApp(const PharmaishApp());
 }
 
-class MedicineDeliveryApp extends StatelessWidget {
-  const MedicineDeliveryApp({super.key});
+class PharmaishApp extends StatelessWidget {
+  const PharmaishApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Medicine Delivery',
-      theme: ThemeData(
-        useMaterial3: true,
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF2E7D32), // Medical green
+        title: 'Pharmaish',
+        theme: ThemeData(
+          useMaterial3: true,
+          colorScheme: ColorScheme.fromSeed(
+            seedColor: AppTheme.primaryColor,
+          ),
         ),
-      ),
-      home: const SplashPage(),
-      debugShowCheckedModeBanner: false,
-      routes: AppRoutes.routes
-    );
+        home: const SplashPage(),
+        debugShowCheckedModeBanner: false,
+        routes: AppRoutes.routes);
   }
 }
 

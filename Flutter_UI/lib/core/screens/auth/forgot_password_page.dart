@@ -1,7 +1,7 @@
 //Forgot password page
 // Step 1: Username Entry for Password Reset
+import 'package:pharmaish/utils/app_logger.dart';
 import 'package:flutter/material.dart';
-import 'package:medicine_delivery_app/core/screens/auth/otp_verification_page.dart';
 
 class ForgotPasswordPage extends StatefulWidget {
   const ForgotPasswordPage({super.key});
@@ -16,29 +16,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
   bool _isLoading = false;
   String _errorMessage = '';
 
-  // Demo users database (matches your existing login users)
-  final Map<String, Map<String, String>> _demoUsers = {
-    'customer': {
-      'password': 'CUstomer12!',
-      'email': 'customer@example.com',
-      'mobile': '9876543210'
-    },
-    'chemist': {
-      'password': 'CHemist12!', 
-      'email': 'chemist@example.com',
-      'mobile': '9876543211'
-    },
-    'admin': {
-      'password': 'ADmin12!',
-      'email': 'admin@example.com', 
-      'mobile': '9876543212'
-    },
-    'support': {
-      'password': 'SUpport12!',
-      'email': 'support@example.com',
-      'mobile': '9876543213'
-    },
-  };
+  // Demo users removed - app now uses real API authentication
 
   @override
   Widget build(BuildContext context) {
@@ -57,12 +35,12 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               const SizedBox(height: 40),
-              
+
               // Header
               Container(
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF2E7D32).withValues(alpha:0.1),
+                  color: const Color(0xFF2E7D32).withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: const Icon(
@@ -71,9 +49,9 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                   color: Color(0xFF2E7D32),
                 ),
               ),
-              
+
               const SizedBox(height: 24),
-              
+
               const Text(
                 'Forgot Password?',
                 textAlign: TextAlign.center,
@@ -83,9 +61,9 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                   color: Color(0xFF2E7D32),
                 ),
               ),
-              
+
               const SizedBox(height: 8),
-              
+
               Text(
                 'Enter your username and we\'ll send you a reset code',
                 textAlign: TextAlign.center,
@@ -94,9 +72,9 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                   color: Colors.grey.shade600,
                 ),
               ),
-              
+
               const SizedBox(height: 40),
-              
+
               // Username Field
               TextFormField(
                 controller: _usernameController,
@@ -109,7 +87,8 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: Color(0xFF2E7D32), width: 2),
+                    borderSide:
+                        const BorderSide(color: Color(0xFF2E7D32), width: 2),
                   ),
                 ),
                 validator: (value) {
@@ -126,7 +105,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                   }
                 },
               ),
-              
+
               // Error Message
               if (_errorMessage.isNotEmpty)
                 Padding(
@@ -140,7 +119,8 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                     ),
                     child: Row(
                       children: [
-                        Icon(Icons.error_outline, color: Colors.red.shade600, size: 20),
+                        Icon(Icons.error_outline,
+                            color: Colors.red.shade600, size: 20),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
@@ -155,9 +135,9 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                     ),
                   ),
                 ),
-              
+
               const SizedBox(height: 30),
-              
+
               // Send Reset Code Button
               SizedBox(
                 width: double.infinity,
@@ -176,49 +156,51 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                           width: 20,
                           height: 20,
                           child: CircularProgressIndicator(
-                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                            valueColor:
+                                AlwaysStoppedAnimation<Color>(Colors.white),
                             strokeWidth: 2,
                           ),
                         )
                       : const Text(
                           'Send Reset Code',
-                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+                          style: TextStyle(
+                              fontSize: 18, fontWeight: FontWeight.w600),
                         ),
                 ),
               ),
-              
-              const SizedBox(height: 30),
-              
-              // Demo Info
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.blue.shade50,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.blue.shade200),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Demo Usernames:',
-                      style: TextStyle(
-                        color: Colors.blue.shade600,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'customer, chemist, admin, support',
-                      style: TextStyle(
-                        color: Colors.blue.shade700,
-                        fontSize: 14,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+
+              //   const SizedBox(height: 30),
+
+              //   // Demo Info
+              //   Container(
+              //     padding: const EdgeInsets.all(16),
+              //     decoration: BoxDecoration(
+              //       color: Colors.blue.shade50,
+              //       borderRadius: BorderRadius.circular(12),
+              //       border: Border.all(color: Colors.blue.shade200),
+              //     ),
+              //     child: Column(
+              //       crossAxisAlignment: CrossAxisAlignment.start,
+              //       children: [
+              //         Text(
+              //           'Demo Usernames:',
+              //           style: TextStyle(
+              //             color: Colors.blue.shade600,
+              //             fontSize: 16,
+              //             fontWeight: FontWeight.w600,
+              //           ),
+              //         ),
+              //         const SizedBox(height: 8),
+              //         Text(
+              //           'customer, chemist, admin, support',
+              //           style: TextStyle(
+              //             color: Colors.blue.shade700,
+              //             fontSize: 14,
+              //           ),
+              //         ),
+              //       ],
+              //     ),
+              //   ),
             ],
           ),
         ),
@@ -228,38 +210,36 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
 
   Future<void> _sendResetCode() async {
     if (!_formKey.currentState!.validate()) return;
-    
+
     setState(() {
       _isLoading = true;
       _errorMessage = '';
     });
-    
-    await Future.delayed(const Duration(seconds: 2));
-    
-    final username = _usernameController.text.trim();
-    
-    if (_demoUsers.containsKey(username)) {
-      final userInfo = _demoUsers[username]!;
-      
+
+    try {
+      // TODO: Replace with real API call to send reset code
+      // For now, simulate API call
+      await Future.delayed(const Duration(seconds: 2));
+
+      final username = _usernameController.text.trim();
+
+      // TODO: Make actual API call to verify username and send reset code
+      // This should call your backend API to:
+      // 1. Verify the username exists
+      // 2. Send reset code via SMS/Email
+      // 3. Return user's email/mobile for OTP verification
+
+      // For now, show a message that this feature needs real API integration
+      AppLogger.info('Password reset requested for: $username');
       setState(() {
         _isLoading = false;
+        _errorMessage =
+            'Password reset feature requires API integration. Please contact support.';
       });
-      if (!mounted) return;
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => OTPVerificationPage(
-            username: username,
-            email: userInfo['email']!,
-            mobile: userInfo['mobile']!,
-          ),
-        ),
-      );
-      
-    } else {
+    } catch (e) {
       setState(() {
         _isLoading = false;
-        _errorMessage = 'Username not found. Please try again.';
+        _errorMessage = 'Error sending reset code. Please try again.';
       });
     }
   }

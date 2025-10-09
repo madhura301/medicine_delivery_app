@@ -1,9 +1,12 @@
 // Register Page - Complete Multi-Step Registration
+import 'package:pharmaish/core/theme/app_theme.dart';
+import 'package:pharmaish/shared/widgets/step_progress_indicator.dart';
+import 'package:pharmaish/utils/app_logger.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import 'package:medicine_delivery_app/utils/constants.dart';
-import 'package:medicine_delivery_app/core/services/auth_service.dart';
+import 'package:pharmaish/utils/constants.dart';
+import 'package:pharmaish/core/services/auth_service.dart';
 
 class CustomerRegisterPage extends StatefulWidget {
   const CustomerRegisterPage({super.key});
@@ -16,13 +19,13 @@ class _RegisterPageState extends State<CustomerRegisterPage> {
   final _formKey = GlobalKey<FormState>();
   final _pageController = PageController();
   int _currentStep = 0;
-  
+
   // Form Controllers - Required Fields
   final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
   final _mobileController = TextEditingController();
-  
+
   // Form Controllers - Optional Fields
   final _emailController = TextEditingController();
   final _firstNameController = TextEditingController();
@@ -31,6 +34,9 @@ class _RegisterPageState extends State<CustomerRegisterPage> {
   final _addressController = TextEditingController();
   final _cityController = TextEditingController();
   final _postalCodeController = TextEditingController();
+
+  String _selectedAddressType = 'Home'; // Default value
+  final List<String> _addressTypes = ['Home', 'Office', 'Other'];
   
   // Other Form Data
   DateTime? _selectedDate;
@@ -42,7 +48,7 @@ class _RegisterPageState extends State<CustomerRegisterPage> {
   String _errorMessage = '';
 
   // Validation flags
-  bool _usernameAvailable = true;
+  //bool _usernameAvailable = true;
 
   final List<String> _states = [
     'Andhra Pradesh',
@@ -86,7 +92,7 @@ class _RegisterPageState extends State<CustomerRegisterPage> {
       backgroundColor: Colors.grey.shade50,
       appBar: AppBar(
         title: const Text('Create Account'),
-        backgroundColor: const Color(0xFF2E7D32),
+        backgroundColor: AppTheme.primaryColor,
         foregroundColor: Colors.white,
         elevation: 0,
       ),
@@ -94,7 +100,7 @@ class _RegisterPageState extends State<CustomerRegisterPage> {
         children: [
           // Progress Indicator
           _buildProgressIndicator(),
-          
+
           // Form Content
           Expanded(
             child: PageView(
@@ -121,18 +127,20 @@ class _RegisterPageState extends State<CustomerRegisterPage> {
               ),
               child: Row(
                 children: [
-                  Icon(Icons.error_outline, color: Colors.red.shade600, size: 20),
+                  Icon(Icons.error_outline,
+                      color: Colors.red.shade600, size: 20),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       _errorMessage,
-                      style: TextStyle(color: Colors.red.shade600, fontSize: 14),
+                      style:
+                          TextStyle(color: Colors.red.shade600, fontSize: 14),
                     ),
                   ),
                 ],
               ),
             ),
-          
+
           // Navigation Buttons
           _buildNavigationButtons(),
         ],
@@ -140,78 +148,17 @@ class _RegisterPageState extends State<CustomerRegisterPage> {
     );
   }
 
-  Widget _buildProgressIndicator() {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 20),
-      decoration: BoxDecoration(
-        color: const Color(0xFF2E7D32),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha:0.1),
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          _buildStepIndicator(0, 'Basic', Icons.person),
-          _buildStepConnector(0),
-          _buildStepIndicator(1, 'Details', Icons.info),
-          _buildStepConnector(1),
-          _buildStepIndicator(2, 'Address', Icons.location_on),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStepIndicator(int step, String label, IconData icon) {
-    final isActive = step == _currentStep;
-    final isCompleted = step < _currentStep;
-    
-    return Column(
-      children: [
-        Container(
-          width: 40,
-          height: 40,
-          decoration: BoxDecoration(
-            color: isCompleted 
-                ? Colors.white 
-                : isActive 
-                    ? Colors.white.withOpacity(0.9)
-                    : Colors.white.withOpacity(0.3),
-            shape: BoxShape.circle,
-          ),
-          child: Icon(
-            isCompleted ? Icons.check : icon,
-            color: const Color(0xFF2E7D32),
-            size: 20,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          label,
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 12,
-            fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildStepConnector(int step) {
-    return Container(
-      width: 40,
-      height: 2,
-      color: step < _currentStep 
-          ? Colors.white 
-          : Colors.white.withOpacity(0.3),
-      margin: const EdgeInsets.only(bottom: 16),
-    );
-  }
+  
+Widget _buildProgressIndicator() {
+  return StepProgressIndicator(
+    currentStep: _currentStep,
+    steps: const [
+      StepItem(label: 'Basic', icon: Icons.person),
+      StepItem(label: 'Details', icon: Icons.info),
+      StepItem(label: 'Address', icon: Icons.location_on),
+    ],
+  );
+}
 
   Widget _buildStep1() {
     return SingleChildScrollView(
@@ -227,9 +174,9 @@ class _RegisterPageState extends State<CustomerRegisterPage> {
               'Create your account credentials',
               Icons.security,
             ),
-            
+
             const SizedBox(height: 30),
-            
+
             // Mobile Number Field (Primary identifier)
             TextFormField(
               controller: _mobileController,
@@ -245,7 +192,8 @@ class _RegisterPageState extends State<CustomerRegisterPage> {
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: Color(0xFF2E7D32), width: 2),
+                  borderSide:
+                      const BorderSide(color: AppTheme.primaryColor, width: 2),
                 ),
                 counterText: '',
               ),
@@ -261,15 +209,16 @@ class _RegisterPageState extends State<CustomerRegisterPage> {
               },
               onChanged: (value) {
                 setState(() {
-                  if (_errorMessage.contains('mobile') || _errorMessage.contains('exists')) {
+                  if (_errorMessage.contains('mobile') ||
+                      _errorMessage.contains('exists')) {
                     _errorMessage = '';
                   }
                 });
               },
             ),
-            
+
             const SizedBox(height: 20),
-            
+
             // Password Field
             TextFormField(
               controller: _passwordController,
@@ -293,7 +242,8 @@ class _RegisterPageState extends State<CustomerRegisterPage> {
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: Color(0xFF2E7D32), width: 2),
+                  borderSide:
+                      const BorderSide(color: AppTheme.primaryColor, width: 2),
                 ),
               ),
               validator: (value) {
@@ -303,12 +253,28 @@ class _RegisterPageState extends State<CustomerRegisterPage> {
                 if (value!.length < 8) {
                   return 'Password must be at least 8 characters';
                 }
+                // Check for uppercase letter
+                if (!RegExp(r'[A-Z]').hasMatch(value)) {
+                  return 'Password must contain at least 1 uppercase letter';
+                }
+                // Check for lowercase letter
+                if (!RegExp(r'[a-z]').hasMatch(value)) {
+                  return 'Password must contain at least 1 lowercase letter';
+                }
+                // Check for digit
+                if (!RegExp(r'[0-9]').hasMatch(value)) {
+                  return 'Password must contain at least 1 number';
+                }
+                // Check for special character
+                if (!RegExp(r'[!@#$%^&*(),.?":{}|<>]').hasMatch(value)) {
+                  return 'Password must contain at least 1 special character';
+                }
                 return null;
               },
             ),
-            
+
             const SizedBox(height: 20),
-            
+
             // Confirm Password Field
             TextFormField(
               controller: _confirmPasswordController,
@@ -319,7 +285,9 @@ class _RegisterPageState extends State<CustomerRegisterPage> {
                 prefixIcon: const Icon(Icons.lock_outline),
                 suffixIcon: IconButton(
                   icon: Icon(
-                    _obscureConfirmPassword ? Icons.visibility_off : Icons.visibility,
+                    _obscureConfirmPassword
+                        ? Icons.visibility_off
+                        : Icons.visibility,
                   ),
                   onPressed: () {
                     setState(() {
@@ -332,7 +300,8 @@ class _RegisterPageState extends State<CustomerRegisterPage> {
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: Color(0xFF2E7D32), width: 2),
+                  borderSide:
+                      const BorderSide(color: AppTheme.primaryColor, width: 2),
                 ),
               ),
               validator: (value) {
@@ -363,7 +332,7 @@ class _RegisterPageState extends State<CustomerRegisterPage> {
             'Tell us more about yourself',
             Icons.badge,
           ),
-          
+
           const SizedBox(height: 30),
 
           // First Name Field - Required
@@ -378,7 +347,8 @@ class _RegisterPageState extends State<CustomerRegisterPage> {
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: Color(0xFF2E7D32), width: 2),
+                borderSide:
+                    const BorderSide(color: AppTheme.primaryColor, width: 2),
               ),
             ),
             validator: (value) {
@@ -388,9 +358,9 @@ class _RegisterPageState extends State<CustomerRegisterPage> {
               return null;
             },
           ),
-          
+
           const SizedBox(height: 20),
-          
+
           // Last Name Field - Required
           TextFormField(
             controller: _lastNameController,
@@ -403,7 +373,8 @@ class _RegisterPageState extends State<CustomerRegisterPage> {
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: Color(0xFF2E7D32), width: 2),
+                borderSide:
+                    const BorderSide(color: AppTheme.primaryColor, width: 2),
               ),
             ),
             validator: (value) {
@@ -428,13 +399,14 @@ class _RegisterPageState extends State<CustomerRegisterPage> {
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: Color(0xFF2E7D32), width: 2),
+                borderSide:
+                    const BorderSide(color: AppTheme.primaryColor, width: 2),
               ),
             ),
           ),
-          
+
           const SizedBox(height: 20),
-          
+
           // Email Field
           TextFormField(
             controller: _emailController,
@@ -448,12 +420,14 @@ class _RegisterPageState extends State<CustomerRegisterPage> {
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: Color(0xFF2E7D32), width: 2),
+                borderSide:
+                    const BorderSide(color: AppTheme.primaryColor, width: 2),
               ),
             ),
             validator: (value) {
               if (value != null && value.isNotEmpty) {
-                final emailRegex = RegExp(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$');
+                final emailRegex =
+                    RegExp(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$');
                 if (!emailRegex.hasMatch(value)) {
                   return 'Please enter a valid email address';
                 }
@@ -461,9 +435,9 @@ class _RegisterPageState extends State<CustomerRegisterPage> {
               return null;
             },
           ),
-          
+
           const SizedBox(height: 20),
-          
+
           // Date of Birth Field - Required
           GestureDetector(
             onTap: _selectDateOfBirth,
@@ -484,8 +458,8 @@ class _RegisterPageState extends State<CustomerRegisterPage> {
                           : 'Date of Birth *',
                       style: TextStyle(
                         fontSize: 16,
-                        color: _selectedDate != null 
-                            ? Colors.black87 
+                        color: _selectedDate != null
+                            ? Colors.black87
                             : Colors.grey.shade600,
                       ),
                     ),
@@ -508,7 +482,8 @@ class _RegisterPageState extends State<CustomerRegisterPage> {
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: Color(0xFF2E7D32), width: 2),
+                borderSide:
+                    const BorderSide(color: AppTheme.primaryColor, width: 2),
               ),
             ),
             items: ['Male', 'Female', 'Other'].map((String gender) {
@@ -536,108 +511,137 @@ class _RegisterPageState extends State<CustomerRegisterPage> {
         children: [
           // Header
           _buildStepHeader(
-            'Final Step',
-            'Complete your registration',
-            Icons.check_circle,
+            'Address Information',
+            'Help us serve you better',
+            Icons.location_on,
           ),
-          
+
           const SizedBox(height: 30),
-          
-          // Address Field
+
+          // Address Type - Required
+          DropdownButtonFormField<String>(
+            value: _selectedAddressType,
+            decoration: InputDecoration(
+              labelText: 'Address Type *',
+              prefixIcon: const Icon(Icons.label),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide:
+                    const BorderSide(color: AppTheme.primaryColor, width: 2),
+              ),
+            ),
+            items: _addressTypes.map((String type) {
+              return DropdownMenuItem<String>(
+                value: type,
+                child: Text(type),
+              );
+            }).toList(),
+            onChanged: (String? newValue) {
+              setState(() {
+                _selectedAddressType = newValue!;
+              });
+            },
+          ),
+
+          const SizedBox(height: 20),
+
+          // Address Line 1 - Required
           TextFormField(
             controller: _addressController,
-            maxLines: 3,
             decoration: InputDecoration(
-              labelText: 'Address (Optional)',
-              hintText: 'Enter your address',
+              labelText: 'Address Line 1 *',
+              hintText: 'Building name, flat number',
               prefixIcon: const Icon(Icons.home_outlined),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: Color(0xFF2E7D32), width: 2),
+                borderSide:
+                    const BorderSide(color: AppTheme.primaryColor, width: 2),
               ),
             ),
           ),
 
           const SizedBox(height: 20),
 
-          // City and State Row
-          Row(
-            children: [
-              Expanded(
-                child: TextFormField(
-                  controller: _cityController,
-                  decoration: InputDecoration(
-                    labelText: 'City (Optional)',
-                    hintText: 'Enter city',
-                    prefixIcon: const Icon(Icons.location_city),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: Color(0xFF2E7D32), width: 2),
-                    ),
-                  ),
-                ),
+          // City Field - Required
+          TextFormField(
+            controller: _cityController,
+            decoration: InputDecoration(
+              labelText: 'City *',
+              hintText: 'Enter city',
+              prefixIcon: const Icon(Icons.location_city),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: DropdownButtonFormField<String>(
-                  value: _selectedState,
-                  decoration: InputDecoration(
-                    labelText: 'State (Optional)',
-                    prefixIcon: const Icon(Icons.location_on),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: Color(0xFF2E7D32), width: 2),
-                    ),
-                  ),
-                  items: _states.map((String state) {
-                    return DropdownMenuItem<String>(
-                      value: state,
-                      child: Text(state, overflow: TextOverflow.ellipsis),
-                    );
-                  }).toList(),
-                  onChanged: (String? newValue) {
-                    setState(() {
-                      _selectedState = newValue;
-                    });
-                  },
-                ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide:
+                    const BorderSide(color: AppTheme.primaryColor, width: 2),
               ),
-            ],
+            ),
           ),
 
           const SizedBox(height: 20),
 
-          // Postal Code Field
+          // State Field - Required
+          DropdownButtonFormField<String>(
+            value: _selectedState,
+            isExpanded: true,
+            decoration: InputDecoration(
+              labelText: 'State *',
+              prefixIcon: const Icon(Icons.location_on),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide:
+                    const BorderSide(color: AppTheme.primaryColor, width: 2),
+              ),
+            ),
+            items: _states.map((String state) {
+              return DropdownMenuItem<String>(
+                value: state,
+                child: Text(state, overflow: TextOverflow.ellipsis),
+              );
+            }).toList(),
+            onChanged: (String? newValue) {
+              setState(() {
+                _selectedState = newValue;
+              });
+            },
+          ),
+
+          const SizedBox(height: 20),
+
+          // Postal Code Field - Required
           TextFormField(
             controller: _postalCodeController,
             keyboardType: TextInputType.number,
             maxLength: 6,
             decoration: InputDecoration(
-              labelText: 'Postal Code (Optional)',
-              hintText: 'Enter postal code',
+              labelText: 'Postal Code *',
+              hintText: 'Enter 6-digit postal code',
               prefixIcon: const Icon(Icons.local_post_office),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: Color(0xFF2E7D32), width: 2),
+                borderSide:
+                    const BorderSide(color: AppTheme.primaryColor, width: 2),
               ),
               counterText: '',
             ),
           ),
-          
+
           const SizedBox(height: 30),
-          
+
           // Summary
           Container(
             width: double.infinity,
@@ -655,16 +659,18 @@ class _RegisterPageState extends State<CustomerRegisterPage> {
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
-                    color: Color(0xFF2E7D32),
+                    color: AppTheme.primaryColor,
                   ),
                 ),
                 const SizedBox(height: 16),
-                Text('Name: ${_firstNameController.text} ${_lastNameController.text}'),
+                Text(
+                    'Name: ${_firstNameController.text} ${_lastNameController.text}'),
                 Text('Mobile: +91 ${_mobileController.text}'),
                 if (_emailController.text.isNotEmpty)
                   Text('Email: ${_emailController.text}'),
                 if (_selectedDate != null)
-                  Text('DOB: ${_selectedDate!.day}/${_selectedDate!.month}/${_selectedDate!.year}'),
+                  Text(
+                      'DOB: ${_selectedDate!.day}/${_selectedDate!.month}/${_selectedDate!.year}'),
               ],
             ),
           ),
@@ -679,13 +685,13 @@ class _RegisterPageState extends State<CustomerRegisterPage> {
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: const Color(0xFF2E7D32).withValues(alpha: 0.1),
+            color: AppTheme.primaryColor.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(12),
           ),
           child: Icon(
             icon,
             size: 40,
-            color: const Color(0xFF2E7D32),
+            color: AppTheme.primaryColor,
           ),
         ),
         const SizedBox(height: 16),
@@ -694,7 +700,7 @@ class _RegisterPageState extends State<CustomerRegisterPage> {
           style: const TextStyle(
             fontSize: 24,
             fontWeight: FontWeight.bold,
-            color: Color(0xFF2E7D32),
+            color: AppTheme.primaryColor,
           ),
         ),
         const SizedBox(height: 8),
@@ -717,7 +723,7 @@ class _RegisterPageState extends State<CustomerRegisterPage> {
         color: Colors.white,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha:0.1),
+            color: Colors.black.withValues(alpha: 0.1),
             blurRadius: 4,
             offset: const Offset(0, -2),
           ),
@@ -733,15 +739,15 @@ class _RegisterPageState extends State<CustomerRegisterPage> {
                 child: const Text('Back'),
               ),
             ),
-          
+
           if (_currentStep > 0) const SizedBox(width: 16),
-          
+
           // Next/Register Button
           Expanded(
             child: ElevatedButton(
               onPressed: _isLoading ? null : _nextStep,
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF2E7D32),
+                backgroundColor: AppTheme.primaryColor,
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(vertical: 16),
               ),
@@ -808,9 +814,11 @@ class _RegisterPageState extends State<CustomerRegisterPage> {
         }
         // Validate email if provided
         if (_emailController.text.isNotEmpty) {
-          final emailRegex = RegExp(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$');
+          final emailRegex =
+              RegExp(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$');
           if (!emailRegex.hasMatch(_emailController.text)) {
-            setState(() => _errorMessage = 'Please enter a valid email address');
+            setState(
+                () => _errorMessage = 'Please enter a valid email address');
             return false;
           }
         }
@@ -831,39 +839,48 @@ class _RegisterPageState extends State<CustomerRegisterPage> {
     });
 
     try {
-      // Get admin token for making authenticated requests
       final token = await AuthService.invokeLogin(
-          mobileNumber: '9999999999', password: 'Admin@123', stayLoggedIn: false);
+          mobileNumber: AppConstants.adminMobileNumber,
+          password: AppConstants.adminPassword,
+          stayLoggedIn: false);
 
       if (token != null) {
-        // Prepare registration data matching the DTO
-        final registrationData = {
+        // Prepare registration data
+        final Map<String, dynamic> registrationData = {
           'customerFirstName': _firstNameController.text.trim(),
           'customerLastName': _lastNameController.text.trim(),
-          'customerMiddleName': _middleNameController.text.trim().isNotEmpty 
-              ? _middleNameController.text.trim() 
-              : null,
           'mobileNumber': _mobileController.text.trim(),
           'password': _passwordController.text.trim(),
-          'alternativeMobileNumber': null, // Not collected in this form
-          'emailId': _emailController.text.trim().isNotEmpty 
-              ? _emailController.text.trim() 
-              : null,
-          'address': _addressController.text.trim().isNotEmpty 
-              ? _addressController.text.trim() 
-              : null,
-          'city': _cityController.text.trim().isNotEmpty 
-              ? _cityController.text.trim() 
-              : null,
-          'state': _selectedState,
-          'postalCode': _postalCodeController.text.trim().isNotEmpty 
-              ? _postalCodeController.text.trim() 
-              : null,
           'dateOfBirth': _selectedDate!.toIso8601String(),
-          'gender': _selectedGender,
         };
 
-        print('Registration Data: ${jsonEncode(registrationData)}');
+        // Add optional fields
+        if (_middleNameController.text.trim().isNotEmpty) {
+          registrationData['customerMiddleName'] =
+              _middleNameController.text.trim();
+        }
+
+        if (_emailController.text.trim().isNotEmpty) {
+          registrationData['emailId'] = _emailController.text.trim();
+        }
+
+        if (_selectedGender != null) {
+          registrationData['gender'] = _selectedGender;
+        }
+
+        // Build address object matching DTO structure
+        Map<String, dynamic> addressData = {
+          'address': _selectedAddressType, // Home/Office/Other
+          'addressLine1': _addressController.text.trim(),
+          'city': _cityController.text.trim(),
+          'state': _selectedState!,
+          'postalCode': _postalCodeController.text.trim(),
+          'isDefault': true,
+        };
+
+        registrationData['addresses'] = [addressData];
+
+        AppLogger.info('Registration Data: ${jsonEncode(registrationData)}');
 
         // Make API call
         final response = await http.post(
@@ -880,8 +897,8 @@ class _RegisterPageState extends State<CustomerRegisterPage> {
           _isLoading = false;
         });
 
-        print('Response status: ${response.statusCode}');
-        print('Response body: ${response.body}');
+        AppLogger.info('Response status: ${response.statusCode}');
+        AppLogger.info('Response body: ${response.body}');
 
         if (response.statusCode == 200 || response.statusCode == 201) {
           final responseData = jsonDecode(response.body);
@@ -907,12 +924,14 @@ class _RegisterPageState extends State<CustomerRegisterPage> {
             });
           } catch (e) {
             setState(() {
-              _errorMessage = 'Invalid registration data. Please check your inputs.';
+              _errorMessage =
+                  'Invalid registration data. Please check your inputs.';
             });
           }
         } else if (response.statusCode == 409) {
           setState(() {
-            _errorMessage = 'A customer with this mobile number already exists.';
+            _errorMessage =
+                'A customer with this mobile number already exists.';
           });
         } else {
           setState(() {
@@ -926,7 +945,7 @@ class _RegisterPageState extends State<CustomerRegisterPage> {
         });
       }
     } catch (e) {
-      print('Error during registration: $e');
+      AppLogger.error('Error during registration: $e');
       setState(() {
         _isLoading = false;
         _errorMessage = 'Network error. Please check your connection.';
@@ -942,43 +961,47 @@ class _RegisterPageState extends State<CustomerRegisterPage> {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
         ),
-        title: Row(
+        contentPadding: const EdgeInsets.all(24),
+        title: Column(
           children: [
             Container(
-              padding: const EdgeInsets.all(8),
+              padding: const EdgeInsets.all(12),
               decoration: const BoxDecoration(
-                color: Color(0xFF2E7D32),
+                color: AppTheme.primaryColor,
                 shape: BoxShape.circle,
               ),
               child: const Icon(
                 Icons.check,
                 color: Colors.white,
-                size: 24,
+                size: 32,
               ),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(height: 16),
             const Text(
               'Registration Successful!',
+              textAlign: TextAlign.center,
               style: TextStyle(
-                color: Color(0xFF2E7D32),
+                color: AppTheme.primaryColor,
                 fontWeight: FontWeight.bold,
+                fontSize: 20,
               ),
             ),
           ],
         ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               'Welcome ${_firstNameController.text}!',
-              style: const TextStyle(fontSize: 16),
+              style: const TextStyle(fontSize: 15),
+              textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 20),
             Container(
-              padding: const EdgeInsets.all(12),
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: const Color(0xFF2E7D32).withOpacity(0.1),
+                color: AppTheme.primaryColor.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: const Column(
@@ -988,37 +1011,44 @@ class _RegisterPageState extends State<CustomerRegisterPage> {
                     'Next Steps:',
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
-                      color: Color(0xFF2E7D32),
+                      color: AppTheme.primaryColor,
+                      fontSize: 15,
                     ),
                   ),
                   SizedBox(height: 8),
                   Text(
-                    '• Your account has been created successfully\n'
-                    '• You can now login with your mobile number\n'
-                    '• Start exploring medicines and place orders',
+                    '• Account created successfully\n'
+                    '• Login with your mobile number\n'
+                    '• Explore medicines and place orders',
                     style: TextStyle(fontSize: 14),
                   ),
                 ],
               ),
             ),
-          ],
-        ),
-        actions: [
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context); // Close dialog
-              Navigator.pop(context); // Go back to login
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF2E7D32),
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
+            const SizedBox(height: 20),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () {
+                  Navigator.pop(context); // Close dialog
+                  Navigator.pop(context); // Go back to login
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.primaryColor,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                ),
+                child: const Text(
+                  'Login Now',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                ),
               ),
             ),
-            child: const Text('Login Now'),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -1030,7 +1060,7 @@ class _RegisterPageState extends State<CustomerRegisterPage> {
       firstDate: DateTime(1950),
       lastDate: DateTime.now(),
     );
-    
+
     if (picked != null) {
       setState(() {
         _selectedDate = picked;
@@ -1038,11 +1068,12 @@ class _RegisterPageState extends State<CustomerRegisterPage> {
     }
   }
 
-  void _checkUsernameAvailability(String username) {
-    setState(() {
-      _usernameAvailable = !['admin', 'test', 'user'].contains(username.toLowerCase());
-    });
-  }
+  // void _checkUsernameAvailability(String username) {
+  //   setState(() {
+  //     _usernameAvailable =
+  //         !['admin', 'test', 'user'].contains(username.toLowerCase());
+  //   });
+  // }
 
   @override
   void dispose() {

@@ -1,12 +1,11 @@
+import 'package:pharmaish/core/theme/app_theme.dart';
+import 'package:pharmaish/utils/app_logger.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import 'package:medicine_delivery_app/core/app_routes.dart';
-import 'package:medicine_delivery_app/core/screens/auth/forgot_password_page.dart';
-import 'package:medicine_delivery_app/core/screens/auth/register_customer_page.dart';
-import 'package:medicine_delivery_app/core/screens/auth/register_pharmacist_page.dart';
-import 'package:medicine_delivery_app/utils/constants.dart';
-import 'package:medicine_delivery_app/utils/storage.dart';
+import 'package:pharmaish/core/app_routes.dart';
+import 'package:pharmaish/utils/constants.dart';
+import 'package:pharmaish/utils/storage.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -28,6 +27,7 @@ class _LoginPageState extends State<LoginPage> {
   @override
   void initState() {
     super.initState();
+    //AppHelpers.disableScreenshots();
     _loadSavedCredentials();
   }
 
@@ -46,7 +46,7 @@ class _LoginPageState extends State<LoginPage> {
         });
       }
     } catch (e) {
-      print('Error loading saved credentials: $e');
+      //AppLogger.error('Error loading saved credentials: $e');
     }
   }
 
@@ -56,19 +56,19 @@ class _LoginPageState extends State<LoginPage> {
       backgroundColor: Colors.grey.shade50,
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
           child: Form(
             key: _formKey,
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const SizedBox(height: 40),
+                const SizedBox(height: 20),
 
                 // Header
                 _buildHeader(),
 
-                const SizedBox(height: 50),
+                const SizedBox(height: 20),
 
                 // User Name Field (Phone Number)
                 TextFormField(
@@ -84,8 +84,8 @@ class _LoginPageState extends State<LoginPage> {
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide:
-                          const BorderSide(color: Color(0xFF2E7D32), width: 2),
+                      borderSide: const BorderSide(
+                          color: AppTheme.primaryColor, width: 2),
                     ),
                     counterText: '', // Hide character counter
                   ),
@@ -140,8 +140,8 @@ class _LoginPageState extends State<LoginPage> {
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide:
-                          const BorderSide(color: Color(0xFF2E7D32), width: 2),
+                      borderSide: const BorderSide(
+                          color: AppTheme.primaryColor, width: 2),
                     ),
                     counterText: '', // Hide character counter
                   ),
@@ -203,7 +203,7 @@ class _LoginPageState extends State<LoginPage> {
                           _rememberPassword = value ?? false;
                         });
                       },
-                      activeColor: const Color(0xFF2E7D32),
+                      activeColor: AppTheme.primaryColor,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(4),
                       ),
@@ -215,20 +215,20 @@ class _LoginPageState extends State<LoginPage> {
                         fontWeight: FontWeight.w500,
                       ),
                     ),
-                    const Spacer(),
-                    TextButton(
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                              builder: (context) => const ForgotPasswordPage()),
-                        );
-                      },
-                      child: const Text(
-                        'Forgot Password?',
-                        style: TextStyle(color: Color(0xFF2E7D32)),
-                      ),
-                    ),
+                    // const Spacer(),
+                    // TextButton(
+                    //   onPressed: () {
+                    //     Navigator.push(
+                    //       context,
+                    //       MaterialPageRoute(
+                    //           builder: (context) => const ForgotPasswordPage()),
+                    //     );
+                    //   },
+                    //   child: const Text(
+                    //     'Forgot Password?',
+                    //     style: TextStyle(color: AppTheme.primaryColor),
+                    //   ),
+                    // ),
                   ],
                 ),
 
@@ -271,7 +271,7 @@ class _LoginPageState extends State<LoginPage> {
                   child: ElevatedButton(
                     onPressed: _isLoading ? null : _handleLogin,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF2E7D32),
+                      backgroundColor: AppTheme.primaryColor,
                       foregroundColor: Colors.white,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
@@ -298,55 +298,84 @@ class _LoginPageState extends State<LoginPage> {
                 const SizedBox(height: 30),
 
                 // Register Pharmacist Link
-                Wrap(
-                  alignment: WrapAlignment.center,
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Text(
-                      "Don't have an account as a Pharmacist yet ? ",
-                      style: TextStyle(color: Colors.grey.shade600),
-                    ),
-                    TextButton(
-                      onPressed: () {
-                        Navigator.pushNamed(
-                            context, AppRoutes.registerPharmacist);
-                      },
-                      child: const Text(
-                        'Register Pharmacist',
-                        style: TextStyle(
-                          color: Color(0xFF2E7D32),
-                          fontWeight: FontWeight.w600,
-                        ),
+                    Expanded(
+                      child: Wrap(
+                        alignment: WrapAlignment.center,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        children: [
+                          Text(
+                            "Don't have an account as a Pharmacist yet? ",
+                            style: TextStyle(color: Colors.grey.shade600),
+                            textAlign: TextAlign.center,
+                          ),
+                          TextButton(
+                            onPressed: () {
+                              Navigator.pushNamed(
+                                  context, AppRoutes.registerPharmacist);
+                            },
+                            style: TextButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 4, vertical: 0),
+                              minimumSize: Size.zero,
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            ),
+                            child: const Text(
+                              'Register as Pharmacy/Pharmacist',
+                              style: TextStyle(
+                                color: AppTheme.primaryColor,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ],
                 ),
 
-const SizedBox(height: 30),
+                const SizedBox(height: 20),
 
-                // Register Customer Link
-                Wrap(
-                  alignment: WrapAlignment.center,
+// Register Customer Link
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Text(
-                      "Don't have a Customer account yet ? ",
-                      style: TextStyle(color: Colors.grey.shade600),
-                    ),
-                    TextButton(
-                      onPressed: () {
-                        Navigator.pushNamed(
-                            context, AppRoutes.registerCustomer);
-                      },
-                      child: const Text(
-                        'Register Customer',
-                        style: TextStyle(
-                          color: Color(0xFF2E7D32),
-                          fontWeight: FontWeight.w600,
-                        ),
+                    Expanded(
+                      child: Wrap(
+                        alignment: WrapAlignment.center,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        children: [
+                          Text(
+                            "Don't have a Customer account yet? ",
+                            style: TextStyle(color: Colors.grey.shade600),
+                            textAlign: TextAlign.center,
+                          ),
+                          TextButton(
+                            onPressed: () {
+                              Navigator.pushNamed(
+                                  context, AppRoutes.registerCustomer);
+                            },
+                            style: TextButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 4, vertical: 0),
+                              minimumSize: Size.zero,
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            ),
+                            child: const Text(
+                              'Register as Customer',
+                              style: TextStyle(
+                                color: AppTheme.primaryColor,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ],
                 ),
-
                 const SizedBox(height: 20),
 
                 // Security Notice
@@ -391,27 +420,20 @@ const SizedBox(height: 30),
     return Column(
       children: [
         // App Icon
-        Container(
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: const Color(0xFF2E7D32),
-            borderRadius: BorderRadius.circular(20),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.1),
-                blurRadius: 20,
-                offset: const Offset(0, 10),
-              ),
-            ],
-          ),
-          child: const Icon(
-            Icons.local_pharmacy,
-            size: 60,
-            color: Colors.white,
-          ),
+         Image.asset(
+          'assets/images/app_icon_animated.png',
+          width: 220,
+          height: 100,
+          fit: BoxFit.contain,
         ),
+        // Image.asset(
+        //   'assets/images/app_icon.png',
+        //   width: 220,
+        //   height: 100,
+        //   fit: BoxFit.contain,
+        // ),
 
-        const SizedBox(height: 30),
+        const SizedBox(height: 1),
 
         // Welcome Text
         const Text(
@@ -419,7 +441,7 @@ const SizedBox(height: 30),
           style: TextStyle(
             fontSize: 32,
             fontWeight: FontWeight.bold,
-            color: Color(0xFF2E7D32),
+            color: AppTheme.primaryColor,
           ),
         ),
 
@@ -462,14 +484,20 @@ const SizedBox(height: 30),
           'Content-Type': 'application/json',
           'Accept': 'application/json',
         },
-        body: jsonEncode({'mobileNumber': userName, 'password': password, 'stayLoggedIn': _rememberPassword}),
+        body: jsonEncode({
+          'mobileNumber': userName,
+          'password': password,
+          'stayLoggedIn': _rememberPassword
+        }),
       );
 
       setState(() {
         _isLoading = false;
       });
+      AppLogger.info(
+          'Login API Response: ${response.statusCode} - ${response.body}');
 
-      if (response.statusCode == 200) {
+      if (response.statusCode == 200 || response.statusCode == 201) {
         // Parse response
         final responseData = jsonDecode(response.body);
 
@@ -485,28 +513,33 @@ const SizedBox(height: 30),
             refreshToken: refreshToken,
           );
 
-          print('Login successful!');
-          print('Token: $token');
-          print('Refresh Token: $refreshToken');
+          AppLogger.info('Login successful!');
+          AppLogger.info('Token: $token');
+          AppLogger.info('Refresh Token: $refreshToken');
 
           // Decode JWT token to get user information using StorageService
           final userInfo = StorageService.decodeJwtToken(token);
           final extractedUserInfo = StorageService.extractUserInfo(userInfo);
-          if(extractedUserInfo != null) {
-            print('Extracted User Info: $extractedUserInfo');
+          if (extractedUserInfo.isNotEmpty) {
+            AppLogger.info('Extracted User Info: $extractedUserInfo');
             StorageService.storeUserInfo(extractedUserInfo);
           } else {
-            print('No user info extracted from token');
+            AppLogger.info('No user info extracted from token');
           }
-          final userId = responseData['userId'] ?? '';          
-          print('User ID: $userId');
+          final userId = responseData['userId'] ??
+              responseData['id'] ??
+              userInfo[
+                  'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier'] ??
+              userInfo['id'] ??
+              '';
+          AppLogger.info('User ID: $userId');
           // Store user ID
           if (userId != null && userId.isNotEmpty) {
             await StorageService.storeUserId(userId);
           }
           final userRole = StorageService.extractUserRole(userInfo);
 
-          print('User Role: $userRole');
+          AppLogger.info('User Role: $userRole');
           // Navigate to appropriate dashboard
           _navigateToDashboard(userRole);
         } else {
@@ -547,9 +580,10 @@ const SizedBox(height: 30),
     } catch (e) {
       setState(() {
         _isLoading = false;
+        AppLogger.error('Error: $e'); // Logs error message
         _errorMessage = 'Network error. Please check your connection.';
       });
-      print('Login error: $e');
+      AppLogger.error('Login error: $e');
     }
   }
 

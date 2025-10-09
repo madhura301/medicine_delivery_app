@@ -1,6 +1,10 @@
-// Chemist Dashboard
+// Chemist Dashboard - Updated to use OrderWidgets utility
+import 'package:pharmaish/core/theme/app_theme.dart';
+import 'package:pharmaish/utils/app_logger.dart';
+import 'package:pharmaish/utils/helpers.dart';
+import 'package:pharmaish/utils/storage.dart';
 import 'package:flutter/material.dart';
-import 'package:medicine_delivery_app/utils/storage.dart';
+import 'package:pharmaish/shared/widgets/order_widgets.dart';
 
 class ChemistDashboard extends StatefulWidget {
   const ChemistDashboard({super.key});
@@ -12,17 +16,18 @@ class ChemistDashboard extends StatefulWidget {
 class _ChemistDashboardState extends State<ChemistDashboard> {
   String? _pharmacistId;
   String? _pharmacistName;
-  
+
   @override
   void initState() {
     super.initState();
+    //AppHelpers.disableScreenshots();
     _loadPharmacistId();
     _loadPharmacistName();
   }
 
   Future<void> _loadPharmacistId() async {
     final userId = await StorageService.getUserId();
-    print("pharmacistId in chemist dashboard: $userId");
+    AppLogger.info("pharmacistId in chemist dashboard: $userId");
     setState(() {
       _pharmacistId = userId;
     });
@@ -47,7 +52,7 @@ class _ChemistDashboardState extends State<ChemistDashboard> {
   void _goToChemistProfile(BuildContext context) {
     if (_pharmacistId != null) {
       Navigator.pushNamed(context, '/pharmacistProfile', arguments: {
-        'pharmacistId': _pharmacistId!,
+        'pharmacistId': _pharmacistId!
       });
     }
   }
@@ -57,7 +62,7 @@ class _ChemistDashboardState extends State<ChemistDashboard> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Chemist Dashboard'),
-        backgroundColor: const Color(0xFF2E7D32),
+        backgroundColor: AppTheme.primaryColor,
         foregroundColor: Colors.white,
         automaticallyImplyLeading: false,
         actions: [
@@ -73,27 +78,90 @@ class _ChemistDashboardState extends State<ChemistDashboard> {
           ),
         ],
       ),
-      body: Center(
+      body: Padding(
+        padding: const EdgeInsets.all(20),
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Icon(Icons.medication, size: 80, color: Color(0xFF2E7D32)),
-            const SizedBox(height: 20),
-            const Text(
-              'Chemist Dashboard',
-              style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
-            ),
+            // Welcome Message
             const SizedBox(height: 10),
             if (_pharmacistName != null)
               Text(
-                'Welcome, $_pharmacistName',
-                style: const TextStyle(fontSize: 14, color: Colors.grey),
+                'Welcome, $_pharmacistName!',
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.grey.shade800,
+                ),
               ),
-            const SizedBox(height: 20),
-            const Text(
-              'Pending Orders • Accept/Reject\n(Coming Next!)',
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 16, color: Colors.grey),
+
+            const SizedBox(height: 8),
+
+            Text(
+              'How would you like to place your order today?',
+              style: TextStyle(
+                fontSize: 16,
+                color: Colors.grey.shade600,
+              ),
+            ),
+
+            const SizedBox(height: 30),
+
+            // Order Options Grid
+            Expanded(
+              child: GridView.count(
+                crossAxisCount: 2,
+                crossAxisSpacing: 16,
+                mainAxisSpacing: 16,
+                childAspectRatio: 0.85,
+                children: [
+                  // Upload PDF/Image Option
+                  OrderWidgets.buildOrderOption(
+                    icon: const Icon(Icons.upload_file,
+                        size: 28, color: Colors.blue),
+                    title: 'Upload PDF/Image',
+                    subtitle: 'Upload prescription',
+                    color: Colors.blue,
+                    onTap: () =>
+                        AppHelpers.showComingSoon(context, 'Upload Feature'),
+                  ),
+
+                  // Camera Option
+                  OrderWidgets.buildOrderOption(
+                    icon: const Icon(Icons.camera_alt,
+                        size: 28, color: Colors.black),
+                    title: 'Camera',
+                    subtitle: 'Take photo',
+                    color: Colors.black,
+                    onTap: () =>
+                        AppHelpers.showComingSoon(context, 'Camera Feature'),
+                  ),
+
+                  // Voice Option
+                  OrderWidgets.buildOrderOption(
+                    icon: const Icon(Icons.mic, size: 28, color: Colors.orange),
+                    title: 'Voice',
+                    subtitle: 'Voice message/OTC',
+                    color: Colors.orange,
+                    onTap: () =>
+                        AppHelpers.showComingSoon(context, 'Voice Feature'),
+                  ),
+
+                  // WhatsApp Option
+                  OrderWidgets.buildOrderOption(
+                    icon: Image.asset(
+                      'assets/images/whatsapp_business.png',
+                      width: 28,
+                      height: 28,
+                      fit: BoxFit.contain,
+                    ),
+                    title: 'Chat with Us',
+                    subtitle: 'WhatsApp chat',
+                    color: const Color(0xFF25D366),
+                    onTap: () => OrderWidgets.openWhatsApp(context),
+                  ),
+                ],
+              ),
             ),
           ],
         ),
