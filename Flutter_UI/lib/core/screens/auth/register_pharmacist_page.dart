@@ -8,6 +8,7 @@ import 'dart:convert';
 import 'package:pharmaish/core/services/auth_service.dart';
 import 'package:pharmaish/core/services/location_service.dart';
 import 'package:pharmaish/utils/constants.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class PharmacistRegistrationPage extends StatefulWidget {
   const PharmacistRegistrationPage({super.key});
@@ -101,6 +102,39 @@ class _PharmacistRegistrationPageState
     'Lakshadweep',
     'Puducherry'
   ];
+
+  Future<void> _openAreaRetailerPolicy() async {
+    const String pdfUrl = '${AppConstants.documentsProdBaseUrl}/AREA_RETAILER_POLICY.pdf';
+    // Test URL: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf'
+
+    try {
+      final Uri uri = Uri.parse(pdfUrl);
+
+      try {
+        await launchUrl(
+          uri,
+          mode: LaunchMode.externalApplication,
+        );
+      } catch (e) {
+        AppLogger.info('External app launch failed, trying browser mode');
+        await launchUrl(
+          uri,
+          mode: LaunchMode.platformDefault,
+        );
+      }
+    } catch (e) {
+      AppLogger.error('Error opening Area Retailer Policy', e);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Unable to open policy document'),
+            backgroundColor: Colors.red,
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -210,7 +244,9 @@ class _PharmacistRegistrationPageState
       child: Container(
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          color: isSelected ? AppTheme.primaryColor.withOpacity(0.1) : Colors.white,
+          color: isSelected
+              ? AppTheme.primaryColor.withOpacity(0.1)
+              : Colors.white,
           border: Border.all(
             color: isSelected ? AppTheme.primaryColor : Colors.grey.shade300,
             width: isSelected ? 2 : 1,
@@ -286,8 +322,9 @@ class _PharmacistRegistrationPageState
                     label: 'Owner First Name*',
                     hint: 'First name',
                     icon: Icons.person,
-                    validator: (value) =>
-                        value?.isEmpty ?? true ? 'First name is required' : null,
+                    validator: (value) => value?.isEmpty ?? true
+                        ? 'First name is required'
+                        : null,
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -320,22 +357,26 @@ class _PharmacistRegistrationPageState
                 label: 'Drug Licence Number - Retailer*',
                 hint: 'Enter retailer drug license',
                 icon: Icons.card_membership,
-                validator: (value) =>
-                    value?.isEmpty ?? true ? 'Retailer Drug Licence No. is required' : null,
+                validator: (value) => value?.isEmpty ?? true
+                    ? 'Retailer Drug Licence No. is required'
+                    : null,
               ),
             if (_businessType == 'Retailer' || _businessType == 'Both')
               const SizedBox(height: 16),
 
-            if (_businessType == 'Distributor/Wholesaler' || _businessType == 'Both')
+            if (_businessType == 'Distributor/Wholesaler' ||
+                _businessType == 'Both')
               _buildTextField(
                 controller: _dlWholesalerController,
                 label: 'Drug Licence Number - Wholeseller*',
                 hint: 'Enter wholeseller drug license',
                 icon: Icons.card_membership,
-                validator: (value) =>
-                    value?.isEmpty ?? true ? 'Wholeseller Drug Licence No. is required' : null,
+                validator: (value) => value?.isEmpty ?? true
+                    ? 'Wholeseller Drug Licence No. is required'
+                    : null,
               ),
-            if (_businessType == 'Distributor/Wholeseller' || _businessType == 'Both')
+            if (_businessType == 'Distributor/Wholeseller' ||
+                _businessType == 'Both')
               const SizedBox(height: 16),
 
             // 4. GST No - Registered/Unregistered
@@ -552,7 +593,9 @@ class _PharmacistRegistrationPageState
                   Text(
                     _locationText,
                     style: TextStyle(
-                      color: _latitude != null ? Colors.black : Colors.grey.shade600,
+                      color: _latitude != null
+                          ? Colors.black
+                          : Colors.grey.shade600,
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -606,8 +649,9 @@ class _PharmacistRegistrationPageState
                     label: 'First Name*',
                     hint: 'First name',
                     icon: Icons.person,
-                    validator: (value) =>
-                        value?.isEmpty ?? true ? 'First name is required' : null,
+                    validator: (value) => value?.isEmpty ?? true
+                        ? 'First name is required'
+                        : null,
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -662,8 +706,8 @@ class _PharmacistRegistrationPageState
               decoration: BoxDecoration(
                 color: AppTheme.primaryColor.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                    color: AppTheme.primaryColor.withOpacity(0.3)),
+                border:
+                    Border.all(color: AppTheme.primaryColor.withOpacity(0.3)),
               ),
               child: const Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -677,8 +721,7 @@ class _PharmacistRegistrationPageState
                     ),
                   ),
                   SizedBox(height: 12),
-                  Text(
-                      'Please review all information before proceeding.'),
+                  Text('Please review all information before proceeding.'),
                   SizedBox(height: 8),
                   Text(
                     '• Create login credentials in the next step\n'
@@ -838,6 +881,73 @@ class _PharmacistRegistrationPageState
                 ],
               ),
             ),
+            const SizedBox(height: 24),
+
+            // Area Retailer Policy Link
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: AppTheme.primaryColor.withOpacity(0.05),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: AppTheme.primaryColor.withOpacity(0.2),
+                ),
+              ),
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.picture_as_pdf,
+                    color: AppTheme.primaryColor,
+                    size: 28,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Important Policy Document',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                            color: AppTheme.primaryColor,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        GestureDetector(
+                          onTap: _openAreaRetailerPolicy,
+                          child: const Text(
+                            'View Area Retailer Policy',
+                            style: TextStyle(
+                              color: Colors.blue,
+                              decoration: TextDecoration.underline,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  GestureDetector(
+                    onTap: _openAreaRetailerPolicy,
+                    child: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: AppTheme.primaryColor,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Icon(
+                        Icons.open_in_new,
+                        color: Colors.white,
+                        size: 20,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
             const SizedBox(height: 32),
 
             _buildNavigationButtons(),
@@ -900,7 +1010,8 @@ class _PharmacistRegistrationPageState
           borderRadius: BorderRadius.circular(12),
           borderSide: const BorderSide(color: AppTheme.primaryColor, width: 2),
         ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
       ),
       items: _states.map((String state) {
         return DropdownMenuItem<String>(
@@ -966,7 +1077,7 @@ class _PharmacistRegistrationPageState
                         valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                       ),
                     )
-                  : Text(_currentStep < 3 ? 'Next' : 'Submit Registration'),
+                  : Text(_currentStep < 3 ? 'Next' : 'Submit'),
             ),
           ),
         ],
@@ -1041,18 +1152,21 @@ class _PharmacistRegistrationPageState
     }
     if (_businessType == 'Retailer' || _businessType == 'Both') {
       if (_dlRetailerController.text.isEmpty) {
-        setState(() => _errorMessage = 'Retailer Drug Licence number is required');
+        setState(
+            () => _errorMessage = 'Retailer Drug Licence number is required');
         return false;
       }
     }
     if (_businessType == 'Distributor/Wholeseller' || _businessType == 'Both') {
       if (_dlWholesalerController.text.isEmpty) {
-        setState(() => _errorMessage = 'Wholeseller Drug Licence number is required');
+        setState(() =>
+            _errorMessage = 'Wholeseller Drug Licence number is required');
         return false;
       }
     }
     if (_isGstRegistered && _gstNumberController.text.isEmpty) {
-      setState(() => _errorMessage = 'GST number is required for registered firms');
+      setState(
+          () => _errorMessage = 'GST number is required for registered firms');
       return false;
     }
     if (_isGstRegistered && _gstNumberController.text.length != 15) {
@@ -1102,7 +1216,8 @@ class _PharmacistRegistrationPageState
     }
     final panRegex = RegExp(r'^[A-Z]{5}[0-9]{4}[A-Z]{1}$');
     if (!panRegex.hasMatch(_panController.text)) {
-      setState(() => _errorMessage = 'Enter valid PAN number (e.g., ABCDE1234F)');
+      setState(
+          () => _errorMessage = 'Enter valid PAN number (e.g., ABCDE1234F)');
       return false;
     }
     return true;
@@ -1118,7 +1233,8 @@ class _PharmacistRegistrationPageState
       return false;
     }
     if (_pharmacistRegNumberController.text.isEmpty) {
-      setState(() => _errorMessage = 'Pharmacist registration number is required');
+      setState(
+          () => _errorMessage = 'Pharmacist registration number is required');
       return false;
     }
     if (_spcController.text.isEmpty) {
@@ -1172,7 +1288,8 @@ class _PharmacistRegistrationPageState
         return false;
       }
       if (_emailController.text.length > 50) {
-        setState(() => _errorMessage = 'Email address must be less than 50 characters');
+        setState(() =>
+            _errorMessage = 'Email address must be less than 50 characters');
         return false;
       }
     }
@@ -1208,7 +1325,8 @@ class _PharmacistRegistrationPageState
         includeAddress: true,
         timeLimit: const Duration(seconds: 20),
       );
-      AppLogger.info('Location result: ${result.latitude}, ${result.longitude} - ${result.address}');
+      AppLogger.info(
+          'Location result: ${result.latitude}, ${result.longitude} - ${result.address}');
       setState(() {
         if (result.isValid) {
           _latitude = result.latitude;
@@ -1256,7 +1374,8 @@ class _PharmacistRegistrationPageState
       });
     } catch (e) {
       setState(() {
-        _errorMessage = 'Network error. Please check your connection and try again.';
+        _errorMessage =
+            'Network error. Please check your connection and try again.';
         _locationText = 'Tap to select location';
       });
       AppLogger.error('Location error: $e');
@@ -1272,7 +1391,9 @@ class _PharmacistRegistrationPageState
     });
 
     final token = await AuthService.invokeLogin(
-        mobileNumber: AppConstants.adminMobileNumber, password: AppConstants.adminPassword, stayLoggedIn: false);
+        mobileNumber: AppConstants.adminMobileNumber,
+        password: AppConstants.adminPassword,
+        stayLoggedIn: false);
 
     if (token != null) {
       try {
@@ -1321,9 +1442,9 @@ class _PharmacistRegistrationPageState
         );
 
         setState(() => _isLoading = false);
-        
+
         AppLogger.info('Response status: ${response.statusCode}');
-        
+
         if (response.statusCode == 200 || response.statusCode == 201) {
           final responseData = jsonDecode(response.body);
           if (responseData['success'] == true) {
@@ -1347,12 +1468,14 @@ class _PharmacistRegistrationPageState
             });
           } catch (e) {
             setState(() {
-              _errorMessage = 'Invalid registration data. Please check your inputs.';
+              _errorMessage =
+                  'Invalid registration data. Please check your inputs.';
             });
           }
         } else if (response.statusCode == 409) {
           setState(() {
-            _errorMessage = 'A pharmacy with this mobile number already exists.';
+            _errorMessage =
+                'A pharmacy with this mobile number already exists.';
           });
         } else {
           setState(() {
@@ -1380,7 +1503,8 @@ class _PharmacistRegistrationPageState
       barrierDismissible: false,
       builder: (BuildContext context) {
         return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           contentPadding: const EdgeInsets.all(24),
           title: Column(
             children: [

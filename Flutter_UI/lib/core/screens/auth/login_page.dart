@@ -6,6 +6,7 @@ import 'dart:convert';
 import 'package:pharmaish/core/app_routes.dart';
 import 'package:pharmaish/utils/constants.dart';
 import 'package:pharmaish/utils/storage.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -50,367 +51,440 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
+  /// Open Privacy Policy PDF
+  Future<void> _openPrivacyPolicy() async {
+    const String pdfUrl = '${AppConstants.documentsProdBaseUrl}/Privacy_Policy.pdf';
+    // Alternative test URL: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf'
+    
+    try {
+      final Uri uri = Uri.parse(pdfUrl);
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } catch (e) {
+      AppLogger.error('Error opening Privacy Policy', e);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Unable to open Privacy Policy'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  /// Open Terms and Conditions PDF
+  Future<void> _openTermsAndConditions() async {
+    const String pdfUrl = '${AppConstants.documentsProdBaseUrl}/Terms_and_Conditions.pdf';
+    // Alternative test URL: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf'
+    
+    try {
+      final Uri uri = Uri.parse(pdfUrl);
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } catch (e) {
+      AppLogger.error('Error opening Terms and Conditions', e);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Unable to open Terms and Conditions'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.grey.shade50,
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const SizedBox(height: 20),
+        child: Column(
+          children: [
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      const SizedBox(height: 20),
 
-                // Header
-                _buildHeader(),
+                      // Header
+                      _buildHeader(),
 
-                const SizedBox(height: 20),
+                      const SizedBox(height: 20),
 
-                // User Name Field (Phone Number)
-                TextFormField(
-                  controller: _userNameController,
-                  maxLength: 100,
-                  keyboardType: TextInputType.phone,
-                  decoration: InputDecoration(
-                    labelText: 'User Name',
-                    hintText: 'Enter your phone number',
-                    prefixIcon: const Icon(Icons.phone),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(
-                          color: AppTheme.primaryColor, width: 2),
-                    ),
-                    counterText: '', // Hide character counter
-                  ),
-                  validator: (value) {
-                    if (value?.isEmpty ?? true) {
-                      return 'User Name is required';
-                    }
-                    // Phone number validation - only allow numbers
-                    final phoneRegex = RegExp(r'^[0-9]+$');
-                    if (!phoneRegex.hasMatch(value!)) {
-                      return 'User Name should contain only numbers';
-                    }
-                    if (value.length > 100) {
-                      return 'User Name cannot exceed 100 characters';
-                    }
-                    return null;
-                  },
-                  onChanged: (value) {
-                    if (_errorMessage.isNotEmpty) {
-                      setState(() {
-                        _errorMessage = '';
-                      });
-                    }
-                  },
-                ),
-
-                const SizedBox(height: 20),
-
-                // Password Field
-                TextFormField(
-                  controller: _passwordController,
-                  obscureText: _obscurePassword,
-                  maxLength: 20,
-                  decoration: InputDecoration(
-                    labelText: 'Password',
-                    hintText: 'Enter your password',
-                    prefixIcon: const Icon(Icons.lock_outline),
-                    suffixIcon: IconButton(
-                      icon: Icon(
-                        _obscurePassword
-                            ? Icons.visibility_off
-                            : Icons.visibility,
+                      // User Name Field (Phone Number)
+                      TextFormField(
+                        controller: _userNameController,
+                        maxLength: 100,
+                        keyboardType: TextInputType.phone,
+                        decoration: InputDecoration(
+                          labelText: 'User Name',
+                          hintText: 'Enter your phone number',
+                          prefixIcon: const Icon(Icons.phone),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(
+                                color: AppTheme.primaryColor, width: 2),
+                          ),
+                          counterText: '', // Hide character counter
+                        ),
+                        validator: (value) {
+                          if (value?.isEmpty ?? true) {
+                            return 'User Name is required';
+                          }
+                          // Phone number validation - only allow numbers
+                          final phoneRegex = RegExp(r'^[0-9]+$');
+                          if (!phoneRegex.hasMatch(value!)) {
+                            return 'User Name should contain only numbers';
+                          }
+                          if (value.length > 100) {
+                            return 'User Name cannot exceed 100 characters';
+                          }
+                          return null;
+                        },
+                        onChanged: (value) {
+                          if (_errorMessage.isNotEmpty) {
+                            setState(() {
+                              _errorMessage = '';
+                            });
+                          }
+                        },
                       ),
-                      onPressed: () {
-                        setState(() {
-                          _obscurePassword = !_obscurePassword;
-                        });
-                      },
-                    ),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(
-                          color: AppTheme.primaryColor, width: 2),
-                    ),
-                    counterText: '', // Hide character counter
-                  ),
-                  validator: (value) {
-                    if (value?.isEmpty ?? true) {
-                      return 'Password is required';
-                    }
 
-                    // Check minimum length (6 characters as per requirement)
-                    if (value!.length < 6) {
-                      return 'Password must be at least 6 characters';
-                    }
+                      const SizedBox(height: 20),
 
-                    // Check maximum length
-                    if (value.length > 20) {
-                      return 'Password cannot exceed 20 characters';
-                    }
+                      // Password Field
+                      TextFormField(
+                        controller: _passwordController,
+                        obscureText: _obscurePassword,
+                        maxLength: 20,
+                        decoration: InputDecoration(
+                          labelText: 'Password',
+                          hintText: 'Enter your password',
+                          prefixIcon: const Icon(Icons.lock_outline),
+                          suffixIcon: IconButton(
+                            icon: Icon(
+                              _obscurePassword
+                                  ? Icons.visibility_off
+                                  : Icons.visibility,
+                            ),
+                            onPressed: () {
+                              setState(() {
+                                _obscurePassword = !_obscurePassword;
+                              });
+                            },
+                          ),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(
+                                color: AppTheme.primaryColor, width: 2),
+                          ),
+                          counterText: '', // Hide character counter
+                        ),
+                        validator: (value) {
+                          if (value?.isEmpty ?? true) {
+                            return 'Password is required';
+                          }
 
-                    // Check for minimum 1 capital letter
-                    if (!RegExp(r'[A-Z]').hasMatch(value)) {
-                      return 'Password must contain at least 1 capital letter';
-                    }
+                          // Check minimum length (6 characters as per requirement)
+                          if (value!.length < 6) {
+                            return 'Password must be at least 6 characters';
+                          }
 
-                    // Check for minimum 1 small letter
-                    if (!RegExp(r'[a-z]').hasMatch(value)) {
-                      return 'Password must contain at least 1 small letter';
-                    }
+                          // Check maximum length
+                          if (value.length > 20) {
+                            return 'Password cannot exceed 20 characters';
+                          }
 
-                    // Check for minimum 1 special character
-                    if (!RegExp(r'[!@#$%^&*(),.?":{}|<>]').hasMatch(value)) {
-                      return 'Password must contain at least 1 special character';
-                    }
+                          // Check for minimum 1 capital letter
+                          if (!RegExp(r'[A-Z]').hasMatch(value)) {
+                            return 'Password must contain at least 1 capital letter';
+                          }
 
-                    // Check for minimum 1 numerical number
-                    if (!RegExp(r'[0-9]').hasMatch(value)) {
-                      return 'Password must contain at least 1 number';
-                    }
+                          // Check for minimum 1 small letter
+                          if (!RegExp(r'[a-z]').hasMatch(value)) {
+                            return 'Password must contain at least 1 small letter';
+                          }
 
-                    return null;
-                  },
-                  onChanged: (value) {
-                    if (_errorMessage.isNotEmpty) {
-                      setState(() {
-                        _errorMessage = '';
-                      });
-                    }
-                  },
-                ),
+                          // Check for minimum 1 special character
+                          if (!RegExp(r'[!@#$%^&*(),.?":{}|<>]').hasMatch(value)) {
+                            return 'Password must contain at least 1 special character';
+                          }
 
-                const SizedBox(height: 16),
+                          // Check for minimum 1 numerical number
+                          if (!RegExp(r'[0-9]').hasMatch(value)) {
+                            return 'Password must contain at least 1 number';
+                          }
 
-                // Remember Password Checkbox
-                Row(
-                  children: [
-                    Checkbox(
-                      value: _rememberPassword,
-                      onChanged: (value) {
-                        setState(() {
-                          _rememberPassword = value ?? false;
-                        });
-                      },
-                      activeColor: AppTheme.primaryColor,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(4),
+                          return null;
+                        },
+                        onChanged: (value) {
+                          if (_errorMessage.isNotEmpty) {
+                            setState(() {
+                              _errorMessage = '';
+                            });
+                          }
+                        },
                       ),
-                    ),
-                    const Text(
-                      'Remember Password',
+
+                      const SizedBox(height: 16),
+
+                      // Remember Password Checkbox
+                      Row(
+                        children: [
+                          Checkbox(
+                            value: _rememberPassword,
+                            onChanged: (value) {
+                              setState(() {
+                                _rememberPassword = value ?? false;
+                              });
+                            },
+                            activeColor: AppTheme.primaryColor,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                          ),
+                          const Text(
+                            'Remember Password',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+
+                      // Error Message
+                      if (_errorMessage.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 16),
+                          child: Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Colors.red.shade50,
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: Colors.red.shade200),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(Icons.error_outline,
+                                    color: Colors.red.shade600, size: 20),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    _errorMessage,
+                                    style: TextStyle(
+                                      color: Colors.red.shade600,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+
+                      const SizedBox(height: 30),
+
+                      // Login Button
+                      SizedBox(
+                        width: double.infinity,
+                        height: 56,
+                        child: ElevatedButton(
+                          onPressed: _isLoading ? null : _handleLogin,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppTheme.primaryColor,
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: _isLoading
+                              ? const SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    valueColor:
+                                        AlwaysStoppedAnimation<Color>(Colors.white),
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : const Text(
+                                  'Login',
+                                  style: TextStyle(
+                                      fontSize: 18, fontWeight: FontWeight.w600),
+                                ),
+                        ),
+                      ),
+
+                      const SizedBox(height: 30),
+
+                      // Register Pharmacist Link
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Expanded(
+                            child: Wrap(
+                              alignment: WrapAlignment.center,
+                              crossAxisAlignment: WrapCrossAlignment.center,
+                              children: [
+                                Text(
+                                  "Don't have an account as a Pharmacist yet? ",
+                                  style: TextStyle(color: Colors.grey.shade600),
+                                  textAlign: TextAlign.center,
+                                ),
+                                TextButton(
+                                  onPressed: () {
+                                    Navigator.pushNamed(
+                                        context, AppRoutes.registerPharmacist);
+                                  },
+                                  style: TextButton.styleFrom(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 4, vertical: 0),
+                                    minimumSize: Size.zero,
+                                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                  ),
+                                  child: const Text(
+                                    'Register as Pharmacy/Pharmacist',
+                                    style: TextStyle(
+                                      color: AppTheme.primaryColor,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+
+                      const SizedBox(height: 20),
+
+                      // Register Customer Link
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Expanded(
+                            child: Wrap(
+                              alignment: WrapAlignment.center,
+                              crossAxisAlignment: WrapCrossAlignment.center,
+                              children: [
+                                Text(
+                                  "Don't have a Customer account yet? ",
+                                  style: TextStyle(color: Colors.grey.shade600),
+                                  textAlign: TextAlign.center,
+                                ),
+                                TextButton(
+                                  onPressed: () {
+                                    Navigator.pushNamed(
+                                        context, AppRoutes.registerCustomer);
+                                  },
+                                  style: TextButton.styleFrom(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 4, vertical: 0),
+                                    minimumSize: Size.zero,
+                                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                  ),
+                                  child: const Text(
+                                    'Register as Customer',
+                                    style: TextStyle(
+                                      color: AppTheme.primaryColor,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 20),
+
+                      // Security Notice
+                      if (_rememberPassword)
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.amber.shade50,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: Colors.amber.shade200),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.security,
+                                color: Colors.amber.shade700,
+                                size: 20,
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  'Your password will be saved securely on this device only.',
+                                  style: TextStyle(
+                                    color: Colors.amber.shade800,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      
+                      const SizedBox(height: 20),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+
+            // Privacy Policy and Terms & Conditions Links at Bottom
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  // Privacy Policy - Left
+                  GestureDetector(
+                    onTap: _openPrivacyPolicy,
+                    child: const Text(
+                      'Privacy Policy',
                       style: TextStyle(
-                        fontSize: 14,
+                        color: AppTheme.primaryColor,
+                        fontSize: 13,
+                        decoration: TextDecoration.underline,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
-                    // const Spacer(),
-                    // TextButton(
-                    //   onPressed: () {
-                    //     Navigator.push(
-                    //       context,
-                    //       MaterialPageRoute(
-                    //           builder: (context) => const ForgotPasswordPage()),
-                    //     );
-                    //   },
-                    //   child: const Text(
-                    //     'Forgot Password?',
-                    //     style: TextStyle(color: AppTheme.primaryColor),
-                    //   ),
-                    // ),
-                  ],
-                ),
+                  ),
 
-                // Error Message
-                if (_errorMessage.isNotEmpty)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 16),
-                    child: Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Colors.red.shade50,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: Colors.red.shade200),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(Icons.error_outline,
-                              color: Colors.red.shade600, size: 20),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              _errorMessage,
-                              style: TextStyle(
-                                color: Colors.red.shade600,
-                                fontSize: 14,
-                              ),
-                            ),
-                          ),
-                        ],
+                  // Terms and Conditions - Right
+                  GestureDetector(
+                    onTap: _openTermsAndConditions,
+                    child: const Text(
+                      'Terms & Conditions',
+                      style: TextStyle(
+                        color: AppTheme.primaryColor,
+                        fontSize: 13,
+                        decoration: TextDecoration.underline,
+                        fontWeight: FontWeight.w500,
                       ),
                     ),
                   ),
-
-                const SizedBox(height: 30),
-
-                // Login Button
-                SizedBox(
-                  width: double.infinity,
-                  height: 56,
-                  child: ElevatedButton(
-                    onPressed: _isLoading ? null : _handleLogin,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppTheme.primaryColor,
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    child: _isLoading
-                        ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(
-                              valueColor:
-                                  AlwaysStoppedAnimation<Color>(Colors.white),
-                              strokeWidth: 2,
-                            ),
-                          )
-                        : const Text(
-                            'Login',
-                            style: TextStyle(
-                                fontSize: 18, fontWeight: FontWeight.w600),
-                          ),
-                  ),
-                ),
-
-                const SizedBox(height: 30),
-
-                // Register Pharmacist Link
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Expanded(
-                      child: Wrap(
-                        alignment: WrapAlignment.center,
-                        crossAxisAlignment: WrapCrossAlignment.center,
-                        children: [
-                          Text(
-                            "Don't have an account as a Pharmacist yet? ",
-                            style: TextStyle(color: Colors.grey.shade600),
-                            textAlign: TextAlign.center,
-                          ),
-                          TextButton(
-                            onPressed: () {
-                              Navigator.pushNamed(
-                                  context, AppRoutes.registerPharmacist);
-                            },
-                            style: TextButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 4, vertical: 0),
-                              minimumSize: Size.zero,
-                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                            ),
-                            child: const Text(
-                              'Register as Pharmacy/Pharmacist',
-                              style: TextStyle(
-                                color: AppTheme.primaryColor,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-
-                const SizedBox(height: 20),
-
-// Register Customer Link
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Expanded(
-                      child: Wrap(
-                        alignment: WrapAlignment.center,
-                        crossAxisAlignment: WrapCrossAlignment.center,
-                        children: [
-                          Text(
-                            "Don't have a Customer account yet? ",
-                            style: TextStyle(color: Colors.grey.shade600),
-                            textAlign: TextAlign.center,
-                          ),
-                          TextButton(
-                            onPressed: () {
-                              Navigator.pushNamed(
-                                  context, AppRoutes.registerCustomer);
-                            },
-                            style: TextButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 4, vertical: 0),
-                              minimumSize: Size.zero,
-                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                            ),
-                            child: const Text(
-                              'Register as Customer',
-                              style: TextStyle(
-                                color: AppTheme.primaryColor,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 20),
-
-                // Security Notice
-                if (_rememberPassword)
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Colors.amber.shade50,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.amber.shade200),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(
-                          Icons.security,
-                          color: Colors.amber.shade700,
-                          size: 20,
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            'Your password will be saved securely on this device only.',
-                            style: TextStyle(
-                              color: Colors.amber.shade800,
-                              fontSize: 12,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-              ],
+                ],
+              ),
             ),
-          ),
+          ],
         ),
       ),
     );
@@ -426,12 +500,6 @@ class _LoginPageState extends State<LoginPage> {
           height: 100,
           fit: BoxFit.contain,
         ),
-        // Image.asset(
-        //   'assets/images/app_icon.png',
-        //   width: 220,
-        //   height: 100,
-        //   fit: BoxFit.contain,
-        // ),
 
         const SizedBox(height: 1),
 
@@ -439,7 +507,7 @@ class _LoginPageState extends State<LoginPage> {
         const Text(
           'Welcome Back',
           style: TextStyle(
-            fontSize: 32,
+            fontSize: 24,
             fontWeight: FontWeight.bold,
             color: AppTheme.primaryColor,
           ),

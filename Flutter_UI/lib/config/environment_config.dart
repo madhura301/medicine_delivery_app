@@ -14,8 +14,8 @@ class EnvironmentConfig {
   //static const String _devApiBaseUrl = "https://localhost:7000/api";
   static const String _devApiBaseUrl = "https://10.0.2.2:7000/api";
   static const String _stagingApiBaseUrl =
-      "https://staging-api.pharmaish.com/api";
-  static const String _prodApiBaseUrl = "http://188.241.187.172/MediMartAPI1/api";
+      "http://188.241.187.172/MediMartAPI1/api";
+  static const String _prodApiBaseUrl = "http://188.241.187.172/MediMartAPIProd/api";
 
   // Timeout configurations
   static const Duration _devTimeout = Duration(seconds: 30);

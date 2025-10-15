@@ -107,7 +107,7 @@ class CustomerAddressDto {
 
   factory CustomerAddressDto.fromJson(Map<String, dynamic> json) {
     return CustomerAddressDto(
-      addressId: json['addressId'],
+      addressId: json['id'],
       customerId: json['customerId'] ?? '',
       address: json['address'],
       addressLine1: json['addressLine1'],
@@ -126,7 +126,7 @@ class CustomerAddressDto {
 
   Map<String, dynamic> toJson() {
     return {
-      if (addressId != null) 'addressId': addressId,
+      if (addressId != null) 'id': addressId,
       'customerId': customerId,
       'address': address,
       'addressLine1': addressLine1,
@@ -225,11 +225,10 @@ class _CustomerProfilePageState extends State<CustomerProfilePage> {
           _customer = CustomerDto.fromJson(responseData);
           _firstNameController.text = _customer!.customerFirstName;
           _lastNameController.text = _customer!.customerLastName;
+          // Load addresses after profile is loaded
+          _loadAddresses();
           _isLoading = false;
         });
-
-        // Load addresses after profile is loaded
-        _loadAddresses();
       } else {
         setState(() {
           _errorMessage = 'Failed to load profile. Please try again.';
@@ -255,14 +254,17 @@ class _CustomerProfilePageState extends State<CustomerProfilePage> {
       if (token == null) return;
 
       final response = await http.get(
-        Uri.parse('${AppConstants.apiBaseUrl}/CustomerAddresses/my-addresses'),
+        Uri.parse(
+            '${AppConstants.apiBaseUrl}/CustomerAddresses/customer/${_customer?.customerId}'),
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
           'Authorization': 'Bearer $token',
         },
       );
-
+      AppLogger.apiRequest('GET',
+          '${AppConstants.apiBaseUrl}/CustomerAddresses/customer/${_customer?.customerId}');
+      AppLogger.info(response.body);
       if (response.statusCode == 200) {
         final List<dynamic> responseData = jsonDecode(response.body);
         setState(() {
@@ -385,8 +387,9 @@ class _CustomerProfilePageState extends State<CustomerProfilePage> {
           'Authorization': 'Bearer $token',
         },
       );
-
-      if (response.statusCode == 200) {
+      AppLogger.apiResponse(response.statusCode,
+          '${AppConstants.apiBaseUrl}/CustomerAddresses/$addressId', null);
+      if (response.statusCode == 200 || response.statusCode == 204) {
         _showSuccessMessage('Address deleted successfully!');
         _loadAddresses();
       } else {
@@ -695,8 +698,15 @@ class _CustomerProfilePageState extends State<CustomerProfilePage> {
     );
   }
 
+  // Replace the _buildAddressCard method with this fixed version:
+// Replace the _buildAddressCard method with this corrected version:
+
   Widget _buildAddressCard(CustomerAddressDto address) {
-    final isExpanded = _expandedAddresses.contains(address.addressId);
+    // Fix: Create a consistent key that doesn't change on rebuild
+    // Use addressId if available, otherwise use the index-based approach
+    final addressKey = address.addressId ??
+        '${address.customerId}_${_addresses.indexOf(address)}';
+    final isExpanded = _expandedAddresses.contains(addressKey);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -742,11 +752,14 @@ class _CustomerProfilePageState extends State<CustomerProfilePage> {
             onTap: () {
               setState(() {
                 if (isExpanded) {
-                  _expandedAddresses.remove(address.addressId);
+                  _expandedAddresses.remove(addressKey);
                 } else {
-                  _expandedAddresses.add(address.addressId!);
+                  _expandedAddresses.add(addressKey);
                 }
               });
+              // Debug print to verify the toggle is working
+              AppLogger.info('Address expanded state: $isExpanded -> ${!isExpanded}');
+              AppLogger.info('Expanded addresses: $_expandedAddresses');
             },
           ),
           if (isExpanded)
@@ -797,7 +810,9 @@ class _CustomerProfilePageState extends State<CustomerProfilePage> {
                       const SizedBox(width: 12),
                       Expanded(
                         child: ElevatedButton.icon(
-                          onPressed: () => _deleteAddress(address.addressId!),
+                          onPressed: address.addressId != null
+                              ? () => _deleteAddress(address.addressId!)
+                              : null,
                           icon: const Icon(Icons.delete, size: 16),
                           label: const Text('Delete'),
                           style: ElevatedButton.styleFrom(
@@ -856,8 +871,7 @@ class _CustomerProfilePageState extends State<CustomerProfilePage> {
       decoration: BoxDecoration(
         color: AppTheme.primaryColor.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(12),
-        border:
-            Border.all(color: AppTheme.primaryColor.withValues(alpha: 0.2)),
+        border: Border.all(color: AppTheme.primaryColor.withValues(alpha: 0.2)),
       ),
       child: Column(
         children: [
@@ -1131,22 +1145,27 @@ class _AddAddressDialogState extends State<AddAddressDialog> {
   @override
   void initState() {
     super.initState();
-    //AppHelpers.disableScreenshots();
+    // Populate fields BEFORE building if editing an existing address
     if (widget.address != null) {
-      _populateFields();
+      // Use WidgetsBinding to ensure controllers are ready
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _populateFields();
+      });
     }
   }
 
   void _populateFields() {
     final address = widget.address!;
-    _addressController.text = address.address ?? '';
-    _addressLine1Controller.text = address.addressLine1 ?? '';
-    _addressLine2Controller.text = address.addressLine2 ?? '';
-    _addressLine3Controller.text = address.addressLine3 ?? '';
-    _cityController.text = address.city ?? '';
-    _stateController.text = address.state ?? '';
-    _postalCodeController.text = address.postalCode ?? '';
-    _isDefault = address.isDefault;
+    setState(() {
+      _addressController.text = address.address ?? '';
+      _addressLine1Controller.text = address.addressLine1 ?? '';
+      _addressLine2Controller.text = address.addressLine2 ?? '';
+      _addressLine3Controller.text = address.addressLine3 ?? '';
+      _cityController.text = address.city ?? '';
+      _stateController.text = address.state ?? '';
+      _postalCodeController.text = address.postalCode ?? '';
+      _isDefault = address.isDefault;
+    });
   }
 
   Future<void> _saveAddress() async {
@@ -1190,7 +1209,7 @@ class _AddAddressDialogState extends State<AddAddressDialog> {
         createdOn: widget.address?.createdOn ?? DateTime.now(),
         updatedOn: widget.address != null ? DateTime.now() : null,
       );
-
+      AppLogger.info(addressData.toJson().toString());
       final response = widget.address == null
           ? await http.post(
               Uri.parse('${AppConstants.apiBaseUrl}/CustomerAddresses'),
@@ -1211,7 +1230,8 @@ class _AddAddressDialogState extends State<AddAddressDialog> {
               },
               body: jsonEncode(addressData.toJson()),
             );
-
+      AppLogger.info(
+          'Save address response: ${response.statusCode} - ${response.body}');
       if (response.statusCode == 200 || response.statusCode == 201) {
         Navigator.of(context).pop();
         widget.onAddressAdded();
