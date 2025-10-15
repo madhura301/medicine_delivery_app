@@ -342,6 +342,10 @@ app.UseHttpsRedirection();
 // Add global exception handling middleware
 app.UseMiddleware<GlobalExceptionMiddleware>();
 
+
+// Serve static files from wwwroot
+app.UseStaticFiles();
+
 app.UseCors(builder =>
 {
     builder
