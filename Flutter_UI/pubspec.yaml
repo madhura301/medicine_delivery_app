@@ -51,10 +51,9 @@ flutter:
   uses-material-design: true
   
   assets:
-    - assets/images/app_full_logo_transparent.png
-    - assets/images/app_icon_animated.png
-    - assets/images/whatsapp_business.png
-    - assets/images/full_logo_animated.png
+    - assets/images/
+    - assets/icons/
+    
 flutter_launcher_icons:
   android: "launcher_icon"
   ios: true

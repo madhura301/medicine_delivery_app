@@ -25,4 +25,7 @@ class AppConstants {
   // Admin Credentials for Testing
   static const String adminMobileNumber = '9999999999';
   static const String adminPassword = 'Admin@123';
+
+  // Document URLs
+  static const String documentsProdBaseUrl = "http://188.241.187.172/MediMartAPIProd/documents";
 }

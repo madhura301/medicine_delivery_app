@@ -1,7 +1,6 @@
-// Chemist Dashboard - Updated to use OrderWidgets utility
+// Chemist Dashboard - Updated with new UI design
 import 'package:pharmaish/core/theme/app_theme.dart';
 import 'package:pharmaish/utils/app_logger.dart';
-import 'package:pharmaish/utils/helpers.dart';
 import 'package:pharmaish/utils/storage.dart';
 import 'package:flutter/material.dart';
 import 'package:pharmaish/shared/widgets/order_widgets.dart';
@@ -16,11 +15,11 @@ class ChemistDashboard extends StatefulWidget {
 class _ChemistDashboardState extends State<ChemistDashboard> {
   String? _pharmacistId;
   String? _pharmacistName;
+  bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
-    //AppHelpers.disableScreenshots();
     _loadPharmacistId();
     _loadPharmacistName();
   }
@@ -30,6 +29,7 @@ class _ChemistDashboardState extends State<ChemistDashboard> {
     AppLogger.info("pharmacistId in chemist dashboard: $userId");
     setState(() {
       _pharmacistId = userId;
+      _isLoading = false;
     });
   }
 
@@ -38,133 +38,153 @@ class _ChemistDashboardState extends State<ChemistDashboard> {
     if (userName != null) {
       setState(() {
         _pharmacistName = userName;
+        _isLoading = false;
       });
     }
   }
 
   Future<void> _logout(BuildContext context) async {
-    // Clear all stored data
-    await StorageService.clearAuthTokens();
-    await StorageService.clearSavedCredentials();
-    Navigator.pushReplacementNamed(context, '/login');
+    try {
+      // Clear ALL stored data
+      await StorageService.clearAuthTokens();
+      await StorageService.clearSavedCredentials();
+      //await StorageService.clearUserInfo();
+
+      // Navigate to login and remove all previous routes
+      if (context.mounted) {
+        Navigator.of(context).pushNamedAndRemoveUntil(
+          '/login',
+          (route) => false,
+        );
+      }
+    } catch (e) {
+      AppLogger.error('Error during logout', e);
+      // Even if there's an error, try to navigate to login
+      if (context.mounted) {
+        Navigator.of(context).pushNamedAndRemoveUntil(
+          '/login',
+          (route) => false,
+        );
+      }
+    }
   }
 
   void _goToChemistProfile(BuildContext context) {
     if (_pharmacistId != null) {
-      Navigator.pushNamed(context, '/pharmacistProfile', arguments: {
-        'pharmacistId': _pharmacistId!
-      });
+      Navigator.pushNamed(context, '/pharmacistProfile',
+          arguments: {'pharmacistId': _pharmacistId!});
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Chemist Dashboard'),
-        backgroundColor: AppTheme.primaryColor,
-        foregroundColor: Colors.white,
-        automaticallyImplyLeading: false,
-        actions: [
-          IconButton(
-            onPressed: () => _goToChemistProfile(context),
-            icon: const Icon(Icons.person),
-            tooltip: 'Profile',
-          ),
-          IconButton(
-            onPressed: () => _logout(context),
-            icon: const Icon(Icons.logout),
-            tooltip: 'Logout',
-          ),
-        ],
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Welcome Message
-            const SizedBox(height: 10),
-            if (_pharmacistName != null)
-              Text(
-                'Welcome, $_pharmacistName!',
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.grey.shade800,
+      body: Column(
+        children: [
+          // Top section with logo and title
+          Container(
+            width: double.infinity,
+            decoration: BoxDecoration(
+              color: AppTheme.primaryColor,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.2),
+                  blurRadius: 4,
+                  offset: const Offset(0, 2),
                 ),
-              ),
-
-            const SizedBox(height: 8),
-
-            Text(
-              'How would you like to place your order today?',
-              style: TextStyle(
-                fontSize: 16,
-                color: Colors.grey.shade600,
-              ),
+              ],
             ),
-
-            const SizedBox(height: 30),
-
-            // Order Options Grid
-            Expanded(
-              child: GridView.count(
-                crossAxisCount: 2,
-                crossAxisSpacing: 16,
-                mainAxisSpacing: 16,
-                childAspectRatio: 0.85,
+            child: SafeArea(
+              bottom: false,
+              child: Column(
                 children: [
-                  // Upload PDF/Image Option
-                  OrderWidgets.buildOrderOption(
-                    icon: const Icon(Icons.upload_file,
-                        size: 28, color: Colors.blue),
-                    title: 'Upload PDF/Image',
-                    subtitle: 'Upload prescription',
-                    color: Colors.blue,
-                    onTap: () =>
-                        AppHelpers.showComingSoon(context, 'Upload Feature'),
-                  ),
-
-                  // Camera Option
-                  OrderWidgets.buildOrderOption(
-                    icon: const Icon(Icons.camera_alt,
-                        size: 28, color: Colors.black),
-                    title: 'Camera',
-                    subtitle: 'Take photo',
-                    color: Colors.black,
-                    onTap: () =>
-                        AppHelpers.showComingSoon(context, 'Camera Feature'),
-                  ),
-
-                  // Voice Option
-                  OrderWidgets.buildOrderOption(
-                    icon: const Icon(Icons.mic, size: 28, color: Colors.orange),
-                    title: 'Voice',
-                    subtitle: 'Voice message/OTC',
-                    color: Colors.orange,
-                    onTap: () =>
-                        AppHelpers.showComingSoon(context, 'Voice Feature'),
-                  ),
-
-                  // WhatsApp Option
-                  OrderWidgets.buildOrderOption(
-                    icon: Image.asset(
-                      'assets/images/whatsapp_business.png',
-                      width: 28,
-                      height: 28,
+                  // Logo at the top
+                  Padding(
+                    padding: const EdgeInsets.only(top: 12, bottom: 8),
+                    child: Image.asset(
+                      'assets/images/app_icon_animated.png',
+                      width: 160,
+                      height: 70,
                       fit: BoxFit.contain,
                     ),
-                    title: 'Chat with Us',
-                    subtitle: 'WhatsApp chat',
-                    color: const Color(0xFF25D366),
-                    onTap: () => OrderWidgets.openWhatsApp(context),
+                  ),
+
+                  // Dashboard title and actions row
+                  Padding(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                    child: Row(
+                      children: [
+                        const SizedBox(width: 8),
+                        const Expanded(
+                          child: Text(
+                            'Chemist Dashboard',
+                            style: TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                        IconButton(
+                          onPressed: () => _goToChemistProfile(context),
+                          icon: const Icon(Icons.person, color: Colors.white),
+                          tooltip: 'Profile',
+                        ),
+                        IconButton(
+                          onPressed: () => _logout(context),
+                          icon: const Icon(Icons.logout, color: Colors.white),
+                          tooltip: 'Logout',
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),
             ),
-          ],
-        ),
+          ),
+
+          // Welcome Header with black background
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(
+                horizontal: 20, vertical: 10), // Reduced from 16
+            decoration: BoxDecoration(
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.1),
+                  blurRadius: 4,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: _isLoading
+                ? const SizedBox(
+                    height: 18, // Reduced from 28
+                    child: Center(
+                      child: CircularProgressIndicator(
+                        color: AppTheme.primaryColor,
+                        strokeWidth: 2,
+                      ),
+                    ),
+                  )
+                : Text(
+                    'Welcome, $_pharmacistName!',
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black,
+                    ),
+                  ),
+          ),
+          // Order Options - New Design
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: OrderWidgets.buildNewOrderUI(context),
+            ),
+          ),
+        ],
       ),
     );
   }

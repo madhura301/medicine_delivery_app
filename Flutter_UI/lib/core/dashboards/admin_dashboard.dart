@@ -1,7 +1,8 @@
 // Admin Dashboard
 import 'package:pharmaish/core/theme/app_theme.dart';
-import 'package:pharmaish/utils/helpers.dart';
+import 'package:pharmaish/utils/app_logger.dart';
 import 'package:flutter/material.dart';
+import 'package:pharmaish/utils/storage.dart';
 
 class AdminDashboard extends StatelessWidget {
   const AdminDashboard({super.key});
@@ -9,6 +10,33 @@ class AdminDashboard extends StatelessWidget {
   void _goToAdminProfile(BuildContext context) {
     Navigator.pushNamed(context, '/customerProfile');
   }
+
+  Future<void> _logout(BuildContext context) async {
+    try {
+      // Clear ALL stored data
+      await StorageService.clearAuthTokens();
+      await StorageService.clearSavedCredentials();
+      //await StorageService.clearUserInfo();
+      
+      // Navigate to login and remove all previous routes
+      if (context.mounted) {
+        Navigator.of(context).pushNamedAndRemoveUntil(
+          '/login',
+          (route) => false,
+        );
+      }
+    } catch (e) {
+      AppLogger.error('Error during logout', e);
+      // Even if there's an error, try to navigate to login
+      if (context.mounted) {
+        Navigator.of(context).pushNamedAndRemoveUntil(
+          '/login',
+          (route) => false,
+        );
+      }
+    }
+  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -25,7 +53,7 @@ class AdminDashboard extends StatelessWidget {
             tooltip: 'Profile',
           ),
           IconButton(
-            onPressed: () => AppHelpers.logout(context),
+            onPressed: () => _logout(context),
             icon: const Icon(Icons.logout),
           ),
         ],
