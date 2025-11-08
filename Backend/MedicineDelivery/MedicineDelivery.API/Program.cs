@@ -333,7 +333,7 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
     Log.Information("Swagger UI enabled for development environment");
 }
-
+app.UseStaticFiles();
 app.UseSwagger();
 app.UseSwaggerUI();
 
