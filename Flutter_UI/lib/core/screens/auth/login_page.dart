@@ -495,7 +495,7 @@ class _LoginPageState extends State<LoginPage> {
       children: [
         // App Icon
          Image.asset(
-          'assets/images/app_icon_animated.png',
+          'assets/images/app_icon_animated_blue_tagline.png',
           width: 220,
           height: 100,
           fit: BoxFit.contain,

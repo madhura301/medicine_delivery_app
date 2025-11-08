@@ -102,9 +102,9 @@ class _ChemistDashboardState extends State<ChemistDashboard> {
                   Padding(
                     padding: const EdgeInsets.only(top: 12, bottom: 8),
                     child: Image.asset(
-                      'assets/images/app_icon_animated.png',
-                      width: 160,
-                      height: 70,
+                      'assets/images/app_icon_animated_white_tagline.png',
+                      width: 150,
+                      height: 50,
                       fit: BoxFit.contain,
                     ),
                   ),
@@ -144,11 +144,11 @@ class _ChemistDashboardState extends State<ChemistDashboard> {
             ),
           ),
 
-          // Welcome Header with black background
+          // Welcome Header with reduced height
           Container(
             width: double.infinity,
             padding: const EdgeInsets.symmetric(
-                horizontal: 20, vertical: 10), // Reduced from 16
+                horizontal: 20, vertical: 6), // Reduced from 10
             decoration: BoxDecoration(
               boxShadow: [
                 BoxShadow(
@@ -160,7 +160,7 @@ class _ChemistDashboardState extends State<ChemistDashboard> {
             ),
             child: _isLoading
                 ? const SizedBox(
-                    height: 18, // Reduced from 28
+                    height: 18,
                     child: Center(
                       child: CircularProgressIndicator(
                         color: AppTheme.primaryColor,
@@ -182,6 +182,14 @@ class _ChemistDashboardState extends State<ChemistDashboard> {
             child: Padding(
               padding: const EdgeInsets.all(20),
               child: OrderWidgets.buildNewOrderUI(context),
+            ),
+          ),
+          // Black Footer
+          Container(
+            width: double.infinity,
+            height: 50, // Adjust height as needed
+            decoration: const BoxDecoration(
+              color: Colors.black,
             ),
           ),
         ],

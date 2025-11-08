@@ -8,10 +8,8 @@ import 'package:pharmaish/utils/helpers.dart';
 /// Utility class for common order-related widgets and functions
 class OrderWidgets {
   /// Opens WhatsApp with a predefined message
-  static Future<void> openWhatsApp(BuildContext context) async {
+  static Future<void> openWhatsApp(BuildContext context,String message) async {
     const String phoneNumber = '+919226737083';
-    const String message = 'Hello, I would like to place an order.';
-
     // Create WhatsApp URL
     final String whatsappUrl =
         'https://wa.me/$phoneNumber?text=${Uri.encodeComponent(message)}';
@@ -214,7 +212,7 @@ class OrderWidgets {
           title: 'Chat with Us',
           subtitle: 'WhatsApp chat',
           color: Colors.orange,
-          onTap: () => openWhatsApp(context),
+          onTap: () => openWhatsApp(context,'Hello, I would like to place an order.'),
         ),
       ],
     );
@@ -251,60 +249,70 @@ static Widget buildNewOrderUI(BuildContext context) {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      const Text(
-                        'Enter your 10 digit Membership Code',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 15,
-                          fontWeight: FontWeight.w600,
+                      GestureDetector(
+                        onTap: () => openWhatsApp(context,'Hello, I would like to become a member.'),
+                        child: RichText(
+                          textAlign: TextAlign.center,
+                          text: TextSpan(
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 15,
+                              fontWeight: FontWeight.w300,
+                            ),
+                            children: [
+                              const TextSpan(
+                                text: 'Become a Member to avail ',
+                              ),
+                              const TextSpan(
+                                text: 'EXTRA BENEFITS',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              const TextSpan(
+                                text: '!\n',
+                              ),
+                              const TextSpan(
+                                text: 'Call',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              const TextSpan(
+                                text: ' or ',
+                              ),
+                              const TextSpan(
+                                text: 'DM',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              const TextSpan(
+                                text: '-\'connect\' on ',
+                              ),
+                              const TextSpan(
+                                text: '09226737083',
+                                style: TextStyle(
+                                  color: Colors.lightBlueAccent,
+                                  decoration: TextDecoration.underline,
+                                ),
+                              ),
+                              const TextSpan(
+                                text: '.',
+                              ),
+                            ],
+                          ),
                         ),
-                        textAlign: TextAlign.center,
                       ),
                       const SizedBox(height: 6),
-                      // FIXED: Flexible wrap to keep on same line when possible
-                      Wrap(
-                        alignment: WrapAlignment.center,
-                        crossAxisAlignment: WrapCrossAlignment.center,
-                        spacing: 2, // Reduced spacing between words
-                        children: [
-                          const Text(
-                            'Get your membership code to avail',
-                            style: TextStyle(
-                              color: Colors.white70,
-                              fontSize: 11, // Reduced from 12
-                            ),
-                          ),
-                          GestureDetector(
-                            onTap: () {
-                              _showMembershipBenefitsPDF(context);
-                            },
-                            child: const Text(
-                              'extra benefits',
-                              style: TextStyle(
-                                color: Colors.lightBlueAccent,
-                                decoration: TextDecoration.underline,
-                                fontSize: 11, // Reduced from 12
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 4),
-                      // "Click here.." on separate line
-                      GestureDetector(
-                        onTap: () {
-                          _showMembershipPDF(context);
-                        },
-                        child: const Text(
-                          'Click here..',
-                          style: TextStyle(
-                            color: Colors.lightBlueAccent,
-                            decoration: TextDecoration.underline,
-                            fontSize: 11, // Reduced from 12
-                          ),
-                          textAlign: TextAlign.center,
+                      const Text(
+                        'Already a Member, ignore this message.',
+                        style: TextStyle(
+                          color: Colors.white70,
+                          fontSize: 10,
+                          fontStyle: FontStyle.italic,
                         ),
+                        textAlign: TextAlign.center,
                       ),
                     ],
                   ),
@@ -314,7 +322,7 @@ static Widget buildNewOrderUI(BuildContext context) {
                 const Text(
                   'PLACE YOUR ORDER',
                   style: TextStyle(
-                    fontSize: 18,
+                    fontSize: 16,
                     fontWeight: FontWeight.bold,
                     letterSpacing: 0.5,
                   ),
@@ -373,7 +381,7 @@ static Widget buildNewOrderUI(BuildContext context) {
                         imagePath: 'assets/images/whatsapp_business.png',
                         title: 'WHATSAPP',
                         subtitle: 'Chat with us',
-                        onTap: () => openWhatsApp(context),
+                        onTap: () => openWhatsApp(context,'Hello, I would like to place an order.'),
                       ),
                     ),
                   ],
