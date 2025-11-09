@@ -18,13 +18,6 @@ namespace MedicineDelivery.Application.Mappings
             CreateMap<CreateProductDto, Product>();
             CreateMap<UpdateProductDto, Product>();
 
-            // Order mappings
-            CreateMap<Order, OrderDto>();
-            CreateMap<OrderItem, OrderItemDto>();
-            CreateMap<CreateOrderDto, Order>();
-            CreateMap<CreateOrderItemDto, OrderItem>();
-            CreateMap<UpdateOrderDto, Order>();
-
             // MedicalStore mappings
             CreateMap<MedicalStore, MedicalStoreDto>();
             CreateMap<MedicalStoreRegistrationDto, MedicalStore>();

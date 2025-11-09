@@ -166,18 +166,6 @@ builder.Services.AddAuthorization(options =>
     options.AddPolicy("RequireDeleteProductsPermission", policy => 
         policy.Requirements.Add(new MedicineDelivery.API.Authorization.PermissionRequirement("DeleteProducts")));
     
-    options.AddPolicy("RequireReadOrdersPermission", policy => 
-        policy.Requirements.Add(new MedicineDelivery.API.Authorization.PermissionRequirement("ReadOrders")));
-    
-    options.AddPolicy("RequireCreateOrdersPermission", policy => 
-        policy.Requirements.Add(new MedicineDelivery.API.Authorization.PermissionRequirement("CreateOrders")));
-    
-    options.AddPolicy("RequireUpdateOrdersPermission", policy => 
-        policy.Requirements.Add(new MedicineDelivery.API.Authorization.PermissionRequirement("UpdateOrders")));
-    
-    options.AddPolicy("RequireDeleteOrdersPermission", policy => 
-        policy.Requirements.Add(new MedicineDelivery.API.Authorization.PermissionRequirement("DeleteOrders")));
-    
     // Admin User Management Policies
     options.AddPolicy("RequireAdminReadUsersPermission", policy => 
         policy.Requirements.Add(new MedicineDelivery.API.Authorization.PermissionRequirement("AdminReadUsers")));

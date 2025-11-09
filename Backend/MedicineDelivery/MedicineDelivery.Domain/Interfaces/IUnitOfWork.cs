@@ -7,8 +7,6 @@ namespace MedicineDelivery.Domain.Interfaces
         IRepository<Permission> Permissions { get; }
         IRepository<RolePermission> RolePermissions { get; }
         IRepository<Product> Products { get; }
-        IRepository<Order> Orders { get; }
-        IRepository<OrderItem> OrderItems { get; }
         IRepository<MedicalStore> MedicalStores { get; }
         IRepository<CustomerSupport> CustomerSupports { get; }
         IRepository<Manager> Managers { get; }

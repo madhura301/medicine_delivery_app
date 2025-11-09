@@ -59,24 +59,6 @@ namespace MedicineDelivery.Infrastructure.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "Orders",
-                columns: table => new
-                {
-                    Id = table.Column<int>(type: "integer", nullable: false)
-                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
-                    CustomerName = table.Column<string>(type: "text", nullable: false),
-                    CustomerEmail = table.Column<string>(type: "text", nullable: false),
-                    TotalAmount = table.Column<decimal>(type: "numeric", nullable: false),
-                    Status = table.Column<string>(type: "text", nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_Orders", x => x.Id);
-                });
-
-            migrationBuilder.CreateTable(
                 name: "Permissions",
                 columns: table => new
                 {
@@ -250,35 +232,6 @@ namespace MedicineDelivery.Infrastructure.Migrations
                         principalTable: "AspNetUsers",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "OrderItems",
-                columns: table => new
-                {
-                    Id = table.Column<int>(type: "integer", nullable: false)
-                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
-                    OrderId = table.Column<int>(type: "integer", nullable: false),
-                    ProductId = table.Column<int>(type: "integer", nullable: false),
-                    Quantity = table.Column<int>(type: "integer", nullable: false),
-                    UnitPrice = table.Column<decimal>(type: "numeric", nullable: false),
-                    TotalPrice = table.Column<decimal>(type: "numeric", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_OrderItems", x => x.Id);
-                    table.ForeignKey(
-                        name: "FK_OrderItems_Orders_OrderId",
-                        column: x => x.OrderId,
-                        principalTable: "Orders",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
-                    table.ForeignKey(
-                        name: "FK_OrderItems_Products_ProductId",
-                        column: x => x.ProductId,
-                        principalTable: "Products",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Restrict);
                 });
 
             migrationBuilder.CreateTable(
@@ -499,10 +452,6 @@ namespace MedicineDelivery.Infrastructure.Migrations
                     { 6, new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6096), "Can create new products", true, "Products", "CreateProducts" },
                     { 7, new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6098), "Can update products", true, "Products", "UpdateProducts" },
                     { 8, new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6099), "Can delete products", true, "Products", "DeleteProducts" },
-                    { 9, new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6100), "Can view orders", true, "Orders", "ReadOrders" },
-                    { 10, new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6101), "Can create new orders", true, "Orders", "CreateOrders" },
-                    { 11, new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6103), "Can update orders", true, "Orders", "UpdateOrders" },
-                    { 12, new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6104), "Can delete orders", true, "Orders", "DeleteOrders" },
                     { 13, new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6106), "Admin can view all user information", true, "UserManagement", "AdminReadUsers" },
                     { 14, new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6107), "Admin can create users", true, "UserManagement", "AdminCreateUsers" },
                     { 15, new DateTime(2025, 9, 25, 19, 39, 54, 513, DateTimeKind.Utc).AddTicks(6108), "Admin can update user information", true, "UserManagement", "AdminUpdateUsers" },
@@ -747,16 +696,6 @@ namespace MedicineDelivery.Infrastructure.Migrations
                 column: "UserId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_OrderItems_OrderId",
-                table: "OrderItems",
-                column: "OrderId");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_OrderItems_ProductId",
-                table: "OrderItems",
-                column: "ProductId");
-
-            migrationBuilder.CreateIndex(
                 name: "IX_RolePermissions_PermissionId",
                 table: "RolePermissions",
                 column: "PermissionId");
@@ -798,9 +737,6 @@ namespace MedicineDelivery.Infrastructure.Migrations
                 name: "MedicalStores");
 
             migrationBuilder.DropTable(
-                name: "OrderItems");
-
-            migrationBuilder.DropTable(
                 name: "RolePermissions");
 
             migrationBuilder.DropTable(
@@ -811,9 +747,6 @@ namespace MedicineDelivery.Infrastructure.Migrations
 
             migrationBuilder.DropTable(
                 name: "AspNetUsers");
-
-            migrationBuilder.DropTable(
-                name: "Orders");
 
             migrationBuilder.DropTable(
                 name: "Products");
