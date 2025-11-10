@@ -101,3 +101,11 @@ The response will include a JWT token. Include this token in the Authorization h
 ```
 Authorization: Bearer <your-jwt-token>
 ```
+
+Add Mgration
+Add-Migration RemovedOrderAndOrderItemTable
+
+Generate Script
+Script-Migration RemovedOrderAndOrderItemTable
+
+Append script to API->MigrationScript->Migration_Script.sql
