@@ -22,6 +22,9 @@ namespace MedicineDelivery.Infrastructure.Data
         public DbSet<Manager> Managers { get; set; }
         public DbSet<Customer> Customers { get; set; }
         public DbSet<CustomerAddress> CustomerAddresses { get; set; }
+        public DbSet<Order> Orders { get; set; }
+        public DbSet<OrderAssignmentHistory> OrderAssignmentHistories { get; set; }
+        public DbSet<Payment> Payments { get; set; }
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
@@ -374,6 +377,126 @@ namespace MedicineDelivery.Infrastructure.Data
                 .HasForeignKey(ca => ca.CustomerId)
                 .OnDelete(DeleteBehavior.Cascade);
 
+            // Configure Order entity
+            builder.Entity<Order>(entity =>
+            {
+                entity.HasKey(o => o.OrderId);
+
+                entity.Property(o => o.AssignedByType)
+                    .HasConversion<string>()
+                    .HasMaxLength(20);
+
+                entity.Property(o => o.OrderType)
+                    .HasConversion<string>()
+                    .HasMaxLength(20);
+
+                entity.Property(o => o.OrderInputType)
+                    .HasConversion<string>()
+                    .HasMaxLength(20);
+
+                entity.Property(o => o.OrderStatus)
+                    .HasConversion<string>()
+                    .HasMaxLength(50);
+
+                entity.Property(o => o.OrderInputFileLocation)
+                    .HasMaxLength(100);
+
+                entity.Property(o => o.OTP)
+                    .HasMaxLength(10);
+
+                entity.Property(o => o.TotalAmount)
+                    .HasColumnType("decimal(10,2)");
+
+                entity.HasOne(o => o.Customer)
+                    .WithMany()
+                    .HasForeignKey(o => o.CustomerId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne(o => o.CustomerAddress)
+                    .WithMany()
+                    .HasForeignKey(o => o.CustomerAddressId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne(o => o.MedicalStore)
+                    .WithMany()
+                    .HasForeignKey(o => o.MedicalStoreId)
+                    .OnDelete(DeleteBehavior.SetNull);
+
+                entity.HasOne(o => o.CustomerSupport)
+                    .WithMany()
+                    .HasForeignKey(o => o.CustomerSupportId)
+                    .OnDelete(DeleteBehavior.SetNull);
+
+                entity.HasIndex(o => o.CustomerId);
+                entity.HasIndex(o => o.OrderStatus);
+                entity.HasIndex(o => o.MedicalStoreId);
+            });
+
+            // Configure OrderAssignmentHistory entity
+            builder.Entity<OrderAssignmentHistory>(entity =>
+            {
+                entity.HasKey(oah => oah.AssignmentId);
+
+                entity.Property(oah => oah.AssignedByType)
+                    .HasConversion<string>()
+                    .HasMaxLength(20);
+
+                entity.Property(oah => oah.Status)
+                    .HasConversion<string>()
+                    .HasMaxLength(20);
+
+                entity.Property(oah => oah.RejectNote)
+                    .HasMaxLength(250);
+
+                entity.HasOne(oah => oah.Order)
+                    .WithMany(o => o.AssignmentHistory)
+                    .HasForeignKey(oah => oah.OrderId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(oah => oah.MedicalStore)
+                    .WithMany()
+                    .HasForeignKey(oah => oah.MedicalStoreId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne(oah => oah.CustomerSupport)
+                    .WithMany()
+                    .HasForeignKey(oah => oah.AssignedByCustomerSupportId)
+                    .OnDelete(DeleteBehavior.SetNull);
+
+                entity.HasIndex(oah => oah.OrderId);
+                entity.HasIndex(oah => oah.MedicalStoreId);
+                entity.HasIndex(oah => oah.Status);
+            });
+
+            // Configure Payment entity
+            builder.Entity<Payment>(entity =>
+            {
+                entity.HasKey(p => p.PaymentId);
+
+                entity.Property(p => p.PaymentMode)
+                    .HasMaxLength(50)
+                    .IsRequired();
+
+                entity.Property(p => p.TransactionId)
+                    .HasMaxLength(100)
+                    .IsRequired();
+
+                entity.Property(p => p.Amount)
+                    .HasColumnType("decimal(10,2)");
+
+                entity.Property(p => p.PaymentStatus)
+                    .HasConversion<string>()
+                    .HasMaxLength(50);
+
+                entity.HasOne(p => p.Order)
+                    .WithMany(o => o.Payments)
+                    .HasForeignKey(p => p.OrderId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasIndex(p => p.OrderId);
+                entity.HasIndex(p => p.TransactionId).IsUnique();
+            });
+
             // Seed permissions
             builder.Entity<Permission>().HasData(
                 // Original permissions
@@ -656,6 +779,18 @@ namespace MedicineDelivery.Infrastructure.Data
             builder.Entity<Customer>()
                 .Property(c => c.CustomerId)
                 .HasDefaultValueSql("NEWID()");
+
+            builder.Entity<Order>()
+                .Property(o => o.CreatedOn)
+                .HasDefaultValueSql("GETUTCDATE()");
+
+            builder.Entity<OrderAssignmentHistory>()
+                .Property(oah => oah.AssignedOn)
+                .HasDefaultValueSql("GETUTCDATE()");
+
+            builder.Entity<Payment>()
+                .Property(p => p.PaidOn)
+                .HasDefaultValueSql("GETUTCDATE()");
         }
 
         private void ConfigureForPostgreSQL(ModelBuilder builder)
@@ -709,6 +844,37 @@ namespace MedicineDelivery.Infrastructure.Data
             builder.Entity<Customer>()
                 .Property(c => c.UpdatedOn)
                 .HasColumnType("timestamp with time zone");
+
+            builder.Entity<Order>()
+                .Property(o => o.CreatedOn)
+                .HasColumnType("timestamp with time zone")
+                .HasDefaultValueSql("now() at time zone 'utc'");
+
+            builder.Entity<Order>()
+                .Property(o => o.UpdatedOn)
+                .HasColumnType("timestamp with time zone");
+
+            builder.Entity<Order>()
+                .Property(o => o.TotalAmount)
+                .HasColumnType("numeric(10,2)");
+
+            builder.Entity<OrderAssignmentHistory>()
+                .Property(oah => oah.AssignedOn)
+                .HasColumnType("timestamp with time zone")
+                .HasDefaultValueSql("now() at time zone 'utc'");
+
+            builder.Entity<OrderAssignmentHistory>()
+                .Property(oah => oah.UpdatedOn)
+                .HasColumnType("timestamp with time zone");
+
+            builder.Entity<Payment>()
+                .Property(p => p.PaidOn)
+                .HasColumnType("timestamp with time zone")
+                .HasDefaultValueSql("now() at time zone 'utc'");
+
+            builder.Entity<Payment>()
+                .Property(p => p.Amount)
+                .HasColumnType("numeric(10,2)");
 
             // Configure ApplicationUser DateTime properties for PostgreSQL
             builder.Entity<Domain.Entities.ApplicationUser>()

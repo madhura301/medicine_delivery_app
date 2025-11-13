@@ -166,6 +166,18 @@ builder.Services.AddAuthorization(options =>
     options.AddPolicy("RequireDeleteProductsPermission", policy => 
         policy.Requirements.Add(new MedicineDelivery.API.Authorization.PermissionRequirement("DeleteProducts")));
     
+    options.AddPolicy("RequireOrderReadPermission", policy =>
+        policy.Requirements.Add(new MedicineDelivery.API.Authorization.PermissionRequirement("ReadOrders")));
+    
+    options.AddPolicy("RequireOrderCreatePermission", policy =>
+        policy.Requirements.Add(new MedicineDelivery.API.Authorization.PermissionRequirement("CreateOrders")));
+    
+    options.AddPolicy("RequireOrderUpdatePermission", policy =>
+        policy.Requirements.Add(new MedicineDelivery.API.Authorization.PermissionRequirement("UpdateOrders")));
+    
+    options.AddPolicy("RequireOrderDeletePermission", policy =>
+        policy.Requirements.Add(new MedicineDelivery.API.Authorization.PermissionRequirement("DeleteOrders")));
+    
     // Admin User Management Policies
     options.AddPolicy("RequireAdminReadUsersPermission", policy => 
         policy.Requirements.Add(new MedicineDelivery.API.Authorization.PermissionRequirement("AdminReadUsers")));
@@ -308,6 +320,7 @@ builder.Services.AddScoped<MedicineDelivery.Application.Interfaces.ICustomerServ
 builder.Services.AddScoped<MedicineDelivery.Application.Interfaces.ICustomerAddressService, MedicineDelivery.Infrastructure.Services.CustomerAddressService>();
 builder.Services.AddScoped<MedicineDelivery.Application.Interfaces.IPhotoUploadService, MedicineDelivery.Infrastructure.Services.PhotoUploadService>();
 builder.Services.AddScoped<MedicineDelivery.Application.Interfaces.IPermissionCheckerService, MedicineDelivery.Infrastructure.Services.PermissionCheckerService>();
+builder.Services.AddScoped<MedicineDelivery.Application.Interfaces.IOrderService, MedicineDelivery.Infrastructure.Services.OrderService>();
 
 // Add SignInManager explicitly (not automatically registered with AddIdentity)
 builder.Services.AddScoped<SignInManager<MedicineDelivery.Domain.Entities.ApplicationUser>>();

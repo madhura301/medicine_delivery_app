@@ -16,6 +16,9 @@ namespace MedicineDelivery.Infrastructure.Repositories
         private IRepository<Manager>? _managers;
         private IRepository<Customer>? _customers;
         private IRepository<CustomerAddress>? _customerAddresses;
+        private IRepository<Order>? _orders;
+        private IRepository<OrderAssignmentHistory>? _orderAssignmentHistories;
+        private IRepository<Payment>? _payments;
 
         public UnitOfWork(ApplicationDbContext context)
         {
@@ -30,6 +33,9 @@ namespace MedicineDelivery.Infrastructure.Repositories
         public IRepository<Manager> Managers => _managers ??= new Repository<Manager>(_context);
         public IRepository<Customer> Customers => _customers ??= new Repository<Customer>(_context);
         public IRepository<CustomerAddress> CustomerAddresses => _customerAddresses ??= new Repository<CustomerAddress>(_context);
+        public IRepository<Order> Orders => _orders ??= new Repository<Order>(_context);
+        public IRepository<OrderAssignmentHistory> OrderAssignmentHistories => _orderAssignmentHistories ??= new Repository<OrderAssignmentHistory>(_context);
+        public IRepository<Payment> Payments => _payments ??= new Repository<Payment>(_context);
 
         public async Task<int> SaveChangesAsync()
         {

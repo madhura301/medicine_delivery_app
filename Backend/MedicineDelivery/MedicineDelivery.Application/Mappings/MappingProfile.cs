@@ -40,6 +40,12 @@ namespace MedicineDelivery.Application.Mappings
             CreateMap<CustomerAddress, CustomerAddressDto>();
             CreateMap<CreateCustomerAddressDto, CustomerAddress>();
             CreateMap<UpdateCustomerAddressDto, CustomerAddress>();
+
+            // Order mappings
+            CreateMap<Order, OrderDto>();
+            CreateMap<OrderAssignmentHistory, OrderAssignmentHistoryDto>();
+            CreateMap<Payment, PaymentDto>();
+            CreateMap<CreateOrderDto, Order>();
         }
     }
 }
