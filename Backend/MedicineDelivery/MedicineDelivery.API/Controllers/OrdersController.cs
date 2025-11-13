@@ -22,7 +22,7 @@ namespace MedicineDelivery.API.Controllers
         }
 
         [HttpGet("{orderId:int}")]
-        //[Authorize(Policy = "RequireOrderReadPermission")]
+        [Authorize(Policy = "RequireOrderReadPermission")]
         public async Task<IActionResult> GetOrderById(int orderId, CancellationToken cancellationToken)
         {
             try
@@ -47,7 +47,7 @@ namespace MedicineDelivery.API.Controllers
 
         [HttpPost]
         [Consumes("multipart/form-data")]
-       // [Authorize(Policy = "RequireOrderCreatePermission")]
+        [Authorize(Policy = "RequireOrderCreatePermission")]
         public async Task<IActionResult> CreateOrder([FromForm] CreateOrderDto request, CancellationToken cancellationToken)
         {
             if (!ModelState.IsValid)
