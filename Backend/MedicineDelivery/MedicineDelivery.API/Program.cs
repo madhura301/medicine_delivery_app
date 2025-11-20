@@ -10,7 +10,6 @@ using MedicineDelivery.Infrastructure.Services;
 using MedicineDelivery.Application.Mappings;
 using MedicineDelivery.Application.Features.Users.Commands.CreateUser;
 using MedicineDelivery.Application.Features.Users.Queries.GetUsers;
-using MedicineDelivery.API.Data;
 using MedicineDelivery.API.Authorization;
 using MedicineDelivery.API.Services;
 using MedicineDelivery.API.Middleware;
@@ -370,27 +369,6 @@ app.MapGet("/test-logging", () =>
     Log.Error("This is a test error log");
     return Results.Ok(new { message = "Test logs written successfully", timestamp = DateTime.UtcNow });
 });
-
-// Seed the database
-using (var scope = app.Services.CreateScope())
-{
-    var services = scope.ServiceProvider;
-    try
-    {
-        Log.Information("Starting database seeding process");
-        var context = services.GetRequiredService<MedicineDelivery.Infrastructure.Data.ApplicationDbContext>();
-        var userManager = services.GetRequiredService<UserManager<MedicineDelivery.Domain.Entities.ApplicationUser>>();
-        var roleManager = services.GetRequiredService<RoleManager<IdentityRole>>();
-        var roleService = services.GetRequiredService<MedicineDelivery.Domain.Interfaces.IRoleService>();
-        await SeedData.Initialize(context, userManager, roleManager, roleService);
-        Log.Information("Database seeding completed successfully");
-    }
-    catch (Exception ex)
-    {
-        Log.Error(ex, "An error occurred seeding the database");
-        throw;
-    }
-}
 
 Log.Information("Medicine Delivery API is starting up");
 app.Run();
