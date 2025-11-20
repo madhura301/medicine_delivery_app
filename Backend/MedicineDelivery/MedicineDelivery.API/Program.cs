@@ -86,7 +86,7 @@ builder.Services.AddDbContext<MedicineDelivery.Infrastructure.Data.ApplicationDb
             break;
         case "SqlServer":
         default:
-            options.UseSqlServer(connectionString);
+            options.UseNpgsql(connectionString);
             break;
     }
 });
