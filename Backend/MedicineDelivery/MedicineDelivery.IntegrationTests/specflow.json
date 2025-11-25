@@ -1,0 +1,9 @@
+{
+  "specFlow": {
+    "runtime": {
+      "missingOrPendingStepsOutcome": "Inconclusive"
+    },
+    "stepAssemblies": []
+  }
+}
+
