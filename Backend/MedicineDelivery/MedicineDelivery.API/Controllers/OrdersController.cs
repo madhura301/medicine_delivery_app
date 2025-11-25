@@ -45,6 +45,29 @@ namespace MedicineDelivery.API.Controllers
             }
         }
 
+        [HttpGet("customer/{customerId:guid}")]
+        [Authorize(Policy = "RequireOrderReadPermission")]
+        public async Task<IActionResult> GetOrdersByCustomerId(Guid customerId, CancellationToken cancellationToken)
+        {
+            try
+            {
+                var orders = await _orderService.GetOrdersByCustomerIdAsync(customerId, cancellationToken);
+                return Ok(orders);
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { error = ex.Message });
+            }
+            catch (OperationCanceledException)
+            {
+                return StatusCode(499, new { error = "Request was cancelled." });
+            }
+            catch (Exception)
+            {
+                return StatusCode(500, new { error = "An error occurred while retrieving the orders." });
+            }
+        }
+
         [HttpPost]
         [Consumes("multipart/form-data")]
         [Authorize(Policy = "RequireOrderCreatePermission")]

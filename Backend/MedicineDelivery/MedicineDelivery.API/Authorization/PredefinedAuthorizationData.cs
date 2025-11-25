@@ -114,12 +114,12 @@ namespace MedicineDelivery.API.Authorization
                 [CustomerRoleId] = new[]
                 {
                     "ReadProducts",
-                    "CustomerRead", "CustomerUpdate", "CustomerDelete"
+                    "CustomerRead", "CustomerUpdate", "CustomerDelete", "ReadOrders", "CreateOrders", "UpdateOrders","CustomerCreate",
                 },
                 [ChemistRoleId] = new[]
                 {
                     "ReadProducts", "CreateProducts", "UpdateProducts", "DeleteProducts",
-                    "ChemistRead", "ChemistUpdate", "ChemistDelete"
+                    "ChemistRead", "ChemistUpdate", "ChemistDelete", "ReadOrders", "CreateOrders", "UpdateOrders"
                 }
             });
 

@@ -134,6 +134,19 @@ namespace MedicineDelivery.Infrastructure.Services
             return _mapper.Map<OrderDto>(order);
         }
 
+        public async Task<IEnumerable<OrderDto>> GetOrdersByCustomerIdAsync(Guid customerId, CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            if (customerId == Guid.Empty)
+            {
+                throw new ArgumentException("CustomerId is required.", nameof(customerId));
+            }
+
+            var orders = await _unitOfWork.Orders.FindAsync(o => o.CustomerId == customerId);
+            return _mapper.Map<IEnumerable<OrderDto>>(orders);
+        }
+
         private void ValidateOrderInputFile(OrderInputType inputType, IFormFile file)
         {
             var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
