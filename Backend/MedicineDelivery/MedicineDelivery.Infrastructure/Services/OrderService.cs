@@ -163,6 +163,30 @@ namespace MedicineDelivery.Infrastructure.Services
             return _mapper.Map<IEnumerable<OrderDto>>(orders);
         }
 
+        public async Task<OrderDto> AcceptOrderByChemistAsync(int orderId, CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            var order = await _unitOfWork.Orders.FirstOrDefaultAsync(o => o.OrderId == orderId);
+            if (order == null)
+            {
+                throw new KeyNotFoundException("Order not found.");
+            }
+
+            if (order.OrderStatus != OrderStatus.AssignedToChemist)
+            {
+                throw new InvalidOperationException($"Order can only be accepted when its status is {OrderStatus.AssignedToChemist}. Current status is {order.OrderStatus}.");
+            }
+
+            order.OrderStatus = OrderStatus.AcceptedByChemist;
+            order.UpdatedOn = DateTime.UtcNow;
+
+            _unitOfWork.Orders.Update(order);
+            await _unitOfWork.SaveChangesAsync();
+
+            return _mapper.Map<OrderDto>(order);
+        }
+
         private void ValidateOrderInputFile(OrderInputType inputType, IFormFile file)
         {
             var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
