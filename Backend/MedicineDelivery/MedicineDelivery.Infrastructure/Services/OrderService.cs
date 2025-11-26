@@ -147,6 +147,22 @@ namespace MedicineDelivery.Infrastructure.Services
             return _mapper.Map<IEnumerable<OrderDto>>(orders);
         }
 
+        public async Task<IEnumerable<OrderDto>> GetActiveOrdersByMedicalStoreIdAsync(Guid medicalStoreId, CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            if (medicalStoreId == Guid.Empty)
+            {
+                throw new ArgumentException("MedicalStoreId is required.", nameof(medicalStoreId));
+            }
+
+            var orders = await _unitOfWork.Orders.FindAsync(o => 
+                o.MedicalStoreId == medicalStoreId && 
+                o.OrderStatus != OrderStatus.Completed);
+            
+            return _mapper.Map<IEnumerable<OrderDto>>(orders);
+        }
+
         private void ValidateOrderInputFile(OrderInputType inputType, IFormFile file)
         {
             var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
