@@ -118,6 +118,42 @@ namespace MedicineDelivery.API.Controllers
             }
         }
 
+        [HttpPut("{orderId:int}/reject")]
+        [Authorize(Policy = "RequireOrderUpdatePermission")]
+        public async Task<IActionResult> RejectOrderByChemist(int orderId, [FromBody] RejectOrderDto rejectDto, CancellationToken cancellationToken)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            try
+            {
+                var order = await _orderService.RejectOrderByChemistAsync(orderId, rejectDto, cancellationToken);
+                return Ok(order);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { error = ex.Message });
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { error = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { error = ex.Message });
+            }
+            catch (OperationCanceledException)
+            {
+                return StatusCode(499, new { error = "Request was cancelled." });
+            }
+            catch (Exception)
+            {
+                return StatusCode(500, new { error = "An error occurred while rejecting the order." });
+            }
+        }
+
         [HttpPost]
         [Consumes("multipart/form-data")]
         [Authorize(Policy = "RequireOrderCreatePermission")]
