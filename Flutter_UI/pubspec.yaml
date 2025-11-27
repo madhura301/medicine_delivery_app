@@ -17,6 +17,22 @@ dependencies:
   # Location & Maps
   geolocator: ^9.0.2
   geocoding: ^2.1.1
+
+ # File handling
+  file_picker: ^8.0.0+1
+  image_picker: ^1.0.7
+  camera: ^0.10.5+9
+  path: ^1.8.3
+  path_provider: ^2.1.2
+  
+  # Audio recording & playback
+  # record: ^5.0.4
+  # audioplayers: ^5.2.1
+  flutter_sound: ^9.2.13
+
+   # Permissions
+  permission_handler: ^11.2.0
+
   # WhatsApp icon
   font_awesome_flutter: ^10.7.0
   # flutter_svg: ^2.0.9

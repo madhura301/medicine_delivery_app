@@ -3,10 +3,43 @@
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.INTERNET"/>
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+     <!-- CAMERA PERMISSIONS -->
+    <!-- Required for camera capture feature -->
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
+    <uses-feature android:name="android.hardware.camera.autofocus" android:required="false" />
+    
+    <!-- STORAGE PERMISSIONS -->
+    <!-- Required for file upload and image selection -->
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" 
+        android:maxSdkVersion="32" />
+    
+    <!-- Android 13+ Photo Picker -->
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+    <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
+    
+    <!-- AUDIO PERMISSIONS -->
+    <!-- Required for voice recording feature -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+     <!-- WHATSAPP QUERIES -->
+    <!-- Required for WhatsApp integration -->
+    <queries>
+        <package android:name="com.whatsapp" />
+        <package android:name="com.whatsapp.w4b" />
+        
+        <!-- General intent for other apps -->
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="https" />
+        </intent>
+    </queries>
+
     <application
         android:label="@string/app_name"
         android:name="${applicationName}"
         android:icon="@mipmap/launcher_icon"
+        android:requestLegacyExternalStorage="true"
         android:usesCleartextTraffic="true"
         android:largeHeap="true">
          <meta-data
@@ -39,6 +72,18 @@
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
+
+             <!-- File Provider for sharing files (if needed) -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
+        
     </application>
     <!-- Required to query activities that can process text, see:
          https://developer.android.com/training/package-visibility and

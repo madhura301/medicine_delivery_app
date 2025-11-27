@@ -28,4 +28,28 @@ class AppConstants {
 
   // Document URLs
   static const String documentsProdBaseUrl = "http://188.241.187.172/MediMartAPIProd/documents";
+
+  // Order Configuration
+  static const int maxFileSizeMB = 10;
+  static const int maxFileSizeBytes = maxFileSizeMB * 1024 * 1024;
+  static const int maxVoiceRecordingSeconds = 120; // 2 minutes
+  static const int maxTextLength = 5000;
+  
+  // Supported file types
+  static const List<String> supportedImageExtensions = ['jpg', 'jpeg', 'png'];
+  static const List<String> supportedDocumentExtensions = ['pdf'];
+  static const List<String> supportedAudioExtensions = ['m4a', 'mp4', 'aac', 'wav'];
+  
+  // Order Type Display Names
+  static const Map<String, String> orderTypeDisplayNames = {
+    'Upload': 'File Upload',
+    'Camera': 'Camera Capture',
+    'Voice': 'Voice Recording',
+    'WhatsApp': 'WhatsApp Order',
+  };
+  
+  // Delivery options
+  static const List<String> deliveryTypes = ['home', 'pickup'];
+  static const List<String> urgencyLevels = ['regular', 'express'];
+  
 }

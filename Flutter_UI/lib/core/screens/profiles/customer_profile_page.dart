@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:pharmaish/core/services/location_service.dart';
 import 'package:pharmaish/core/theme/app_theme.dart';
 import 'package:pharmaish/utils/app_logger.dart';
 import 'dart:convert';
 
 import 'package:pharmaish/utils/constants.dart';
-import 'package:pharmaish/utils/helpers.dart';
 import 'package:pharmaish/utils/storage.dart';
 
 class CustomerDto {
@@ -1141,6 +1141,9 @@ class _AddAddressDialogState extends State<AddAddressDialog> {
   final _postalCodeController = TextEditingController();
   bool _isDefault = false;
   bool _isSaving = false;
+  bool _isFetchingLocation = false;
+  String _locationMessage = '';
+  final LocationService _locationService = LocationService();
 
   @override
   void initState() {
@@ -1256,6 +1259,62 @@ class _AddAddressDialogState extends State<AddAddressDialog> {
     );
   }
 
+  Future<void> _getCurrentLocation() async {
+    setState(() {
+      _isFetchingLocation = true;
+      _locationMessage = 'Fetching your location...';
+    });
+
+    try {
+      final LocationResult result = await _locationService.getCurrentLocation(
+        includeAddress: true,
+        timeLimit: const Duration(seconds: 20),
+      );
+      AppLogger.info(
+          'Location result: ${result.latitude}, ${result.longitude} - ${result.address}');
+      setState(() {
+        _isFetchingLocation = false;
+
+        if (result.isValid) {
+          // Auto-populate fields with location data
+          if (result.street != null && result.street!.isNotEmpty) {
+            _addressLine1Controller.text = result.street!;
+          }
+
+          if (result.locality != null && result.locality!.isNotEmpty) {
+            _addressLine2Controller.text = result.locality!;
+          }
+
+          if (result.city != null && result.city!.isNotEmpty) {
+            _cityController.text = result.city!;
+          }
+
+          if (result.state != null && result.state!.isNotEmpty) {
+            _stateController.text = result.state!;
+          }
+
+          if (result.postalCode != null && result.postalCode!.isNotEmpty) {
+            _postalCodeController.text = result.postalCode!;
+          }
+
+          _locationMessage = 'Location fetched successfully!\n'
+              'Lat: ${result.latitude.toStringAsFixed(6)}, '
+              'Long: ${result.longitude.toStringAsFixed(6)}';
+
+          AppLogger.info('Address auto-populated from GPS location');
+        } else {
+          _locationMessage = result.error ?? 'Unable to get location';
+        }
+      });
+    } catch (e) {
+      setState(() {
+        _isFetchingLocation = false;
+        _locationMessage = 'Error fetching location. Please try again.';
+      });
+      AppLogger.error('Location error in AddAddressDialog: $e');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
@@ -1268,6 +1327,64 @@ class _AddAddressDialogState extends State<AddAddressDialog> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
+                // Use Current Location Button
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppTheme.primaryColor.withOpacity(0.05),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: AppTheme.primaryColor.withOpacity(0.2),
+                    ),
+                  ),
+                  child: Column(
+                    children: [
+                      ElevatedButton.icon(
+                        onPressed: _isFetchingLocation ? null : _getCurrentLocation,
+                        icon: _isFetchingLocation
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                ),
+                              )
+                            : const Icon(Icons.my_location),
+                        label: Text(_isFetchingLocation
+                            ? 'Fetching Location...'
+                            : 'Use Current Location'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppTheme.primaryColor,
+                          foregroundColor: Colors.white,
+                          minimumSize: const Size(double.infinity, 48),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                      ),
+                      if (_locationMessage.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 8),
+                          child: Text(
+                            _locationMessage,
+                            style: TextStyle(
+                              color: _locationMessage.contains('successfully')
+                                  ? Colors.green
+                                  : _locationMessage.contains('Error') || 
+                                    _locationMessage.contains('Unable')
+                                      ? Colors.red
+                                      : Colors.blue,
+                              fontSize: 12,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 20),
                 TextFormField(
                   controller: _addressController,
                   decoration: const InputDecoration(
