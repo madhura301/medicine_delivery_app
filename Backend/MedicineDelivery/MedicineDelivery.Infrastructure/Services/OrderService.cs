@@ -134,6 +134,109 @@ namespace MedicineDelivery.Infrastructure.Services
             return _mapper.Map<OrderDto>(order);
         }
 
+        public async Task<IEnumerable<OrderDto>> GetOrdersByCustomerIdAsync(Guid customerId, CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            if (customerId == Guid.Empty)
+            {
+                throw new ArgumentException("CustomerId is required.", nameof(customerId));
+            }
+
+            var orders = await _unitOfWork.Orders.FindAsync(o => o.CustomerId == customerId);
+            return _mapper.Map<IEnumerable<OrderDto>>(orders);
+        }
+
+        public async Task<IEnumerable<OrderDto>> GetActiveOrdersByMedicalStoreIdAsync(Guid medicalStoreId, CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            if (medicalStoreId == Guid.Empty)
+            {
+                throw new ArgumentException("MedicalStoreId is required.", nameof(medicalStoreId));
+            }
+
+            var orders = await _unitOfWork.Orders.FindAsync(o => 
+                o.MedicalStoreId == medicalStoreId && 
+                o.OrderStatus != OrderStatus.Completed);
+            
+            return _mapper.Map<IEnumerable<OrderDto>>(orders);
+        }
+
+        public async Task<OrderDto> AcceptOrderByChemistAsync(int orderId, CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            var order = await _unitOfWork.Orders.FirstOrDefaultAsync(o => o.OrderId == orderId);
+            if (order == null)
+            {
+                throw new KeyNotFoundException("Order not found.");
+            }
+
+            if (order.OrderStatus != OrderStatus.AssignedToChemist)
+            {
+                throw new InvalidOperationException($"Order can only be accepted when its status is {OrderStatus.AssignedToChemist}. Current status is {order.OrderStatus}.");
+            }
+
+            order.OrderStatus = OrderStatus.AcceptedByChemist;
+            order.UpdatedOn = DateTime.UtcNow;
+
+            _unitOfWork.Orders.Update(order);
+            await _unitOfWork.SaveChangesAsync();
+
+            return _mapper.Map<OrderDto>(order);
+        }
+
+        public async Task<OrderDto> RejectOrderByChemistAsync(int orderId, RejectOrderDto rejectDto, CancellationToken cancellationToken = default)
+        {
+            ArgumentNullException.ThrowIfNull(rejectDto);
+            cancellationToken.ThrowIfCancellationRequested();
+
+            if (string.IsNullOrWhiteSpace(rejectDto.RejectNote))
+            {
+                throw new ArgumentException("Reject note is required.", nameof(rejectDto.RejectNote));
+            }
+
+            var order = await _unitOfWork.Orders.FirstOrDefaultAsync(o => o.OrderId == orderId);
+            if (order == null)
+            {
+                throw new KeyNotFoundException("Order not found.");
+            }
+
+            if (order.OrderStatus != OrderStatus.AssignedToChemist)
+            {
+                throw new InvalidOperationException($"Order can only be rejected when its status is {OrderStatus.AssignedToChemist}. Current status is {order.OrderStatus}.");
+            }
+
+            // Find the latest assignment history with Assigned status for this order
+            var assignmentHistories = await _unitOfWork.OrderAssignmentHistories.FindAsync(
+                ah => ah.OrderId == orderId && ah.Status == AssignmentStatus.Assigned);
+            
+            var latestAssignment = assignmentHistories
+                .OrderByDescending(ah => ah.AssignedOn)
+                .FirstOrDefault();
+
+            if (latestAssignment == null)
+            {
+                throw new InvalidOperationException("No active assignment found for this order.");
+            }
+
+            // Update the assignment history
+            latestAssignment.Status = AssignmentStatus.Rejected;
+            latestAssignment.RejectNote = rejectDto.RejectNote.Trim();
+            latestAssignment.UpdatedOn = DateTime.UtcNow;
+
+            // Update the order status
+            order.OrderStatus = OrderStatus.RejectedByChemist;
+            order.UpdatedOn = DateTime.UtcNow;
+
+            _unitOfWork.OrderAssignmentHistories.Update(latestAssignment);
+            _unitOfWork.Orders.Update(order);
+            await _unitOfWork.SaveChangesAsync();
+
+            return _mapper.Map<OrderDto>(order);
+        }
+
         private void ValidateOrderInputFile(OrderInputType inputType, IFormFile file)
         {
             var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
