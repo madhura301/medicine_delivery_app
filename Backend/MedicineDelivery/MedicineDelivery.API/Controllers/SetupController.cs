@@ -293,71 +293,193 @@ namespace MedicineDelivery.API.Controllers
         }
 
         /// <summary>
-        /// Creates the default admin user (Dipmala Patil) if it does not already exist and assigns the Admin role.
+        /// Creates the Admin user with predefined credentials if it does not already exist.
+        /// Mobile: 9999999999, Email: admin@medicine.com, Password: Admin@123
+        /// </summary>
+        [HttpPost("users/admin/firstuser")]
+        [AllowAnonymous]
+        public async Task<IActionResult> CreateAdminFirstUser()
+        {
+            const string roleName = "Admin";
+            const string mobileNumber = "8793583675";
+            const string email = "dipmala.patil@medicine.com";
+            const string password = "Admin@123";
+            const string firstName = "System";
+            const string lastName = "Administrator";
+
+            return await CreateUserAsync(roleName, mobileNumber, email, password, firstName, lastName);
+        }
+
+        /// <summary>
+        /// Creates the Admin user with predefined credentials if it does not already exist.
+        /// Mobile: 9999999999, Email: admin@medicine.com, Password: Admin@123
         /// </summary>
         [HttpPost("users/admin")]
         [AllowAnonymous]
-        public async Task<IActionResult> CreateDefaultAdminUser()
+        public async Task<IActionResult> CreateAdminUser()
         {
-            const string adminRoleName = "Admin";
-            const string adminMobile = "8793583675";
-            const string adminEmail = "dipmala.patil@medicine.com";
-            const string defaultPassword = "Admin@123";
+            const string roleName = "Admin";
+            const string mobileNumber = "9999999999";
+            const string email = "admin@medicine.com";
+            const string password = "Admin@123";
+            const string firstName = "System";
+            const string lastName = "Administrator";
 
-            var existingUser = await _userManager.FindByNameAsync(adminMobile)
-                ?? await _userManager.FindByEmailAsync(adminEmail);
+            return await CreateUserAsync(roleName, mobileNumber, email, password, firstName, lastName);
+        }
+
+        /// <summary>
+        /// Creates the Manager user with predefined credentials if it does not already exist.
+        /// </summary>
+        [HttpPost("users/manager")]
+        [AllowAnonymous]
+        public async Task<IActionResult> CreateManagerUser()
+        {
+            const string roleName = "Manager";
+            const string mobileNumber = "8888888888";
+            const string email = "manager@medicine.com";
+            const string password = "Manager@123";
+            const string firstName = "John";
+            const string lastName = "Manager";
+
+            return await CreateUserAsync(roleName, mobileNumber, email, password, firstName, lastName);
+        }
+
+        /// <summary>
+        /// Creates the CustomerSupport user with predefined credentials if it does not already exist.
+        /// </summary>
+        [HttpPost("users/customer-support")]
+        [AllowAnonymous]
+        public async Task<IActionResult> CreateCustomerSupportUser()
+        {
+            const string roleName = "CustomerSupport";
+            const string mobileNumber = "7777777777";
+            const string email = "support@medicine.com";
+            const string password = "Support@123";
+            const string firstName = "Jane";
+            const string lastName = "Support";
+
+            return await CreateUserAsync(roleName, mobileNumber, email, password, firstName, lastName);
+        }
+
+        /// <summary>
+        /// Creates the Customer user with predefined credentials if it does not already exist.
+        /// </summary>
+        [HttpPost("users/customer")]
+        [AllowAnonymous]
+        public async Task<IActionResult> CreateCustomerUser()
+        {
+            const string roleName = "Customer";
+            const string mobileNumber = "6666666666";
+            const string email = "customer@medicine.com";
+            const string password = "Customer@123";
+            const string firstName = "Alice";
+            const string lastName = "Customer";
+
+            return await CreateUserAsync(roleName, mobileNumber, email, password, firstName, lastName);
+        }
+
+        /// <summary>
+        /// Creates the Chemist user with predefined credentials if it does not already exist.
+        /// </summary>
+        [HttpPost("users/chemist")]
+        [AllowAnonymous]
+        public async Task<IActionResult> CreateChemistUser()
+        {
+            const string roleName = "Chemist";
+            const string mobileNumber = "5555555555";
+            const string email = "chemist@medicine.com";
+            const string password = "Chemist@123";
+            const string firstName = "Bob";
+            const string lastName = "Chemist";
+
+            return await CreateUserAsync(roleName, mobileNumber, email, password, firstName, lastName);
+        }
+
+        /// <summary>
+        /// Helper method to create a user with the specified role and credentials.
+        /// </summary>
+        private async Task<IActionResult> CreateUserAsync(
+            string roleName,
+            string mobileNumber,
+            string email,
+            string password,
+            string firstName,
+            string lastName)
+        {
+            // Check if user already exists
+            var existingUser = await _userManager.FindByNameAsync(mobileNumber)
+                ?? await _userManager.FindByEmailAsync(email);
 
             if (existingUser != null)
             {
-                return Conflict("Admin user already exists.");
+                return Conflict(new
+                {
+                    Message = $"User with mobile {mobileNumber} or email {email} already exists.",
+                    User = new { existingUser.Id, existingUser.UserName, existingUser.Email, existingUser.FirstName, existingUser.LastName }
+                });
             }
 
-            if (!await _roleManager.RoleExistsAsync(adminRoleName))
+            // Ensure role exists
+            if (!await _roleManager.RoleExistsAsync(roleName))
             {
                 var role = new IdentityRole
                 {
-                    Name = adminRoleName,
-                    NormalizedName = adminRoleName.ToUpperInvariant(),
+                    Name = roleName,
+                    NormalizedName = roleName.ToUpperInvariant(),
                     ConcurrencyStamp = Guid.NewGuid().ToString()
                 };
 
                 var roleResult = await _roleManager.CreateAsync(role);
                 if (!roleResult.Succeeded)
                 {
-                    return StatusCode(StatusCodes.Status500InternalServerError, roleResult.Errors);
+                    return StatusCode(StatusCodes.Status500InternalServerError, new
+                    {
+                        Message = $"Failed to create role {roleName}.",
+                        Errors = roleResult.Errors.Select(e => e.Description)
+                    });
                 }
             }
 
-            var adminUser = new ApplicationUser
+            // Create user
+            var user = new ApplicationUser
             {
-                UserName = adminMobile,
-                Email = adminEmail,
-                PhoneNumber = adminMobile,
+                UserName = mobileNumber,
+                Email = email,
+                PhoneNumber = mobileNumber,
                 EmailConfirmed = true,
                 PhoneNumberConfirmed = true,
-                FirstName = "Dipmala",
-                LastName = "Patil",
-                Gender = "Female",
+                FirstName = firstName,
+                LastName = lastName,
                 IsActive = true,
                 CreatedAt = DateTime.UtcNow
             };
 
-            var createResult = await _userManager.CreateAsync(adminUser, defaultPassword);
+            var createResult = await _userManager.CreateAsync(user, password);
             if (!createResult.Succeeded)
             {
-                return StatusCode(StatusCodes.Status500InternalServerError, createResult.Errors);
+                return StatusCode(StatusCodes.Status500InternalServerError, new
+                {
+                    Message = $"Failed to create user {mobileNumber}.",
+                    Errors = createResult.Errors.Select(e => e.Description)
+                });
             }
 
-            var addToRoleResult = await _userManager.AddToRoleAsync(adminUser, adminRoleName);
+            // Add to role
+            var addToRoleResult = await _userManager.AddToRoleAsync(user, roleName);
             if (!addToRoleResult.Succeeded)
             {
-                return StatusCode(StatusCodes.Status500InternalServerError, addToRoleResult.Errors);
+                return StatusCode(StatusCodes.Status500InternalServerError, new
+                {
+                    Message = $"Failed to assign role {roleName} to user {mobileNumber}.",
+                    Errors = addToRoleResult.Errors.Select(e => e.Description)
+                });
             }
 
             return Ok(new
             {
-                Message = "Admin user created successfully.",
-                User = new { adminUser.Id, adminUser.UserName, adminUser.Email }
+                Message = $"{roleName} user created successfully.",
+                User = new { user.Id, user.UserName, user.Email, user.FirstName, user.LastName, Role = roleName }
             });
         }
     }

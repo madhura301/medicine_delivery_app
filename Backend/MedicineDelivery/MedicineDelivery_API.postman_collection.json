@@ -1,0 +1,1492 @@
+{
+	"info": {
+		"_postman_id": "medicine-delivery-api",
+		"name": "Medicine Delivery API",
+		"description": "Complete API collection for Medicine Delivery Application",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Authentication",
+			"item": [
+				{
+					"name": "Login",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"admin@medicine.com\",\n  \"password\": \"Admin@123\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/auth/login",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "auth", "login"]
+						}
+					}
+				},
+				{
+					"name": "Register",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"user@example.com\",\n  \"password\": \"Password@123\",\n  \"firstName\": \"John\",\n  \"lastName\": \"Doe\",\n  \"phoneNumber\": \"1234567890\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/auth/register",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "auth", "register"]
+						}
+					}
+				},
+				{
+					"name": "Forgot Password",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"user@example.com\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/auth/forgot-password",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "auth", "forgot-password"]
+						}
+					}
+				},
+				{
+					"name": "Reset Password",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"user@example.com\",\n  \"token\": \"reset-token\",\n  \"newPassword\": \"NewPassword@123\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/auth/reset-password",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "auth", "reset-password"]
+						}
+					}
+				},
+				{
+					"name": "Change Password",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"currentPassword\": \"OldPassword@123\",\n  \"newPassword\": \"NewPassword@123\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/auth/change-password",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "auth", "change-password"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Setup",
+			"item": [
+				{
+					"name": "Create Role",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"RoleName\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/setup/roles",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "setup", "roles"]
+						}
+					}
+				},
+				{
+					"name": "Create Permission",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"PermissionName\",\n  \"module\": \"ModuleName\",\n  \"description\": \"Permission description\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/setup/permissions",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "setup", "permissions"]
+						}
+					}
+				},
+				{
+					"name": "Create Predefined Roles",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/setup/roles/predefined",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "setup", "roles", "predefined"]
+						}
+					}
+				},
+				{
+					"name": "Create Predefined Permissions",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/setup/permissions/predefined",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "setup", "permissions", "predefined"]
+						}
+					}
+				},
+				{
+					"name": "Map Predefined Role Permissions",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/setup/role-permissions/predefined",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "setup", "role-permissions", "predefined"]
+						}
+					}
+				},
+				{
+					"name": "Create Admin First User",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/setup/users/admin/firstuser",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "setup", "users", "admin", "firstuser"]
+						},
+						"description": "Creates admin user: Mobile: 8793583675, Email: dipmala.patil@medicine.com, Password: Admin@123"
+					}
+				},
+				{
+					"name": "Create Admin User",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/setup/users/admin",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "setup", "users", "admin"]
+						},
+						"description": "Creates admin user: Mobile: 9999999999, Email: admin@medicine.com, Password: Admin@123"
+					}
+				},
+				{
+					"name": "Create Manager User",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/setup/users/manager",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "setup", "users", "manager"]
+						},
+						"description": "Creates manager user: Mobile: 8888888888, Email: manager@medicine.com, Password: Manager@123"
+					}
+				},
+				{
+					"name": "Create CustomerSupport User",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/setup/users/customer-support",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "setup", "users", "customer-support"]
+						},
+						"description": "Creates customer support user: Mobile: 7777777777, Email: support@medicine.com, Password: Support@123"
+					}
+				},
+				{
+					"name": "Create Customer User",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/setup/users/customer",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "setup", "users", "customer"]
+						},
+						"description": "Creates customer user: Mobile: 6666666666, Email: customer@medicine.com, Password: Customer@123"
+					}
+				},
+				{
+					"name": "Create Chemist User",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/setup/users/chemist",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "setup", "users", "chemist"]
+						},
+						"description": "Creates chemist user: Mobile: 5555555555, Email: chemist@medicine.com, Password: Chemist@123"
+					}
+				}
+			]
+		},
+		{
+			"name": "Orders",
+			"item": [
+				{
+					"name": "Get Order By ID",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/orders/1",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "orders", "1"]
+						}
+					}
+				},
+				{
+					"name": "Get Orders By Customer ID",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/orders/customer/{{customerId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "orders", "customer", "{{customerId}}"]
+						},
+						"description": "Get all orders belonging to a specific customer"
+					}
+				},
+				{
+					"name": "Get Active Orders By Medical Store ID",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/orders/medicalstore/{{medicalStoreId}}/active",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "orders", "medicalstore", "{{medicalStoreId}}", "active"]
+						},
+						"description": "Get all active orders (status != Completed) for a medical store"
+					}
+				},
+				{
+					"name": "Accept Order By Chemist",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/orders/{{orderId}}/accept",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "orders", "{{orderId}}", "accept"]
+						},
+						"description": "Accept an order (only if status is AssignedToChemist)"
+					}
+				},
+				{
+					"name": "Reject Order By Chemist",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"rejectNote\": \"Unable to fulfill order due to stock unavailability\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/orders/{{orderId}}/reject",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "orders", "{{orderId}}", "reject"]
+						},
+						"description": "Reject an order with a note (only if status is AssignedToChemist)"
+					}
+				},
+				{
+					"name": "Create Order",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "CustomerId",
+									"value": "{{customerId}}",
+									"type": "text"
+								},
+								{
+									"key": "CustomerAddressId",
+									"value": "{{customerAddressId}}",
+									"type": "text"
+								},
+								{
+									"key": "OrderType",
+									"value": "0",
+									"type": "text"
+								},
+								{
+									"key": "OrderInputType",
+									"value": "0",
+									"type": "text"
+								},
+								{
+									"key": "OrderInputText",
+									"value": "Paracetamol 500mg x 2",
+									"type": "text"
+								},
+								{
+									"key": "OrderInputFile",
+									"type": "file",
+									"src": []
+								}
+							]
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/orders",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "orders"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Users",
+			"item": [
+				{
+					"name": "Get All Users",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/users",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "users"]
+						}
+					}
+				},
+				{
+					"name": "Create User",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"user@example.com\",\n  \"password\": \"Password@123\",\n  \"firstName\": \"John\",\n  \"lastName\": \"Doe\",\n  \"phoneNumber\": \"1234567890\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/users",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "users"]
+						}
+					}
+				},
+				{
+					"name": "Create User With Role",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"user@example.com\",\n  \"password\": \"Password@123\",\n  \"firstName\": \"John\",\n  \"lastName\": \"Doe\",\n  \"phoneNumber\": \"1234567890\",\n  \"roleId\": \"11111111-1111-1111-1111-111111111111\",\n  \"emailConfirmed\": true,\n  \"isActive\": true\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/users/create-with-role",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "users", "create-with-role"]
+						}
+					}
+				},
+				{
+					"name": "Register User",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"user@example.com\",\n  \"password\": \"Password@123\",\n  \"firstName\": \"John\",\n  \"lastName\": \"Doe\",\n  \"phoneNumber\": \"1234567890\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/users/register",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "users", "register"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Customers",
+			"item": [
+				{
+					"name": "Get All Customers",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/customers",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "customers"]
+						}
+					}
+				},
+				{
+					"name": "Get Customer By ID",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/customers/{{customerId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "customers", "{{customerId}}"]
+						}
+					}
+				},
+				{
+					"name": "Get Customer By Mobile",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/customers/by-mobile/{{mobileNumber}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "customers", "by-mobile", "{{mobileNumber}}"]
+						}
+					}
+				},
+				{
+					"name": "Get My Profile",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/customers/my-profile",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "customers", "my-profile"]
+						}
+					}
+				},
+				{
+					"name": "Register Customer",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"customer@example.com\",\n  \"password\": \"Password@123\",\n  \"firstName\": \"John\",\n  \"lastName\": \"Doe\",\n  \"mobileNumber\": \"1234567890\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/customers/register",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "customers", "register"]
+						}
+					}
+				},
+				{
+					"name": "Create Customer",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"customer@example.com\",\n  \"mobileNumber\": \"1234567890\",\n  \"firstName\": \"John\",\n  \"lastName\": \"Doe\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/customers",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "customers"]
+						}
+					}
+				},
+				{
+					"name": "Update Customer",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"customer@example.com\",\n  \"mobileNumber\": \"1234567890\",\n  \"firstName\": \"John\",\n  \"lastName\": \"Doe\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/customers/{{customerId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "customers", "{{customerId}}"]
+						}
+					}
+				},
+				{
+					"name": "Delete Customer",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/customers/{{customerId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "customers", "{{customerId}}"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Customer Addresses",
+			"item": [
+				{
+					"name": "Get Address By ID",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/customeraddresses/{{addressId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "customeraddresses", "{{addressId}}"]
+						}
+					}
+				},
+				{
+					"name": "Get Addresses By Customer ID",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/customeraddresses/customer/{{customerId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "customeraddresses", "customer", "{{customerId}}"]
+						}
+					}
+				},
+				{
+					"name": "Get Default Address By Customer ID",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/customeraddresses/customer/{{customerId}}/default",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "customeraddresses", "customer", "{{customerId}}", "default"]
+						}
+					}
+				},
+				{
+					"name": "Create Address",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"customerId\": \"{{customerId}}\",\n  \"streetAddress\": \"123 Main St\",\n  \"city\": \"City\",\n  \"state\": \"State\",\n  \"zipCode\": \"12345\",\n  \"isDefault\": true\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/customeraddresses",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "customeraddresses"]
+						}
+					}
+				},
+				{
+					"name": "Update Address",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"streetAddress\": \"123 Main St\",\n  \"city\": \"City\",\n  \"state\": \"State\",\n  \"zipCode\": \"12345\",\n  \"isDefault\": true\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/customeraddresses/{{addressId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "customeraddresses", "{{addressId}}"]
+						}
+					}
+				},
+				{
+					"name": "Delete Address",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/customeraddresses/{{addressId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "customeraddresses", "{{addressId}}"]
+						}
+					}
+				},
+				{
+					"name": "Set Default Address",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/customeraddresses/customer/{{customerId}}/set-default/{{addressId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "customeraddresses", "customer", "{{customerId}}", "set-default", "{{addressId}}"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Products",
+			"item": [
+				{
+					"name": "Get All Products",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/products",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "products"]
+						}
+					}
+				},
+				{
+					"name": "Get Product By ID",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/products/{{productId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "products", "{{productId}}"]
+						}
+					}
+				},
+				{
+					"name": "Create Product",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Product Name\",\n  \"description\": \"Product Description\",\n  \"price\": 100.00\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/products",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "products"]
+						}
+					}
+				},
+				{
+					"name": "Update Product",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Updated Product Name\",\n  \"description\": \"Updated Description\",\n  \"price\": 150.00\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/products/{{productId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "products", "{{productId}}"]
+						}
+					}
+				},
+				{
+					"name": "Delete Product",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/products/{{productId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "products", "{{productId}}"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Medical Stores",
+			"item": [
+				{
+					"name": "Register Medical Store",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Medical Store Name\",\n  \"email\": \"store@example.com\",\n  \"phoneNumber\": \"1234567890\",\n  \"address\": \"Store Address\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/medicalstores/register",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "medicalstores", "register"]
+						}
+					}
+				},
+				{
+					"name": "Get All Medical Stores",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/medicalstores",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "medicalstores"]
+						}
+					}
+				},
+				{
+					"name": "Get Medical Store By ID",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/medicalstores/{{medicalStoreId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "medicalstores", "{{medicalStoreId}}"]
+						}
+					}
+				},
+				{
+					"name": "Get Medical Store By Email",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/medicalstores/by-email/{{email}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "medicalstores", "by-email", "{{email}}"]
+						}
+					}
+				},
+				{
+					"name": "Update Medical Store",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Updated Store Name\",\n  \"email\": \"updated@example.com\",\n  \"phoneNumber\": \"1234567890\",\n  \"address\": \"Updated Address\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/medicalstores/{{medicalStoreId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "medicalstores", "{{medicalStoreId}}"]
+						}
+					}
+				},
+				{
+					"name": "Delete Medical Store",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/medicalstores/{{medicalStoreId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "medicalstores", "{{medicalStoreId}}"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Managers",
+			"item": [
+				{
+					"name": "Register Manager",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"manager@example.com\",\n  \"password\": \"Password@123\",\n  \"firstName\": \"John\",\n  \"lastName\": \"Manager\",\n  \"phoneNumber\": \"1234567890\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/managers/register",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "managers", "register"]
+						}
+					}
+				},
+				{
+					"name": "Get All Managers",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/managers",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "managers"]
+						}
+					}
+				},
+				{
+					"name": "Get Manager By ID",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/managers/{{managerId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "managers", "{{managerId}}"]
+						}
+					}
+				},
+				{
+					"name": "Get Manager By Email",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/managers/by-email/{{email}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "managers", "by-email", "{{email}}"]
+						}
+					}
+				},
+				{
+					"name": "Update Manager",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"firstName\": \"Updated\",\n  \"lastName\": \"Manager\",\n  \"phoneNumber\": \"1234567890\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/managers/{{managerId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "managers", "{{managerId}}"]
+						}
+					}
+				},
+				{
+					"name": "Delete Manager",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/managers/{{managerId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "managers", "{{managerId}}"]
+						}
+					}
+				},
+				{
+					"name": "Upload Manager Photo",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "photo",
+									"type": "file",
+									"src": []
+								}
+							]
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/managers/{{managerId}}/photo",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "managers", "{{managerId}}", "photo"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Customer Supports",
+			"item": [
+				{
+					"name": "Register Customer Support",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"support@example.com\",\n  \"password\": \"Password@123\",\n  \"firstName\": \"Jane\",\n  \"lastName\": \"Support\",\n  \"phoneNumber\": \"1234567890\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/customersupports/register",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "customersupports", "register"]
+						}
+					}
+				},
+				{
+					"name": "Get All Customer Supports",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/customersupports",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "customersupports"]
+						}
+					}
+				},
+				{
+					"name": "Get Customer Support By ID",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/customersupports/{{customerSupportId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "customersupports", "{{customerSupportId}}"]
+						}
+					}
+				},
+				{
+					"name": "Get Customer Support By Email",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/customersupports/by-email/{{email}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "customersupports", "by-email", "{{email}}"]
+						}
+					}
+				},
+				{
+					"name": "Update Customer Support",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"firstName\": \"Updated\",\n  \"lastName\": \"Support\",\n  \"phoneNumber\": \"1234567890\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/customersupports/{{customerSupportId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "customersupports", "{{customerSupportId}}"]
+						}
+					}
+				},
+				{
+					"name": "Delete Customer Support",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/customersupports/{{customerSupportId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "customersupports", "{{customerSupportId}}"]
+						}
+					}
+				},
+				{
+					"name": "Upload Customer Support Photo",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "photo",
+									"type": "file",
+									"src": []
+								}
+							]
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/customersupports/{{customerSupportId}}/photo",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "customersupports", "{{customerSupportId}}", "photo"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Role Permissions",
+			"item": [
+				{
+					"name": "Get Permissions By Role ID",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/rolepermissions/{{roleId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "rolepermissions", "{{roleId}}"]
+						}
+					}
+				},
+				{
+					"name": "Add Permission To Role",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"roleId\": \"{{roleId}}\",\n  \"permissionId\": 1\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/rolepermissions/add",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "rolepermissions", "add"]
+						}
+					}
+				},
+				{
+					"name": "Remove Permission From Role",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"roleId\": \"{{roleId}}\",\n  \"permissionId\": 1\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/rolepermissions/remove",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "rolepermissions", "remove"]
+						}
+					}
+				},
+				{
+					"name": "Get Roles With Permissions",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/rolepermissions/roles-with-permissions",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "rolepermissions", "roles-with-permissions"]
+						}
+					}
+				}
+			]
+		}
+	],
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://localhost:5000",
+			"type": "string"
+		},
+		{
+			"key": "token",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "customerId",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "orderId",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "medicalStoreId",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "addressId",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "productId",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "managerId",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "customerSupportId",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "roleId",
+			"value": "",
+			"type": "string"
+		}
+	]
+}
+
