@@ -11,6 +11,29 @@
 			"item": [
 				{
 					"name": "Login",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"if (pm.response.code === 200) {",
+									"    var jsonData = pm.response.json();",
+									"    if (jsonData.token) {",
+									"        pm.collectionVariables.set(\"token\", jsonData.token);",
+									"    }",
+									"    if (jsonData.user && jsonData.user.id) {",
+									"        pm.collectionVariables.set(\"userId\", jsonData.user.id);",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
 					"request": {
 						"method": "POST",
 						"header": [
@@ -27,8 +50,10 @@
 							"raw": "{{baseUrl}}/api/auth/login",
 							"host": ["{{baseUrl}}"],
 							"path": ["api", "auth", "login"]
-						}
-					}
+						},
+						"description": "Login with admin credentials. Token will be automatically saved to collection variable."
+					},
+					"response": []
 				},
 				{
 					"name": "Register",
@@ -203,6 +228,26 @@
 				},
 				{
 					"name": "Create Admin First User",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200 or 409\", function () {",
+									"    pm.expect([200, 409]).to.include(pm.response.code);",
+									"});",
+									"",
+									"if (pm.response.code === 200) {",
+									"    pm.test(\"User created successfully\", function () {",
+									"        var jsonData = pm.response.json();",
+									"        pm.expect(jsonData.message).to.include('created successfully');",
+									"    });",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
 					"request": {
 						"method": "POST",
 						"header": [],
@@ -212,10 +257,31 @@
 							"path": ["api", "setup", "users", "admin", "firstuser"]
 						},
 						"description": "Creates admin user: Mobile: 8793583675, Email: dipmala.patil@medicine.com, Password: Admin@123"
-					}
+					},
+					"response": []
 				},
 				{
 					"name": "Create Admin User",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200 or 409\", function () {",
+									"    pm.expect([200, 409]).to.include(pm.response.code);",
+									"});",
+									"",
+									"if (pm.response.code === 200) {",
+									"    pm.test(\"Admin user created\", function () {",
+									"        var jsonData = pm.response.json();",
+									"        pm.expect(jsonData.user.email).to.equal('admin@medicine.com');",
+									"    });",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
 					"request": {
 						"method": "POST",
 						"header": [],
@@ -225,10 +291,24 @@
 							"path": ["api", "setup", "users", "admin"]
 						},
 						"description": "Creates admin user: Mobile: 9999999999, Email: admin@medicine.com, Password: Admin@123"
-					}
+					},
+					"response": []
 				},
 				{
 					"name": "Create Manager User",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200 or 409\", function () {",
+									"    pm.expect([200, 409]).to.include(pm.response.code);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
 					"request": {
 						"method": "POST",
 						"header": [],
@@ -238,10 +318,24 @@
 							"path": ["api", "setup", "users", "manager"]
 						},
 						"description": "Creates manager user: Mobile: 8888888888, Email: manager@medicine.com, Password: Manager@123"
-					}
+					},
+					"response": []
 				},
 				{
 					"name": "Create CustomerSupport User",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200 or 409\", function () {",
+									"    pm.expect([200, 409]).to.include(pm.response.code);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
 					"request": {
 						"method": "POST",
 						"header": [],
@@ -251,10 +345,31 @@
 							"path": ["api", "setup", "users", "customer-support"]
 						},
 						"description": "Creates customer support user: Mobile: 7777777777, Email: support@medicine.com, Password: Support@123"
-					}
+					},
+					"response": []
 				},
 				{
 					"name": "Create Customer User",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200 or 409\", function () {",
+									"    pm.expect([200, 409]).to.include(pm.response.code);",
+									"});",
+									"",
+									"if (pm.response.code === 200) {",
+									"    var jsonData = pm.response.json();",
+									"    if (jsonData.user && jsonData.user.id) {",
+									"        pm.collectionVariables.set(\"customerUserId\", jsonData.user.id);",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
 					"request": {
 						"method": "POST",
 						"header": [],
@@ -264,10 +379,24 @@
 							"path": ["api", "setup", "users", "customer"]
 						},
 						"description": "Creates customer user: Mobile: 6666666666, Email: customer@medicine.com, Password: Customer@123"
-					}
+					},
+					"response": []
 				},
 				{
 					"name": "Create Chemist User",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200 or 409\", function () {",
+									"    pm.expect([200, 409]).to.include(pm.response.code);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
 					"request": {
 						"method": "POST",
 						"header": [],
@@ -277,7 +406,8 @@
 							"path": ["api", "setup", "users", "chemist"]
 						},
 						"description": "Creates chemist user: Mobile: 5555555555, Email: chemist@medicine.com, Password: Chemist@123"
-					}
+					},
+					"response": []
 				}
 			]
 		},
@@ -303,6 +433,29 @@
 				},
 				{
 					"name": "Get Orders By Customer ID",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Response is an array\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.be.an('array');",
+									"});",
+									"",
+									"if (pm.response.code === 200 && pm.response.json().length > 0) {",
+									"    var orders = pm.response.json();",
+									"    pm.collectionVariables.set(\"orderId\", orders[0].orderId);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
 					"request": {
 						"method": "GET",
 						"header": [
@@ -316,11 +469,37 @@
 							"host": ["{{baseUrl}}"],
 							"path": ["api", "orders", "customer", "{{customerId}}"]
 						},
-						"description": "Get all orders belonging to a specific customer"
-					}
+						"description": "Get all orders belonging to a specific customer. Example customerId: 00000000-0000-0000-0000-000000000001"
+					},
+					"response": []
 				},
 				{
 					"name": "Get Active Orders By Medical Store ID",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Response is an array\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.be.an('array');",
+									"});",
+									"",
+									"pm.test(\"All orders are not Completed\", function () {",
+									"    var orders = pm.response.json();",
+									"    orders.forEach(function(order) {",
+									"        pm.expect(order.orderStatus).to.not.equal('Completed');",
+									"    });",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
 					"request": {
 						"method": "GET",
 						"header": [
@@ -334,11 +513,32 @@
 							"host": ["{{baseUrl}}"],
 							"path": ["api", "orders", "medicalstore", "{{medicalStoreId}}", "active"]
 						},
-						"description": "Get all active orders (status != Completed) for a medical store"
-					}
+						"description": "Get all active orders (status != Completed) for a medical store. Example medicalStoreId: 00000000-0000-0000-0000-000000000001"
+					},
+					"response": []
 				},
 				{
 					"name": "Accept Order By Chemist",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Order status is AcceptedByChemist\", function () {",
+									"    if (pm.response.code === 200) {",
+									"        var jsonData = pm.response.json();",
+									"        pm.expect(jsonData.orderStatus).to.equal('AcceptedByChemist');",
+									"    }",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
 					"request": {
 						"method": "PUT",
 						"header": [
@@ -352,11 +552,32 @@
 							"host": ["{{baseUrl}}"],
 							"path": ["api", "orders", "{{orderId}}", "accept"]
 						},
-						"description": "Accept an order (only if status is AssignedToChemist)"
-					}
+						"description": "Accept an order (only if status is AssignedToChemist). Requires order with status 'AssignedToChemist'"
+					},
+					"response": []
 				},
 				{
 					"name": "Reject Order By Chemist",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Order status is RejectedByChemist\", function () {",
+									"    if (pm.response.code === 200) {",
+									"        var jsonData = pm.response.json();",
+									"        pm.expect(jsonData.orderStatus).to.equal('RejectedByChemist');",
+									"    }",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
 					"request": {
 						"method": "PUT",
 						"header": [
@@ -378,8 +599,9 @@
 							"host": ["{{baseUrl}}"],
 							"path": ["api", "orders", "{{orderId}}", "reject"]
 						},
-						"description": "Reject an order with a note (only if status is AssignedToChemist)"
-					}
+						"description": "Reject an order with a note (only if status is AssignedToChemist). Requires order with status 'AssignedToChemist'"
+					},
+					"response": []
 				},
 				{
 					"name": "Create Order",
@@ -397,32 +619,44 @@
 								{
 									"key": "CustomerId",
 									"value": "{{customerId}}",
-									"type": "text"
+									"type": "text",
+									"description": "Required: Customer GUID"
 								},
 								{
 									"key": "CustomerAddressId",
 									"value": "{{customerAddressId}}",
-									"type": "text"
+									"type": "text",
+									"description": "Required: Customer Address GUID"
 								},
 								{
 									"key": "OrderType",
 									"value": "0",
-									"type": "text"
+									"type": "text",
+									"description": "Required: 0=NotSet, 1=Prescription, 2=OTC"
 								},
 								{
 									"key": "OrderInputType",
 									"value": "0",
-									"type": "text"
+									"type": "text",
+									"description": "Required: 0=Text, 1=Image, 2=Voice"
 								},
 								{
 									"key": "OrderInputText",
-									"value": "Paracetamol 500mg x 2",
-									"type": "text"
+									"value": "Paracetamol 500mg x 2, Aspirin 100mg x 1",
+									"type": "text",
+									"description": "Optional: Required if OrderInputType is Text (0)"
 								},
 								{
 									"key": "OrderInputFile",
 									"type": "file",
-									"src": []
+									"src": [],
+									"description": "Optional: Required if OrderInputType is Image (1) or Voice (2)"
+								},
+								{
+									"key": "OrderInputFileLocation",
+									"value": "",
+									"type": "text",
+									"description": "Optional: File location path (usually auto-generated)"
 								}
 							]
 						},
@@ -430,7 +664,8 @@
 							"raw": "{{baseUrl}}/api/orders",
 							"host": ["{{baseUrl}}"],
 							"path": ["api", "orders"]
-						}
+						},
+						"description": "Create a new order. OrderInputText is required for Text orders, OrderInputFile is required for Image/Voice orders."
 					}
 				}
 			]
@@ -496,13 +731,14 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"email\": \"user@example.com\",\n  \"password\": \"Password@123\",\n  \"firstName\": \"John\",\n  \"lastName\": \"Doe\",\n  \"phoneNumber\": \"1234567890\",\n  \"roleId\": \"11111111-1111-1111-1111-111111111111\",\n  \"emailConfirmed\": true,\n  \"isActive\": true\n}"
+							"raw": "{\n  \"email\": \"user@example.com\",\n  \"password\": \"Password@123\",\n  \"firstName\": \"John\",\n  \"lastName\": \"Doe\",\n  \"roleId\": \"11111111-1111-1111-1111-111111111111\",\n  \"phoneNumber\": \"1234567890\",\n  \"emailConfirmed\": false,\n  \"isActive\": true\n}"
 						},
 						"url": {
 							"raw": "{{baseUrl}}/api/users/create-with-role",
 							"host": ["{{baseUrl}}"],
 							"path": ["api", "users", "create-with-role"]
-						}
+						},
+						"description": "Create a user with a specific role. Optional fields: phoneNumber (default: null), emailConfirmed (default: false), isActive (default: true)"
 					}
 				},
 				{
@@ -523,7 +759,8 @@
 							"raw": "{{baseUrl}}/api/users/register",
 							"host": ["{{baseUrl}}"],
 							"path": ["api", "users", "register"]
-						}
+						},
+						"description": "Register a new user (Customer role). Optional fields: phoneNumber"
 					}
 				}
 			]
@@ -611,13 +848,14 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"email\": \"customer@example.com\",\n  \"password\": \"Password@123\",\n  \"firstName\": \"John\",\n  \"lastName\": \"Doe\",\n  \"mobileNumber\": \"1234567890\"\n}"
+							"raw": "{\n  \"customerFirstName\": \"John\",\n  \"customerLastName\": \"Doe\",\n  \"customerMiddleName\": \"Michael\",\n  \"mobileNumber\": \"1234567890\",\n  \"password\": \"Password@123\",\n  \"alternativeMobileNumber\": \"0987654321\",\n  \"emailId\": \"customer@example.com\",\n  \"dateOfBirth\": \"1990-01-15T00:00:00Z\",\n  \"gender\": \"Male\",\n  \"addresses\": [\n    {\n      \"customerId\": \"00000000-0000-0000-0000-000000000000\",\n      \"addressLine1\": \"123 Main Street\",\n      \"addressLine2\": \"Apt 4B\",\n      \"addressLine3\": \"Near Park\",\n      \"city\": \"Mumbai\",\n      \"state\": \"Maharashtra\",\n      \"postalCode\": \"400001\",\n      \"isDefault\": true\n    }\n  ]\n}"
 						},
 						"url": {
 							"raw": "{{baseUrl}}/api/customers/register",
 							"host": ["{{baseUrl}}"],
 							"path": ["api", "customers", "register"]
-						}
+						},
+						"description": "Register a new customer. Optional fields: customerMiddleName, alternativeMobileNumber, emailId, gender, addresses"
 					}
 				},
 				{
@@ -636,13 +874,14 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"email\": \"customer@example.com\",\n  \"mobileNumber\": \"1234567890\",\n  \"firstName\": \"John\",\n  \"lastName\": \"Doe\"\n}"
+							"raw": "{\n  \"customerFirstName\": \"John\",\n  \"customerLastName\": \"Doe\",\n  \"customerMiddleName\": \"Michael\",\n  \"mobileNumber\": \"1234567890\",\n  \"alternativeMobileNumber\": \"0987654321\",\n  \"emailId\": \"customer@example.com\",\n  \"dateOfBirth\": \"1990-01-15T00:00:00Z\",\n  \"gender\": \"Male\",\n  \"customerPhoto\": \"https://example.com/photo.jpg\",\n  \"userId\": \"user-guid-here\",\n  \"addresses\": [\n    {\n      \"customerId\": \"00000000-0000-0000-0000-000000000000\",\n      \"addressLine1\": \"123 Main Street\",\n      \"addressLine2\": \"Apt 4B\",\n      \"addressLine3\": \"Near Park\",\n      \"city\": \"Mumbai\",\n      \"state\": \"Maharashtra\",\n      \"postalCode\": \"400001\",\n      \"isDefault\": true\n    }\n  ]\n}"
 						},
 						"url": {
 							"raw": "{{baseUrl}}/api/customers",
 							"host": ["{{baseUrl}}"],
 							"path": ["api", "customers"]
-						}
+						},
+						"description": "Create a new customer. Optional fields: customerMiddleName, alternativeMobileNumber, emailId, gender, customerPhoto, userId, addresses"
 					}
 				},
 				{
@@ -661,13 +900,14 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"email\": \"customer@example.com\",\n  \"mobileNumber\": \"1234567890\",\n  \"firstName\": \"John\",\n  \"lastName\": \"Doe\"\n}"
+							"raw": "{\n  \"customerFirstName\": \"John\",\n  \"customerLastName\": \"Doe\",\n  \"customerMiddleName\": \"Michael\",\n  \"mobileNumber\": \"1234567890\",\n  \"alternativeMobileNumber\": \"0987654321\",\n  \"emailId\": \"customer@example.com\",\n  \"dateOfBirth\": \"1990-01-15T00:00:00Z\",\n  \"gender\": \"Male\",\n  \"customerPhoto\": \"https://example.com/photo.jpg\",\n  \"isActive\": true,\n  \"addresses\": [\n    {\n      \"customerId\": \"{{customerId}}\",\n      \"addressLine1\": \"123 Main Street\",\n      \"addressLine2\": \"Apt 4B\",\n      \"addressLine3\": \"Near Park\",\n      \"city\": \"Mumbai\",\n      \"state\": \"Maharashtra\",\n      \"postalCode\": \"400001\",\n      \"isDefault\": true\n    }\n  ]\n}"
 						},
 						"url": {
 							"raw": "{{baseUrl}}/api/customers/{{customerId}}",
 							"host": ["{{baseUrl}}"],
 							"path": ["api", "customers", "{{customerId}}"]
-						}
+						},
+						"description": "Update customer information. Optional fields: customerMiddleName, alternativeMobileNumber, emailId, gender, customerPhoto, addresses"
 					}
 				},
 				{
@@ -759,13 +999,14 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"customerId\": \"{{customerId}}\",\n  \"streetAddress\": \"123 Main St\",\n  \"city\": \"City\",\n  \"state\": \"State\",\n  \"zipCode\": \"12345\",\n  \"isDefault\": true\n}"
+							"raw": "{\n  \"customerId\": \"{{customerId}}\",\n  \"address\": \"123 Main Street, Apt 4B, Near Park\",\n  \"addressLine1\": \"123 Main Street\",\n  \"addressLine2\": \"Apt 4B\",\n  \"addressLine3\": \"Near Park\",\n  \"city\": \"Mumbai\",\n  \"state\": \"Maharashtra\",\n  \"postalCode\": \"400001\",\n  \"isDefault\": true\n}"
 						},
 						"url": {
 							"raw": "{{baseUrl}}/api/customeraddresses",
 							"host": ["{{baseUrl}}"],
 							"path": ["api", "customeraddresses"]
-						}
+						},
+						"description": "Create a new customer address. All address fields are optional except customerId. Use address (single line) or addressLine1-3 (multi-line)."
 					}
 				},
 				{
@@ -784,13 +1025,14 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"streetAddress\": \"123 Main St\",\n  \"city\": \"City\",\n  \"state\": \"State\",\n  \"zipCode\": \"12345\",\n  \"isDefault\": true\n}"
+							"raw": "{\n  \"address\": \"123 Main Street, Apt 4B, Near Park\",\n  \"addressLine1\": \"123 Main Street\",\n  \"addressLine2\": \"Apt 4B\",\n  \"addressLine3\": \"Near Park\",\n  \"city\": \"Mumbai\",\n  \"state\": \"Maharashtra\",\n  \"postalCode\": \"400001\",\n  \"isDefault\": true,\n  \"isActive\": true\n}"
 						},
 						"url": {
 							"raw": "{{baseUrl}}/api/customeraddresses/{{addressId}}",
 							"host": ["{{baseUrl}}"],
 							"path": ["api", "customeraddresses", "{{addressId}}"]
-						}
+						},
+						"description": "Update customer address. All fields are optional. Use address (single line) or addressLine1-3 (multi-line)."
 					}
 				},
 				{
@@ -950,13 +1192,14 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"name\": \"Medical Store Name\",\n  \"email\": \"store@example.com\",\n  \"phoneNumber\": \"1234567890\",\n  \"address\": \"Store Address\"\n}"
+							"raw": "{\n  \"medicalName\": \"ABC Medical Store\",\n  \"ownerFirstName\": \"Raj\",\n  \"ownerLastName\": \"Sharma\",\n  \"ownerMiddleName\": \"Kumar\",\n  \"addressLine1\": \"123 Medical Street\",\n  \"addressLine2\": \"Near Hospital\",\n  \"city\": \"Mumbai\",\n  \"state\": \"Maharashtra\",\n  \"postalCode\": \"400001\",\n  \"latitude\": 19.0760,\n  \"longitude\": 72.8777,\n  \"mobileNumber\": \"1234567890\",\n  \"emailId\": \"store@example.com\",\n  \"alternativeMobileNumber\": \"0987654321\",\n  \"registrationStatus\": true,\n  \"gstin\": \"27AAAAA0000A1Z5\",\n  \"pan\": \"AAAAA0000A\",\n  \"fssaiNo\": \"FSSAI123456789\",\n  \"dlNo\": \"DL123456789\",\n  \"pharmacistFirstName\": \"Dr. Priya\",\n  \"pharmacistLastName\": \"Patel\",\n  \"pharmacistRegistrationNumber\": \"PH123456\",\n  \"pharmacistMobileNumber\": \"9876543210\",\n  \"password\": \"Password@123\"\n}"
 						},
 						"url": {
 							"raw": "{{baseUrl}}/api/medicalstores/register",
 							"host": ["{{baseUrl}}"],
 							"path": ["api", "medicalstores", "register"]
-						}
+						},
+						"description": "Register a new medical store. Optional fields: ownerMiddleName, latitude, longitude, alternativeMobileNumber, gstin"
 					}
 				},
 				{
@@ -1026,13 +1269,14 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"name\": \"Updated Store Name\",\n  \"email\": \"updated@example.com\",\n  \"phoneNumber\": \"1234567890\",\n  \"address\": \"Updated Address\"\n}"
+							"raw": "{\n  \"medicalName\": \"Updated Medical Store Name\",\n  \"ownerFirstName\": \"Raj\",\n  \"ownerLastName\": \"Sharma\",\n  \"ownerMiddleName\": \"Kumar\",\n  \"addressLine1\": \"123 Medical Street\",\n  \"addressLine2\": \"Near Hospital\",\n  \"city\": \"Mumbai\",\n  \"state\": \"Maharashtra\",\n  \"postalCode\": \"400001\",\n  \"latitude\": 19.0760,\n  \"longitude\": 72.8777,\n  \"mobileNumber\": \"1234567890\",\n  \"emailId\": \"updated@example.com\",\n  \"alternativeMobileNumber\": \"0987654321\",\n  \"registrationStatus\": true,\n  \"gstin\": \"27AAAAA0000A1Z5\",\n  \"pan\": \"AAAAA0000A\",\n  \"fssaiNo\": \"FSSAI123456789\",\n  \"dlNo\": \"DL123456789\",\n  \"pharmacistFirstName\": \"Dr. Priya\",\n  \"pharmacistLastName\": \"Patel\",\n  \"pharmacistRegistrationNumber\": \"PH123456\",\n  \"pharmacistMobileNumber\": \"9876543210\",\n  \"isActive\": true\n}"
 						},
 						"url": {
 							"raw": "{{baseUrl}}/api/medicalstores/{{medicalStoreId}}",
 							"host": ["{{baseUrl}}"],
 							"path": ["api", "medicalstores", "{{medicalStoreId}}"]
-						}
+						},
+						"description": "Update medical store information. Optional fields: ownerMiddleName, latitude, longitude, alternativeMobileNumber, gstin"
 					}
 				},
 				{
@@ -1075,7 +1319,8 @@
 							"raw": "{{baseUrl}}/api/managers/register",
 							"host": ["{{baseUrl}}"],
 							"path": ["api", "managers", "register"]
-						}
+						},
+						"description": "Register a new manager. All fields are required for registration."
 					}
 				},
 				{
@@ -1221,7 +1466,8 @@
 							"raw": "{{baseUrl}}/api/customersupports/register",
 							"host": ["{{baseUrl}}"],
 							"path": ["api", "customersupports", "register"]
-						}
+						},
+						"description": "Register a new customer support. All fields are required for registration."
 					}
 				},
 				{
@@ -1291,13 +1537,14 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"firstName\": \"Updated\",\n  \"lastName\": \"Support\",\n  \"phoneNumber\": \"1234567890\"\n}"
+							"raw": "{\n  \"firstName\": \"Updated\",\n  \"lastName\": \"Support\",\n  \"phoneNumber\": \"1234567890\",\n  \"isActive\": true\n}"
 						},
 						"url": {
 							"raw": "{{baseUrl}}/api/customersupports/{{customerSupportId}}",
 							"host": ["{{baseUrl}}"],
 							"path": ["api", "customersupports", "{{customerSupportId}}"]
-						}
+						},
+						"description": "Update customer support information. Optional fields: isActive"
 					}
 				},
 				{
