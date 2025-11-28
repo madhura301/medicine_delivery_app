@@ -2,6 +2,48 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+ <!-- CAMERA PERMISSION -->
+    <!-- Shown when user tries to capture prescription photo -->
+    <key>NSCameraUsageDescription</key>
+    <string>Pharmaish needs camera access to capture prescription photos for your medicine orders</string>
+    
+    <!-- PHOTO LIBRARY PERMISSION -->
+    <!-- Shown when user tries to select image from gallery -->
+    <key>NSPhotoLibraryUsageDescription</key>
+    <string>Pharmaish needs photo library access to select prescription images from your photos</string>
+    
+    <!-- MICROPHONE PERMISSION -->
+    <!-- Shown when user tries to record voice order -->
+    <key>NSMicrophoneUsageDescription</key>
+	<string>Pharmaish needs microphone access to record your voice orders</string>
+
+    <!-- WHATSAPP URL SCHEMES -->
+    <!-- Required to detect and launch WhatsApp -->
+    <key>LSApplicationQueriesSchemes</key>
+    <array>
+        <string>whatsapp</string>
+        <string>whatsapp-biz</string>
+        <string>https</string>
+        <string>http</string>
+    </array>
+    
+    <!-- BACKGROUND MODES (Optional - if you want to allow background audio) -->
+    <!-- Uncomment if you need background audio playback -->
+    <!--
+    <key>UIBackgroundModes</key>
+    <array>
+        <string>audio</string>
+    </array>
+    -->
+    
+    <!-- FILE SHARING (Optional - if you want iTunes file sharing) -->
+    <!-- Uncomment if needed -->
+    <!--
+    <key>UIFileSharingEnabled</key>
+    <true/>
+    <key>LSSupportsOpeningDocumentsInPlace</key>
+    <true/>
+    -->
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSAllowsArbitraryLoads</key>

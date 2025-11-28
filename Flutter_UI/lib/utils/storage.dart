@@ -12,6 +12,7 @@ class StorageService {
   static const String _savedPasswordKey = 'saved_password';
   static const String _rememberPasswordKey = 'remember_password';
   static const String _userEmailKey = 'user_email';
+  static const String _userMobileNumberKey  = 'user_mobile_number';
   static const String _userFirstNameKey = 'user_first_name';
   static const String _userLastNameKey = 'user_last_name';
   static const String _userIdKey = 'user_id';
@@ -170,12 +171,16 @@ class StorageService {
 
     final firstName = userInfo['firstName'] ?? '';
     final lastName = userInfo['lastName'] ?? '';
+    final mobileNumber = userInfo['mobileNumber'] ??
+        userInfo[
+            'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name'] ??
+        '';
     final id = userInfo['id'] ??
     userInfo[
             'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier'] ??'';
 
     AppLogger.info(
-        'User Info: Role: $role, Email: $email, Name: $firstName $lastName, ID: $id');
+        'User Info: Role: $role, Email: $email, Name: $firstName $lastName, Mobile: $mobileNumber, ID: $id');
 
     // Determine role based on role claim
     final roleString = role.toString().toLowerCase();
@@ -198,11 +203,14 @@ class StorageService {
   /// Store user information securely
   static Future<void> storeUserInfo(Map<String, String> userInfo) async {
     try {
+      AppLogger.info('Storing user information: $userInfo');
       var userId = userInfo['id'] ??
           userInfo[
               'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier'] ??
           '';
       await _storage.write(key: _userEmailKey, value: userInfo['email']);
+      await _storage.write(
+        key: _userMobileNumberKey, value: userInfo['mobileNumber']);
       await _storage.write(
           key: _userFirstNameKey, value: userInfo['firstName']);
       await _storage.write(key: _userLastNameKey, value: userInfo['lastName']);
@@ -217,13 +225,20 @@ class StorageService {
   /// Extract user information from JWT token
   static Map<String, String> extractUserInfo(Map<String, dynamic> tokenData) {
     return {
+       'id': tokenData['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier'] ??
+        tokenData['id'] ??
+        tokenData['userId'] ??
+        tokenData['sub'] ??
+        '', 
       'email': tokenData['email'] ??
           tokenData[
               'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress'] ??
           '',
       'firstName': tokenData['firstName'] ?? '',
       'lastName': tokenData['lastName'] ?? '',
-      'role': extractUserRole(tokenData),
+      'mobileNumber': tokenData['mobileNumber'] ?? 
+      tokenData['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name'] ?? '',
+      'role': extractUserRole(tokenData)
     };
   }
 
@@ -253,6 +268,15 @@ class StorageService {
       return await _storage.read(key: _userFirstNameKey);
     } catch (e) {
       AppLogger.error('Error retrieving user first name: $e');
+      return null;
+    }
+  }
+
+  static Future<String?> getUserMobileNumber() async {
+    try {
+      return await _storage.read(key: _userMobileNumberKey);
+    } catch (e) {
+      AppLogger.error('Error retrieving user mobile number: $e');
       return null;
     }
   }

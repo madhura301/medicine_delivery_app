@@ -14,20 +14,23 @@ class CustomerDashboard extends StatefulWidget {
 
 class _CustomerDashboardState extends State<CustomerDashboard> {
   String _userName = 'Customer';
+  String _customerId = '';
   bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
-    _loadUserName();
+    _loadUserDetails();
   }
 
-  Future<void> _loadUserName() async {
+  Future<void> _loadUserDetails() async {
     try {
       final firstName = await StorageService.getUserName();
+      final customerId = await StorageService.getUserId();
       if (firstName != null && firstName.isNotEmpty) {
         setState(() {
           _userName = firstName;
+          _customerId = customerId ?? '';
           _isLoading = false;
         });
       } else {
@@ -37,9 +40,11 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
           final tokenData = StorageService.decodeJwtToken(token);
           final userInfo = StorageService.extractUserInfo(tokenData);
           final extractedFirstName = userInfo['firstName'];
+          final customerId = userInfo['id'];
           if (extractedFirstName != null && extractedFirstName.isNotEmpty) {
             setState(() {
               _userName = extractedFirstName;
+              _customerId = customerId ?? '';
               _isLoading = false;
             });
             return;
@@ -47,6 +52,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
         }
         setState(() {
           _userName = 'Customer';
+          _customerId = customerId ?? '';
           _isLoading = false;
         });
       }
@@ -54,6 +60,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
       AppLogger.error('Error loading user name for welcome message', e);
       setState(() {
         _userName = 'Customer';
+        _customerId = '';
         _isLoading = false;
       });
     }
@@ -62,7 +69,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
   void _goToCustomerProfile(BuildContext context) {
     Navigator.pushNamed(context, '/customerProfile').then((_) {
       // Refresh user name when returning from profile
-      _loadUserName();
+      _loadUserDetails();
     });
   }
 

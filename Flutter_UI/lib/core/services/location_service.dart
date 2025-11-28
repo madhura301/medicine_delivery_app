@@ -81,7 +81,8 @@ class LocationService {
 
       // Get current position with platform-specific settings
       Position position = await _getCurrentPosition(timeLimit);
-
+      AppLogger.info(
+          'Location obtained: Lat=${position.latitude}, Lon=${position.longitude}');
       // Get address components if requested
       if (includeAddress) {
         return await _getAddressComponents(
