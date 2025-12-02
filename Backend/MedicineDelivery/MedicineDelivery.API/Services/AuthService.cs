@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
+using System.Linq;
 using System.Security.Claims;
 using System.Text;
 using MedicineDelivery.Infrastructure.Data;
@@ -14,17 +15,20 @@ namespace MedicineDelivery.API.Services
         private readonly SignInManager<Domain.Entities.ApplicationUser> _signInManager;
         private readonly IConfiguration _configuration;
         private readonly ILogger<AuthService> _logger;
+        private readonly IUnitOfWork _unitOfWork;
 
         public AuthService(
             UserManager<Domain.Entities.ApplicationUser> userManager,
             SignInManager<Domain.Entities.ApplicationUser> signInManager,
             IConfiguration configuration,
-            ILogger<AuthService> logger)
+            ILogger<AuthService> logger,
+            IUnitOfWork unitOfWork)
         {
             _userManager = userManager;
             _signInManager = signInManager;
             _configuration = configuration;
             _logger = logger;
+            _unitOfWork = unitOfWork;
         }
 
         public async Task<Domain.Interfaces.AuthResult> LoginAsync(string mobileNumber, string password, bool stayLoggedIn = false)
@@ -150,6 +154,14 @@ namespace MedicineDelivery.API.Services
                     claims.Add(new Claim(ClaimTypes.Role, role));
                 }
 
+                // Get entity-specific ID based on role and add as UserId claim
+                var primaryRole = roles.FirstOrDefault() ?? "";
+                var entityId = await GetEntityIdByRole(user.Id, primaryRole);
+                if (!string.IsNullOrEmpty(entityId))
+                {
+                    claims.Add(new Claim("UserId", entityId));
+                }
+
                 _logger.LogDebug("JWT token generated with {ClaimCount} claims and {RoleCount} roles for user ID: {UserId}", 
                     claims.Count, roles.Count, user.Id);
 
@@ -170,6 +182,47 @@ namespace MedicineDelivery.API.Services
             {
                 _logger.LogError(ex, "Error generating JWT token for user ID: {UserId}", user.Id);
                 throw;
+            }
+        }
+
+        private async Task<string> GetEntityIdByRole(string userId, string role)
+        {
+            try
+            {
+                _logger.LogDebug("GetEntityIdByRole: userId={UserId}, role={Role}", userId, role);
+                
+                switch (role.ToLower())
+                {
+                    case "customer":
+                        var customer = await _unitOfWork.Customers.FirstOrDefaultAsync(c => c.UserId == userId);
+                        _logger.LogDebug("Customer found: {CustomerId}", customer?.CustomerId);
+                        return customer?.CustomerId.ToString() ?? "";
+                    
+                    case "manager":
+                        var manager = await _unitOfWork.Managers.FirstOrDefaultAsync(m => m.UserId == userId);
+                        _logger.LogDebug("Manager found: {ManagerId}", manager?.ManagerId);
+                        return manager?.ManagerId.ToString() ?? "";
+                    
+                    case "customersupport":
+                        var customerSupport = await _unitOfWork.CustomerSupports.FirstOrDefaultAsync(cs => cs.UserId == userId);
+                        _logger.LogDebug("CustomerSupport found: {CustomerSupportId}", customerSupport?.CustomerSupportId);
+                        return customerSupport?.CustomerSupportId.ToString() ?? "";
+                    
+                    case "chemist":
+                        var medicalStore = await _unitOfWork.MedicalStores.FirstOrDefaultAsync(ms => ms.UserId == userId);
+                        _logger.LogDebug("MedicalStore found: {MedicalStoreId}", medicalStore?.MedicalStoreId);
+                        return medicalStore?.MedicalStoreId.ToString() ?? "";
+                    
+                    case "admin":
+                    default:
+                        _logger.LogDebug("Using empty string for role: {Role}", role);
+                        return ""; // For admin or unknown roles, return empty string
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error in GetEntityIdByRole for userId: {UserId}, role: {Role}", userId, role);
+                return ""; // Fallback to empty string if any error occurs
             }
         }
 
