@@ -151,6 +151,7 @@ namespace MedicineDelivery.Infrastructure.Services
                 if (nearestStore != null)
                 {
                     order.MedicalStoreId = nearestStore.MedicalStoreId;
+                    order.OrderStatus = OrderStatus.PendingPayment,
                 }
             }
 
