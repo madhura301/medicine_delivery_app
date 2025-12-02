@@ -151,7 +151,7 @@ namespace MedicineDelivery.Infrastructure.Services
                 if (nearestStore != null)
                 {
                     order.MedicalStoreId = nearestStore.MedicalStoreId;
-                    order.OrderStatus = OrderStatus.PendingPayment,
+                    order.OrderStatus = OrderStatus.PendingPayment;
                 }
             }
 
@@ -187,6 +187,22 @@ namespace MedicineDelivery.Infrastructure.Services
             return _mapper.Map<IEnumerable<OrderDto>>(orders);
         }
 
+        public async Task<IEnumerable<OrderDto>> GetActiveOrdersByCustomerIdAsync(Guid customerId, CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            if (customerId == Guid.Empty)
+            {
+                throw new ArgumentException("CustomerId is required.", nameof(customerId));
+            }
+
+            var orders = await _unitOfWork.Orders.FindAsync(o => 
+                o.CustomerId == customerId && 
+                o.OrderStatus != OrderStatus.Completed);
+            
+            return _mapper.Map<IEnumerable<OrderDto>>(orders);
+        }
+
         public async Task<IEnumerable<OrderDto>> GetActiveOrdersByMedicalStoreIdAsync(Guid medicalStoreId, CancellationToken cancellationToken = default)
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -199,6 +215,52 @@ namespace MedicineDelivery.Infrastructure.Services
             var orders = await _unitOfWork.Orders.FindAsync(o => 
                 o.MedicalStoreId == medicalStoreId && 
                 o.OrderStatus != OrderStatus.Completed);
+            
+            return _mapper.Map<IEnumerable<OrderDto>>(orders);
+        }
+
+        public async Task<IEnumerable<OrderDto>> GetAcceptedOrdersByMedicalStoreIdAsync(Guid medicalStoreId, CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            if (medicalStoreId == Guid.Empty)
+            {
+                throw new ArgumentException("MedicalStoreId is required.", nameof(medicalStoreId));
+            }
+
+            var orders = await _unitOfWork.Orders.FindAsync(o => 
+                o.MedicalStoreId == medicalStoreId && 
+                o.OrderStatus == OrderStatus.AcceptedByChemist);
+            
+            return _mapper.Map<IEnumerable<OrderDto>>(orders);
+        }
+
+        public async Task<IEnumerable<OrderDto>> GetRejectedOrdersByMedicalStoreIdAsync(Guid medicalStoreId, CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            if (medicalStoreId == Guid.Empty)
+            {
+                throw new ArgumentException("MedicalStoreId is required.", nameof(medicalStoreId));
+            }
+
+            var orders = await _unitOfWork.Orders.FindAsync(o => 
+                o.MedicalStoreId == medicalStoreId && 
+                o.OrderStatus == OrderStatus.RejectedByChemist);
+            
+            return _mapper.Map<IEnumerable<OrderDto>>(orders);
+        }
+
+        public async Task<IEnumerable<OrderDto>> GetAllOrdersByMedicalStoreIdAsync(Guid medicalStoreId, CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            if (medicalStoreId == Guid.Empty)
+            {
+                throw new ArgumentException("MedicalStoreId is required.", nameof(medicalStoreId));
+            }
+
+            var orders = await _unitOfWork.Orders.FindAsync(o => o.MedicalStoreId == medicalStoreId);
             
             return _mapper.Map<IEnumerable<OrderDto>>(orders);
         }
@@ -272,6 +334,102 @@ namespace MedicineDelivery.Infrastructure.Services
 
             _unitOfWork.OrderAssignmentHistories.Update(latestAssignment);
             _unitOfWork.Orders.Update(order);
+            await _unitOfWork.SaveChangesAsync();
+
+            return _mapper.Map<OrderDto>(order);
+        }
+
+        public async Task<OrderDto> CompleteOrderAsync(int orderId, CompleteOrderDto completeDto, CancellationToken cancellationToken = default)
+        {
+            ArgumentNullException.ThrowIfNull(completeDto);
+            cancellationToken.ThrowIfCancellationRequested();
+
+            if (string.IsNullOrWhiteSpace(completeDto.OTP))
+            {
+                throw new ArgumentException("OTP is required.", nameof(completeDto.OTP));
+            }
+
+            var order = await _unitOfWork.Orders.FirstOrDefaultAsync(o => o.OrderId == orderId);
+            if (order == null)
+            {
+                throw new KeyNotFoundException("Order not found.");
+            }
+
+            if (order.OrderStatus != OrderStatus.OutForDelivery)
+            {
+                throw new InvalidOperationException($"Order can only be completed when its status is {OrderStatus.OutForDelivery}. Current status is {order.OrderStatus}.");
+            }
+
+            if (string.IsNullOrWhiteSpace(order.OTP))
+            {
+                throw new InvalidOperationException("Order does not have an OTP set.");
+            }
+
+            if (order.OTP.Trim() != completeDto.OTP.Trim())
+            {
+                throw new ArgumentException("Invalid OTP. The provided OTP does not match the order's OTP.");
+            }
+
+            order.OrderStatus = OrderStatus.Completed;
+            order.UpdatedOn = DateTime.UtcNow;
+
+            _unitOfWork.Orders.Update(order);
+            await _unitOfWork.SaveChangesAsync();
+
+            return _mapper.Map<OrderDto>(order);
+        }
+
+        public async Task<OrderDto> AssignOrderToMedicalStoreAsync(AssignOrderDto assignDto, CancellationToken cancellationToken = default)
+        {
+            ArgumentNullException.ThrowIfNull(assignDto);
+            cancellationToken.ThrowIfCancellationRequested();
+
+            if (string.IsNullOrWhiteSpace(assignDto.OrderNumber))
+            {
+                throw new ArgumentException("OrderNumber is required.", nameof(assignDto.OrderNumber));
+            }
+
+            if (assignDto.MedicalStoreId == Guid.Empty)
+            {
+                throw new ArgumentException("MedicalStoreId is required.", nameof(assignDto.MedicalStoreId));
+            }
+
+            // Find order by OrderNumber
+            var order = await _unitOfWork.Orders.FirstOrDefaultAsync(o => o.OrderNumber == assignDto.OrderNumber);
+            if (order == null)
+            {
+                throw new KeyNotFoundException($"Order with OrderNumber '{assignDto.OrderNumber}' not found.");
+            }
+
+            // Validate medical store exists and is active
+            var medicalStore = await _unitOfWork.MedicalStores.FirstOrDefaultAsync(ms => 
+                ms.MedicalStoreId == assignDto.MedicalStoreId && 
+                ms.IsActive && 
+                !ms.IsDeleted);
+            
+            if (medicalStore == null)
+            {
+                throw new KeyNotFoundException("Medical store not found, inactive, or deleted.");
+            }
+
+            // Update order assignment
+            order.MedicalStoreId = assignDto.MedicalStoreId;
+            order.AssignedByType = AssignedByType.System;
+            order.OrderStatus = OrderStatus.AssignedToChemist;
+            order.UpdatedOn = DateTime.UtcNow;
+
+            // Create assignment history entry
+            var assignmentHistory = new OrderAssignmentHistory
+            {
+                OrderId = order.OrderId,
+                MedicalStoreId = assignDto.MedicalStoreId,
+                AssignedByType = AssignedByType.System,
+                AssignedOn = DateTime.UtcNow,
+                Status = AssignmentStatus.Assigned
+            };
+
+            _unitOfWork.Orders.Update(order);
+            await _unitOfWork.OrderAssignmentHistories.AddAsync(assignmentHistory);
             await _unitOfWork.SaveChangesAsync();
 
             return _mapper.Map<OrderDto>(order);

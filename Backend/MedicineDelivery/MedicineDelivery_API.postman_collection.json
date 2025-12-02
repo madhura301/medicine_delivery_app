@@ -605,6 +605,35 @@
 				},
 				{
 					"name": "Create Order",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 201\", function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"if (pm.response.code === 201) {",
+									"    var jsonData = pm.response.json();",
+									"    if (jsonData.orderId) {",
+									"        pm.collectionVariables.set(\"orderId\", jsonData.orderId);",
+									"    }",
+									"    if (jsonData.orderNumber) {",
+									"        pm.collectionVariables.set(\"orderNumber\", jsonData.orderNumber);",
+									"    }",
+									"    if (jsonData.otp) {",
+									"        pm.collectionVariables.set(\"orderOtp\", jsonData.otp);",
+									"    }",
+									"    if (jsonData.medicalStoreId) {",
+									"        pm.collectionVariables.set(\"medicalStoreId\", jsonData.medicalStoreId);",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
 					"request": {
 						"method": "POST",
 						"header": [
@@ -626,7 +655,7 @@
 									"key": "CustomerAddressId",
 									"value": "{{customerAddressId}}",
 									"type": "text",
-									"description": "Required: Customer Address GUID"
+									"description": "Required: Customer Address GUID (must have Latitude and Longitude for nearest store assignment)"
 								},
 								{
 									"key": "OrderType",
@@ -665,7 +694,274 @@
 							"host": ["{{baseUrl}}"],
 							"path": ["api", "orders"]
 						},
-						"description": "Create a new order. OrderInputText is required for Text orders, OrderInputFile is required for Image/Voice orders."
+						"description": "Create a new order. OrderInputText is required for Text orders, OrderInputFile is required for Image/Voice orders. OrderNumber and OTP are auto-generated. Nearest medical store is assigned if customer address has coordinates."
+					}
+				},
+				{
+					"name": "Get Active Orders By Customer ID",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Response is an array\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.be.an('array');",
+									"});",
+									"",
+									"pm.test(\"All orders are not Completed\", function () {",
+									"    var orders = pm.response.json();",
+									"    orders.forEach(function(order) {",
+									"        pm.expect(order.orderStatus).to.not.equal('Completed');",
+									"    });",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/orders/customer/{{customerId}}/active",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "orders", "customer", "{{customerId}}", "active"]
+						},
+						"description": "Get all active orders (status != Completed) belonging to a specific customer. Example customerId: 00000000-0000-0000-0000-000000000001"
+					}
+				},
+				{
+					"name": "Get Accepted Orders By Medical Store ID",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Response is an array\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.be.an('array');",
+									"});",
+									"",
+									"pm.test(\"All orders have AcceptedByChemist status\", function () {",
+									"    var orders = pm.response.json();",
+									"    orders.forEach(function(order) {",
+									"        pm.expect(order.orderStatus).to.equal('AcceptedByChemist');",
+									"    });",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/orders/medicalstore/{{medicalStoreId}}/accepted",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "orders", "medicalstore", "{{medicalStoreId}}", "accepted"]
+						},
+						"description": "Get all orders with status 'AcceptedByChemist' for a medical store. Example medicalStoreId: 00000000-0000-0000-0000-000000000001"
+					}
+				},
+				{
+					"name": "Get Rejected Orders By Medical Store ID",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Response is an array\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.be.an('array');",
+									"});",
+									"",
+									"pm.test(\"All orders have RejectedByChemist status\", function () {",
+									"    var orders = pm.response.json();",
+									"    orders.forEach(function(order) {",
+									"        pm.expect(order.orderStatus).to.equal('RejectedByChemist');",
+									"    });",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/orders/medicalstore/{{medicalStoreId}}/rejected",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "orders", "medicalstore", "{{medicalStoreId}}", "rejected"]
+						},
+						"description": "Get all orders with status 'RejectedByChemist' for a medical store. Example medicalStoreId: 00000000-0000-0000-0000-000000000001"
+					}
+				},
+				{
+					"name": "Get All Orders By Medical Store ID",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Response is an array\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.be.an('array');",
+									"});",
+									"",
+									"pm.test(\"All orders belong to the medical store\", function () {",
+									"    var orders = pm.response.json();",
+									"    var medicalStoreId = pm.collectionVariables.get(\"medicalStoreId\");",
+									"    orders.forEach(function(order) {",
+									"        pm.expect(order.medicalStoreId).to.equal(medicalStoreId);",
+									"    });",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/orders/medicalstore/{{medicalStoreId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "orders", "medicalstore", "{{medicalStoreId}}"]
+						},
+						"description": "Get all orders (any status) belonging to a medical store. Example medicalStoreId: 00000000-0000-0000-0000-000000000001"
+					}
+				},
+				{
+					"name": "Assign Order To Medical Store",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Order is assigned to medical store\", function () {",
+									"    if (pm.response.code === 200) {",
+									"        var jsonData = pm.response.json();",
+									"        var medicalStoreId = pm.collectionVariables.get(\"medicalStoreId\");",
+									"        pm.expect(jsonData.medicalStoreId).to.equal(medicalStoreId);",
+									"        pm.expect(jsonData.orderStatus).to.equal('AssignedToChemist');",
+									"    }",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"orderNumber\": \"{{orderNumber}}\",\n  \"medicalStoreId\": \"{{medicalStoreId}}\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/orders/assign",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "orders", "assign"]
+						},
+						"description": "Assign an order to a medical store using order number. Order status will be set to 'AssignedToChemist'. Requires valid orderNumber and medicalStoreId."
+					}
+				},
+				{
+					"name": "Complete Order",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Order status is Completed\", function () {",
+									"    if (pm.response.code === 200) {",
+									"        var jsonData = pm.response.json();",
+									"        pm.expect(jsonData.orderStatus).to.equal('Completed');",
+									"    }",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"otp\": \"{{orderOtp}}\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/orders/{{orderId}}/complete",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "orders", "{{orderId}}", "complete"]
+						},
+						"description": "Complete an order by verifying OTP. Order must be in 'OutForDelivery' status. OTP must match the order's OTP. Use orderOtp variable from Create Order response."
 					}
 				}
 			]
@@ -985,6 +1281,26 @@
 				},
 				{
 					"name": "Create Address",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200 or 201\", function () {",
+									"    pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
+									"});",
+									"",
+									"if (pm.response.code === 200 || pm.response.code === 201) {",
+									"    var jsonData = pm.response.json();",
+									"    if (jsonData.id) {",
+									"        pm.collectionVariables.set(\"customerAddressId\", jsonData.id);",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
 					"request": {
 						"method": "POST",
 						"header": [
@@ -999,14 +1315,14 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"customerId\": \"{{customerId}}\",\n  \"address\": \"123 Main Street, Apt 4B, Near Park\",\n  \"addressLine1\": \"123 Main Street\",\n  \"addressLine2\": \"Apt 4B\",\n  \"addressLine3\": \"Near Park\",\n  \"city\": \"Mumbai\",\n  \"state\": \"Maharashtra\",\n  \"postalCode\": \"400001\",\n  \"isDefault\": true\n}"
+							"raw": "{\n  \"customerId\": \"{{customerId}}\",\n  \"address\": \"123 Main Street, Apt 4B, Near Park\",\n  \"addressLine1\": \"123 Main Street\",\n  \"addressLine2\": \"Apt 4B\",\n  \"addressLine3\": \"Near Park\",\n  \"city\": \"Mumbai\",\n  \"state\": \"Maharashtra\",\n  \"postalCode\": \"400001\",\n  \"latitude\": 19.0760,\n  \"longitude\": 72.8777,\n  \"isDefault\": true\n}"
 						},
 						"url": {
 							"raw": "{{baseUrl}}/api/customeraddresses",
 							"host": ["{{baseUrl}}"],
 							"path": ["api", "customeraddresses"]
 						},
-						"description": "Create a new customer address. All address fields are optional except customerId. Use address (single line) or addressLine1-3 (multi-line)."
+						"description": "Create a new customer address. All address fields are optional except customerId. Latitude and Longitude are optional but required for nearest medical store assignment when creating orders. Example coordinates: Mumbai (19.0760, 72.8777), Delhi (28.6139, 77.2090), Bangalore (12.9716, 77.5946)"
 					}
 				},
 				{
@@ -1025,14 +1341,14 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"address\": \"123 Main Street, Apt 4B, Near Park\",\n  \"addressLine1\": \"123 Main Street\",\n  \"addressLine2\": \"Apt 4B\",\n  \"addressLine3\": \"Near Park\",\n  \"city\": \"Mumbai\",\n  \"state\": \"Maharashtra\",\n  \"postalCode\": \"400001\",\n  \"isDefault\": true,\n  \"isActive\": true\n}"
+							"raw": "{\n  \"address\": \"123 Main Street, Apt 4B, Near Park\",\n  \"addressLine1\": \"123 Main Street\",\n  \"addressLine2\": \"Apt 4B\",\n  \"addressLine3\": \"Near Park\",\n  \"city\": \"Mumbai\",\n  \"state\": \"Maharashtra\",\n  \"postalCode\": \"400001\",\n  \"latitude\": 19.0760,\n  \"longitude\": 72.8777,\n  \"isDefault\": true,\n  \"isActive\": true\n}"
 						},
 						"url": {
 							"raw": "{{baseUrl}}/api/customeraddresses/{{addressId}}",
 							"host": ["{{baseUrl}}"],
 							"path": ["api", "customeraddresses", "{{addressId}}"]
 						},
-						"description": "Update customer address. All fields are optional. Use address (single line) or addressLine1-3 (multi-line)."
+						"description": "Update customer address. All fields are optional. Latitude and Longitude can be updated. Example coordinates: Mumbai (19.0760, 72.8777), Delhi (28.6139, 77.2090), Bangalore (12.9716, 77.5946)"
 					}
 				},
 				{

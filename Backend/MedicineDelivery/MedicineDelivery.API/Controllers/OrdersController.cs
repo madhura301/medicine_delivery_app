@@ -68,6 +68,29 @@ namespace MedicineDelivery.API.Controllers
             }
         }
 
+        [HttpGet("customer/{customerId:guid}/active")]
+        [Authorize(Policy = "RequireOrderReadPermission")]
+        public async Task<IActionResult> GetActiveOrdersByCustomerId(Guid customerId, CancellationToken cancellationToken)
+        {
+            try
+            {
+                var orders = await _orderService.GetActiveOrdersByCustomerIdAsync(customerId, cancellationToken);
+                return Ok(orders);
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { error = ex.Message });
+            }
+            catch (OperationCanceledException)
+            {
+                return StatusCode(499, new { error = "Request was cancelled." });
+            }
+            catch (Exception)
+            {
+                return StatusCode(500, new { error = "An error occurred while retrieving the orders." });
+            }
+        }
+
         [HttpGet("medicalstore/{medicalStoreId:guid}/active")]
         [Authorize(Policy = "RequireOrderReadPermission")]
         public async Task<IActionResult> GetActiveOrdersByMedicalStoreId(Guid medicalStoreId, CancellationToken cancellationToken)
@@ -75,6 +98,75 @@ namespace MedicineDelivery.API.Controllers
             try
             {
                 var orders = await _orderService.GetActiveOrdersByMedicalStoreIdAsync(medicalStoreId, cancellationToken);
+                return Ok(orders);
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { error = ex.Message });
+            }
+            catch (OperationCanceledException)
+            {
+                return StatusCode(499, new { error = "Request was cancelled." });
+            }
+            catch (Exception)
+            {
+                return StatusCode(500, new { error = "An error occurred while retrieving the orders." });
+            }
+        }
+
+        [HttpGet("medicalstore/{medicalStoreId:guid}/accepted")]
+        [Authorize(Policy = "RequireOrderReadPermission")]
+        public async Task<IActionResult> GetAcceptedOrdersByMedicalStoreId(Guid medicalStoreId, CancellationToken cancellationToken)
+        {
+            try
+            {
+                var orders = await _orderService.GetAcceptedOrdersByMedicalStoreIdAsync(medicalStoreId, cancellationToken);
+                return Ok(orders);
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { error = ex.Message });
+            }
+            catch (OperationCanceledException)
+            {
+                return StatusCode(499, new { error = "Request was cancelled." });
+            }
+            catch (Exception)
+            {
+                return StatusCode(500, new { error = "An error occurred while retrieving the orders." });
+            }
+        }
+
+        [HttpGet("medicalstore/{medicalStoreId:guid}/rejected")]
+        [Authorize(Policy = "RequireOrderReadPermission")]
+        public async Task<IActionResult> GetRejectedOrdersByMedicalStoreId(Guid medicalStoreId, CancellationToken cancellationToken)
+        {
+            try
+            {
+                var orders = await _orderService.GetRejectedOrdersByMedicalStoreIdAsync(medicalStoreId, cancellationToken);
+                return Ok(orders);
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { error = ex.Message });
+            }
+            catch (OperationCanceledException)
+            {
+                return StatusCode(499, new { error = "Request was cancelled." });
+            }
+            catch (Exception)
+            {
+                return StatusCode(500, new { error = "An error occurred while retrieving the orders." });
+            }
+        }
+
+        [HttpGet("medicalstore/{medicalStoreId:guid}")]
+        [Authorize(Policy = "RequireOrderReadPermission")]
+        public async Task<IActionResult> GetAllOrdersByMedicalStoreId(Guid medicalStoreId, CancellationToken cancellationToken)
+        {
+            try
+            {
+                var orders = await _orderService.GetAllOrdersByMedicalStoreIdAsync(medicalStoreId, cancellationToken);
                 return Ok(orders);
             }
             catch (ArgumentException ex)
@@ -151,6 +243,78 @@ namespace MedicineDelivery.API.Controllers
             catch (Exception)
             {
                 return StatusCode(500, new { error = "An error occurred while rejecting the order." });
+            }
+        }
+
+        [HttpPut("{orderId:int}/complete")]
+        [Authorize(Policy = "RequireOrderUpdatePermission")]
+        public async Task<IActionResult> CompleteOrder(int orderId, [FromBody] CompleteOrderDto completeDto, CancellationToken cancellationToken)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            try
+            {
+                var order = await _orderService.CompleteOrderAsync(orderId, completeDto, cancellationToken);
+                return Ok(order);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { error = ex.Message });
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { error = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { error = ex.Message });
+            }
+            catch (OperationCanceledException)
+            {
+                return StatusCode(499, new { error = "Request was cancelled." });
+            }
+            catch (Exception)
+            {
+                return StatusCode(500, new { error = "An error occurred while completing the order." });
+            }
+        }
+
+        [HttpPut("assign")]
+        [Authorize(Policy = "RequireOrderUpdatePermission")]
+        public async Task<IActionResult> AssignOrderToMedicalStore([FromBody] AssignOrderDto assignDto, CancellationToken cancellationToken)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            try
+            {
+                var order = await _orderService.AssignOrderToMedicalStoreAsync(assignDto, cancellationToken);
+                return Ok(order);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { error = ex.Message });
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { error = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { error = ex.Message });
+            }
+            catch (OperationCanceledException)
+            {
+                return StatusCode(499, new { error = "Request was cancelled." });
+            }
+            catch (Exception)
+            {
+                return StatusCode(500, new { error = "An error occurred while assigning the order." });
             }
         }
 

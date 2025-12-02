@@ -555,5 +555,41 @@ BEGIN
     VALUES ('20251120075255_InitialCreate', '8.0.0');
     END IF;
 END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20251202165943_AddOrderNumberAndCustomerAddressCoordinates') THEN
+    ALTER TABLE "Orders" ALTER COLUMN "OTP" TYPE character varying(4);
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20251202165943_AddOrderNumberAndCustomerAddressCoordinates') THEN
+    ALTER TABLE "Orders" ADD "OrderNumber" character varying(10);
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20251202165943_AddOrderNumberAndCustomerAddressCoordinates') THEN
+    ALTER TABLE "CustomerAddresses" ADD "Latitude" numeric(10,8);
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20251202165943_AddOrderNumberAndCustomerAddressCoordinates') THEN
+    ALTER TABLE "CustomerAddresses" ADD "Longitude" numeric(11,8);
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20251202165943_AddOrderNumberAndCustomerAddressCoordinates') THEN
+    INSERT INTO "__EFMigrationsHistory" ("MigrationId", "ProductVersion")
+    VALUES ('20251202165943_AddOrderNumberAndCustomerAddressCoordinates', '8.0.0');
+    END IF;
+END $EF$;
 COMMIT;
 
