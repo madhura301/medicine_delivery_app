@@ -63,6 +63,8 @@ namespace MedicineDelivery.Infrastructure.Services
                 City = createDto.City,
                 State = createDto.State,
                 PostalCode = createDto.PostalCode,
+                Latitude = createDto.Latitude,
+                Longitude = createDto.Longitude,
                 IsDefault = createDto.IsDefault,
                 IsActive = true,
                 CreatedOn = DateTime.UtcNow
@@ -101,6 +103,8 @@ namespace MedicineDelivery.Infrastructure.Services
             customerAddress.City = updateDto.City;
             customerAddress.State = updateDto.State;
             customerAddress.PostalCode = updateDto.PostalCode;
+            customerAddress.Latitude = updateDto.Latitude;
+            customerAddress.Longitude = updateDto.Longitude;
             customerAddress.IsDefault = updateDto.IsDefault;
             customerAddress.IsActive = updateDto.IsActive;
             customerAddress.UpdatedOn = DateTime.UtcNow;

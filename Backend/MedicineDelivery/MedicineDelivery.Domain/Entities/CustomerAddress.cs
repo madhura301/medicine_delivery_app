@@ -11,6 +11,8 @@ namespace MedicineDelivery.Domain.Entities
         public string? City { get; set; }
         public string? State { get; set; }
         public string? PostalCode { get; set; }
+        public decimal? Latitude { get; set; }
+        public decimal? Longitude { get; set; }
         public bool IsDefault { get; set; } = false;
         public bool IsActive { get; set; } = true;
         public DateTime CreatedOn { get; set; } = DateTime.UtcNow;

@@ -11,6 +11,8 @@ namespace MedicineDelivery.Application.DTOs
         public string? City { get; set; }
         public string? State { get; set; }
         public string? PostalCode { get; set; }
+        public decimal? Latitude { get; set; }
+        public decimal? Longitude { get; set; }
         public bool IsDefault { get; set; }
         public bool IsActive { get; set; }
         public DateTime CreatedOn { get; set; }
@@ -27,6 +29,8 @@ namespace MedicineDelivery.Application.DTOs
         public string? City { get; set; }
         public string? State { get; set; }
         public string? PostalCode { get; set; }
+        public decimal? Latitude { get; set; }
+        public decimal? Longitude { get; set; }
         public bool IsDefault { get; set; } = false;
     }
 
@@ -39,6 +43,8 @@ namespace MedicineDelivery.Application.DTOs
         public string? City { get; set; }
         public string? State { get; set; }
         public string? PostalCode { get; set; }
+        public decimal? Latitude { get; set; }
+        public decimal? Longitude { get; set; }
         public bool IsDefault { get; set; }
         public bool IsActive { get; set; }
     }

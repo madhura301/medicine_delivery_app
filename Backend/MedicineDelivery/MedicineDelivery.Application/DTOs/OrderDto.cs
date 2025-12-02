@@ -15,6 +15,7 @@ namespace MedicineDelivery.Application.DTOs
         public string? OrderInputFileLocation { get; set; }
         public string? OrderInputText { get; set; }
         public OrderStatus OrderStatus { get; set; }
+        public string? OrderNumber { get; set; }
         public string? OTP { get; set; }
         public decimal? TotalAmount { get; set; }
         public DateTime CreatedOn { get; set; }

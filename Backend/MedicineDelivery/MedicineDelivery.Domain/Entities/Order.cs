@@ -15,6 +15,7 @@ namespace MedicineDelivery.Domain.Entities
         public string? OrderInputFileLocation { get; set; }
         public string? OrderInputText { get; set; }
         public OrderStatus OrderStatus { get; set; } = OrderStatus.PendingPayment;
+        public string? OrderNumber { get; set; }
         public string? OTP { get; set; }
         public decimal? TotalAmount { get; set; }
         public DateTime CreatedOn { get; set; } = DateTime.UtcNow;

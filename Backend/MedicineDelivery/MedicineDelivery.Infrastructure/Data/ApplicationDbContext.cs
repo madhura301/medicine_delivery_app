@@ -376,6 +376,14 @@ namespace MedicineDelivery.Infrastructure.Data
                 .HasMaxLength(20);
 
             builder.Entity<CustomerAddress>()
+                .Property(ca => ca.Latitude)
+                .HasColumnType("decimal(10,8)");
+
+            builder.Entity<CustomerAddress>()
+                .Property(ca => ca.Longitude)
+                .HasColumnType("decimal(11,8)");
+
+            builder.Entity<CustomerAddress>()
                 .HasOne(ca => ca.Customer)
                 .WithMany(c => c.Addresses)
                 .HasForeignKey(ca => ca.CustomerId)
@@ -405,8 +413,12 @@ namespace MedicineDelivery.Infrastructure.Data
                 entity.Property(o => o.OrderInputFileLocation)
                     .HasMaxLength(100);
 
+                entity.Property(o => o.OrderNumber)
+                    .HasMaxLength(10)
+                    .IsRequired(false);
+
                 entity.Property(o => o.OTP)
-                    .HasMaxLength(10);
+                    .HasMaxLength(4);
 
                 entity.Property(o => o.TotalAmount)
                     .HasColumnType("decimal(10,2)");

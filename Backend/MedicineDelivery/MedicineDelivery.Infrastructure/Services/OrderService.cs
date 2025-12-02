@@ -2,6 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Security.Cryptography;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using AutoMapper;
@@ -12,6 +14,8 @@ using MedicineDelivery.Domain.Enums;
 using MedicineDelivery.Domain.Interfaces;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Hosting;
+using NetTopologySuite;
+using NetTopologySuite.Geometries;
 
 namespace MedicineDelivery.Infrastructure.Services
 {
@@ -96,6 +100,8 @@ namespace MedicineDelivery.Infrastructure.Services
                     : null,
                 AssignedByType = AssignedByType.System,
                 OrderStatus = OrderStatus.PendingPayment,
+                OrderNumber = GenerateOrderNumber(),
+                OTP = GenerateOTP(),
                 CreatedOn = DateTime.UtcNow,
                 UpdatedOn = null
             };
@@ -113,6 +119,39 @@ namespace MedicineDelivery.Infrastructure.Services
             else
             {
                 order.OrderInputFileLocation = null;
+            }
+
+            // Find nearest active medical store using NetTopologySuite if customer address has coordinates
+            if (address.Latitude.HasValue && address.Longitude.HasValue)
+            {
+                var geometryFactory = NtsGeometryServices.Instance.CreateGeometryFactory(srid: 4326);
+                var customerPoint = geometryFactory.CreatePoint(new Coordinate(
+                    x: (double)address.Longitude.Value, // longitude = X
+                    y: (double)address.Latitude.Value   // latitude  = Y
+                ));
+
+                var medicalStores = await _unitOfWork.MedicalStores.FindAsync(ms =>
+                    ms.IsActive &&
+                    !ms.IsDeleted &&
+                    ms.Latitude.HasValue &&
+                    ms.Longitude.HasValue);
+
+                var nearestStore = medicalStores
+                    .Select(ms => new
+                    {
+                        Store = ms,
+                        Point = geometryFactory.CreatePoint(new Coordinate(
+                            x: (double)ms.Longitude!.Value,
+                            y: (double)ms.Latitude!.Value))
+                    })
+                    .OrderBy(x => x.Point.Distance(customerPoint))
+                    .FirstOrDefault()
+                    ?.Store;
+
+                if (nearestStore != null)
+                {
+                    order.MedicalStoreId = nearestStore.MedicalStoreId;
+                }
             }
 
             await _unitOfWork.Orders.AddAsync(order);
@@ -277,6 +316,26 @@ namespace MedicineDelivery.Infrastructure.Services
             }
 
             return Path.Combine("Files", "Orders", folderName, uniqueFileName).Replace("\\", "/");
+        }
+
+        /// <summary>
+        /// Generates a random 10-character order number containing uppercase letters and numbers.
+        /// </summary>
+        private string GenerateOrderNumber()
+        {
+            const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+            var random = new Random();
+            return new string(Enumerable.Repeat(chars, 10)
+                .Select(s => s[random.Next(s.Length)]).ToArray());
+        }
+
+        /// <summary>
+        /// Generates a random 4-digit OTP.
+        /// </summary>
+        private string GenerateOTP()
+        {
+            var random = new Random();
+            return random.Next(1000, 9999).ToString();
         }
     }
 }
