@@ -139,10 +139,15 @@ namespace MedicineDelivery.Infrastructure.Services
             return false;
         }
 
-        public async Task<List<string>> GetAllRolesAsync()
+        public async Task<List<(string Id, string Name)>> GetAllRolesAsync()
         {
-            var roles = await _context.Roles.ToListAsync();
-            return roles.Select(r => r.Name).ToList();
+            var roles = await _context.Roles
+                .Select(r => new { r.Id, r.Name })
+                .ToListAsync();
+
+            return roles
+                .Select(r => (r.Id, r.Name ?? string.Empty))
+                .ToList();
         }
 
         public async Task<string?> GetRoleByIdAsync(string roleId)

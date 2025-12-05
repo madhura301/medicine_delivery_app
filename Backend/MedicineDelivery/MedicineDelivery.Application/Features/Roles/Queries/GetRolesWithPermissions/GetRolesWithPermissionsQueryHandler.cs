@@ -17,8 +17,8 @@ namespace MedicineDelivery.Application.Features.Roles.Queries.GetRolesWithPermis
 
         public async Task<RolesWithPermissionsResponseDto> Handle(GetRolesWithPermissionsQuery request, CancellationToken cancellationToken)
         {
-            // Get all roles (using Identity roles)
-            var allRoleNames = await _roleService.GetAllRolesAsync();
+            // Get all roles (Id and Name) from AspNetRoles
+            var allRoles = await _roleService.GetAllRolesAsync();
 
             // Get all permissions
             var allPermissions = await _unitOfWork.Permissions.GetAllAsync();
@@ -28,11 +28,11 @@ namespace MedicineDelivery.Application.Features.Roles.Queries.GetRolesWithPermis
             var allRolePermissions = await _unitOfWork.RolePermissions.GetAllAsync();
             var activeRolePermissions = allRolePermissions.Where(rp => rp.IsActive).ToList();
 
-            var rolesWithPermissions = allRoleNames.Select(roleName =>
+            var rolesWithPermissions = allRoles.Select(role =>
             {
                 // Find the role ID for this role name
                 var rolePermissionIds = activeRolePermissions
-                    .Where(rp => rp.RoleId == roleName) // RoleId is now string
+                    .Where(rp => rp.RoleId == role.Id)
                     .Select(rp => rp.PermissionId)
                     .ToList();
 
@@ -51,9 +51,9 @@ namespace MedicineDelivery.Application.Features.Roles.Queries.GetRolesWithPermis
 
                 return new RoleWithPermissionsDto
                 {
-                    Id = 0, // Using 0 as placeholder since Identity roles use string IDs but DTO expects int
-                    Name = roleName,
-                    Description = $"Role: {roleName}", // Identity roles don't have descriptions
+                    Id = role.Id,
+                    Name = role.Name,
+                    Description = $"Role: {role.Name}", // Identity roles don't have descriptions
                     CreatedAt = DateTime.UtcNow, // Identity roles don't track creation date
                     IsActive = true, // All Identity roles are considered active
                     Permissions = rolePermissions

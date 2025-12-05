@@ -11,7 +11,8 @@ namespace MedicineDelivery.Domain.Interfaces
         Task<bool> RemoveRoleFromUserAsync(string userId, string roleName);
         Task<bool> AddPermissionToRoleAsync(string roleId, int permissionId, string grantedBy);
         Task<bool> RemovePermissionFromRoleAsync(string roleId, int permissionId);
-        Task<List<string>> GetAllRolesAsync();
+        // Returns all roles from AspNetRoles with their IDs and names
+        Task<List<(string Id, string Name)>> GetAllRolesAsync();
         Task<string?> GetRoleByIdAsync(string roleId);
         Task<List<Permission>> GetAllPermissionsAsync();
     }
