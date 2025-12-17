@@ -14,6 +14,7 @@ namespace MedicineDelivery.Application.DTOs
         
         // Employee information
         public string EmployeeId { get; set; } = string.Empty;
+        public int? CustomerSupportRegionId { get; set; }
     }
 
     public class CustomerSupportResponseDto
@@ -40,6 +41,7 @@ namespace MedicineDelivery.Application.DTOs
         public DateTime? UpdatedOn { get; set; }
         public Guid? UpdatedBy { get; set; }
         public string? UserId { get; set; }
+        public int? CustomerSupportRegionId { get; set; }
         public string Password { get; set; } = string.Empty;
     }
 
@@ -67,5 +69,6 @@ namespace MedicineDelivery.Application.DTOs
         public DateTime? UpdatedOn { get; set; }
         public Guid? UpdatedBy { get; set; }
         public string? UserId { get; set; }
+        public int? CustomerSupportRegionId { get; set; }
     }
 }

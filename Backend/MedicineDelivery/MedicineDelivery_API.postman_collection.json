@@ -963,6 +963,91 @@
 						},
 						"description": "Complete an order by verifying OTP. Order must be in 'OutForDelivery' status. OTP must match the order's OTP. Use orderOtp variable from Create Order response."
 					}
+				},
+				{
+					"name": "Get All Orders",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/orders",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "orders"]
+						},
+						"description": "Get all orders. Requires ListAllOrders permission."
+					}
+				},
+				{
+					"name": "Upload Order Bill",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "OrderId",
+									"value": "{{orderId}}",
+									"type": "text",
+									"description": "Required: Order ID"
+								},
+								{
+									"key": "OrderAmount",
+									"value": "500.00",
+									"type": "text",
+									"description": "Required: Order amount (decimal)"
+								},
+								{
+									"key": "BillFile",
+									"type": "file",
+									"src": [],
+									"description": "Required: PDF file for order bill"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/orders/{{orderId}}/upload-bill",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "orders", "{{orderId}}", "upload-bill"]
+						},
+						"description": "Upload order bill (PDF) and set order amount. Updates OrderBillFileLocation and TotalAmount in the order."
+					}
+				},
+				{
+					"name": "Assign Order To Delivery",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"orderId\": {{orderId}},\n  \"deliveryId\": 1\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/orders/assign-to-delivery",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "orders", "assign-to-delivery"]
+						},
+						"description": "Assign order to delivery. Updates order status to OutForDelivery and creates assignment history. Order must be in BillUploaded or Paid status."
+					}
 				}
 			]
 		},
@@ -1610,6 +1695,352 @@
 							"host": ["{{baseUrl}}"],
 							"path": ["api", "medicalstores", "{{medicalStoreId}}"]
 						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Deliveries",
+			"item": [
+				{
+					"name": "Create Delivery",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"firstName\": \"John\",\n  \"middleName\": \"Kumar\",\n  \"lastName\": \"Sharma\",\n  \"drivingLicenceNumber\": \"DL123456789\",\n  \"mobileNumber\": \"1234567890\",\n  \"medicalStoreId\": \"{{medicalStoreId}}\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/deliveries",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "deliveries"]
+						},
+						"description": "Create a new delivery. All fields are optional except medicalStoreId must be valid if provided."
+					}
+				},
+				{
+					"name": "Get All Deliveries",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/deliveries",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "deliveries"]
+						},
+						"description": "Get all deliveries (non-deleted)."
+					}
+				},
+				{
+					"name": "Get Delivery By ID",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/deliveries/1",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "deliveries", "1"]
+						},
+						"description": "Get delivery by ID."
+					}
+				},
+				{
+					"name": "Get Deliveries By Medical Store ID",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/deliveries/medicalstore/{{medicalStoreId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "deliveries", "medicalstore", "{{medicalStoreId}}"]
+						},
+						"description": "Get all deliveries for a medical store."
+					}
+				},
+				{
+					"name": "Get Active Deliveries By Medical Store ID",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/deliveries/medicalstore/{{medicalStoreId}}/active",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "deliveries", "medicalstore", "{{medicalStoreId}}", "active"]
+						},
+						"description": "Get active deliveries for a medical store."
+					}
+				},
+				{
+					"name": "Update Delivery",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"firstName\": \"John Updated\",\n  \"mobileNumber\": \"9876543210\",\n  \"isActive\": true,\n  \"medicalStoreId\": \"{{medicalStoreId}}\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/deliveries/1",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "deliveries", "1"]
+						},
+						"description": "Update delivery information. All fields are optional."
+					}
+				},
+				{
+					"name": "Delete Delivery",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/deliveries/1",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "deliveries", "1"]
+						},
+						"description": "Delete delivery (soft delete). Sets IsDeleted to true and IsActive to false."
+					}
+				}
+			]
+		},
+		{
+			"name": "Customer Support Regions",
+			"item": [
+				{
+					"name": "Create Customer Support Region",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Mumbai Central Region\",\n  \"city\": \"Mumbai\",\n  \"regionName\": \"Central\",\n  \"pinCodes\": [\"400001\", \"400002\", \"400003\"]\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/customersupportregions",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "customersupportregions"]
+						},
+						"description": "Create a new customer support region with optional pin codes."
+					}
+				},
+				{
+					"name": "Get All Customer Support Regions",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/customersupportregions",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "customersupportregions"]
+						},
+						"description": "Get all customer support regions with their pin codes."
+					}
+				},
+				{
+					"name": "Get Customer Support Region By ID",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/customersupportregions/1",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "customersupportregions", "1"]
+						},
+						"description": "Get customer support region by ID with pin codes."
+					}
+				},
+				{
+					"name": "Update Customer Support Region",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Mumbai Central Region Updated\",\n  \"pinCodes\": [\"400001\", \"400002\", \"400003\", \"400004\"]\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/customersupportregions/1",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "customersupportregions", "1"]
+						},
+						"description": "Update customer support region. Providing pinCodes will replace all existing pin codes."
+					}
+				},
+				{
+					"name": "Delete Customer Support Region",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/customersupportregions/1",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "customersupportregions", "1"]
+						},
+						"description": "Delete customer support region and all associated pin codes."
+					}
+				},
+				{
+					"name": "Add Pin Code To Region",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"customerSupportRegionId\": 1,\n  \"pinCode\": \"400005\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/customersupportregions/add-pincode",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "customersupportregions", "add-pincode"]
+						},
+						"description": "Add a pin code to a customer support region."
+					}
+				},
+				{
+					"name": "Remove Pin Code From Region",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"customerSupportRegionId\": 1,\n  \"pinCode\": \"400005\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/customersupportregions/remove-pincode",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "customersupportregions", "remove-pincode"]
+						},
+						"description": "Remove a pin code from a customer support region."
+					}
+				},
+				{
+					"name": "Get Pin Codes By Region ID",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/customersupportregions/1/pincodes",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "customersupportregions", "1", "pincodes"]
+						},
+						"description": "Get all pin codes for a customer support region."
+					}
+				},
+				{
+					"name": "Get Region By Pin Code",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/customersupportregions/by-pincode/400001",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "customersupportregions", "by-pincode", "400001"]
+						},
+						"description": "Get customer support region by pin code."
 					}
 				}
 			]

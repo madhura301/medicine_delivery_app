@@ -50,6 +50,20 @@ namespace MedicineDelivery.Infrastructure.Services
                     };
                 }
 
+                // Validate CustomerSupportRegionId if provided
+                if (registrationDto.CustomerSupportRegionId.HasValue)
+                {
+                    var region = await _unitOfWork.CustomerSupportRegions.GetByIdAsync(registrationDto.CustomerSupportRegionId.Value);
+                    if (region == null)
+                    {
+                        return new CustomerSupportRegistrationResult
+                        {
+                            Success = false,
+                            Errors = new List<string> { $"Customer support region with ID '{registrationDto.CustomerSupportRegionId.Value}' not found." }
+                        };
+                    }
+                }
+
                 // Begin transaction to ensure atomicity
                 await _unitOfWork.BeginTransactionAsync();
                 
@@ -97,7 +111,9 @@ namespace MedicineDelivery.Infrastructure.Services
                         MobileNumber = registrationDto.MobileNumber,
                         EmailId = registrationDto.EmailId,
                         AlternativeMobileNumber = registrationDto.AlternativeMobileNumber,
+                        EmployeeId = registrationDto.EmployeeId,
                         UserId = identityUser.Id,
+                        CustomerSupportRegionId = registrationDto.CustomerSupportRegionId,
                         CreatedOn = DateTime.UtcNow,
                         IsActive = true,
                         IsDeleted = false
@@ -120,6 +136,7 @@ namespace MedicineDelivery.Infrastructure.Services
                         MobileNumber = customerSupport.MobileNumber,
                         EmailId = customerSupport.EmailId,
                         AlternativeMobileNumber = customerSupport.AlternativeMobileNumber,
+                        EmployeeId = customerSupport.EmployeeId,
                         IsActive = customerSupport.IsActive,
                         IsDeleted = customerSupport.IsDeleted,
                         CreatedOn = customerSupport.CreatedOn,
@@ -127,6 +144,7 @@ namespace MedicineDelivery.Infrastructure.Services
                         UpdatedOn = customerSupport.UpdatedOn,
                         UpdatedBy = customerSupport.UpdatedBy,
                         UserId = customerSupport.UserId,
+                        CustomerSupportRegionId = customerSupport.CustomerSupportRegionId,
                         Password = generatedPassword
                     };
 
@@ -193,6 +211,16 @@ namespace MedicineDelivery.Infrastructure.Services
             if (customerSupport == null)
                 return null;
 
+            // Validate CustomerSupportRegionId if provided
+            if (updateDto.CustomerSupportRegionId.HasValue)
+            {
+                var region = await _unitOfWork.CustomerSupportRegions.GetByIdAsync(updateDto.CustomerSupportRegionId.Value);
+                if (region == null)
+                {
+                    throw new KeyNotFoundException($"Customer support region with ID '{updateDto.CustomerSupportRegionId.Value}' not found.");
+                }
+            }
+
             customerSupport.CustomerSupportFirstName = updateDto.CustomerSupportFirstName;
             customerSupport.CustomerSupportLastName = updateDto.CustomerSupportLastName;
             customerSupport.CustomerSupportMiddleName = updateDto.CustomerSupportMiddleName;
@@ -201,8 +229,11 @@ namespace MedicineDelivery.Infrastructure.Services
             customerSupport.State = updateDto.State;
             customerSupport.MobileNumber = updateDto.MobileNumber;
             customerSupport.AlternativeMobileNumber = updateDto.AlternativeMobileNumber;
+            customerSupport.EmployeeId = updateDto.EmployeeId;
+            customerSupport.CustomerSupportRegionId = updateDto.CustomerSupportRegionId;
             customerSupport.UpdatedOn = DateTime.UtcNow;
 
+            _unitOfWork.CustomerSupports.Update(customerSupport);
             await _unitOfWork.SaveChangesAsync();
             return _mapper.Map<CustomerSupportDto>(customerSupport);
         }

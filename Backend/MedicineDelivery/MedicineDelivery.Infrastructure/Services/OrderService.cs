@@ -1,11 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Security.Cryptography;
-using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
 using AutoMapper;
 using MedicineDelivery.Application.DTOs;
 using MedicineDelivery.Application.Interfaces;
@@ -16,6 +8,15 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Hosting;
 using NetTopologySuite;
 using NetTopologySuite.Geometries;
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Net;
+using System.Security.Cryptography;
+using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace MedicineDelivery.Infrastructure.Services
 {
@@ -26,6 +27,7 @@ namespace MedicineDelivery.Infrastructure.Services
         private readonly IHostEnvironment _hostEnvironment;
         private static readonly string[] AllowedImageExtensions = { ".jpg", ".jpeg", ".png", ".gif", ".bmp" };
         private static readonly string[] AllowedVoiceExtensions = { ".mp3", ".wav", ".m4a", ".aac", ".ogg" };
+        private static readonly string[] AllowedPdfExtensions = { ".pdf" };
 
         public OrderService(IUnitOfWork unitOfWork, IMapper mapper, IHostEnvironment hostEnvironment)
         {
@@ -95,6 +97,7 @@ namespace MedicineDelivery.Infrastructure.Services
                 CustomerAddressId = createDto.CustomerAddressId,
                 OrderType = createDto.OrderType,
                 OrderInputType = createDto.OrderInputType,
+                AssignTo = AssignTo.Customer,
                 OrderInputText = createDto.OrderInputType == OrderInputType.Text
                     ? string.IsNullOrWhiteSpace(createDto.OrderInputText) ? null : createDto.OrderInputText.Trim()
                     : null,
@@ -119,6 +122,49 @@ namespace MedicineDelivery.Infrastructure.Services
             else
             {
                 order.OrderInputFileLocation = null;
+            }
+
+           
+
+            await _unitOfWork.Orders.AddAsync(order);
+            await _unitOfWork.SaveChangesAsync();
+
+            // Create initial assignment history entry
+            var assignmentHistory = new OrderAssignmentHistory
+            {
+                OrderId = order.OrderId,
+                CustomerId = order.CustomerId,
+                MedicalStoreId = null, // No medical store assigned initially
+                AssignedByType = AssignedByType.System,
+                AssignTo = AssignTo.Customer, // Order is initially assigned to Customer
+                AssignedOn = DateTime.UtcNow,
+                Status = AssignmentStatus.Assigned
+            };
+
+            await _unitOfWork.OrderAssignmentHistories.AddAsync(assignmentHistory);
+            await _unitOfWork.SaveChangesAsync();
+
+            return _mapper.Map<OrderDto>(order);
+        }
+
+        public async Task AssignOrderToNearestChemist(int orderId)
+        {
+            // Find the order by OrderId
+            var order = await _unitOfWork.Orders.FirstOrDefaultAsync(o => o.OrderId == orderId);
+            if (order == null)
+            {
+                throw new KeyNotFoundException($"Order with OrderId '{orderId}' not found.");
+            }
+
+            // Get the customer address for this order
+            var address = await _unitOfWork.CustomerAddresses.FirstOrDefaultAsync(ca =>
+                ca.Id == order.CustomerAddressId &&
+                ca.CustomerId == order.CustomerId &&
+                ca.IsActive);
+
+            if (address == null)
+            {
+                throw new KeyNotFoundException("Customer address not found or inactive for this order.");
             }
 
             // Find nearest active medical store using NetTopologySuite if customer address has coordinates
@@ -150,15 +196,38 @@ namespace MedicineDelivery.Infrastructure.Services
 
                 if (nearestStore != null)
                 {
+                    // Update order assignment
                     order.MedicalStoreId = nearestStore.MedicalStoreId;
-                    order.OrderStatus = OrderStatus.PendingPayment;
+                    order.AssignTo = AssignTo.Chemist;
+                    order.AssignedByType = AssignedByType.System;
+                    order.OrderStatus = OrderStatus.AssignedToChemist;
+                    order.UpdatedOn = DateTime.UtcNow;
+
+                    // Create assignment history entry
+                    var assignmentHistory = new OrderAssignmentHistory
+                    {
+                        OrderId = order.OrderId,
+                        CustomerId = order.CustomerId,
+                        MedicalStoreId = nearestStore.MedicalStoreId,
+                        AssignedByType = AssignedByType.System,
+                        AssignTo = AssignTo.Chemist,
+                        AssignedOn = DateTime.UtcNow,
+                        Status = AssignmentStatus.Assigned
+                    };
+
+                    _unitOfWork.Orders.Update(order);
+                    await _unitOfWork.OrderAssignmentHistories.AddAsync(assignmentHistory);
+                    await _unitOfWork.SaveChangesAsync();
+                }
+                else
+                {
+                    throw new InvalidOperationException("No active medical store with coordinates found to assign the order.");
                 }
             }
-
-            await _unitOfWork.Orders.AddAsync(order);
-            await _unitOfWork.SaveChangesAsync();
-
-            return _mapper.Map<OrderDto>(order);
+            else
+            {
+                throw new InvalidOperationException("Customer address does not have coordinates (latitude/longitude) required for finding nearest chemist.");
+            }
         }
 
         public async Task<OrderDto?> GetOrderByIdAsync(int orderId, CancellationToken cancellationToken = default)
@@ -414,6 +483,7 @@ namespace MedicineDelivery.Infrastructure.Services
 
             // Update order assignment
             order.MedicalStoreId = assignDto.MedicalStoreId;
+            order.AssignTo = AssignTo.Chemist;
             order.AssignedByType = AssignedByType.System;
             order.OrderStatus = OrderStatus.AssignedToChemist;
             order.UpdatedOn = DateTime.UtcNow;
@@ -422,8 +492,10 @@ namespace MedicineDelivery.Infrastructure.Services
             var assignmentHistory = new OrderAssignmentHistory
             {
                 OrderId = order.OrderId,
+                CustomerId = order.CustomerId,
                 MedicalStoreId = assignDto.MedicalStoreId,
                 AssignedByType = AssignedByType.System,
+                AssignTo = AssignTo.Chemist,
                 AssignedOn = DateTime.UtcNow,
                 Status = AssignmentStatus.Assigned
             };
@@ -495,6 +567,121 @@ namespace MedicineDelivery.Infrastructure.Services
         {
             var random = new Random();
             return random.Next(1000, 9999).ToString();
+        }
+
+        public async Task<OrderDto> UploadOrderBillAsync(UploadOrderBillDto uploadDto, CancellationToken cancellationToken = default)
+        {
+            ArgumentNullException.ThrowIfNull(uploadDto);
+            cancellationToken.ThrowIfCancellationRequested();
+
+            if (uploadDto.BillFile == null || uploadDto.BillFile.Length == 0)
+            {
+                throw new ArgumentException("Bill file is required.", nameof(uploadDto.BillFile));
+            }
+
+            // Validate PDF file
+            var extension = Path.GetExtension(uploadDto.BillFile.FileName).ToLowerInvariant();
+            if (string.IsNullOrEmpty(extension) || !AllowedPdfExtensions.Contains(extension))
+            {
+                throw new ArgumentException("Only PDF files are allowed for order bills.", nameof(uploadDto.BillFile));
+            }
+
+            // Find the order
+            var order = await _unitOfWork.Orders.FirstOrDefaultAsync(o => o.OrderId == uploadDto.OrderId);
+            if (order == null)
+            {
+                throw new KeyNotFoundException($"Order with OrderId '{uploadDto.OrderId}' not found.");
+            }
+
+            // Save the PDF file
+            var basePath = Path.Combine(_hostEnvironment.ContentRootPath, "Files", "Orders", "Bills");
+            Directory.CreateDirectory(basePath);
+
+            var fileExtension = Path.GetExtension(uploadDto.BillFile.FileName);
+            var uniqueFileName = $"{Guid.NewGuid():N}{fileExtension}";
+            var filePath = Path.Combine(basePath, uniqueFileName);
+
+            using (var stream = new FileStream(filePath, FileMode.Create))
+            {
+                await uploadDto.BillFile.CopyToAsync(stream, cancellationToken);
+            }
+
+            var fileLocation = Path.Combine("Files", "Orders", "Bills", uniqueFileName).Replace("\\", "/");
+
+            // Update order with bill file location and amount
+            order.OrderBillFileLocation = fileLocation;
+            order.TotalAmount = uploadDto.OrderAmount;
+            order.UpdatedOn = DateTime.UtcNow;
+
+            _unitOfWork.Orders.Update(order);
+            await _unitOfWork.SaveChangesAsync();
+
+            return _mapper.Map<OrderDto>(order);
+        }
+
+        public async Task<OrderDto> AssignOrderToDeliveryAsync(AssignOrderToDeliveryDto assignDto, CancellationToken cancellationToken = default)
+        {
+            ArgumentNullException.ThrowIfNull(assignDto);
+            cancellationToken.ThrowIfCancellationRequested();
+
+            // Find the order
+            var order = await _unitOfWork.Orders.FirstOrDefaultAsync(o => o.OrderId == assignDto.OrderId);
+            if (order == null)
+            {
+                throw new KeyNotFoundException($"Order with OrderId '{assignDto.OrderId}' not found.");
+            }
+
+            // Validate delivery exists and is active
+            var delivery = await _unitOfWork.Deliveries.GetByIdAsync(assignDto.DeliveryId);
+            if (delivery == null || delivery.IsDeleted || !delivery.IsActive)
+            {
+                throw new KeyNotFoundException($"Active delivery with ID '{assignDto.DeliveryId}' not found.");
+            }
+
+            // Validate delivery belongs to the order's medical store
+            if (order.MedicalStoreId.HasValue && delivery.MedicalStoreId != order.MedicalStoreId)
+            {
+                throw new InvalidOperationException("Delivery does not belong to the order's medical store.");
+            }
+
+            // Validate order is in a state that can be assigned to delivery
+            if (order.OrderStatus != OrderStatus.BillUploaded && order.OrderStatus != OrderStatus.Paid)
+            {
+                throw new InvalidOperationException($"Order can only be assigned to delivery when status is {OrderStatus.BillUploaded} or {OrderStatus.Paid}. Current status is {order.OrderStatus}.");
+            }
+
+            // Update order
+            order.DeliveryId = assignDto.DeliveryId;
+            order.AssignTo = AssignTo.Delivery;
+            order.OrderStatus = OrderStatus.OutForDelivery;
+            order.UpdatedOn = DateTime.UtcNow;
+
+            // Create assignment history entry
+            var assignmentHistory = new OrderAssignmentHistory
+            {
+                OrderId = order.OrderId,
+                CustomerId = order.CustomerId,
+                MedicalStoreId = order.MedicalStoreId,
+                DeliveryId = assignDto.DeliveryId,
+                AssignedByType = AssignedByType.System,
+                AssignTo = AssignTo.Delivery,
+                AssignedOn = DateTime.UtcNow,
+                Status = AssignmentStatus.Assigned
+            };
+
+            _unitOfWork.Orders.Update(order);
+            await _unitOfWork.OrderAssignmentHistories.AddAsync(assignmentHistory);
+            await _unitOfWork.SaveChangesAsync();
+
+            return _mapper.Map<OrderDto>(order);
+        }
+
+        public async Task<IEnumerable<OrderDto>> GetAllOrdersAsync(CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            var orders = await _unitOfWork.Orders.GetAllAsync();
+            return _mapper.Map<IEnumerable<OrderDto>>(orders);
         }
     }
 }
