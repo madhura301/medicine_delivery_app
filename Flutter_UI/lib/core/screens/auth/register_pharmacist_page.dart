@@ -1430,7 +1430,7 @@ class _PharmacistRegistrationPageState
         };
 
         AppLogger.info('Registration Data: ${jsonEncode(registrationData)}');
-
+        
         final response = await http.post(
           Uri.parse('${AppConstants.apiBaseUrl}/MedicalStores/register'),
           headers: {

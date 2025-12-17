@@ -4,6 +4,9 @@ import 'package:pharmaish/core/dashboards/chemist_dashboard.dart';
 import 'package:pharmaish/core/dashboards/customer_dashboard.dart';
 import 'package:pharmaish/core/dashboards/manager_dashboard.dart';
 import 'package:pharmaish/core/dashboards/support_dashboard.dart';
+import 'package:pharmaish/core/screens/orders/accepted_order_bill_screen.dart';
+import 'package:pharmaish/core/screens/orders/create_whatsapp_order_screen.dart';
+import 'package:pharmaish/core/screens/orders/rejected_orders_screen.dart';
 import 'package:pharmaish/core/screens/profiles/customer_profile_page.dart';
 import 'package:pharmaish/core/screens/profiles/pharmacist_profile_page.dart';
 import 'package:pharmaish/core/screens/auth/register_customer_page.dart';
@@ -25,7 +28,9 @@ class AppRoutes {
   static const String chemistDashboard = '/chemistDashboard';
   static const String managerDashboard = '/managerDashboard';
   static const String customerSupportDashboard = '/customerSupportDashboard';
-
+  static const String createWhatsAppOrder = '/createWhatsAppOrder';
+  static const String rejectedOrders = '/rejectedOrders';
+  static const String acceptedOrderBill = '/acceptedOrderBill';
 
   static Map<String, WidgetBuilder> routes = {
     login: (context) => const LoginPage(),
@@ -70,5 +75,18 @@ class AppRoutes {
     adminDashboard: (context) => const AdminDashboard(),
     managerDashboard: (context) => const ManagerDashboard(),
     customerSupportDashboard: (context) => const CustomerSupportDashboard(),
+    createWhatsAppOrder: (context) =>
+        const CreateWhatsAppOrderScreen(), // Placeholder
+    rejectedOrders: (context) => const RejectedOrdersScreen(), // Placeholder
+    acceptedOrderBill: (context) {
+      final args =
+          ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>;
+      return AcceptedOrderBillScreen(
+        order: args['order'],
+        customerName: args['customerName'],
+        customerEmail: args['customerEmail'],
+        customerPhone: args['customerPhone'],
+      );
+    },
   };
 }

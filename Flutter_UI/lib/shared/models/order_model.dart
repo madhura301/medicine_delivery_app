@@ -20,6 +20,7 @@ class OrderModel {
   final String? rejectionReason;
   final String? customerRejectionReason;
   final String? customerRejectionPhotoUrl;
+  final String? orderNumber;
 
   // Shipping Address
   final String? shippingAddressLine1;
@@ -61,6 +62,7 @@ class OrderModel {
     required this.isActive,
     required this.createdOn,
     this.updatedOn,
+    this.orderNumber,
   });
 
   /// Parse OrderType from int value (backend sends: 0, 1, 2)
@@ -76,8 +78,9 @@ class OrderModel {
           return OrderType.fromValue(intValue);
         }
       }
-      
-      AppLogger.warning('Unexpected OrderType value: $value (${value.runtimeType})');
+
+      AppLogger.warning(
+          'Unexpected OrderType value: $value (${value.runtimeType})');
       return OrderType.notSet;
     } catch (e) {
       AppLogger.error('Error parsing OrderType: $e');
@@ -98,8 +101,9 @@ class OrderModel {
           return OrderInputType.fromValue(intValue);
         }
       }
-      
-      AppLogger.warning('Unexpected OrderInputType value: $value (${value.runtimeType})');
+
+      AppLogger.warning(
+          'Unexpected OrderInputType value: $value (${value.runtimeType})');
       return OrderInputType.image;
     } catch (e) {
       AppLogger.error('Error parsing OrderInputType: $e');
@@ -132,46 +136,93 @@ class OrderModel {
       // Parse enums
       orderType: _parseOrderType(json['orderType']),
       orderInputType: _parseOrderInputType(json['orderInputType']),
-      
-      prescriptionFileUrl: _toStringOrNull(json['prescriptionFileUrl']),
-      prescriptionText: _toStringOrNull(json['prescriptionText']),
-      voiceNoteUrl: _toStringOrNull(json['voiceNoteUrl']),
-      
+
+      prescriptionFileUrl: _toStringOrNull(
+          json['prescriptionFileUrl'] ?? json['orderInputFileLocation']),
+      prescriptionText:
+          _toStringOrNull(json['prescriptionText'] ?? json['orderInputText']),
+
       // Handle status as int or string
-      status: _toString(json['status'], 'Pending'),
-      
+      status: _parseOrderStatus(json['orderStatus']),
+
       totalAmount: json['totalAmount']?.toDouble(),
       billFileUrl: _toStringOrNull(json['billFileUrl']),
-      
+
       // Handle completionOtp as int or string
       completionOtp: _toStringOrNull(json['completionOtp']),
-      
+
       completedOn: json['completedOn'] != null
           ? DateTime.parse(json['completedOn'])
           : null,
-      
+
       rejectionReason: _toStringOrNull(json['rejectionReason']),
       customerRejectionReason: _toStringOrNull(json['customerRejectionReason']),
-      customerRejectionPhotoUrl: _toStringOrNull(json['customerRejectionPhotoUrl']),
-      
+      customerRejectionPhotoUrl:
+          _toStringOrNull(json['customerRejectionPhotoUrl']),
+
+      orderNumber:
+          _toStringOrNull(json['orderNumber']),
+
       // Shipping Address - all using safe string conversion
       shippingAddressLine1: _toStringOrNull(json['shippingAddressLine1']),
       shippingAddressLine2: _toStringOrNull(json['shippingAddressLine2']),
       shippingArea: _toStringOrNull(json['shippingArea']),
       shippingCity: _toStringOrNull(json['shippingCity']),
-      
+
       // Handle pincode as int or string
       shippingPincode: _toStringOrNull(json['shippingPincode']),
-      
+
       shippingLatitude: json['shippingLatitude']?.toDouble(),
       shippingLongitude: json['shippingLongitude']?.toDouble(),
-      
+
       isActive: json['isActive'] ?? true,
       createdOn:
           DateTime.parse(json['createdOn'] ?? DateTime.now().toIso8601String()),
       updatedOn:
           json['updatedOn'] != null ? DateTime.parse(json['updatedOn']) : null,
     );
+  }
+
+  /// Parse orderStatus integer to readable string
+  static String _parseOrderStatus(dynamic value) {
+    if (value == null) return 'Pending';
+
+    try {
+      int statusCode;
+      if (value is int) {
+        statusCode = value;
+      } else if (value is String) {
+        statusCode = int.tryParse(value) ?? 0;
+      } else {
+        return 'Unknown';
+      }
+
+      // Based on OrderStatus enum values from backend
+      switch (statusCode) {
+        case 0:
+          return 'Pending Payment';
+        case 1:
+          return 'Assigned to Chemist';
+        case 2:
+          return 'Rejected by Chemist';
+        case 3:
+          return 'Accepted by Chemist';
+        case 4:
+          return 'Bill Uploaded';
+        case 5:
+          return 'Paid';
+        case 6:
+          return 'Out for Delivery';
+        case 7:
+          return 'Completed';
+        default:
+          AppLogger.warning('Unknown order status code: $statusCode');
+          return 'Unknown Status ($statusCode)';
+      }
+    } catch (e) {
+      AppLogger.error('Error parsing order status: $e');
+      return 'Unknown';
+    }
   }
 
   Map<String, dynamic> toJson() {

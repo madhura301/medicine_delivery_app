@@ -14,7 +14,7 @@ void main() {
 
   HttpOverrides.global = MyHttpOverrides();
   // Force production environment only for debugging purposes
-  EnvironmentConfig.setEnvironment(Environment.production);
+  EnvironmentConfig.setEnvironment(Environment.staging);
   runApp(const PharmaishApp());
 }
 

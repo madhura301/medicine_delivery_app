@@ -14,6 +14,7 @@ class EnvironmentConfig {
   //static const String _devApiBaseUrl = "https://localhost:7000/api";
   static const String _devApiBaseUrl = "https://10.0.2.2:7000/api";
   static const String _stagingApiBaseUrl =
+   //"http://10.0.2.2:5000/api";
       "http://188.241.187.172/MediMartAPI1/api";
   static const String _prodApiBaseUrl = "http://188.241.187.172/MediMartAPIProd/api";
 

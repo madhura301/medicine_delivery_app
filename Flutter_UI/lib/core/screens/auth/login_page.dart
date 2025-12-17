@@ -594,7 +594,7 @@ class _LoginPageState extends State<LoginPage> {
           } else {
             AppLogger.info('No user info extracted from token');
           }
-          final userId = responseData['userId'] ??
+          final userId = responseData['UserId'] ??
               responseData['id'] ??
               userInfo[
                   'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier'] ??

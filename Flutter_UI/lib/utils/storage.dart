@@ -175,9 +175,10 @@ class StorageService {
         userInfo[
             'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name'] ??
         '';
-    final id = userInfo['id'] ??
-    userInfo[
-            'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier'] ??'';
+    final id = userInfo['UserId'] ??
+              userInfo['id'] ??
+              userInfo['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier'] ??
+              '';
 
     AppLogger.info(
         'User Info: Role: $role, Email: $email, Name: $firstName $lastName, Mobile: $mobileNumber, ID: $id');
@@ -204,10 +205,10 @@ class StorageService {
   static Future<void> storeUserInfo(Map<String, String> userInfo) async {
     try {
       AppLogger.info('Storing user information: $userInfo');
-      var userId = userInfo['id'] ??
-          userInfo[
-              'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier'] ??
-          '';
+      var userId = userInfo['UserId'] ??
+              userInfo['id'] ??
+              userInfo['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier'] ??
+              '';
       await _storage.write(key: _userEmailKey, value: userInfo['email']);
       await _storage.write(
         key: _userMobileNumberKey, value: userInfo['mobileNumber']);
@@ -225,9 +226,9 @@ class StorageService {
   /// Extract user information from JWT token
   static Map<String, String> extractUserInfo(Map<String, dynamic> tokenData) {
     return {
-       'id': tokenData['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier'] ??
+       'id': tokenData['UserId'] ?? 
+        tokenData['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier'] ??
         tokenData['id'] ??
-        tokenData['userId'] ??
         tokenData['sub'] ??
         '', 
       'email': tokenData['email'] ??
