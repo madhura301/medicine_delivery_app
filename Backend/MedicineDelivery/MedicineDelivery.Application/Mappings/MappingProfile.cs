@@ -46,6 +46,13 @@ namespace MedicineDelivery.Application.Mappings
             CreateMap<OrderAssignmentHistory, OrderAssignmentHistoryDto>();
             CreateMap<Payment, PaymentDto>();
             CreateMap<CreateOrderDto, Order>();
+
+            // Delivery mappings
+            CreateMap<Delivery, DeliveryDto>();
+
+            // CustomerSupportRegion mappings
+            CreateMap<CustomerSupportRegion, CustomerSupportRegionDto>()
+                .ForMember(dest => dest.PinCodes, opt => opt.Ignore()); // PinCodes loaded separately
         }
     }
 }

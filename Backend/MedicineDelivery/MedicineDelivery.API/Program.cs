@@ -177,6 +177,9 @@ builder.Services.AddAuthorization(options =>
     options.AddPolicy("RequireOrderDeletePermission", policy =>
         policy.Requirements.Add(new MedicineDelivery.API.Authorization.PermissionRequirement("DeleteOrders")));
     
+    options.AddPolicy("RequireListAllOrdersPermission", policy =>
+        policy.Requirements.Add(new MedicineDelivery.API.Authorization.PermissionRequirement("ListAllOrders")));
+    
     // Admin User Management Policies
     options.AddPolicy("RequireAdminReadUsersPermission", policy => 
         policy.Requirements.Add(new MedicineDelivery.API.Authorization.PermissionRequirement("AdminReadUsers")));
@@ -317,6 +320,8 @@ builder.Services.AddScoped<MedicineDelivery.Application.Interfaces.ICustomerSupp
 builder.Services.AddScoped<MedicineDelivery.Application.Interfaces.IManagerService, MedicineDelivery.Infrastructure.Services.ManagerService>();
 builder.Services.AddScoped<MedicineDelivery.Application.Interfaces.ICustomerService, MedicineDelivery.Infrastructure.Services.CustomerService>();
 builder.Services.AddScoped<MedicineDelivery.Application.Interfaces.ICustomerAddressService, MedicineDelivery.Infrastructure.Services.CustomerAddressService>();
+builder.Services.AddScoped<MedicineDelivery.Application.Interfaces.IDeliveryService, MedicineDelivery.Infrastructure.Services.DeliveryService>();
+builder.Services.AddScoped<MedicineDelivery.Application.Interfaces.ICustomerSupportRegionService, MedicineDelivery.Infrastructure.Services.CustomerSupportRegionService>();
 builder.Services.AddScoped<MedicineDelivery.Application.Interfaces.IPhotoUploadService, MedicineDelivery.Infrastructure.Services.PhotoUploadService>();
 builder.Services.AddScoped<MedicineDelivery.Application.Interfaces.IPermissionCheckerService, MedicineDelivery.Infrastructure.Services.PermissionCheckerService>();
 builder.Services.AddScoped<MedicineDelivery.Application.Interfaces.IOrderService, MedicineDelivery.Infrastructure.Services.OrderService>();

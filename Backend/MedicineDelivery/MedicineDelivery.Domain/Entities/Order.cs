@@ -10,10 +10,13 @@ namespace MedicineDelivery.Domain.Entities
         public Guid? MedicalStoreId { get; set; }
         public AssignedByType AssignedByType { get; set; } = AssignedByType.System;
         public Guid? CustomerSupportId { get; set; }
+        public int? DeliveryId { get; set; }
+        public AssignTo AssignTo { get; set; } = AssignTo.Chemist;
         public OrderType OrderType { get; set; } = OrderType.NotSet;
         public OrderInputType OrderInputType { get; set; }
         public string? OrderInputFileLocation { get; set; }
         public string? OrderInputText { get; set; }
+        public string? OrderBillFileLocation { get; set; }
         public OrderStatus OrderStatus { get; set; } = OrderStatus.PendingPayment;
         public string? OrderNumber { get; set; }
         public string? OTP { get; set; }

@@ -350,6 +350,96 @@ namespace MedicineDelivery.API.Controllers
                 return StatusCode(500, new { error = "An error occurred while creating the order." });
             }
         }
+
+        [HttpPost("{orderId:int}/upload-bill")]
+        [Consumes("multipart/form-data")]
+        [Authorize(Policy = "RequireOrderUpdatePermission")]
+        public async Task<IActionResult> UploadOrderBill(int orderId, [FromForm] UploadOrderBillDto uploadDto, CancellationToken cancellationToken)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            // Ensure the orderId in the route matches the DTO
+            if (uploadDto.OrderId != orderId)
+            {
+                return BadRequest(new { error = "OrderId in the route must match the OrderId in the request body." });
+            }
+
+            try
+            {
+                var order = await _orderService.UploadOrderBillAsync(uploadDto, cancellationToken);
+                return Ok(order);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { error = ex.Message });
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { error = ex.Message });
+            }
+            catch (OperationCanceledException)
+            {
+                return StatusCode(499, new { error = "Request was cancelled." });
+            }
+            catch (Exception)
+            {
+                return StatusCode(500, new { error = "An error occurred while uploading the order bill." });
+            }
+        }
+
+        [HttpPost("assign-to-delivery")]
+        [Authorize(Policy = "RequireOrderUpdatePermission")]
+        public async Task<IActionResult> AssignOrderToDelivery([FromBody] AssignOrderToDeliveryDto assignDto, CancellationToken cancellationToken)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            try
+            {
+                var order = await _orderService.AssignOrderToDeliveryAsync(assignDto, cancellationToken);
+                return Ok(order);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { error = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { error = ex.Message });
+            }
+            catch (OperationCanceledException)
+            {
+                return StatusCode(499, new { error = "Request was cancelled." });
+            }
+            catch (Exception)
+            {
+                return StatusCode(500, new { error = "An error occurred while assigning the order to delivery." });
+            }
+        }
+
+        [HttpGet]
+        [Authorize(Policy = "RequireListAllOrdersPermission")]
+        public async Task<IActionResult> GetAllOrders(CancellationToken cancellationToken)
+        {
+            try
+            {
+                var orders = await _orderService.GetAllOrdersAsync(cancellationToken);
+                return Ok(orders);
+            }
+            catch (OperationCanceledException)
+            {
+                return StatusCode(499, new { error = "Request was cancelled." });
+            }
+            catch (Exception)
+            {
+                return StatusCode(500, new { error = "An error occurred while retrieving all orders." });
+            }
+        }
     }
 }
 

@@ -25,6 +25,9 @@ namespace MedicineDelivery.Infrastructure.Data
         public DbSet<Order> Orders { get; set; }
         public DbSet<OrderAssignmentHistory> OrderAssignmentHistories { get; set; }
         public DbSet<Payment> Payments { get; set; }
+        public DbSet<Delivery> Deliveries { get; set; }
+        public DbSet<CustomerSupportRegion> CustomerSupportRegions { get; set; }
+        public DbSet<CustomerSupportRegionPinCode> CustomerSupportRegionPinCodes { get; set; }
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
@@ -234,6 +237,15 @@ namespace MedicineDelivery.Infrastructure.Data
                 .HasForeignKey(cs => cs.UserId)
                 .OnDelete(DeleteBehavior.SetNull);
 
+            builder.Entity<CustomerSupport>()
+                .HasOne(cs => cs.CustomerSupportRegion)
+                .WithMany()
+                .HasForeignKey(cs => cs.CustomerSupportRegionId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            builder.Entity<CustomerSupport>()
+                .HasIndex(cs => cs.CustomerSupportRegionId);
+
             // Configure Manager entity
             builder.Entity<Manager>()
                 .HasKey(m => m.ManagerId);
@@ -398,6 +410,10 @@ namespace MedicineDelivery.Infrastructure.Data
                     .HasConversion<string>()
                     .HasMaxLength(20);
 
+                entity.Property(o => o.AssignTo)
+                    .HasConversion<string>()
+                    .HasMaxLength(20);
+
                 entity.Property(o => o.OrderType)
                     .HasConversion<string>()
                     .HasMaxLength(20);
@@ -412,6 +428,10 @@ namespace MedicineDelivery.Infrastructure.Data
 
                 entity.Property(o => o.OrderInputFileLocation)
                     .HasMaxLength(100);
+
+                entity.Property(o => o.OrderBillFileLocation)
+                    .HasMaxLength(255)
+                    .IsRequired(false);
 
                 entity.Property(o => o.OrderNumber)
                     .HasMaxLength(10)
@@ -443,9 +463,15 @@ namespace MedicineDelivery.Infrastructure.Data
                     .HasForeignKey(o => o.CustomerSupportId)
                     .OnDelete(DeleteBehavior.SetNull);
 
+                entity.HasOne<Delivery>()
+                    .WithMany()
+                    .HasForeignKey(o => o.DeliveryId)
+                    .OnDelete(DeleteBehavior.SetNull);
+
                 entity.HasIndex(o => o.CustomerId);
                 entity.HasIndex(o => o.OrderStatus);
                 entity.HasIndex(o => o.MedicalStoreId);
+                entity.HasIndex(o => o.DeliveryId);
             });
 
             // Configure OrderAssignmentHistory entity
@@ -454,6 +480,10 @@ namespace MedicineDelivery.Infrastructure.Data
                 entity.HasKey(oah => oah.AssignmentId);
 
                 entity.Property(oah => oah.AssignedByType)
+                    .HasConversion<string>()
+                    .HasMaxLength(20);
+
+                entity.Property(oah => oah.AssignTo)
                     .HasConversion<string>()
                     .HasMaxLength(20);
 
@@ -469,18 +499,31 @@ namespace MedicineDelivery.Infrastructure.Data
                     .HasForeignKey(oah => oah.OrderId)
                     .OnDelete(DeleteBehavior.Cascade);
 
+                entity.HasOne(oah => oah.Customer)
+                    .WithMany()
+                    .HasForeignKey(oah => oah.CustomerId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
                 entity.HasOne(oah => oah.MedicalStore)
                     .WithMany()
                     .HasForeignKey(oah => oah.MedicalStoreId)
-                    .OnDelete(DeleteBehavior.Restrict);
+                    .OnDelete(DeleteBehavior.Restrict)
+                    .IsRequired(false);
 
                 entity.HasOne(oah => oah.CustomerSupport)
                     .WithMany()
                     .HasForeignKey(oah => oah.AssignedByCustomerSupportId)
                     .OnDelete(DeleteBehavior.SetNull);
 
+                entity.HasOne<Delivery>()
+                    .WithMany()
+                    .HasForeignKey(oah => oah.DeliveryId)
+                    .OnDelete(DeleteBehavior.SetNull);
+
                 entity.HasIndex(oah => oah.OrderId);
+                entity.HasIndex(oah => oah.CustomerId);
                 entity.HasIndex(oah => oah.MedicalStoreId);
+                entity.HasIndex(oah => oah.DeliveryId);
                 entity.HasIndex(oah => oah.Status);
             });
 
@@ -511,6 +554,91 @@ namespace MedicineDelivery.Infrastructure.Data
 
                 entity.HasIndex(p => p.OrderId);
                 entity.HasIndex(p => p.TransactionId).IsUnique();
+            });
+
+            // Configure Delivery entity
+            builder.Entity<Delivery>(entity =>
+            {
+                entity.HasKey(d => d.Id);
+
+                entity.Property(d => d.FirstName)
+                    .HasMaxLength(100);
+
+                entity.Property(d => d.MiddleName)
+                    .HasMaxLength(100);
+
+                entity.Property(d => d.LastName)
+                    .HasMaxLength(100);
+
+                entity.Property(d => d.DrivingLicenceNumber)
+                    .HasMaxLength(50);
+
+                entity.Property(d => d.MobileNumber)
+                    .HasMaxLength(15);
+
+                entity.Property(d => d.IsActive)
+                    .IsRequired()
+                    .HasDefaultValue(true);
+
+                entity.Property(d => d.IsDeleted)
+                    .IsRequired()
+                    .HasDefaultValue(false);
+
+                entity.Property(d => d.AddedOn)
+                    .IsRequired();
+
+                entity.HasOne(d => d.MedicalStore)
+                    .WithMany()
+                    .HasForeignKey(d => d.MedicalStoreId)
+                    .OnDelete(DeleteBehavior.SetNull);
+
+                entity.HasIndex(d => d.MedicalStoreId);
+                entity.HasIndex(d => d.IsActive);
+                entity.HasIndex(d => d.IsDeleted);
+            });
+
+            // Configure CustomerSupportRegion entity
+            builder.Entity<CustomerSupportRegion>(entity =>
+            {
+                entity.HasKey(csr => csr.Id);
+
+                entity.Property(csr => csr.Name)
+                    .HasMaxLength(100)
+                    .IsRequired();
+
+                entity.Property(csr => csr.City)
+                    .HasMaxLength(100)
+                    .IsRequired();
+
+                entity.Property(csr => csr.RegionName)
+                    .HasMaxLength(100)
+                    .IsRequired();
+
+                entity.HasIndex(csr => csr.Name);
+                entity.HasIndex(csr => csr.City);
+                entity.HasIndex(csr => csr.RegionName);
+            });
+
+            // Configure CustomerSupportRegionPinCode entity
+            builder.Entity<CustomerSupportRegionPinCode>(entity =>
+            {
+                entity.HasKey(csrpc => csrpc.Id);
+
+                entity.Property(csrpc => csrpc.PinCode)
+                    .HasMaxLength(10)
+                    .IsRequired();
+
+                entity.HasOne(csrpc => csrpc.CustomerSupportRegion)
+                    .WithMany(csr => csr.RegionPinCodes)
+                    .HasForeignKey(csrpc => csrpc.CustomerSupportRegionId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasIndex(csrpc => csrpc.CustomerSupportRegionId);
+                entity.HasIndex(csrpc => csrpc.PinCode);
+                
+                // Ensure unique pin code per region
+                entity.HasIndex(csrpc => new { csrpc.CustomerSupportRegionId, csrpc.PinCode })
+                    .IsUnique();
             });
         }
 
@@ -677,6 +805,16 @@ namespace MedicineDelivery.Infrastructure.Data
 
             builder.Entity<Product>()
                 .Property(p => p.UpdatedAt)
+                .HasColumnType("timestamp with time zone");
+
+            // Configure Delivery DateTime properties for PostgreSQL
+            builder.Entity<Delivery>()
+                .Property(d => d.AddedOn)
+                .HasColumnType("timestamp with time zone")
+                .HasDefaultValueSql("now() at time zone 'utc'");
+
+            builder.Entity<Delivery>()
+                .Property(d => d.ModifiedOn)
                 .HasColumnType("timestamp with time zone");
 
         }
