@@ -144,6 +144,8 @@ namespace MedicineDelivery.Infrastructure.Services
             await _unitOfWork.OrderAssignmentHistories.AddAsync(assignmentHistory);
             await _unitOfWork.SaveChangesAsync();
 
+            await AssignOrderToNearestChemist(order.OrderId);
+
             return _mapper.Map<OrderDto>(order);
         }
 
@@ -283,7 +285,7 @@ namespace MedicineDelivery.Infrastructure.Services
 
             var orders = await _unitOfWork.Orders.FindAsync(o => 
                 o.MedicalStoreId == medicalStoreId && 
-                o.OrderStatus != OrderStatus.Completed);
+                o.OrderStatus == OrderStatus.AssignedToChemist);
             
             return _mapper.Map<IEnumerable<OrderDto>>(orders);
         }
@@ -439,10 +441,25 @@ namespace MedicineDelivery.Infrastructure.Services
                 throw new ArgumentException("Invalid OTP. The provided OTP does not match the order's OTP.");
             }
 
+            order.AssignTo = AssignTo.Customer;
+            order.AssignedByType = AssignedByType.System;
             order.OrderStatus = OrderStatus.Completed;
             order.UpdatedOn = DateTime.UtcNow;
 
+            // Create assignment history entry
+            var assignmentHistory = new OrderAssignmentHistory
+            {
+                OrderId = order.OrderId,
+                CustomerId = order.CustomerId,
+                MedicalStoreId = order.MedicalStoreId,
+                AssignedByType = AssignedByType.System,
+                AssignTo = AssignTo.Customer,
+                AssignedOn = DateTime.UtcNow,
+                Status = AssignmentStatus.Assigned
+            };
+
             _unitOfWork.Orders.Update(order);
+            await _unitOfWork.OrderAssignmentHistories.AddAsync(assignmentHistory);
             await _unitOfWork.SaveChangesAsync();
 
             return _mapper.Map<OrderDto>(order);
@@ -611,9 +628,23 @@ namespace MedicineDelivery.Infrastructure.Services
             // Update order with bill file location and amount
             order.OrderBillFileLocation = fileLocation;
             order.TotalAmount = uploadDto.OrderAmount;
+            order.OrderStatus = OrderStatus.BillUploaded;
             order.UpdatedOn = DateTime.UtcNow;
 
+            // Create assignment history entry
+            var assignmentHistory = new OrderAssignmentHistory
+            {
+                OrderId = order.OrderId,
+                CustomerId = order.CustomerId,
+                MedicalStoreId = order.MedicalStoreId,
+                AssignedByType = AssignedByType.System,
+                AssignTo = AssignTo.Chemist,
+                AssignedOn = DateTime.UtcNow,
+                Status = AssignmentStatus.Assigned
+            };
+
             _unitOfWork.Orders.Update(order);
+            await _unitOfWork.OrderAssignmentHistories.AddAsync(assignmentHistory);
             await _unitOfWork.SaveChangesAsync();
 
             return _mapper.Map<OrderDto>(order);
