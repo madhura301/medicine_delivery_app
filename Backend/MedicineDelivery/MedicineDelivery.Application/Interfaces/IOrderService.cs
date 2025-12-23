@@ -22,6 +22,10 @@ namespace MedicineDelivery.Application.Interfaces
         Task<OrderDto> UploadOrderBillAsync(UploadOrderBillDto uploadDto, CancellationToken cancellationToken = default);
         Task<OrderDto> AssignOrderToDeliveryAsync(AssignOrderToDeliveryDto assignDto, CancellationToken cancellationToken = default);
         Task<IEnumerable<OrderDto>> GetAllOrdersAsync(CancellationToken cancellationToken = default);
+        Task AssignRejectOrderToCustomerSupport(int orderId, CancellationToken cancellationToken = default);
+        Task<IEnumerable<MedicalStoreBasicDto>> GetMedicalStoresByOrderCityAsync(int orderId, CancellationToken cancellationToken = default);
+        Task<IEnumerable<OrderDto>> AssignedToCustomerSupportByCustomerSupportIdAsync(Guid customerSupportId, CancellationToken cancellationToken = default);
+        Task<IEnumerable<OrderDto>> GetAllOrdersByCustomerSupportIdAsync(Guid customerSupportId, CancellationToken cancellationToken = default);
     }
 }
 

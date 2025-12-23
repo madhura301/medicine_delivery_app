@@ -475,6 +475,92 @@ namespace MedicineDelivery.Infrastructure.Services
             return _mapper.Map<OrderDto>(order);
         }
 
+        public async Task AssignRejectOrderToCustomerSupport(int orderId, CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            // Get the order
+            var order = await _unitOfWork.Orders.FirstOrDefaultAsync(o => o.OrderId == orderId);
+            if (order == null)
+            {
+                throw new KeyNotFoundException("Order not found.");
+            }
+
+            // Get the customer address to find the postal code
+            var customerAddress = await _unitOfWork.CustomerAddresses.FirstOrDefaultAsync(ca => ca.Id == order.CustomerAddressId);
+            if (customerAddress == null)
+            {
+                throw new KeyNotFoundException("Customer address not found for this order.");
+            }
+
+            if (string.IsNullOrWhiteSpace(customerAddress.PostalCode))
+            {
+                throw new InvalidOperationException("Customer address does not have a postal code.");
+            }
+
+            // Find the CustomerSupportRegion by postal code
+            var regionPinCode = await _unitOfWork.CustomerSupportRegionPinCodes.FirstOrDefaultAsync(
+                rpc => rpc.PinCode == customerAddress.PostalCode.Trim());
+            
+            if (regionPinCode == null)
+            {
+                throw new KeyNotFoundException($"No customer support region found for postal code: {customerAddress.PostalCode}");
+            }
+
+            // Get all CustomerSupports assigned to this region
+            var customerSupports = await _unitOfWork.CustomerSupports.FindAsync(
+                cs => cs.CustomerSupportRegionId == regionPinCode.CustomerSupportRegionId && 
+                      cs.IsActive && 
+                      !cs.IsDeleted);
+
+            if (customerSupports == null || !customerSupports.Any())
+            {
+                throw new InvalidOperationException($"No active customer supports found for region ID: {regionPinCode.CustomerSupportRegionId}");
+            }
+
+            // Find the CustomerSupport with the least orders in AssignedToCustomerSupport status
+            var customerSupportOrderCounts = new List<(CustomerSupport CustomerSupport, int OrderCount)>();
+
+            foreach (var customerSupport in customerSupports)
+            {
+                var orderCount = (await _unitOfWork.Orders.FindAsync(
+                    o => o.CustomerSupportId == customerSupport.CustomerSupportId && 
+                         o.OrderStatus == OrderStatus.AssignedToCustomerSupport)).Count();
+                
+                customerSupportOrderCounts.Add((customerSupport, orderCount));
+            }
+
+            // Get the CustomerSupport with the minimum order count
+            var selectedCustomerSupport = customerSupportOrderCounts
+                .OrderBy(x => x.OrderCount)
+                .ThenBy(x => x.CustomerSupport.CreatedOn) // If tied, use the one created first
+                .First()
+                .CustomerSupport;
+
+            // Assign the order to the selected CustomerSupport
+            order.CustomerSupportId = selectedCustomerSupport.CustomerSupportId;
+            order.AssignTo = AssignTo.CustomerSupport;
+            order.AssignedByType = AssignedByType.System;
+            order.OrderStatus = OrderStatus.AssignedToCustomerSupport;
+            order.UpdatedOn = DateTime.UtcNow;
+
+            // Create assignment history entry
+            var assignmentHistory = new OrderAssignmentHistory
+            {
+                OrderId = order.OrderId,
+                CustomerId = order.CustomerId,
+                MedicalStoreId = order.MedicalStoreId,
+                AssignedByType = AssignedByType.System,
+                AssignTo = AssignTo.CustomerSupport,
+                AssignedOn = DateTime.UtcNow,
+                Status = AssignmentStatus.Assigned
+            };
+
+            _unitOfWork.Orders.Update(order);
+            await _unitOfWork.OrderAssignmentHistories.AddAsync(assignmentHistory);
+            await _unitOfWork.SaveChangesAsync();
+        }
+
         public async Task<OrderDto> CompleteOrderAsync(int orderId, CompleteOrderDto completeDto, CancellationToken cancellationToken = default)
         {
             ArgumentNullException.ThrowIfNull(completeDto);
@@ -535,21 +621,16 @@ namespace MedicineDelivery.Infrastructure.Services
             ArgumentNullException.ThrowIfNull(assignDto);
             cancellationToken.ThrowIfCancellationRequested();
 
-            if (string.IsNullOrWhiteSpace(assignDto.OrderNumber))
-            {
-                throw new ArgumentException("OrderNumber is required.", nameof(assignDto.OrderNumber));
-            }
-
             if (assignDto.MedicalStoreId == Guid.Empty)
             {
                 throw new ArgumentException("MedicalStoreId is required.", nameof(assignDto.MedicalStoreId));
             }
 
             // Find order by OrderNumber
-            var order = await _unitOfWork.Orders.FirstOrDefaultAsync(o => o.OrderNumber == assignDto.OrderNumber);
+            var order = await _unitOfWork.Orders.FirstOrDefaultAsync(o => o.OrderId == assignDto.OrderId);
             if (order == null)
             {
-                throw new KeyNotFoundException($"Order with OrderNumber '{assignDto.OrderNumber}' not found.");
+                throw new KeyNotFoundException($"Order with OrderNumber '{assignDto.OrderId}' not found.");
             }
 
             // Validate medical store exists and is active
@@ -777,6 +858,73 @@ namespace MedicineDelivery.Infrastructure.Services
             cancellationToken.ThrowIfCancellationRequested();
 
             var orders = await _unitOfWork.Orders.GetAllAsync();
+            return _mapper.Map<IEnumerable<OrderDto>>(orders);
+        }
+
+        public async Task<IEnumerable<MedicalStoreBasicDto>> GetMedicalStoresByOrderCityAsync(int orderId, CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            // Get the order
+            var order = await _unitOfWork.Orders.FirstOrDefaultAsync(o => o.OrderId == orderId);
+            if (order == null)
+            {
+                throw new KeyNotFoundException("Order not found.");
+            }
+
+            // Get the customer address to find the city
+            var customerAddress = await _unitOfWork.CustomerAddresses.FirstOrDefaultAsync(ca => ca.Id == order.CustomerAddressId);
+            if (customerAddress == null)
+            {
+                throw new KeyNotFoundException("Customer address not found for this order.");
+            }
+
+            if (string.IsNullOrWhiteSpace(customerAddress.City))
+            {
+                throw new InvalidOperationException("Customer address does not have a city.");
+            }
+
+            // Find all active MedicalStores in the same city
+            var medicalStores = await _unitOfWork.MedicalStores.FindAsync(
+                ms => ms.City.Equals(customerAddress.City.Trim(), StringComparison.OrdinalIgnoreCase) &&
+                      ms.IsActive &&
+                      !ms.IsDeleted);
+
+            // Map to basic DTO with only ID and Name
+            return medicalStores.Select(ms => new MedicalStoreBasicDto
+            {
+                MedicalStoreId = ms.MedicalStoreId,
+                MedicalName = ms.MedicalName
+            }).ToList();
+        }
+
+        public async Task<IEnumerable<OrderDto>> AssignedToCustomerSupportByCustomerSupportIdAsync(Guid customerSupportId, CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            if (customerSupportId == Guid.Empty)
+            {
+                throw new ArgumentException("CustomerSupportId is required.", nameof(customerSupportId));
+            }
+
+            var orders = await _unitOfWork.Orders.FindAsync(o => 
+                o.CustomerSupportId == customerSupportId && 
+                o.OrderStatus == OrderStatus.AssignedToCustomerSupport);
+            
+            return _mapper.Map<IEnumerable<OrderDto>>(orders);
+        }
+
+        public async Task<IEnumerable<OrderDto>> GetAllOrdersByCustomerSupportIdAsync(Guid customerSupportId, CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            if (customerSupportId == Guid.Empty)
+            {
+                throw new ArgumentException("CustomerSupportId is required.", nameof(customerSupportId));
+            }
+
+            var orders = await _unitOfWork.Orders.FindAsync(o => o.CustomerSupportId == customerSupportId);
+            
             return _mapper.Map<IEnumerable<OrderDto>>(orders);
         }
     }

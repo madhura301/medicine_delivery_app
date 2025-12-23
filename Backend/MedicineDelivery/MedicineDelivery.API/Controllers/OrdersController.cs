@@ -226,6 +226,21 @@ namespace MedicineDelivery.API.Controllers
             try
             {
                 var order = await _orderService.RejectOrderByChemistAsync(orderId, rejectDto, cancellationToken);
+                
+                // Assign the rejected order to CustomerSupport
+                try
+                {
+                    await _orderService.AssignRejectOrderToCustomerSupport(orderId, cancellationToken);
+                    // Refresh the order to get updated data
+                    order = await _orderService.GetOrderByIdAsync(orderId, cancellationToken);
+                }
+                catch (Exception ex)
+                {
+                    // Log the error but don't fail the rejection
+                    // The order is already rejected, assignment to CustomerSupport is secondary
+                    // You might want to log this for monitoring
+                }
+                
                 return Ok(order);
             }
             catch (KeyNotFoundException ex)
@@ -557,6 +572,94 @@ namespace MedicineDelivery.API.Controllers
             catch (Exception ex)
             {
                 return StatusCode(500, new { error = $"An error occurred while downloading the order bill file: {ex.Message}" });
+            }
+        }
+
+        /// <summary>
+        /// Get medical stores by order's delivery address city
+        /// </summary>
+        /// <param name="orderId">Order ID</param>
+        /// <returns>List of medical stores in the same city</returns>
+        [HttpGet("{orderId:int}/medical-stores-by-city")]
+        [Authorize(Policy = "RequireOrderReadPermission")]
+        public async Task<IActionResult> GetMedicalStoresByOrderCity(int orderId, CancellationToken cancellationToken)
+        {
+            try
+            {
+                var medicalStores = await _orderService.GetMedicalStoresByOrderCityAsync(orderId, cancellationToken);
+                return Ok(medicalStores);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { error = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { error = ex.Message });
+            }
+            catch (OperationCanceledException)
+            {
+                return StatusCode(499, new { error = "Request was cancelled." });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = $"An error occurred while retrieving medical stores: {ex.Message}" });
+            }
+        }
+
+        /// <summary>
+        /// Get rejected orders by CustomerSupport ID
+        /// </summary>
+        /// <param name="customerSupportId">Customer Support ID</param>
+        /// <returns>List of rejected orders</returns>
+        [HttpGet("customersupport/{customerSupportId:guid}/assignedtocustomersupport")]
+        [Authorize(Policy = "RequireOrderReadPermission")]
+        public async Task<IActionResult> AssignedToCustomerSupportByCustomerSupportIdAsyncByCustomerSupportIdAsync(Guid customerSupportId, CancellationToken cancellationToken)
+        {
+            try
+            {
+                var orders = await _orderService.AssignedToCustomerSupportByCustomerSupportIdAsync(customerSupportId, cancellationToken);
+                return Ok(orders);
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { error = ex.Message });
+            }
+            catch (OperationCanceledException)
+            {
+                return StatusCode(499, new { error = "Request was cancelled." });
+            }
+            catch (Exception)
+            {
+                return StatusCode(500, new { error = "An error occurred while retrieving the orders." });
+            }
+        }
+
+        /// <summary>
+        /// Get all orders by CustomerSupport ID
+        /// </summary>
+        /// <param name="customerSupportId">Customer Support ID</param>
+        /// <returns>List of all orders</returns>
+        [HttpGet("customersupport/{customerSupportId:guid}")]
+        [Authorize(Policy = "RequireOrderReadPermission")]
+        public async Task<IActionResult> GetAllOrdersByCustomerSupportId(Guid customerSupportId, CancellationToken cancellationToken)
+        {
+            try
+            {
+                var orders = await _orderService.GetAllOrdersByCustomerSupportIdAsync(customerSupportId, cancellationToken);
+                return Ok(orders);
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { error = ex.Message });
+            }
+            catch (OperationCanceledException)
+            {
+                return StatusCode(499, new { error = "Request was cancelled." });
+            }
+            catch (Exception)
+            {
+                return StatusCode(500, new { error = "An error occurred while retrieving the orders." });
             }
         }
     }

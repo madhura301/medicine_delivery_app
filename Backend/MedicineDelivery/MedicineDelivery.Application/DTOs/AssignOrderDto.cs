@@ -5,8 +5,7 @@ namespace MedicineDelivery.Application.DTOs
     public class AssignOrderDto
     {
         [Required]
-        [StringLength(10)]
-        public string OrderNumber { get; set; } = string.Empty;
+        public int OrderId { get; set; }
 
         [Required]
         public Guid MedicalStoreId { get; set; }
