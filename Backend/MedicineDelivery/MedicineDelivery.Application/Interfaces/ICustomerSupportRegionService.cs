@@ -13,6 +13,8 @@ namespace MedicineDelivery.Application.Interfaces
         Task<bool> RemovePinCodeFromRegionAsync(RemovePinCodeFromRegionDto removeDto);
         Task<IEnumerable<string>> GetPinCodesByRegionIdAsync(int regionId);
         Task<CustomerSupportRegionDto?> GetRegionByPinCodeAsync(string pinCode);
+        Task<bool> AssignRegionToCustomerSupportAsync(AssignCustomerSupportRegionDto assignDto);
+        Task<bool> AssignRegionToCustomerSupportsAsync(AssignCustomerSupportRegionBulkDto assignDto);
     }
 }
 

@@ -36,5 +36,17 @@ namespace MedicineDelivery.Application.DTOs
         public int CustomerSupportRegionId { get; set; }
         public string PinCode { get; set; } = string.Empty;
     }
+
+    public class AssignCustomerSupportRegionDto
+    {
+        public int CustomerSupportRegionId { get; set; }
+        public Guid CustomerSupportId { get; set; }
+    }
+
+    public class AssignCustomerSupportRegionBulkDto
+    {
+        public int CustomerSupportRegionId { get; set; }
+        public List<Guid> CustomerSupportIds { get; set; } = new();
+    }
 }
 

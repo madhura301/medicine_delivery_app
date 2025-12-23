@@ -14,6 +14,7 @@ namespace MedicineDelivery.Application.DTOs
         public OrderInputType OrderInputType { get; set; }
         public string? OrderInputFileLocation { get; set; }
         public string? OrderInputText { get; set; }
+        public string? OrderBillFileLocation { get; set; }
         public OrderStatus OrderStatus { get; set; }
         public string? OrderNumber { get; set; }
         public string? OTP { get; set; }

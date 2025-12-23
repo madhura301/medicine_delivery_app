@@ -1,11 +1,13 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using MedicineDelivery.Application.DTOs;
 using MedicineDelivery.Application.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Hosting;
 
 namespace MedicineDelivery.API.Controllers
 {
@@ -15,10 +17,12 @@ namespace MedicineDelivery.API.Controllers
     public class OrdersController : ControllerBase
     {
         private readonly IOrderService _orderService;
+        private readonly IHostEnvironment _hostEnvironment;
 
-        public OrdersController(IOrderService orderService)
+        public OrdersController(IOrderService orderService, IHostEnvironment hostEnvironment)
         {
             _orderService = orderService;
+            _hostEnvironment = hostEnvironment;
         }
 
         [HttpGet("{orderId:int}")]
@@ -438,6 +442,121 @@ namespace MedicineDelivery.API.Controllers
             catch (Exception)
             {
                 return StatusCode(500, new { error = "An error occurred while retrieving all orders." });
+            }
+        }
+
+        /// <summary>
+        /// Download order input file by OrderId
+        /// </summary>
+        /// <param name="orderId">Order ID</param>
+        /// <returns>File download</returns>
+        [HttpGet("{orderId:int}/download-input-file")]
+        [Authorize(Policy = "RequireOrderReadPermission")]
+        public async Task<IActionResult> DownloadOrderInputFile(int orderId, CancellationToken cancellationToken)
+        {
+            try
+            {
+                var order = await _orderService.GetOrderByIdAsync(orderId, cancellationToken);
+                if (order == null)
+                {
+                    return NotFound(new { error = "Order not found." });
+                }
+
+                if (string.IsNullOrWhiteSpace(order.OrderInputFileLocation))
+                {
+                    return NotFound(new { error = "Order input file not found for this order." });
+                }
+
+                // Construct the full file path
+                // Normalize the path by replacing forward slashes with the platform-specific directory separator
+                var normalizedPath = order.OrderInputFileLocation.Replace('/', Path.DirectorySeparatorChar);
+                var filePath = Path.Combine(_hostEnvironment.ContentRootPath, normalizedPath);
+
+                if (!System.IO.File.Exists(filePath))
+                {
+                    return NotFound(new { error = "Order input file does not exist on the server." });
+                }
+
+                // Get file name from path
+                var fileName = Path.GetFileName(filePath);
+                
+                // Determine content type based on file extension
+                var fileExtension = Path.GetExtension(filePath).ToLowerInvariant();
+                var contentType = fileExtension switch
+                {
+                    ".jpg" or ".jpeg" => "image/jpeg",
+                    ".png" => "image/png",
+                    ".gif" => "image/gif",
+                    ".bmp" => "image/bmp",
+                    ".mp3" => "audio/mpeg",
+                    ".wav" => "audio/wav",
+                    ".m4a" => "audio/mp4",
+                    ".aac" => "audio/aac",
+                    ".ogg" => "audio/ogg",
+                    _ => "application/octet-stream"
+                };
+
+                var fileBytes = await System.IO.File.ReadAllBytesAsync(filePath, cancellationToken);
+                return File(fileBytes, contentType, fileName);
+            }
+            catch (OperationCanceledException)
+            {
+                return StatusCode(499, new { error = "Request was cancelled." });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = $"An error occurred while downloading the order input file: {ex.Message}" });
+            }
+        }
+
+        /// <summary>
+        /// Download order bill file by OrderId
+        /// </summary>
+        /// <param name="orderId">Order ID</param>
+        /// <returns>File download</returns>
+        [HttpGet("{orderId:int}/download-bill")]
+        [Authorize(Policy = "RequireOrderReadPermission")]
+        public async Task<IActionResult> DownloadOrderBill(int orderId, CancellationToken cancellationToken)
+        {
+            try
+            {
+                var order = await _orderService.GetOrderByIdAsync(orderId, cancellationToken);
+                if (order == null)
+                {
+                    return NotFound(new { error = "Order not found." });
+                }
+
+                if (string.IsNullOrWhiteSpace(order.OrderBillFileLocation))
+                {
+                    return NotFound(new { error = "Order bill file not found for this order." });
+                }
+
+                // Construct the full file path
+                // Normalize the path by replacing forward slashes with the platform-specific directory separator
+                var normalizedPath = order.OrderBillFileLocation.Replace('/', Path.DirectorySeparatorChar);
+                var filePath = Path.Combine(_hostEnvironment.ContentRootPath, normalizedPath);
+
+                if (!System.IO.File.Exists(filePath))
+                {
+                    return NotFound(new { error = "Order bill file does not exist on the server." });
+                }
+
+                // Get file name from path
+                var fileName = Path.GetFileName(filePath);
+                
+                // Bill files are PDFs
+                var contentType = "application/pdf";
+
+                var fileBytes = await System.IO.File.ReadAllBytesAsync(filePath, cancellationToken);
+                return File(fileBytes, contentType, fileName);
+            }
+            catch (OperationCanceledException)
+            {
+                return StatusCode(499, new { error = "Request was cancelled." });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = $"An error occurred while downloading the order bill file: {ex.Message}" });
             }
         }
     }

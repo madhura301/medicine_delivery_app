@@ -109,11 +109,21 @@ namespace MedicineDelivery.API.Controllers
                 Module = module,
                 Description = description,
                 CreatedAt = DateTime.UtcNow,
-                IsActive = true
+                IsActive = true,
+                Id = request.Id.HasValue ? request.Id.Value : default
             };
 
-            _context.Permissions.Add(permission);
-            await _context.SaveChangesAsync();
+            try
+            {
+                _context.Permissions.Add(permission);
+                await _context.SaveChangesAsync();
+            }
+            catch (Exception e)
+            {
+
+                throw;
+            }
+            
 
             return Ok(new { Message = "Permission created successfully.", Permission = new { permission.Id, permission.Name } });
         }

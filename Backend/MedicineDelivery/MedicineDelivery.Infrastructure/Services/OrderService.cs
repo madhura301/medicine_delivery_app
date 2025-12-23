@@ -255,6 +255,21 @@ namespace MedicineDelivery.Infrastructure.Services
                 return null;
             }
 
+            // Load all Deliveries referenced in assignment history
+            var deliveryIds = order.AssignmentHistory?
+                .Where(ah => ah.DeliveryId.HasValue)
+                .Select(ah => ah.DeliveryId.Value)
+                .Distinct()
+                .ToList() ?? new List<int>();
+
+            var deliveries = deliveryIds.Any()
+                ? await _context.Deliveries
+                    .Where(d => deliveryIds.Contains(d.Id))
+                    .ToListAsync(cancellationToken)
+                : new List<Delivery>();
+
+            var deliveriesDict = deliveries.ToDictionary(d => d.Id, d => d);
+
             var orderDto = _mapper.Map<OrderDto>(order);
             
             // Map assignment history to extended DTO with AssigneeName
@@ -279,6 +294,9 @@ namespace MedicineDelivery.Infrastructure.Services
                             : string.Empty,
                         AssignTo.CustomerSupport => order.CustomerSupport != null 
                             ? $"{order.CustomerSupport.CustomerSupportFirstName} {order.CustomerSupport.CustomerSupportLastName}".Trim()
+                            : string.Empty,
+                        AssignTo.Delivery => history.DeliveryId.HasValue && deliveriesDict.TryGetValue(history.DeliveryId.Value, out var delivery)
+                            ? $"{delivery.FirstName ?? string.Empty} {delivery.LastName ?? string.Empty}".Trim()
                             : string.Empty,
                         _ => string.Empty
                     };

@@ -271,6 +271,74 @@ namespace MedicineDelivery.Infrastructure.Services
 
             return await GetCustomerSupportRegionByIdAsync(regionPinCode.CustomerSupportRegionId);
         }
+
+        public async Task<bool> AssignRegionToCustomerSupportAsync(AssignCustomerSupportRegionDto assignDto)
+        {
+            ArgumentNullException.ThrowIfNull(assignDto);
+
+            // Validate region exists
+            var region = await _unitOfWork.CustomerSupportRegions.GetByIdAsync(assignDto.CustomerSupportRegionId);
+            if (region == null)
+            {
+                throw new KeyNotFoundException($"Customer support region with ID '{assignDto.CustomerSupportRegionId}' not found.");
+            }
+
+            // Validate customer support exists
+            var customerSupport = await _unitOfWork.CustomerSupports.FirstOrDefaultAsync(cs => cs.CustomerSupportId == assignDto.CustomerSupportId);
+            if (customerSupport == null)
+            {
+                throw new KeyNotFoundException($"Customer support with ID '{assignDto.CustomerSupportId}' not found.");
+            }
+
+            customerSupport.CustomerSupportRegionId = assignDto.CustomerSupportRegionId;
+            _unitOfWork.CustomerSupports.Update(customerSupport);
+            await _unitOfWork.SaveChangesAsync();
+
+            return true;
+        }
+
+        public async Task<bool> AssignRegionToCustomerSupportsAsync(AssignCustomerSupportRegionBulkDto assignDto)
+        {
+            ArgumentNullException.ThrowIfNull(assignDto);
+
+            if (assignDto.CustomerSupportIds == null || !assignDto.CustomerSupportIds.Any())
+            {
+                throw new ArgumentException("At least one CustomerSupportId is required.", nameof(assignDto.CustomerSupportIds));
+            }
+
+            // Validate region exists
+            var region = await _unitOfWork.CustomerSupportRegions.GetByIdAsync(assignDto.CustomerSupportRegionId);
+            if (region == null)
+            {
+                throw new KeyNotFoundException($"Customer support region with ID '{assignDto.CustomerSupportRegionId}' not found.");
+            }
+
+            var distinctIds = assignDto.CustomerSupportIds.Where(id => id != Guid.Empty).Distinct().ToList();
+            if (!distinctIds.Any())
+            {
+                throw new ArgumentException("At least one valid CustomerSupportId is required.", nameof(assignDto.CustomerSupportIds));
+            }
+
+            var customerSupports = await _unitOfWork.CustomerSupports.FindAsync(cs => distinctIds.Contains(cs.CustomerSupportId));
+            var customerSupportList = customerSupports.ToList();
+
+            var foundIds = customerSupportList.Select(cs => cs.CustomerSupportId).ToHashSet();
+            var missingIds = distinctIds.Where(id => !foundIds.Contains(id)).ToList();
+            if (missingIds.Any())
+            {
+                throw new KeyNotFoundException($"Customer support IDs not found: {string.Join(", ", missingIds)}");
+            }
+
+            foreach (var cs in customerSupportList)
+            {
+                cs.CustomerSupportRegionId = assignDto.CustomerSupportRegionId;
+            }
+
+            _unitOfWork.CustomerSupports.UpdateRange(customerSupportList);
+            await _unitOfWork.SaveChangesAsync();
+
+            return true;
+        }
     }
 }
 

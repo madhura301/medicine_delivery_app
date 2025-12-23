@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.Runtime.InteropServices;
 
 namespace MedicineDelivery.API.Models.Requests
 {
@@ -13,6 +14,8 @@ namespace MedicineDelivery.API.Models.Requests
 
         [MaxLength(500)]
         public string? Description { get; set; }
+
+        public int? Id { get; set; }
     }
 }
 

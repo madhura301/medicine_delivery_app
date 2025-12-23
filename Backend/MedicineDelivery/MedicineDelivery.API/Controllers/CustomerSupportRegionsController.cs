@@ -18,6 +18,68 @@ namespace MedicineDelivery.API.Controllers
         }
 
         /// <summary>
+        /// Assign a customer support region to a single customer support
+        /// </summary>
+        [HttpPost("assign")]
+        [Authorize(Policy = "RequireOrderUpdatePermission")]
+        public async Task<ActionResult> AssignRegionToCustomerSupport([FromBody] AssignCustomerSupportRegionDto assignDto)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            try
+            {
+                await _customerSupportRegionService.AssignRegionToCustomerSupportAsync(assignDto);
+                return Ok(new { success = true, message = "Region assigned to customer support successfully." });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { error = ex.Message });
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { error = ex.Message });
+            }
+            catch (Exception)
+            {
+                return StatusCode(500, new { error = "An error occurred while assigning the region." });
+            }
+        }
+
+        /// <summary>
+        /// Assign a customer support region to multiple customer supports
+        /// </summary>
+        [HttpPost("assign/bulk")]
+        [Authorize(Policy = "RequireOrderUpdatePermission")]
+        public async Task<ActionResult> AssignRegionToCustomerSupports([FromBody] AssignCustomerSupportRegionBulkDto assignDto)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            try
+            {
+                await _customerSupportRegionService.AssignRegionToCustomerSupportsAsync(assignDto);
+                return Ok(new { success = true, message = "Region assigned to customer supports successfully." });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { error = ex.Message });
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { error = ex.Message });
+            }
+            catch (Exception)
+            {
+                return StatusCode(500, new { error = "An error occurred while assigning the region." });
+            }
+        }
+
+        /// <summary>
         /// Create a new customer support region
         /// </summary>
         /// <param name="createDto">Region creation details</param>
