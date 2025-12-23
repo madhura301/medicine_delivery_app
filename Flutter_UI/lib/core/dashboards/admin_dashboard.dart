@@ -111,7 +111,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
 
       // Get all orders
       try {
-        final ordersResponse = await _dio.get('/Orders/all');
+        final ordersResponse = await _dio.get('/Orders');
         if (ordersResponse.statusCode == 200) {
           final data = ordersResponse.data;
           List<dynamic> ordersList;
@@ -139,7 +139,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
         }
       } catch (e) {
         AppLogger.error('Error loading orders count', e);
-        // If /Orders/all doesn't exist, set to 0
+        // If /Orders doesn't exist, set to 0
         totalOrders = 0;
         pendingOrders = 0;
       }
@@ -388,17 +388,17 @@ class _AdminDashboardState extends State<AdminDashboard> {
                     _goToAllOrders(context);
                   },
                 ),
-                ListTile(
-                  leading:
-                      const Icon(Icons.local_pharmacy, color: Colors.black),
-                  title: const Text('Chemists'),
-                  onTap: () {
-                    Navigator.of(context).pop();
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Chemists - Coming Soon!')),
-                    );
-                  },
-                ),
+                // ListTile(
+                //   leading:
+                //       const Icon(Icons.local_pharmacy, color: Colors.black),
+                //   title: const Text('Chemists'),
+                //   onTap: () {
+                //     Navigator.of(context).pop();
+                //     ScaffoldMessenger.of(context).showSnackBar(
+                //       const SnackBar(content: Text('Chemists - Coming Soon!')),
+                //     );
+                //   },
+                // ),
                 ListTile(
                   leading: const Icon(Icons.person, color: Colors.black),
                   title: const Text('Profile'),

@@ -1,10 +1,11 @@
-// Updated Order Tile Widget with Upload Bill Button for Accepted Orders
-// Add this to replace the existing OrderTile in chemist_dashboard.dart
+// Updated Order Tile Widget with Upload Bill AND Assign Delivery Button
+// Shows "Assign Delivery Boy" button for BillUploaded orders
 
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:pharmaish/shared/models/order_model.dart';
 import 'package:pharmaish/core/screens/orders/accepted_order_bill_screen.dart';
+import 'package:pharmaish/core/screens/delivery/assign_delivery_boy_screen.dart';
 
 class OrderTileWithBill extends StatelessWidget {
   final OrderModel order;
@@ -38,11 +39,18 @@ class OrderTileWithBill extends StatelessWidget {
   }
 
   bool _hasBill() {
-    return order.billFileUrl != null && order.billFileUrl!.isNotEmpty;
+    //return order.billFileUrl != null && order.billFileUrl!.isNotEmpty;
+    final statusLower = order.status.toLowerCase();
+    return statusLower.contains('billuploaded') || statusLower == 'billuploaded';
   }
 
   bool _hasAmount() {
     return order.totalAmount != null && order.totalAmount! > 0;
+  }
+
+  bool _isBillUploaded() {
+    final statusLower = order.status.toLowerCase();
+    return statusLower.contains('bill') || statusLower == 'bill uploaded';
   }
 
   @override
@@ -51,6 +59,7 @@ class OrderTileWithBill extends StatelessWidget {
     final isAccepted = _isAccepted();
     final hasBill = _hasBill();
     final hasAmount = _hasAmount();
+    final isBillUploaded = _isBillUploaded();
 
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
@@ -140,11 +149,13 @@ class OrderTileWithBill extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              hasBill ? 'Bill Uploaded' : 'Bill Pending',
+                              //hasBill ? 'Bill Uploaded' : 'Bill Pending',
+                              isBillUploaded  ? 'Bill Uploaded' : 'Bill Pending',
                               style: TextStyle(
                                 fontSize: 12,
                                 fontWeight: FontWeight.w600,
-                                color: hasBill ? Colors.green : Colors.orange,
+                                color: isBillUploaded ? Colors.green : Colors.orange, 
+                                //color:hasBill ? Colors.green : Colors.orange,
                               ),
                             ),
                             if (hasAmount)
@@ -161,7 +172,8 @@ class OrderTileWithBill extends StatelessWidget {
                     ),
 
                     // Upload Bill Button
-                    if (!hasBill || !hasAmount)
+                    if (!hasAmount)
+                    //if (!hasBill || !hasAmount)
                       ElevatedButton.icon(
                         onPressed: () async {
                           final result = await Navigator.push(
@@ -203,6 +215,44 @@ class OrderTileWithBill extends StatelessWidget {
                         ),
                       ),
                   ],
+                ),
+              ],
+
+              // ⭐ ASSIGN DELIVERY BOY BUTTON - FOR BILLUPLOADED ORDERS ⭐
+              if (hasAmount && isBillUploaded) ...[
+              //if (isBillUploaded && hasBill && hasAmount) ...[
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: () async {
+                      final result = await Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => AssignDeliveryBoyScreen(
+                            order: order,
+                            customerName: customerName,
+                            onComplete: onRefresh,
+                          ),
+                        ),
+                      );
+
+                      // Refresh if delivery boy was assigned
+                      if (result == true && onRefresh != null) {
+                        onRefresh!();
+                      }
+                    },
+                    icon: const Icon(Icons.delivery_dining, size: 20),
+                    label: const Text('Assign to Delivery Boy'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.black,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                  ),
                 ),
               ],
 
@@ -263,11 +313,17 @@ class OrderTileWithBill extends StatelessWidget {
     } else if (statusLower.contains('accepted')) {
       chipColor = Colors.green;
       statusText = 'Accepted';
+    } else if (statusLower.contains('billuploaded')) {
+      chipColor = Colors.purple;
+      statusText = 'Bill Uploaded';
+    } else if (statusLower.contains('outfordelivery')) {
+      chipColor = Colors.blue;
+      statusText = 'Out for Delivery';
     } else if (statusLower.contains('rejected')) {
       chipColor = Colors.red;
       statusText = 'Rejected';
     } else if (statusLower.contains('completed')) {
-      chipColor = Colors.blue;
+      chipColor = Colors.teal;
       statusText = 'Completed';
     } else {
       chipColor = Colors.grey;
@@ -283,8 +339,8 @@ class OrderTileWithBill extends StatelessWidget {
       child: Text(
         statusText,
         style: TextStyle(
-          color: chipColor,
-          fontSize: 12,
+          color: chipColor.withOpacity(0.9),
+          fontSize: 11,
           fontWeight: FontWeight.bold,
         ),
       ),
@@ -295,12 +351,16 @@ class OrderTileWithBill extends StatelessWidget {
     final now = DateTime.now();
     final difference = now.difference(dateTime);
 
-    if (difference.inDays > 0) {
-      return '${difference.inDays}d ago';
+    if (difference.inDays > 365) {
+      return '${(difference.inDays / 365).floor()} year${difference.inDays >= 730 ? 's' : ''} ago';
+    } else if (difference.inDays > 30) {
+      return '${(difference.inDays / 30).floor()} month${difference.inDays >= 60 ? 's' : ''} ago';
+    } else if (difference.inDays > 0) {
+      return '${difference.inDays} day${difference.inDays > 1 ? 's' : ''} ago';
     } else if (difference.inHours > 0) {
-      return '${difference.inHours}h ago';
+      return '${difference.inHours} hour${difference.inHours > 1 ? 's' : ''} ago';
     } else if (difference.inMinutes > 0) {
-      return '${difference.inMinutes}m ago';
+      return '${difference.inMinutes} minute${difference.inMinutes > 1 ? 's' : ''} ago';
     } else {
       return 'Just now';
     }
