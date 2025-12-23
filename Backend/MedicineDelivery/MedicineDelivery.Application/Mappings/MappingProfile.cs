@@ -42,8 +42,11 @@ namespace MedicineDelivery.Application.Mappings
             CreateMap<UpdateCustomerAddressDto, CustomerAddress>();
 
             // Order mappings
-            CreateMap<Order, OrderDto>();
+            CreateMap<Order, OrderDto>()
+                .ForMember(dest => dest.AssignmentHistory, opt => opt.Ignore()); // Will be mapped manually
             CreateMap<OrderAssignmentHistory, OrderAssignmentHistoryDto>();
+            CreateMap<OrderAssignmentHistory, OrderAssignmentHistoryExtendedDto>()
+                .IncludeBase<OrderAssignmentHistory, OrderAssignmentHistoryDto>();
             CreateMap<Payment, PaymentDto>();
             CreateMap<CreateOrderDto, Order>();
 

@@ -20,7 +20,7 @@ namespace MedicineDelivery.Application.DTOs
         public decimal? TotalAmount { get; set; }
         public DateTime CreatedOn { get; set; }
         public DateTime? UpdatedOn { get; set; }
-        public IEnumerable<OrderAssignmentHistoryDto>? AssignmentHistory { get; set; }
+        public IEnumerable<OrderAssignmentHistoryExtendedDto>? AssignmentHistory { get; set; }
         public IEnumerable<PaymentDto>? Payments { get; set; }
     }
 }

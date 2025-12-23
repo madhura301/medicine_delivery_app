@@ -4,7 +4,9 @@ using MedicineDelivery.Application.Interfaces;
 using MedicineDelivery.Domain.Entities;
 using MedicineDelivery.Domain.Enums;
 using MedicineDelivery.Domain.Interfaces;
+using MedicineDelivery.Infrastructure.Data;
 using Microsoft.AspNetCore.Http;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Hosting;
 using NetTopologySuite;
 using NetTopologySuite.Geometries;
@@ -25,15 +27,17 @@ namespace MedicineDelivery.Infrastructure.Services
         private readonly IUnitOfWork _unitOfWork;
         private readonly IMapper _mapper;
         private readonly IHostEnvironment _hostEnvironment;
+        private readonly ApplicationDbContext _context;
         private static readonly string[] AllowedImageExtensions = { ".jpg", ".jpeg", ".png", ".gif", ".bmp" };
         private static readonly string[] AllowedVoiceExtensions = { ".mp3", ".wav", ".m4a", ".aac", ".ogg" };
         private static readonly string[] AllowedPdfExtensions = { ".pdf" };
 
-        public OrderService(IUnitOfWork unitOfWork, IMapper mapper, IHostEnvironment hostEnvironment)
+        public OrderService(IUnitOfWork unitOfWork, IMapper mapper, IHostEnvironment hostEnvironment, ApplicationDbContext context)
         {
             _unitOfWork = unitOfWork;
             _mapper = mapper;
             _hostEnvironment = hostEnvironment;
+            _context = context;
         }
 
         public async Task<OrderDto> CreateOrderAsync(CreateOrderDto createDto, CancellationToken cancellationToken = default)
@@ -144,6 +148,8 @@ namespace MedicineDelivery.Infrastructure.Services
             await _unitOfWork.OrderAssignmentHistories.AddAsync(assignmentHistory);
             await _unitOfWork.SaveChangesAsync();
 
+            await AssignOrderToNearestChemist(order.OrderId);
+
             return _mapper.Map<OrderDto>(order);
         }
 
@@ -234,13 +240,56 @@ namespace MedicineDelivery.Infrastructure.Services
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            var order = await _unitOfWork.Orders.FirstOrDefaultAsync(o => o.OrderId == orderId);
+            var order = await _context.Orders
+                .Include(o => o.AssignmentHistory)
+                    .ThenInclude(ah => ah.Customer)
+                .Include(o => o.AssignmentHistory)
+                    .ThenInclude(ah => ah.MedicalStore)
+                .Include(o => o.AssignmentHistory)
+                    .ThenInclude(ah => ah.CustomerSupport)
+                .Include(o => o.CustomerSupport)
+                .FirstOrDefaultAsync(o => o.OrderId == orderId, cancellationToken);
+            
             if (order == null)
             {
                 return null;
             }
 
-            return _mapper.Map<OrderDto>(order);
+            var orderDto = _mapper.Map<OrderDto>(order);
+            
+            // Map assignment history to extended DTO with AssigneeName
+            if (order.AssignmentHistory != null && orderDto != null)
+            {
+                var extendedHistory = new List<OrderAssignmentHistoryExtendedDto>();
+                
+                foreach (var history in order.AssignmentHistory)
+                {
+                    var extended = _mapper.Map<OrderAssignmentHistoryExtendedDto>(history);
+                    extended.AssignTo = history.AssignTo.ToString();
+                    extended.AssignmentStatus = history.Status.ToString();
+                    
+                    // Populate AssigneeName based on AssignTo
+                    extended.AssigneeName = history.AssignTo switch
+                    {
+                        AssignTo.Customer => history.Customer != null 
+                            ? $"{history.Customer.CustomerFirstName} {history.Customer.CustomerLastName}".Trim()
+                            : string.Empty,
+                        AssignTo.Chemist => history.MedicalStore != null 
+                            ? history.MedicalStore.MedicalName
+                            : string.Empty,
+                        AssignTo.CustomerSupport => order.CustomerSupport != null 
+                            ? $"{order.CustomerSupport.CustomerSupportFirstName} {order.CustomerSupport.CustomerSupportLastName}".Trim()
+                            : string.Empty,
+                        _ => string.Empty
+                    };
+                    
+                    extendedHistory.Add(extended);
+                }
+                
+                orderDto.AssignmentHistory = extendedHistory;
+            }
+            
+            return orderDto;
         }
 
         public async Task<IEnumerable<OrderDto>> GetOrdersByCustomerIdAsync(Guid customerId, CancellationToken cancellationToken = default)
@@ -283,7 +332,7 @@ namespace MedicineDelivery.Infrastructure.Services
 
             var orders = await _unitOfWork.Orders.FindAsync(o => 
                 o.MedicalStoreId == medicalStoreId && 
-                o.OrderStatus != OrderStatus.Completed);
+                o.OrderStatus == OrderStatus.AssignedToChemist);
             
             return _mapper.Map<IEnumerable<OrderDto>>(orders);
         }
@@ -439,10 +488,25 @@ namespace MedicineDelivery.Infrastructure.Services
                 throw new ArgumentException("Invalid OTP. The provided OTP does not match the order's OTP.");
             }
 
+            order.AssignTo = AssignTo.Customer;
+            order.AssignedByType = AssignedByType.System;
             order.OrderStatus = OrderStatus.Completed;
             order.UpdatedOn = DateTime.UtcNow;
 
+            // Create assignment history entry
+            var assignmentHistory = new OrderAssignmentHistory
+            {
+                OrderId = order.OrderId,
+                CustomerId = order.CustomerId,
+                MedicalStoreId = order.MedicalStoreId,
+                AssignedByType = AssignedByType.System,
+                AssignTo = AssignTo.Customer,
+                AssignedOn = DateTime.UtcNow,
+                Status = AssignmentStatus.Assigned
+            };
+
             _unitOfWork.Orders.Update(order);
+            await _unitOfWork.OrderAssignmentHistories.AddAsync(assignmentHistory);
             await _unitOfWork.SaveChangesAsync();
 
             return _mapper.Map<OrderDto>(order);
@@ -611,9 +675,23 @@ namespace MedicineDelivery.Infrastructure.Services
             // Update order with bill file location and amount
             order.OrderBillFileLocation = fileLocation;
             order.TotalAmount = uploadDto.OrderAmount;
+            order.OrderStatus = OrderStatus.BillUploaded;
             order.UpdatedOn = DateTime.UtcNow;
 
+            // Create assignment history entry
+            var assignmentHistory = new OrderAssignmentHistory
+            {
+                OrderId = order.OrderId,
+                CustomerId = order.CustomerId,
+                MedicalStoreId = order.MedicalStoreId,
+                AssignedByType = AssignedByType.System,
+                AssignTo = AssignTo.Chemist,
+                AssignedOn = DateTime.UtcNow,
+                Status = AssignmentStatus.Assigned
+            };
+
             _unitOfWork.Orders.Update(order);
+            await _unitOfWork.OrderAssignmentHistories.AddAsync(assignmentHistory);
             await _unitOfWork.SaveChangesAsync();
 
             return _mapper.Map<OrderDto>(order);
