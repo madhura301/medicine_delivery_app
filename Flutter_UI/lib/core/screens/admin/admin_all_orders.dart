@@ -81,12 +81,12 @@ class _AdminAllOrdersState extends State<AdminAllOrders> {
 
       // TODO: Replace with actual admin orders endpoint when available
       // For now, we'll need to create an endpoint that gets all orders
-      // Endpoint should be: GET /api/Orders/all
+      // Endpoint should be: GET /api/Orders
       
       // Temporary workaround: Try to get orders from different sources
       // In production, you need to add an admin endpoint to get ALL orders
       
-      final response = await _dio.get('/Orders/all');
+      final response = await _dio.get('/Orders');
       
       if (response.statusCode == 200) {
         final data = response.data;
@@ -186,7 +186,7 @@ class _AdminAllOrdersState extends State<AdminAllOrders> {
           if (response.statusCode == 200) {
             final chemistData = response.data;
             _chemistCache[order.medicalStoreId!] = {
-              'name': chemistData['pharmacyName']?.toString() ?? 'Chemist',
+              'name': chemistData['medicalName']?.toString() ?? 'Chemist',
               'phone': chemistData['mobileNumber']?.toString() ?? '',
             };
           }
@@ -478,7 +478,7 @@ class _AdminAllOrdersState extends State<AdminAllOrders> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Order #${order.orderId}',
+                          'Order #${order.orderNumber ?? order.orderId}',
                           style: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,

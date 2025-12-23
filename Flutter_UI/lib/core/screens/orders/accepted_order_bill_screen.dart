@@ -1,11 +1,13 @@
-// Accepted Order Bill Upload Screen
-// For chemist to upload bill and enter amount for accepted orders
+// Accepted Order Bill Upload Screen - WITH PDF SUPPORT
+// For chemist to upload bill (IMAGE or PDF) and enter amount for accepted orders
+// Supports: JPEG, PNG, PDF files
 // Uses POST /api/Orders/{orderId}/upload-bill endpoint
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:dio/dio.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:file_picker/file_picker.dart';
 import 'dart:io';
 import 'package:pharmaish/utils/app_logger.dart';
 import 'package:pharmaish/utils/constants.dart';
@@ -36,8 +38,11 @@ class AcceptedOrderBillScreen extends StatefulWidget {
 class _AcceptedOrderBillScreenState extends State<AcceptedOrderBillScreen> {
   final _formKey = GlobalKey<FormState>();
   final _amountController = TextEditingController();
+  final _notesController = TextEditingController();
   
-  File? _billImage;
+  File? _billFile;
+  String? _billFileName;
+  String? _billFileType; // 'image' or 'pdf'
   bool _isUploading = false;
   
   late Dio _dio;
@@ -82,8 +87,11 @@ class _AcceptedOrderBillScreenState extends State<AcceptedOrderBillScreen> {
 
       if (image != null) {
         setState(() {
-          _billImage = File(image.path);
+          _billFile = File(image.path);
+          _billFileName = image.name;
+          _billFileType = 'image';
         });
+        AppLogger.info('Image selected: ${image.name}');
       }
     } catch (e) {
       AppLogger.error('Error picking image: $e');
@@ -99,7 +107,54 @@ class _AcceptedOrderBillScreenState extends State<AcceptedOrderBillScreen> {
     }
   }
 
-  void _showImageSourceDialog() {
+  Future<void> _pickPdfFile() async {
+    try {
+      FilePickerResult? result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['pdf'],
+        allowMultiple: false,
+      );
+
+      if (result != null && result.files.isNotEmpty) {
+        final file = result.files.first;
+        
+        // Check file size (max 10MB)
+        if (file.size > 10 * 1024 * 1024) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('PDF file is too large. Maximum size is 10MB.'),
+                backgroundColor: Colors.orange,
+                duration: Duration(seconds: 3),
+              ),
+            );
+          }
+          return;
+        }
+
+        setState(() {
+          _billFile = File(file.path!);
+          _billFileName = file.name;
+          _billFileType = 'pdf';
+        });
+        
+        AppLogger.info('PDF selected: ${file.name}, Size: ${(file.size / 1024).toStringAsFixed(2)} KB');
+      }
+    } catch (e) {
+      AppLogger.error('Error picking PDF: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to pick PDF: ${e.toString()}'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    }
+  }
+
+  void _showFileSourceDialog() {
     showModalBottomSheet(
       context: context,
       shape: const RoundedRectangleBorder(
@@ -120,17 +175,27 @@ class _AcceptedOrderBillScreenState extends State<AcceptedOrderBillScreen> {
               ),
             ),
             const Text(
-              'Select Image Source',
+              'Upload Bill/Invoice',
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
               ),
             ),
+            const SizedBox(height: 8),
+            Text(
+              'Choose image or PDF file',
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.grey.shade600,
+              ),
+            ),
             const SizedBox(height: 20),
+            
+            // Image options
             Row(
               children: [
                 Expanded(
-                  child: _buildImageSourceOption(
+                  child: _buildFileSourceOption(
                     icon: Icons.camera_alt,
                     label: 'Camera',
                     color: Colors.blue,
@@ -140,9 +205,9 @@ class _AcceptedOrderBillScreenState extends State<AcceptedOrderBillScreen> {
                     },
                   ),
                 ),
-                const SizedBox(width: 16),
+                const SizedBox(width: 12),
                 Expanded(
-                  child: _buildImageSourceOption(
+                  child: _buildFileSourceOption(
                     icon: Icons.photo_library,
                     label: 'Gallery',
                     color: Colors.green,
@@ -154,6 +219,23 @@ class _AcceptedOrderBillScreenState extends State<AcceptedOrderBillScreen> {
                 ),
               ],
             ),
+            
+            const SizedBox(height: 12),
+            
+            // PDF option
+            SizedBox(
+              width: double.infinity,
+              child: _buildFileSourceOption(
+                icon: Icons.picture_as_pdf,
+                label: 'PDF File',
+                color: Colors.red,
+                onTap: () {
+                  Navigator.pop(context);
+                  _pickPdfFile();
+                },
+              ),
+            ),
+            
             const SizedBox(height: 20),
           ],
         ),
@@ -161,7 +243,7 @@ class _AcceptedOrderBillScreenState extends State<AcceptedOrderBillScreen> {
     );
   }
 
-  Widget _buildImageSourceOption({
+  Widget _buildFileSourceOption({
     required IconData icon,
     required String label,
     required Color color,
@@ -200,14 +282,14 @@ class _AcceptedOrderBillScreenState extends State<AcceptedOrderBillScreen> {
       return;
     }
 
-    if (_billImage == null) {
+    if (_billFile == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Row(
             children: [
               Icon(Icons.warning, color: Colors.white),
               SizedBox(width: 12),
-              Expanded(child: Text('Please select a bill image to upload')),
+              Expanded(child: Text('Please select a bill file to upload')),
             ],
           ),
           backgroundColor: Colors.orange,
@@ -224,19 +306,45 @@ class _AcceptedOrderBillScreenState extends State<AcceptedOrderBillScreen> {
 
     try {
       final amount = double.parse(_amountController.text);
+      final notes = _notesController.text.trim();
+
+      // Determine file extension
+      String fileExtension;
+      if (_billFileType == 'pdf') {
+        fileExtension = 'pdf';
+      } else {
+        // Get extension from file path
+        final path = _billFile!.path.toLowerCase();
+        if (path.endsWith('.jpg') || path.endsWith('.jpeg')) {
+          fileExtension = 'jpg';
+        } else if (path.endsWith('.png')) {
+          fileExtension = 'png';
+        } else {
+          fileExtension = 'jpg'; // default
+        }
+      }
 
       // Create FormData matching the backend UploadOrderBillDto
       // Required fields: OrderId, OrderAmount, BillFile
-      FormData formData = FormData.fromMap({
+      // Optional: Notes
+      final formDataMap = {
         'OrderId': widget.order.orderId,
         'OrderAmount': amount,
         'BillFile': await MultipartFile.fromFile(
-          _billImage!.path,
-          filename: 'bill_order_${widget.order.orderId}.jpg',
+          _billFile!.path,
+          filename: 'bill_order_${widget.order.orderId}.$fileExtension',
         ),
-      });
+      };
 
-      AppLogger.info('Uploading bill for order ${widget.order.orderId} with amount: ₹$amount');
+      // Add notes if provided
+      if (notes.isNotEmpty) {
+        formDataMap['Notes'] = notes;
+      }
+
+      FormData formData = FormData.fromMap(formDataMap);
+
+      AppLogger.info(
+          'Uploading bill for order ${widget.order.orderId} - Type: $_billFileType, Amount: ₹$amount');
 
       // POST request to /api/Orders/{orderId}/upload-bill
       final response = await _dio.post(
@@ -250,8 +358,9 @@ class _AcceptedOrderBillScreenState extends State<AcceptedOrderBillScreen> {
       );
 
       if (response.statusCode == 200) {
-        AppLogger.info('Bill uploaded successfully for order ${widget.order.orderId}');
-        
+        AppLogger.info(
+            'Bill uploaded successfully for order ${widget.order.orderId}');
+
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
@@ -267,12 +376,12 @@ class _AcceptedOrderBillScreenState extends State<AcceptedOrderBillScreen> {
               duration: Duration(seconds: 2),
             ),
           );
-          
+
           // Call onComplete callback if provided
           if (widget.onComplete != null) {
             widget.onComplete!();
           }
-          
+
           // Go back with success result
           Navigator.pop(context, true);
         }
@@ -281,13 +390,13 @@ class _AcceptedOrderBillScreenState extends State<AcceptedOrderBillScreen> {
       AppLogger.error('DioException uploading bill: ${e.message}');
       AppLogger.error('Response status: ${e.response?.statusCode}');
       AppLogger.error('Response data: ${e.response?.data}');
-      
+
       String errorMessage = 'Failed to upload bill';
-      
+
       if (e.response?.data != null) {
         if (e.response?.data is Map) {
           final errorData = e.response?.data as Map;
-          
+
           // Handle ModelState validation errors
           if (errorData.containsKey('errors')) {
             final errors = errorData['errors'] as Map;
@@ -300,25 +409,26 @@ class _AcceptedOrderBillScreenState extends State<AcceptedOrderBillScreen> {
               }
             });
             errorMessage = errorMessages.join('\n');
-          } 
+          }
           // Handle general error message
           else if (errorData.containsKey('error')) {
             errorMessage = errorData['error'].toString();
-          }
-          else if (errorData.containsKey('message')) {
+          } else if (errorData.containsKey('message')) {
             errorMessage = errorData['message'].toString();
           }
         } else if (e.response?.data is String) {
           errorMessage = e.response?.data as String;
         }
       } else if (e.type == DioExceptionType.connectionTimeout) {
-        errorMessage = 'Connection timeout. Please check your internet connection.';
+        errorMessage =
+            'Connection timeout. Please check your internet connection.';
       } else if (e.type == DioExceptionType.receiveTimeout) {
         errorMessage = 'Upload timeout. The file might be too large.';
       } else if (e.type == DioExceptionType.connectionError) {
         errorMessage = 'Connection error. Please check your internet connection.';
       } else if (e.type == DioExceptionType.badResponse) {
-        errorMessage = 'Server error (${e.response?.statusCode}). Please try again.';
+        errorMessage =
+            'Server error (${e.response?.statusCode}). Please try again.';
       }
 
       if (mounted) {
@@ -345,7 +455,7 @@ class _AcceptedOrderBillScreenState extends State<AcceptedOrderBillScreen> {
       }
     } catch (e) {
       AppLogger.error('Unexpected error uploading bill: $e');
-      
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -374,6 +484,7 @@ class _AcceptedOrderBillScreenState extends State<AcceptedOrderBillScreen> {
   @override
   void dispose() {
     _amountController.dispose();
+    _notesController.dispose();
     super.dispose();
   }
 
@@ -421,34 +532,222 @@ class _AcceptedOrderBillScreenState extends State<AcceptedOrderBillScreen> {
               ],
             ),
           ),
-          
+
+          // Content
           Expanded(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(20),
               child: Form(
                 key: _formKey,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     // Customer Info Card
-                    _buildCustomerInfoCard(),
-                    const SizedBox(height: 16),
+                    _buildInfoCard(
+                      title: 'Customer Information',
+                      icon: Icons.person,
+                      children: [
+                        _buildInfoRow('Name', widget.customerName),
+                        if (widget.customerEmail != null)
+                          _buildInfoRow('Email', widget.customerEmail!),
+                        if (widget.customerPhone != null)
+                          _buildInfoRow('Phone', widget.customerPhone!),
+                      ],
+                    ),
+
+                    const SizedBox(height: 20),
 
                     // Order Info Card
-                    _buildOrderInfoCard(),
-                    const SizedBox(height: 16),
+                    _buildInfoCard(
+                      title: 'Order Information',
+                      icon: Icons.shopping_bag,
+                      children: [
+                        _buildInfoRow('Order ID',
+                            widget.order.orderNumber ?? widget.order.orderId.toString()),
+                        _buildInfoRow('Status', widget.order.status),
+                        if (widget.order.orderInputType.name.isNotEmpty)
+                          _buildInfoRow('Type', widget.order.orderInputType.name),
+                        if (widget.order.shippingAddressLine1 != null)
+                          _buildInfoRow('Address', widget.order.shippingAddressLine1!,
+                              maxLines: 3),
+                      ],
+                    ),
 
-                    // Bill Upload Section
-                    _buildBillUploadSection(),
-                    const SizedBox(height: 16),
-
-                    // Amount Entry Section
-                    _buildAmountSection(),
                     const SizedBox(height: 24),
 
-                    // Submit Button
-                    _buildSubmitButton(),
-                    const SizedBox(height: 16),
+                    // Bill Upload Section
+                    const Text(
+                      'Bill/Invoice Upload',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Upload an image (JPEG, PNG) or PDF file',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Colors.grey.shade600,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+
+                    // File Upload Button/Preview
+                    if (_billFile == null)
+                      InkWell(
+                        onTap: _showFileSourceDialog,
+                        borderRadius: BorderRadius.circular(12),
+                        child: Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(40),
+                          decoration: BoxDecoration(
+                            color: Colors.grey.shade100,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: Colors.grey.shade300,
+                              width: 2,
+                              style: BorderStyle.solid,
+                            ),
+                          ),
+                          child: Column(
+                            children: [
+                              Icon(
+                                Icons.cloud_upload,
+                                size: 60,
+                                color: Colors.grey.shade400,
+                              ),
+                              const SizedBox(height: 12),
+                              const Text(
+                                'Tap to Upload Bill',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                'Image or PDF (max 10MB)',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: Colors.grey.shade600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      )
+                    else
+                      _buildFilePreview(),
+
+                    const SizedBox(height: 24),
+
+                    // Amount Input
+                    const Text(
+                      'Total Amount',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    TextFormField(
+                      controller: _amountController,
+                      keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true),
+                      decoration: InputDecoration(
+                        hintText: 'Enter total amount',
+                        prefixIcon: const Icon(Icons.currency_rupee),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        filled: true,
+                        fillColor: Colors.grey.shade50,
+                      ),
+                      inputFormatters: [
+                        FilteringTextInputFormatter.allow(
+                            RegExp(r'^\d+\.?\d{0,2}')),
+                      ],
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Please enter the amount';
+                        }
+                        final amount = double.tryParse(value);
+                        if (amount == null || amount <= 0) {
+                          return 'Please enter a valid amount';
+                        }
+                        return null;
+                      },
+                    ),
+
+                    const SizedBox(height: 20),
+
+                    // Notes Input (Optional)
+                    const Text(
+                      'Notes (Optional)',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    TextFormField(
+                      controller: _notesController,
+                      maxLines: 3,
+                      decoration: InputDecoration(
+                        hintText: 'Add any additional notes...',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        filled: true,
+                        fillColor: Colors.grey.shade50,
+                      ),
+                    ),
+
+                    const SizedBox(height: 32),
+
+                    // Upload Button
+                    SizedBox(
+                      width: double.infinity,
+                      height: 54,
+                      child: ElevatedButton(
+                        onPressed: _isUploading ? null : _uploadBillAndAmount,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.black,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          disabledBackgroundColor: Colors.grey.shade400,
+                        ),
+                        child: _isUploading
+                            ? const SizedBox(
+                                width: 24,
+                                height: 24,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                      Colors.white),
+                                ),
+                              )
+                            : const Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(Icons.upload_file, size: 20),
+                                  SizedBox(width: 8),
+                                  Text(
+                                    'Upload Bill & Amount',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 20),
                   ],
                 ),
               ),
@@ -459,479 +758,172 @@ class _AcceptedOrderBillScreenState extends State<AcceptedOrderBillScreen> {
     );
   }
 
-  Widget _buildCustomerInfoCard() {
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.blue.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: const Icon(Icons.person, color: Colors.blue, size: 20),
-                ),
-                const SizedBox(width: 12),
-                const Text(
-                  'Customer Information',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            const Divider(height: 1),
-            const SizedBox(height: 12),
-            _buildInfoRow('Name', widget.customerName, Icons.person_outline),
-            if (widget.customerEmail != null)
-              _buildInfoRow('Email', widget.customerEmail!, Icons.email_outlined),
-            if (widget.customerPhone != null)
-              _buildInfoRow('Phone', widget.customerPhone!, Icons.phone_outlined),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildOrderInfoCard() {
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.orange.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: const Icon(Icons.shopping_bag, color: Colors.orange, size: 20),
-                ),
-                const SizedBox(width: 12),
-                const Text(
-                  'Order Details',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            const Divider(height: 1),
-            const SizedBox(height: 12),
-            _buildInfoRow('Order ID', widget.order.orderId.toString(), Icons.tag),
-            _buildInfoRow('Status', widget.order.status, Icons.info_outline),
-            _buildInfoRow('Order Type', widget.order.orderInputType.name ?? 'N/A', Icons.category_outlined),
-            if (widget.order.shippingAddressLine1 != null)
-              _buildInfoRow(
-                'Delivery Address', 
-                widget.order.shippingAddressLine1!.length > 50
-                    ? '${widget.order.shippingAddressLine1!.substring(0, 50)}...'
-                    : widget.order.shippingAddressLine1!,
-                Icons.location_on_outlined,
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildBillUploadSection() {
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Colors.green.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: const Icon(Icons.receipt_long, color: Colors.green, size: 20),
-                    ),
-                    const SizedBox(width: 12),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Bill / Invoice Image',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        Text(
-                          'Required *',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.red.shade600,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-                if (_billImage != null)
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 6,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.green,
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: const Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.check_circle, color: Colors.white, size: 14),
-                        SizedBox(width: 4),
-                        Text(
-                          'Selected',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-              ],
-            ),
-            const SizedBox(height: 16),
-
-            // Image preview or placeholder
-            if (_billImage != null)
-              Stack(
-                children: [
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
-                    child: Image.file(
-                      _billImage!,
-                      width: double.infinity,
-                      height: 250,
-                      fit: BoxFit.cover,
-                    ),
-                  ),
-                  Positioned(
-                    top: 8,
-                    right: 8,
-                    child: Material(
-                      color: Colors.transparent,
-                      child: InkWell(
-                        onTap: () {
-                          setState(() {
-                            _billImage = null;
-                          });
-                        },
-                        borderRadius: BorderRadius.circular(20),
-                        child: Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: Colors.black.withOpacity(0.7),
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: const Icon(
-                            Icons.close,
-                            color: Colors.white,
-                            size: 20,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              )
-            else
-              InkWell(
-                onTap: _isUploading ? null : _showImageSourceDialog,
-                borderRadius: BorderRadius.circular(12),
-                child: Container(
-                  width: double.infinity,
-                  height: 180,
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade50,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: Colors.grey.shade300,
-                      width: 2,
-                      style: BorderStyle.solid,
-                    ),
-                  ),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: Colors.grey.shade200,
-                          shape: BoxShape.circle,
-                        ),
-                        child: Icon(
-                          Icons.image_outlined,
-                          size: 48,
-                          color: Colors.grey.shade600,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      Text(
-                        'No bill image selected',
-                        style: TextStyle(
-                          color: Colors.grey.shade700,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Tap to select from camera or gallery',
-                        style: TextStyle(
-                          color: Colors.grey.shade500,
-                          fontSize: 14,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-
-            const SizedBox(height: 16),
-
-            // Upload button
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: _isUploading ? null : _showImageSourceDialog,
-                icon: Icon(_billImage != null ? Icons.sync : Icons.upload_file),
-                label: Text(_billImage != null ? 'Change Bill Image' : 'Select Bill Image'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.black,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  elevation: 0,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildAmountSection() {
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.purple.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: const Icon(Icons.currency_rupee, color: Colors.purple, size: 20),
-                ),
-                const SizedBox(width: 12),
-                const Text(
-                  'Total Bill Amount',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const Text(
-                  ' *',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.red,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            TextFormField(
-              controller: _amountController,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              inputFormatters: [
-                FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,2}')),
-              ],
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-              ),
-              decoration: InputDecoration(
-                hintText: 'Enter total bill amount',
-                hintStyle: TextStyle(
-                  color: Colors.grey.shade400,
-                  fontWeight: FontWeight.normal,
-                ),
-                prefixIcon: const Icon(Icons.currency_rupee, size: 24),
-                filled: true,
-                fillColor: Colors.grey.shade50,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: BorderSide.none,
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: BorderSide(color: Colors.grey.shade300),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: const BorderSide(color: Colors.black, width: 2),
-                ),
-                errorBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: const BorderSide(color: Colors.red, width: 2),
-                ),
-                focusedErrorBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: const BorderSide(color: Colors.red, width: 2),
-                ),
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 16,
-                ),
-              ),
-              validator: (value) {
-                if (value == null || value.isEmpty) {
-                  return 'Please enter the total amount';
-                }
-                final amount = double.tryParse(value);
-                if (amount == null) {
-                  return 'Please enter a valid number';
-                }
-                if (amount <= 0) {
-                  return 'Amount must be greater than 0';
-                }
-                return null;
-              },
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSubmitButton() {
-    return SizedBox(
+  Widget _buildInfoCard({
+    required String title,
+    required IconData icon,
+    required List<Widget> children,
+  }) {
+    return Container(
       width: double.infinity,
-      height: 56,
-      child: ElevatedButton(
-        onPressed: _isUploading ? null : _uploadBillAndAmount,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.green,
-          foregroundColor: Colors.white,
-          disabledBackgroundColor: Colors.grey.shade300,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade300),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
           ),
-          elevation: _isUploading ? 0 : 2,
-        ),
-        child: _isUploading
-            ? const Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  SizedBox(
-                    width: 24,
-                    height: 24,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 3,
-                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                    ),
-                  ),
-                  SizedBox(width: 16),
-                  Text(
-                    'Uploading Bill...',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
-              )
-            : const Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.upload_file, size: 24),
-                  SizedBox(width: 12),
-                  Text(
-                    'Upload Bill & Amount',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, size: 20, color: Colors.black),
+              const SizedBox(width: 8),
+              Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          ...children,
+        ],
       ),
     );
   }
 
-  Widget _buildInfoRow(String label, String value, IconData icon) {
+  Widget _buildInfoRow(String label, String value, {int maxLines = 1}) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
+      padding: const EdgeInsets.only(bottom: 8),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, size: 18, color: Colors.grey.shade600),
-          const SizedBox(width: 12),
+          SizedBox(
+            width: 80,
+            child: Text(
+              label,
+              style: TextStyle(
+                fontSize: 13,
+                color: Colors.grey.shade700,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  label,
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.grey.shade600,
-                  ),
+            child: Text(
+              value,
+              style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+              ),
+              maxLines: maxLines,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFilePreview() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade300),
+      ),
+      child: Column(
+        children: [
+          // File icon and info
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: _billFileType == 'pdf'
+                      ? Colors.red.shade50
+                      : Colors.blue.shade50,
+                  borderRadius: BorderRadius.circular(8),
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  value,
-                  style: const TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w500,
-                  ),
+                child: Icon(
+                  _billFileType == 'pdf'
+                      ? Icons.picture_as_pdf
+                      : Icons.image,
+                  size: 32,
+                  color: _billFileType == 'pdf'
+                      ? Colors.red.shade700
+                      : Colors.blue.shade700,
                 ),
-              ],
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _billFileName ?? 'Bill file',
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      _billFileType == 'pdf' ? 'PDF Document' : 'Image File',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey.shade600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 12),
+
+          // Image preview (only for images)
+          if (_billFileType == 'image' && _billFile != null)
+            ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: Image.file(
+                _billFile!,
+                height: 150,
+                width: double.infinity,
+                fit: BoxFit.cover,
+              ),
+            ),
+
+          const SizedBox(height: 12),
+
+          // Change file button
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: _showFileSourceDialog,
+              icon: const Icon(Icons.refresh, size: 18),
+              label: const Text('Change File'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: Colors.black,
+                side: BorderSide(color: Colors.grey.shade400),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
             ),
           ),
         ],

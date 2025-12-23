@@ -2,13 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:dio/dio.dart';
 import 'package:pharmaish/config/environment_config.dart';
+import 'package:pharmaish/core/screens/chemist/chemist_delivery_management.dart';
 import 'package:pharmaish/shared/widgets/order_tile_with_bill.dart';
 import 'package:pharmaish/utils/app_logger.dart';
 import 'package:pharmaish/utils/constants.dart';
 import 'package:pharmaish/utils/storage.dart';
 import 'package:pharmaish/shared/models/order_model.dart';
 import 'package:pharmaish/shared/models/order_enums.dart';
-
 
 // ============================================================================
 // CHEMIST DASHBOARD - WITH BILL UPLOAD SUPPORT
@@ -103,7 +103,7 @@ class _ChemistDashboardState extends State<ChemistDashboard> {
       AppLogger.info('Fetching active orders for pharmacist: $pharmacistId');
 
       final response = await _dio.get(
-        '/Orders/medicalstore/$pharmacistId/active',
+        '/Orders/medicalstore/$pharmacistId',
       );
 
       AppLogger.info('Response received with status: ${response.statusCode}');
@@ -149,9 +149,17 @@ class _ChemistDashboardState extends State<ChemistDashboard> {
 
         final acceptedCount = allOrders
             .where((o) =>
-                o.status.toLowerCase().contains('accepted') ||
-                o.status.toLowerCase().contains('bill') ||
+                o.status.toLowerCase().contains('accepted'))
+            .length;
+
+        final outForDeliveryCount = allOrders
+            .where((o) =>
                 o.status.toLowerCase().contains('delivery'))
+            .length;
+
+        final billUploadedCount = allOrders
+            .where((o) =>
+                o.status.toLowerCase().contains('bill'))
             .length;
 
         final rejectedCount = allOrders
@@ -176,6 +184,8 @@ class _ChemistDashboardState extends State<ChemistDashboard> {
             'accepted': acceptedCount,
             'rejected': rejectedCount,
             'completed': completedCount,
+            'outForDelivery': outForDeliveryCount,
+            'billUploaded': billUploadedCount,
           };
           _isLoading = false;
 
@@ -502,7 +512,7 @@ class _ChemistDashboardState extends State<ChemistDashboard> {
                         builder: (context) => CustomerOrdersPage(
                           allOrders: _allOrders,
                           customerCache: _customerCache,
-                          onRefresh: _loadDashboardData, // ADDED
+                          onRefresh: _loadDashboardData,
                         ),
                       ),
                     );
@@ -512,21 +522,54 @@ class _ChemistDashboardState extends State<ChemistDashboard> {
                     leading: const Icon(Icons.person, color: Colors.black),
                     title: const Text('Profile'),
                     onTap: () => _navigateToChemistProfile(context)),
+                
+                // ✅ FIXED: Reduced spacing before Deliveries section
+                const Divider(height: 1), // Changed from default height
+                
+                // Deliveries Section Header - removed extra padding
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 4), // ✅ Reduced top padding from 8 to 8 and bottom from 8 to 4
+                  child: Text(
+                    'DELIVERIES',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.grey.shade600,
+                    ),
+                  ),
+                ),
+
+                ListTile(
+                  leading: const Icon(Icons.local_shipping, color: Colors.purple),
+                  title: const Text('Out for Delivery'),
+                  subtitle: const Text('Track & complete deliveries'),
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const ChemistDeliveryManagement(),
+                      ),
+                    );
+                  },
+                ),
               ],
             ),
           ),
-          const Divider(),
+          
+          // ✅ Logout at bottom with proper spacing
+          const Divider(height: 1),
           ListTile(
             leading: const Icon(Icons.logout, color: Colors.red),
             title: const Text('Logout'),
             onTap: () => _handleLogout(),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 8), // ✅ Reduced from 16 to 8
         ],
       ),
     );
   }
-
+  
   Future<void> _handleLogout() async {
     final confirm = await showDialog<bool>(
       context: context,
@@ -593,6 +636,26 @@ class _ChemistDashboardState extends State<ChemistDashboard> {
                 child: _buildStatCard(
                     'Rejected',
                     '${_orderCounts['rejected'] ?? 0}',
+                    Icons.cancel,
+                    Colors.red),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildStatCard(
+                    'Out for Delivery',
+                    '${_orderCounts['outForDelivery'] ?? 0}',
+                    Icons.done_all,
+                    Colors.blue),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: _buildStatCard(
+                    'Bill Uploaded',
+                    '${_orderCounts['billUploaded'] ?? 0}',
                     Icons.cancel,
                     Colors.red),
               ),
@@ -715,7 +778,7 @@ class _ChemistDashboardState extends State<ChemistDashboard> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Order ${order.orderId} accepted'),
+              content: Text('Order ${order.orderNumber ?? order.orderId} accepted'),
               backgroundColor: Colors.green,
               duration: const Duration(seconds: 2),
             ),
@@ -760,7 +823,7 @@ class _ChemistDashboardState extends State<ChemistDashboard> {
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text('Order ${order.orderId} rejected'),
+                content: Text('Order ${order.orderNumber ?? order.orderId} rejected'),
                 backgroundColor: Colors.green,
                 duration: const Duration(seconds: 2),
               ),
@@ -1066,7 +1129,6 @@ class OrderTile extends StatelessWidget {
   }
 }
 
-
 // CUSTOMER ORDERS PAGE - UPDATED TO USE OrderTileWithBill
 // ============================================================================
 
@@ -1141,7 +1203,7 @@ class _CustomerOrdersPageState extends State<CustomerOrdersPage> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Order ${order.orderId} accepted'),
+              content: Text('Order ${order.orderNumber ?? order.orderId} accepted'),
               backgroundColor: Colors.green,
               duration: const Duration(seconds: 2),
             ),
@@ -1188,7 +1250,7 @@ class _CustomerOrdersPageState extends State<CustomerOrdersPage> {
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text('Order ${order.orderId} rejected'),
+                content: Text('Order ${order.orderNumber ?? order.orderId} rejected'),
                 backgroundColor: Colors.green,
                 duration: const Duration(seconds: 2),
               ),
@@ -1336,12 +1398,10 @@ class _CustomerOrdersPageState extends State<CustomerOrdersPage> {
               ),
             );
           },
-          onAccept: _isPending(order.status) 
-              ? () => _handleAcceptOrder(order)
-              : null,
-          onReject: _isPending(order.status)
-              ? () => _handleRejectOrder(order)
-              : null,
+          onAccept:
+              _isPending(order.status) ? () => _handleAcceptOrder(order) : null,
+          onReject:
+              _isPending(order.status) ? () => _handleRejectOrder(order) : null,
           onRefresh: widget.onRefresh, // PASS onRefresh
         );
       },
@@ -1383,7 +1443,8 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Order #${widget.order.orderNumber ?? widget.order.orderId}',
+        title: Text(
+            'Order #${widget.order.orderNumber ?? widget.order.orderId}',
             style: const TextStyle(color: Colors.white)),
         backgroundColor: Colors.black,
         foregroundColor: Colors.white, // ✅ White back button

@@ -182,7 +182,7 @@ class _CustomerAllOrdersState extends State<CustomerAllOrders> {
           if (response.statusCode == 200) {
             final chemistData = response.data;
             _chemistCache[order.medicalStoreId!] = {
-              'name': chemistData['pharmacyName']?.toString() ?? 'Chemist',
+              'name': chemistData['medicalName']?.toString() ?? 'Chemist',
               'phone': chemistData['mobileNumber']?.toString() ?? '',
               'address': chemistData['address']?.toString() ?? '',
             };
@@ -505,7 +505,7 @@ class _CustomerAllOrdersState extends State<CustomerAllOrders> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Order #${order.orderId}',
+                          'Order #${order.orderNumber ?? order.orderId}',
                           style: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
@@ -710,7 +710,7 @@ class _CustomerAllOrdersState extends State<CustomerAllOrders> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      'Order #${order.orderId}',
+                      'Order #${order.orderNumber ?? order.orderId}',
                       style: const TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
@@ -735,7 +735,7 @@ class _CustomerAllOrdersState extends State<CustomerAllOrders> {
 
                 // Order Details
                 _buildDetailSection('Order Information', [
-                  _buildDetailRow('Order ID', order.orderId.toString()),
+                  _buildDetailRow('Order #', order.orderNumber ?? order.orderId.toString()),
                   _buildDetailRow('Order Type',
                       _getOrderTypeLabel(order.orderInputTypeDisplayName)),
                   _buildDetailRow('Status', order.status),

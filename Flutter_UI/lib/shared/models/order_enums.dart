@@ -48,11 +48,11 @@ enum OrderType {
 /// Order status enum
 enum OrderStatus {
   pendingPayment(0),
-  paid(1),
-  assignedToChemist(2),
-  rejectedByChemist(3),
-  acceptedByChemist(4),
-  billUploaded(5),
+  assignedToChemist(1),
+  rejectedByChemist(2),
+  acceptedByChemist(3),
+  billUploaded(4),
+  paid(5),
   outForDelivery(6),
   completed(7);
 
