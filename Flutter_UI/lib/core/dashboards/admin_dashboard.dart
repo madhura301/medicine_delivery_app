@@ -169,7 +169,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => const AdminUserManagement(),
+        builder: (context) => AdminUserManagementPage(dio: _dio),
       ),
     );
   }

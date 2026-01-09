@@ -61,9 +61,9 @@ class _CustomerSupportDashboardState extends State<CustomerSupportDashboard> {
       },
       onError: (error, handler) {
         if (EnvironmentConfig.shouldLog) {
-          AppLogger.error('API Error: \${error.message}');
-          AppLogger.error('Status Code: \${error.response?.statusCode}');
-          AppLogger.error('Response Data: \${error.response?.data}');
+          AppLogger.error('API Error: ${error.message}');
+          AppLogger.error('Status Code: ${error.response?.statusCode}');
+          AppLogger.error('Response Data: ${error.response?.data}');
         }
         handler.next(error);
       },
@@ -399,6 +399,7 @@ class _RejectedOrdersPageState extends State<RejectedOrdersPage>
     try {
       AppLogger.info('Fetching rejected orders');
       final response = await widget.dio.get('/Orders');
+      AppLogger.info(response.data.toString());
 
       if (response.statusCode == 200) {
         final data = response.data;
@@ -413,10 +414,12 @@ class _RejectedOrdersPageState extends State<RejectedOrdersPage>
 
         final allOrders =
             ordersList.map((json) => OrderModel.fromJson(json)).toList();
+        AppLogger.info('Total orders fetched: \${allOrders.length}');
         final rejected = allOrders
             .where((o) => o.status.toLowerCase().contains('rejected'))
             .toList();
-
+        AppLogger.info('Found ${rejected.length} rejected orders' +
+            ' out of ${allOrders.length} total orders');
         rejected.sort((a, b) => b.createdOn.compareTo(a.createdOn));
 
         await _loadCustomerInfo(rejected);

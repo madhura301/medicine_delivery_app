@@ -1,9 +1,10 @@
 // Admin All Orders Page
-// Shows all orders in the system with filtering capabilities
+// Shows all orders in the system with filtering and search capabilities
 
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import 'package:intl/intl.dart';
+import 'package:pharmaish/core/screens/admin/admin_order_details.dart' show AdminOrderDetailsPage;
 import 'package:pharmaish/utils/app_logger.dart';
 import 'package:pharmaish/utils/constants.dart';
 import 'package:pharmaish/utils/storage.dart';
@@ -29,11 +30,21 @@ class _AdminAllOrdersState extends State<AdminAllOrders> {
   final Map<String, Map<String, String>> _customerCache = {};
   final Map<String, Map<String, String>> _chemistCache = {};
 
+  // Search functionality
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
+
   @override
   void initState() {
     super.initState();
     _setupDio();
     _loadAllOrders();
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   void _setupDio() {
@@ -79,15 +90,8 @@ class _AdminAllOrdersState extends State<AdminAllOrders> {
     try {
       AppLogger.info('Fetching all orders for admin');
 
-      // TODO: Replace with actual admin orders endpoint when available
-      // For now, we'll need to create an endpoint that gets all orders
-      // Endpoint should be: GET /api/Orders
-      
-      // Temporary workaround: Try to get orders from different sources
-      // In production, you need to add an admin endpoint to get ALL orders
-      
       final response = await _dio.get('/Orders');
-      
+
       if (response.statusCode == 200) {
         final data = response.data;
 
@@ -116,11 +120,10 @@ class _AdminAllOrdersState extends State<AdminAllOrders> {
 
         setState(() {
           _allOrders = allOrders;
-          _filteredOrders = allOrders;
           _isLoading = false;
         });
 
-        _applyFilter(_selectedFilterIndex);
+        _filterOrders();
       }
     } on DioException catch (e) {
       AppLogger.error('Error loading orders', e);
@@ -200,41 +203,112 @@ class _AdminAllOrdersState extends State<AdminAllOrders> {
     }
   }
 
+  void _onSearchChanged(String query) {
+    setState(() {
+      _searchQuery = query;
+    });
+    _filterOrders();
+  }
+
+  void _clearSearch() {
+    _searchController.clear();
+    setState(() {
+      _searchQuery = '';
+    });
+    _filterOrders();
+  }
+
   void _applyFilter(int index) {
     setState(() {
       _selectedFilterIndex = index;
-
-      switch (index) {
-        case 0: // All
-          _filteredOrders = _allOrders;
-          break;
-        case 1: // Pending
-          _filteredOrders = _allOrders
-              .where((o) =>
-                  o.status.toLowerCase().contains('pending') ||
-                  o.status.toLowerCase().contains('assigned'))
-              .toList();
-          break;
-        case 2: // Accepted
-          _filteredOrders = _allOrders
-              .where((o) =>
-                  o.status.toLowerCase().contains('accepted') ||
-                  o.status.toLowerCase().contains('bill') ||
-                  o.status.toLowerCase().contains('delivery'))
-              .toList();
-          break;
-        case 3: // Completed
-          _filteredOrders = _allOrders
-              .where((o) => o.status.toLowerCase().contains('completed'))
-              .toList();
-          break;
-        case 4: // Rejected
-          _filteredOrders = _allOrders
-              .where((o) => o.status.toLowerCase().contains('rejected'))
-              .toList();
-          break;
-      }
     });
+    _filterOrders();
+  }
+
+  void _filterOrders() {
+    List<OrderModel> filtered;
+
+    // Apply status filter
+    switch (_selectedFilterIndex) {
+      case 0: // All
+        filtered = List.from(_allOrders);
+        break;
+      case 1: // Pending
+        filtered = _allOrders
+            .where((o) =>
+                o.status.toLowerCase().contains('pending') ||
+                o.status.toLowerCase().contains('assigned'))
+            .toList();
+        break;
+      case 2: // Accepted
+        filtered = _allOrders
+            .where((o) =>
+                o.status.toLowerCase().contains('accepted') ||
+                o.status.toLowerCase().contains('bill') ||
+                o.status.toLowerCase().contains('delivery'))
+            .toList();
+        break;
+      case 3: // Completed
+        filtered = _allOrders
+            .where((o) => o.status.toLowerCase().contains('completed'))
+            .toList();
+        break;
+      case 4: // Rejected
+        filtered = _allOrders
+            .where((o) => o.status.toLowerCase().contains('rejected'))
+            .toList();
+        break;
+      default:
+        filtered = List.from(_allOrders);
+    }
+
+    // Apply search filter
+    if (_searchQuery.isNotEmpty) {
+      final query = _searchQuery.toLowerCase();
+
+      filtered = filtered.where((order) {
+        // Basic order fields (always available)
+        if (order.orderId.toLowerCase().contains(query)) return true;
+        if ((order.orderNumber ?? '').toLowerCase().contains(query))
+          return true;
+        if ((order.shippingAddressLine1 ?? '').toLowerCase().contains(query))
+          return true;
+        if ((order.shippingCity ?? '').toLowerCase().contains(query))
+          return true;
+        if ((order.shippingArea ?? '').toLowerCase().contains(query))
+          return true;
+
+        // Customer info (if cached)
+        if (_customerCache.containsKey(order.customerId)) {
+          final customerData = _customerCache[order.customerId]!;
+          if ((customerData['name'] ?? '').toLowerCase().contains(query))
+            return true;
+          if ((customerData['email'] ?? '').toLowerCase().contains(query))
+            return true;
+          if ((customerData['phone'] ?? '').toLowerCase().contains(query))
+            return true;
+        }
+
+        // Chemist info (if cached)
+        if (order.medicalStoreId != null &&
+            _chemistCache.containsKey(order.medicalStoreId)) {
+          final chemistData = _chemistCache[order.medicalStoreId]!;
+          if ((chemistData['name'] ?? '').toLowerCase().contains(query))
+            return true;
+          if ((chemistData['phone'] ?? '').toLowerCase().contains(query))
+            return true;
+        }
+
+        return false;
+      }).toList();
+    }
+
+    setState(() {
+      _filteredOrders = filtered;
+    });
+
+    AppLogger.info(
+        'Filter $_selectedFilterIndex with search "$_searchQuery": ${_filteredOrders.length} orders');
   }
 
   String getCustomerName(OrderModel order) {
@@ -255,8 +329,7 @@ class _AdminAllOrdersState extends State<AdminAllOrders> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('All Orders',
-            style: TextStyle(color: Colors.white)),
+        title: const Text('All Orders', style: TextStyle(color: Colors.white)),
         backgroundColor: Colors.black,
         foregroundColor: Colors.white,
         iconTheme: const IconThemeData(color: Colors.white),
@@ -271,8 +344,90 @@ class _AdminAllOrdersState extends State<AdminAllOrders> {
       ),
       body: Column(
         children: [
+          _buildSearchBar(),
           _buildFilterChips(),
           Expanded(child: _buildBody()),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSearchBar() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: TextField(
+              controller: _searchController,
+              onChanged: _onSearchChanged,
+              decoration: InputDecoration(
+                hintText: 'Search by customer, phone, order ID, address...',
+                hintStyle: TextStyle(fontSize: 14, color: Colors.grey.shade500),
+                prefixIcon: const Icon(Icons.search, color: Colors.grey),
+                suffixIcon: _searchQuery.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(Icons.clear, color: Colors.grey),
+                        onPressed: _clearSearch,
+                      )
+                    : null,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(25),
+                  borderSide: BorderSide(color: Colors.grey.shade300),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(25),
+                  borderSide: BorderSide(color: Colors.grey.shade300),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(25),
+                  borderSide: const BorderSide(color: Colors.black, width: 2),
+                ),
+                filled: true,
+                fillColor: Colors.grey.shade50,
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 12,
+                ),
+                isDense: true,
+              ),
+            ),
+          ),
+          if (_searchQuery.isNotEmpty) ...[
+            const SizedBox(width: 12),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.black,
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.filter_list, size: 16, color: Colors.white),
+                  const SizedBox(width: 4),
+                  Text(
+                    '${_filteredOrders.length}',
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -323,7 +478,11 @@ class _AdminAllOrdersState extends State<AdminAllOrders> {
         ),
       ),
       selected: isSelected,
-      onSelected: (selected) => _applyFilter(index),
+      onSelected: (selected) {
+        if (selected) {
+          _applyFilter(index);
+        }
+      },
       backgroundColor: Colors.white,
       selectedColor: color,
       checkmarkColor: Colors.white,
@@ -332,32 +491,37 @@ class _AdminAllOrdersState extends State<AdminAllOrders> {
   }
 
   int _getFilterCount(int index) {
-    switch (index) {
-      case 0:
-        return _allOrders.length;
-      case 1:
-        return _allOrders
-            .where((o) =>
-                o.status.toLowerCase().contains('pending') ||
-                o.status.toLowerCase().contains('assigned'))
-            .length;
-      case 2:
-        return _allOrders
-            .where((o) =>
-                o.status.toLowerCase().contains('accepted') ||
-                o.status.toLowerCase().contains('bill') ||
-                o.status.toLowerCase().contains('delivery'))
-            .length;
-      case 3:
-        return _allOrders
-            .where((o) => o.status.toLowerCase().contains('completed'))
-            .length;
-      case 4:
-        return _allOrders
-            .where((o) => o.status.toLowerCase().contains('rejected'))
-            .length;
-      default:
-        return 0;
+    try {
+      switch (index) {
+        case 0:
+          return _allOrders.length;
+        case 1:
+          return _allOrders
+              .where((o) =>
+                  o.status.toLowerCase().contains('pending') ||
+                  o.status.toLowerCase().contains('assigned'))
+              .length;
+        case 2:
+          return _allOrders
+              .where((o) =>
+                  o.status.toLowerCase().contains('accepted') ||
+                  o.status.toLowerCase().contains('bill') ||
+                  o.status.toLowerCase().contains('delivery'))
+              .length;
+        case 3:
+          return _allOrders
+              .where((o) => o.status.toLowerCase().contains('completed'))
+              .length;
+        case 4:
+          return _allOrders
+              .where((o) => o.status.toLowerCase().contains('rejected'))
+              .length;
+        default:
+          return 0;
+      }
+    } catch (e) {
+      AppLogger.error('Error calculating filter count: $e');
+      return 0;
     }
   }
 
@@ -416,21 +580,53 @@ class _AdminAllOrdersState extends State<AdminAllOrders> {
       );
     }
 
+    // Check if filtered orders is empty
     if (_filteredOrders.isEmpty) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.inbox_outlined, size: 80, color: Colors.grey[400]),
+            Icon(
+              _searchQuery.isNotEmpty
+                  ? Icons.search_off
+                  : Icons.inbox_outlined,
+              size: 80,
+              color: Colors.grey[400],
+            ),
             const SizedBox(height: 16),
             Text(
-              'No orders found',
+              _searchQuery.isNotEmpty
+                  ? 'No orders found matching "$_searchQuery"'
+                  : _getEmptyStateMessage(),
               style: TextStyle(
                 fontSize: 18,
                 color: Colors.grey[600],
                 fontWeight: FontWeight.w500,
               ),
+              textAlign: TextAlign.center,
             ),
+            const SizedBox(height: 8),
+            Text(
+              _searchQuery.isNotEmpty
+                  ? 'Try different search terms'
+                  : 'Try selecting a different filter',
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.grey[500],
+              ),
+            ),
+            if (_searchQuery.isNotEmpty) ...[
+              const SizedBox(height: 16),
+              ElevatedButton.icon(
+                onPressed: _clearSearch,
+                icon: const Icon(Icons.clear),
+                label: const Text('Clear Search'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.black,
+                  foregroundColor: Colors.white,
+                ),
+              ),
+            ],
           ],
         ),
       );
@@ -442,6 +638,9 @@ class _AdminAllOrdersState extends State<AdminAllOrders> {
         padding: const EdgeInsets.all(12),
         itemCount: _filteredOrders.length,
         itemBuilder: (context, index) {
+          if (index < 0 || index >= _filteredOrders.length) {
+            return const SizedBox.shrink();
+          }
           final order = _filteredOrders[index];
           return _buildOrderCard(order);
         },
@@ -449,7 +648,37 @@ class _AdminAllOrdersState extends State<AdminAllOrders> {
     );
   }
 
+  String _getEmptyStateMessage() {
+    switch (_selectedFilterIndex) {
+      case 0:
+        return 'No orders found';
+      case 1:
+        return 'No pending orders';
+      case 2:
+        return 'No accepted orders';
+      case 3:
+        return 'No completed orders';
+      case 4:
+        return 'No rejected orders';
+      default:
+        return 'No orders found';
+    }
+  }
+
   Widget _buildOrderCard(OrderModel order) {
+    // Safe order ID display
+    String getSafeOrderId() {
+      if (order.orderNumber != null && order.orderNumber!.isNotEmpty) {
+        return order.orderNumber!;
+      }
+
+      final orderId = order.orderId;
+      if (orderId.length <= 8) {
+        return orderId;
+      }
+      return orderId.substring(0, 8);
+    }
+
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       elevation: 2,
@@ -458,9 +687,11 @@ class _AdminAllOrdersState extends State<AdminAllOrders> {
       ),
       child: InkWell(
         onTap: () {
-          // TODO: Navigate to order details
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Order details - Coming Soon!')),
+          // Navigate to order details
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (context) => AdminOrderDetailsPage(order: order),
+            ),
           );
         },
         borderRadius: BorderRadius.circular(12),
@@ -478,7 +709,7 @@ class _AdminAllOrdersState extends State<AdminAllOrders> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Order #${order.orderNumber ?? order.orderId}',
+                          'Order #${getSafeOrderId()}',
                           style: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
@@ -519,8 +750,7 @@ class _AdminAllOrdersState extends State<AdminAllOrders> {
                         _buildInfoRow(
                           Icons.calendar_today,
                           'Date',
-                          DateFormat('MMM dd, yyyy')
-                              .format(order.createdOn),
+                          DateFormat('MMM dd, yyyy').format(order.createdOn),
                         ),
                       ],
                     ),
@@ -543,6 +773,28 @@ class _AdminAllOrdersState extends State<AdminAllOrders> {
                           ),
                       ],
                     ),
+                  ),
+                ],
+              ),
+
+              // View Details indicator
+              const SizedBox(height: 12),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  Text(
+                    'Tap to view details',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.blue[700],
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  Icon(
+                    Icons.arrow_forward_ios,
+                    size: 12,
+                    color: Colors.blue[700],
                   ),
                 ],
               ),
