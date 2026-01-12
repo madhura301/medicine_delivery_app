@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:dio/dio.dart';
 import 'package:pharmaish/config/environment_config.dart';
+import 'package:pharmaish/core/screens/admin/admin_customer_support_regions.dart';
 import 'package:pharmaish/core/screens/chemist/chemist_delivery_management.dart';
 import 'package:pharmaish/shared/widgets/order_tile_with_bill.dart';
 import 'package:pharmaish/utils/app_logger.dart';
@@ -148,18 +149,15 @@ class _ChemistDashboardState extends State<ChemistDashboard> {
             .length;
 
         final acceptedCount = allOrders
-            .where((o) =>
-                o.status.toLowerCase().contains('accepted'))
+            .where((o) => o.status.toLowerCase().contains('accepted'))
             .length;
 
         final outForDeliveryCount = allOrders
-            .where((o) =>
-                o.status.toLowerCase().contains('delivery'))
+            .where((o) => o.status.toLowerCase().contains('delivery'))
             .length;
 
         final billUploadedCount = allOrders
-            .where((o) =>
-                o.status.toLowerCase().contains('bill'))
+            .where((o) => o.status.toLowerCase().contains('bill'))
             .length;
 
         final rejectedCount = allOrders
@@ -518,17 +516,28 @@ class _ChemistDashboardState extends State<ChemistDashboard> {
                     );
                   },
                 ),
+                // ListTile(
+                //   leading: Icon(Icons.location_city),
+                //   title: Text('Customer Support Regions'),
+                //   onTap: () => Navigator.push(
+                //     context,
+                //     MaterialPageRoute(
+                //       builder: (context) => AdminCustomerSupportRegionsPage(),
+                //     ),
+                //   ),
+                // ),
                 ListTile(
                     leading: const Icon(Icons.person, color: Colors.black),
                     title: const Text('Profile'),
                     onTap: () => _navigateToChemistProfile(context)),
-                
+
                 // ✅ FIXED: Reduced spacing before Deliveries section
                 const Divider(height: 1), // Changed from default height
-                
+
                 // Deliveries Section Header - removed extra padding
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 4), // ✅ Reduced top padding from 8 to 8 and bottom from 8 to 4
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16,
+                      4), // ✅ Reduced top padding from 8 to 8 and bottom from 8 to 4
                   child: Text(
                     'DELIVERIES',
                     style: TextStyle(
@@ -540,7 +549,8 @@ class _ChemistDashboardState extends State<ChemistDashboard> {
                 ),
 
                 ListTile(
-                  leading: const Icon(Icons.local_shipping, color: Colors.purple),
+                  leading:
+                      const Icon(Icons.local_shipping, color: Colors.purple),
                   title: const Text('Out for Delivery'),
                   subtitle: const Text('Track & complete deliveries'),
                   onTap: () {
@@ -556,7 +566,7 @@ class _ChemistDashboardState extends State<ChemistDashboard> {
               ],
             ),
           ),
-          
+
           // ✅ Logout at bottom with proper spacing
           const Divider(height: 1),
           ListTile(
@@ -569,7 +579,7 @@ class _ChemistDashboardState extends State<ChemistDashboard> {
       ),
     );
   }
-  
+
   Future<void> _handleLogout() async {
     final confirm = await showDialog<bool>(
       context: context,
@@ -778,7 +788,8 @@ class _ChemistDashboardState extends State<ChemistDashboard> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Order ${order.orderNumber ?? order.orderId} accepted'),
+              content:
+                  Text('Order ${order.orderNumber ?? order.orderId} accepted'),
               backgroundColor: Colors.green,
               duration: const Duration(seconds: 2),
             ),
@@ -823,7 +834,8 @@ class _ChemistDashboardState extends State<ChemistDashboard> {
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text('Order ${order.orderNumber ?? order.orderId} rejected'),
+                content: Text(
+                    'Order ${order.orderNumber ?? order.orderId} rejected'),
                 backgroundColor: Colors.green,
                 duration: const Duration(seconds: 2),
               ),
@@ -1203,7 +1215,8 @@ class _CustomerOrdersPageState extends State<CustomerOrdersPage> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Order ${order.orderNumber ?? order.orderId} accepted'),
+              content:
+                  Text('Order ${order.orderNumber ?? order.orderId} accepted'),
               backgroundColor: Colors.green,
               duration: const Duration(seconds: 2),
             ),
@@ -1250,7 +1263,8 @@ class _CustomerOrdersPageState extends State<CustomerOrdersPage> {
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text('Order ${order.orderNumber ?? order.orderId} rejected'),
+                content: Text(
+                    'Order ${order.orderNumber ?? order.orderId} rejected'),
                 backgroundColor: Colors.green,
                 duration: const Duration(seconds: 2),
               ),

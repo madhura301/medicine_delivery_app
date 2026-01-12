@@ -7,6 +7,7 @@ import 'package:pharmaish/utils/storage.dart';
 import 'package:dio/dio.dart';
 import 'package:pharmaish/utils/constants.dart';
 import 'package:pharmaish/config/environment_config.dart';
+import 'package:pharmaish/core/screens/admin/admin_customer_support_regions.dart';
 
 class AdminDashboard extends StatefulWidget {
   const AdminDashboard({super.key});
@@ -115,7 +116,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
         if (ordersResponse.statusCode == 200) {
           final data = ordersResponse.data;
           List<dynamic> ordersList;
-          
+
           if (data is List) {
             ordersList = data;
           } else if (data is Map && data.containsKey('data')) {
@@ -179,6 +180,15 @@ class _AdminDashboardState extends State<AdminDashboard> {
       context,
       MaterialPageRoute(
         builder: (context) => const AdminAllOrders(),
+      ),
+    );
+  }
+
+   void _goToRegionManagementPage(BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const AdminCustomerSupportRegionsPage(),
       ),
     );
   }
@@ -386,6 +396,14 @@ class _AdminDashboardState extends State<AdminDashboard> {
                   onTap: () {
                     Navigator.of(context).pop();
                     _goToAllOrders(context);
+                  },
+                ),
+                ListTile(
+                  leading: Icon(Icons.location_city),
+                  title: Text('Customer Support Regions'),
+                  onTap: () {
+                    Navigator.of(context).pop();
+                    _goToRegionManagementPage(context);
                   },
                 ),
                 // ListTile(
