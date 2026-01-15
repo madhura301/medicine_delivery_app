@@ -18,6 +18,8 @@ namespace MedicineDelivery.Domain.Interfaces
         IRepository<Delivery> Deliveries { get; }
         IRepository<CustomerSupportRegion> CustomerSupportRegions { get; }
         IRepository<CustomerSupportRegionPinCode> CustomerSupportRegionPinCodes { get; }
+        IRepository<Consent> Consents { get; }
+        IRepository<ConsentLog> ConsentLogs { get; }
         
         Task<int> SaveChangesAsync();
         Task BeginTransactionAsync();

@@ -56,6 +56,15 @@ namespace MedicineDelivery.Application.Mappings
             // CustomerSupportRegion mappings
             CreateMap<CustomerSupportRegion, CustomerSupportRegionDto>()
                 .ForMember(dest => dest.PinCodes, opt => opt.Ignore()); // PinCodes loaded separately
+
+            // Consent mappings
+            CreateMap<Consent, ConsentDto>();
+            CreateMap<CreateConsentDto, Consent>();
+            CreateMap<UpdateConsentDto, Consent>();
+
+            // ConsentLog mappings
+            CreateMap<ConsentLog, ConsentLogDto>()
+                .ForMember(dest => dest.Consent, opt => opt.Ignore()); // Consent loaded separately
         }
     }
 }

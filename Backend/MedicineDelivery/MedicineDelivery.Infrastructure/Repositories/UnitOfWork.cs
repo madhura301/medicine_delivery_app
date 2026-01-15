@@ -22,6 +22,8 @@ namespace MedicineDelivery.Infrastructure.Repositories
         private IRepository<Delivery>? _deliveries;
         private IRepository<CustomerSupportRegion>? _customerSupportRegions;
         private IRepository<CustomerSupportRegionPinCode>? _customerSupportRegionPinCodes;
+        private IRepository<Consent>? _consents;
+        private IRepository<ConsentLog>? _consentLogs;
 
         public UnitOfWork(ApplicationDbContext context)
         {
@@ -42,6 +44,8 @@ namespace MedicineDelivery.Infrastructure.Repositories
         public IRepository<Delivery> Deliveries => _deliveries ??= new Repository<Delivery>(_context);
         public IRepository<CustomerSupportRegion> CustomerSupportRegions => _customerSupportRegions ??= new Repository<CustomerSupportRegion>(_context);
         public IRepository<CustomerSupportRegionPinCode> CustomerSupportRegionPinCodes => _customerSupportRegionPinCodes ??= new Repository<CustomerSupportRegionPinCode>(_context);
+        public IRepository<Consent> Consents => _consents ??= new Repository<Consent>(_context);
+        public IRepository<ConsentLog> ConsentLogs => _consentLogs ??= new Repository<ConsentLog>(_context);
 
         public async Task<int> SaveChangesAsync()
         {

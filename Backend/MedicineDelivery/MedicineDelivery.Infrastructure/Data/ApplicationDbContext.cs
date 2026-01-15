@@ -28,6 +28,8 @@ namespace MedicineDelivery.Infrastructure.Data
         public DbSet<Delivery> Deliveries { get; set; }
         public DbSet<CustomerSupportRegion> CustomerSupportRegions { get; set; }
         public DbSet<CustomerSupportRegionPinCode> CustomerSupportRegionPinCodes { get; set; }
+        public DbSet<Consent> Consents { get; set; }
+        public DbSet<ConsentLog> ConsentLogs { get; set; }
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
@@ -640,6 +642,58 @@ namespace MedicineDelivery.Infrastructure.Data
                 entity.HasIndex(csrpc => new { csrpc.CustomerSupportRegionId, csrpc.PinCode })
                     .IsUnique();
             });
+
+            // Configure Consent entity
+            builder.Entity<Consent>(entity =>
+            {
+                entity.HasKey(c => c.ConsentId);
+
+                entity.Property(c => c.Title)
+                    .HasMaxLength(200)
+                    .IsRequired();
+
+                entity.Property(c => c.Description)
+                    .HasMaxLength(1000);
+
+                entity.Property(c => c.Content)
+                    .IsRequired();
+
+                entity.HasIndex(c => c.IsActive);
+                entity.HasIndex(c => c.CreatedOn);
+            });
+
+            // Configure ConsentLog entity
+            builder.Entity<ConsentLog>(entity =>
+            {
+                entity.HasKey(cl => cl.ConsentLogId);
+
+                entity.Property(cl => cl.UserId)
+                    .IsRequired();
+
+                entity.Property(cl => cl.UserAgent)
+                    .HasMaxLength(500);
+
+                entity.Property(cl => cl.IpAddress)
+                    .HasMaxLength(50);
+
+                entity.Property(cl => cl.DeviceInfo)
+                    .HasMaxLength(500);
+
+                entity.HasOne(cl => cl.Consent)
+                    .WithMany(c => c.ConsentLogs)
+                    .HasForeignKey(cl => cl.ConsentId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(cl => cl.User)
+                    .WithMany()
+                    .HasForeignKey(cl => cl.UserId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasIndex(cl => cl.ConsentId);
+                entity.HasIndex(cl => cl.UserId);
+                entity.HasIndex(cl => cl.UserType);
+                entity.HasIndex(cl => cl.CreatedOn);
+            });
         }
 
         private void ConfigureDatabaseProviderSpecific(ModelBuilder builder)
@@ -751,6 +805,22 @@ namespace MedicineDelivery.Infrastructure.Data
                 .Property(o => o.UpdatedOn)
                 .HasColumnType("timestamp with time zone");
 
+            // PostgreSQL datetime configuration for Consent
+            builder.Entity<Consent>()
+                .Property(c => c.CreatedOn)
+                .HasColumnType("timestamp with time zone")
+                .HasDefaultValueSql("now() at time zone 'utc'");
+
+            builder.Entity<Consent>()
+                .Property(c => c.UpdatedOn)
+                .HasColumnType("timestamp with time zone");
+
+            // PostgreSQL datetime configuration for ConsentLog
+            builder.Entity<ConsentLog>()
+                .Property(cl => cl.CreatedOn)
+                .HasColumnType("timestamp with time zone")
+                .HasDefaultValueSql("now() at time zone 'utc'");
+
             builder.Entity<Order>()
                 .Property(o => o.TotalAmount)
                 .HasColumnType("numeric(10,2)");
@@ -816,6 +886,22 @@ namespace MedicineDelivery.Infrastructure.Data
             builder.Entity<Delivery>()
                 .Property(d => d.ModifiedOn)
                 .HasColumnType("timestamp with time zone");
+
+            // Configure Consent DateTime properties for PostgreSQL
+            builder.Entity<Consent>()
+                .Property(c => c.CreatedOn)
+                .HasColumnType("timestamp with time zone")
+                .HasDefaultValueSql("now() at time zone 'utc'");
+
+            builder.Entity<Consent>()
+                .Property(c => c.UpdatedOn)
+                .HasColumnType("timestamp with time zone");
+
+            // Configure ConsentLog DateTime properties for PostgreSQL
+            builder.Entity<ConsentLog>()
+                .Property(cl => cl.CreatedOn)
+                .HasColumnType("timestamp with time zone")
+                .HasDefaultValueSql("now() at time zone 'utc'");
 
         }
     }
