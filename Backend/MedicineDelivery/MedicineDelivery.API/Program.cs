@@ -297,6 +297,22 @@ builder.Services.AddAuthorization(options =>
     
     options.AddPolicy("RequireAllCustomerDeletePermission", policy => 
         policy.Requirements.Add(new MedicineDelivery.API.Authorization.PermissionRequirement("AllCustomerDelete")));
+    
+    // Consent CRUD Policies
+    options.AddPolicy("RequireReadConsentsPermission", policy => 
+        policy.Requirements.Add(new MedicineDelivery.API.Authorization.PermissionRequirement("ReadConsents")));
+    
+    options.AddPolicy("RequireCreateConsentsPermission", policy => 
+        policy.Requirements.Add(new MedicineDelivery.API.Authorization.PermissionRequirement("CreateConsents")));
+    
+    options.AddPolicy("RequireUpdateConsentsPermission", policy => 
+        policy.Requirements.Add(new MedicineDelivery.API.Authorization.PermissionRequirement("UpdateConsents")));
+    
+    options.AddPolicy("RequireDeleteConsentsPermission", policy => 
+        policy.Requirements.Add(new MedicineDelivery.API.Authorization.PermissionRequirement("DeleteConsents")));
+    
+    options.AddPolicy("RequireReadConsentLogsPermission", policy => 
+        policy.Requirements.Add(new MedicineDelivery.API.Authorization.PermissionRequirement("ReadConsentLogs")));
 });
 
 // Register the permission authorization handler

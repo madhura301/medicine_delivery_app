@@ -79,7 +79,12 @@ namespace MedicineDelivery.API.Authorization
                 new PermissionSeedDefinition(53, "CreateOrders", "Orders", "Can create orders"),
                 new PermissionSeedDefinition(54, "UpdateOrders", "Orders", "Can update orders"),
                 new PermissionSeedDefinition(55, "DeleteOrders", "Orders", "Can delete orders"),
-                new PermissionSeedDefinition(56, "ListAllOrders", "Orders", "Can view all orders")
+                new PermissionSeedDefinition(56, "ListAllOrders", "Orders", "Can view all orders"),
+                new PermissionSeedDefinition(57, "ReadConsents", "Consents", "Can view consents"),
+                new PermissionSeedDefinition(58, "CreateConsents", "Consents", "Can create consents"),
+                new PermissionSeedDefinition(59, "UpdateConsents", "Consents", "Can update consents"),
+                new PermissionSeedDefinition(60, "DeleteConsents", "Consents", "Can delete consents"),
+                new PermissionSeedDefinition(61, "ReadConsentLogs", "Consents", "Can view consent logs")
             });
 
         private static readonly IReadOnlyDictionary<string, string[]> RolePermissionNames = new ReadOnlyDictionary<string, string[]>(
@@ -98,7 +103,8 @@ namespace MedicineDelivery.API.Authorization
                     "AllCustomerRead", "AllCustomerUpdate", "AllCustomerDelete",
                     "CustomerCreate",
                     "AllChemistRead", "AllChemistUpdate", "AllChemistDelete",
-                    "ReadOrders", "CreateOrders", "UpdateOrders", "DeleteOrders", "ListAllOrders"
+                    "ReadOrders", "CreateOrders", "UpdateOrders", "DeleteOrders", "ListAllOrders",
+                    "ReadConsents", "CreateConsents", "UpdateConsents", "DeleteConsents", "ReadConsentLogs"
                 },
                 [CustomerSupportRoleId] = new[]
                 {

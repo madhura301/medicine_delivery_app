@@ -22,6 +22,7 @@ namespace MedicineDelivery.API.Controllers
         /// Get all consents
         /// </summary>
         [HttpGet]
+        [Authorize(Policy = "RequireReadConsentsPermission")]
         public async Task<IActionResult> GetAllConsents()
         {
             try
@@ -39,6 +40,7 @@ namespace MedicineDelivery.API.Controllers
         /// Get active consents only
         /// </summary>
         [HttpGet("active")]
+        [Authorize(Policy = "RequireReadConsentsPermission")]
         public async Task<IActionResult> GetActiveConsents()
         {
             try
@@ -56,6 +58,7 @@ namespace MedicineDelivery.API.Controllers
         /// Get consent by ID
         /// </summary>
         [HttpGet("{id}")]
+        [Authorize(Policy = "RequireReadConsentsPermission")]
         public async Task<IActionResult> GetConsentById(Guid id)
         {
             try
@@ -78,7 +81,7 @@ namespace MedicineDelivery.API.Controllers
         /// Create a new consent (Admin/Manager only)
         /// </summary>
         [HttpPost]
-        [Authorize(Roles = "Admin,Manager")]
+        [Authorize(Policy = "RequireCreateConsentsPermission")]
         public async Task<IActionResult> CreateConsent([FromBody] CreateConsentDto createDto)
         {
             if (!ModelState.IsValid)
@@ -101,7 +104,7 @@ namespace MedicineDelivery.API.Controllers
         /// Update an existing consent (Admin/Manager only)
         /// </summary>
         [HttpPut("{id}")]
-        [Authorize(Roles = "Admin,Manager")]
+        [Authorize(Policy = "RequireUpdateConsentsPermission")]
         public async Task<IActionResult> UpdateConsent(Guid id, [FromBody] UpdateConsentDto updateDto)
         {
             if (!ModelState.IsValid)
@@ -129,7 +132,7 @@ namespace MedicineDelivery.API.Controllers
         /// Delete a consent (Admin/Manager only)
         /// </summary>
         [HttpDelete("{id}")]
-        [Authorize(Roles = "Admin,Manager")]
+        [Authorize(Policy = "RequireDeleteConsentsPermission")]
         public async Task<IActionResult> DeleteConsent(Guid id)
         {
             try
@@ -208,7 +211,7 @@ namespace MedicineDelivery.API.Controllers
         /// Get consent logs for a specific consent (Admin/Manager only)
         /// </summary>
         [HttpGet("{id}/logs")]
-        [Authorize(Roles = "Admin,Manager")]
+        [Authorize(Policy = "RequireReadConsentLogsPermission")]
         public async Task<IActionResult> GetConsentLogs(Guid id)
         {
             try
