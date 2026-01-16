@@ -864,6 +864,93 @@ BEGIN
     END IF;
 END $EF$;
 
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260116175330_AddConsentAndConsentLogTables') THEN
+    CREATE TABLE "Consents" (
+        "ConsentId" uuid NOT NULL,
+        "Title" character varying(200) NOT NULL,
+        "Description" character varying(1000),
+        "Content" text NOT NULL,
+        "IsActive" boolean NOT NULL,
+        "CreatedOn" timestamp with time zone NOT NULL DEFAULT (now() at time zone 'utc'),
+        "UpdatedOn" timestamp with time zone,
+        CONSTRAINT "PK_Consents" PRIMARY KEY ("ConsentId")
+    );
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260116175330_AddConsentAndConsentLogTables') THEN
+    CREATE TABLE "ConsentLogs" (
+        "ConsentLogId" uuid NOT NULL,
+        "ConsentId" uuid NOT NULL,
+        "UserId" text NOT NULL,
+        "UserType" integer NOT NULL,
+        "RespectiveId" uuid,
+        "Action" integer NOT NULL,
+        "UserAgent" character varying(500) NOT NULL,
+        "IpAddress" character varying(50) NOT NULL,
+        "DeviceInfo" character varying(500),
+        "CreatedOn" timestamp with time zone NOT NULL DEFAULT (now() at time zone 'utc'),
+        CONSTRAINT "PK_ConsentLogs" PRIMARY KEY ("ConsentLogId"),
+        CONSTRAINT "FK_ConsentLogs_AspNetUsers_UserId" FOREIGN KEY ("UserId") REFERENCES "AspNetUsers" ("Id") ON DELETE RESTRICT,
+        CONSTRAINT "FK_ConsentLogs_Consents_ConsentId" FOREIGN KEY ("ConsentId") REFERENCES "Consents" ("ConsentId") ON DELETE CASCADE
+    );
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260116175330_AddConsentAndConsentLogTables') THEN
+    CREATE INDEX "IX_ConsentLogs_ConsentId" ON "ConsentLogs" ("ConsentId");
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260116175330_AddConsentAndConsentLogTables') THEN
+    CREATE INDEX "IX_ConsentLogs_CreatedOn" ON "ConsentLogs" ("CreatedOn");
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260116175330_AddConsentAndConsentLogTables') THEN
+    CREATE INDEX "IX_ConsentLogs_UserId" ON "ConsentLogs" ("UserId");
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260116175330_AddConsentAndConsentLogTables') THEN
+    CREATE INDEX "IX_ConsentLogs_UserType" ON "ConsentLogs" ("UserType");
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260116175330_AddConsentAndConsentLogTables') THEN
+    CREATE INDEX "IX_Consents_CreatedOn" ON "Consents" ("CreatedOn");
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260116175330_AddConsentAndConsentLogTables') THEN
+    CREATE INDEX "IX_Consents_IsActive" ON "Consents" ("IsActive");
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260116175330_AddConsentAndConsentLogTables') THEN
+    INSERT INTO "__EFMigrationsHistory" ("MigrationId", "ProductVersion")
+    VALUES ('20260116175330_AddConsentAndConsentLogTables', '8.0.0');
+    END IF;
+END $EF$;
+
 
 COMMIT;
 
