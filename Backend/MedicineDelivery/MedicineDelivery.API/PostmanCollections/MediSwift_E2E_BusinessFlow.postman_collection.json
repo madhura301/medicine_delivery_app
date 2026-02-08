@@ -1,0 +1,1403 @@
+{
+	"info": {
+		"_postman_id": "mediswift-e2e-business-flow",
+		"name": "MediSwift - End-to-End Business Flow",
+		"description": "Complete end-to-end test of the Medicine Delivery Application business flow.\n\nRun this collection using Postman's Collection Runner to execute all requests sequentially with a single click.\n\nCovers:\n- System bootstrap (roles, permissions, users)\n- Customer registration, login, address management\n- Medical store registration and login\n- Order creation, acceptance, bill upload, delivery, payment, OTP completion\n- Order rejection and customer support reassignment flow",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"variable": [
+		{ "key": "baseUrl", "value": "http://localhost:5000", "type": "string" },
+		{ "key": "adminToken", "value": "", "type": "string" },
+		{ "key": "customerToken", "value": "", "type": "string" },
+		{ "key": "chemistToken", "value": "", "type": "string" },
+		{ "key": "csToken", "value": "", "type": "string" },
+		{ "key": "customerId", "value": "", "type": "string" },
+		{ "key": "customerAddressId", "value": "", "type": "string" },
+		{ "key": "medicalStoreId", "value": "", "type": "string" },
+		{ "key": "deliveryId", "value": "", "type": "string" },
+		{ "key": "csRegionId", "value": "", "type": "string" },
+		{ "key": "customerSupportId", "value": "", "type": "string" },
+		{ "key": "orderId", "value": "", "type": "string" },
+		{ "key": "orderId2", "value": "", "type": "string" },
+		{ "key": "orderOtp", "value": "", "type": "string" },
+		{ "key": "orderOtp2", "value": "", "type": "string" }
+	],
+	"item": [
+		{
+			"name": "1 - System Bootstrap (Setup)",
+			"description": "One-time setup: creates predefined roles, permissions, role-permission mappings, and seed users.",
+			"item": [
+				{
+					"name": "01. Create Predefined Roles",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/setup/roles/predefined",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "setup", "roles", "predefined"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Predefined roles created or already exist', function () {",
+									"    pm.expect([200, 409]).to.include(pm.response.code);",
+									"});",
+									"console.log('Roles response:', pm.response.text());"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "02. Create Predefined Permissions",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/setup/permissions/predefined",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "setup", "permissions", "predefined"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Predefined permissions created or already exist', function () {",
+									"    pm.expect([200, 409]).to.include(pm.response.code);",
+									"});",
+									"console.log('Permissions response:', pm.response.text());"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "03. Map Role Permissions",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/setup/role-permissions/predefined",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "setup", "role-permissions", "predefined"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Role-permission mappings created or already exist', function () {",
+									"    pm.expect([200, 409]).to.include(pm.response.code);",
+									"});",
+									"console.log('Role-Permissions response:', pm.response.text());"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "04. Create Admin User",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/setup/users/admin",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "setup", "users", "admin"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Admin user created or already exists', function () {",
+									"    pm.expect([200, 409]).to.include(pm.response.code);",
+									"});",
+									"console.log('Admin user response:', pm.response.text());"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "05. Create Customer Support User",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/setup/users/customer-support",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "setup", "users", "customer-support"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Customer Support user created or already exists', function () {",
+									"    pm.expect([200, 409]).to.include(pm.response.code);",
+									"});",
+									"console.log('CS user response:', pm.response.text());"
+								]
+							}
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "2 - Admin Login & Region Setup",
+			"description": "Admin logs in, creates a CustomerSupport-type service region with pin codes, registers customer support staff, and assigns the region.",
+			"item": [
+				{
+					"name": "06. Admin Login",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"mobileNumber\": \"9999999999\",\n    \"password\": \"Admin@123\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/Auth/login",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "Auth", "login"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Admin login successful', function () {",
+									"    pm.response.to.have.status(200);",
+									"    var json = pm.response.json();",
+									"    pm.expect(json.token).to.be.a('string').and.not.empty;",
+									"    pm.collectionVariables.set('adminToken', json.token);",
+									"    console.log('Admin token set. Role:', json.role);",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "07. Create CS Region (CustomerSupport type)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" },
+							{ "key": "Authorization", "value": "Bearer {{adminToken}}" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Pune Central Support Region\",\n    \"city\": \"Pune\",\n    \"regionName\": \"Pune Central\",\n    \"regionType\": 0,\n    \"pinCodes\": [\"411001\", \"411002\", \"411003\"]\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/ServiceRegions",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "ServiceRegions"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('CS Region created', function () {",
+									"    pm.expect([200, 201]).to.include(pm.response.code);",
+									"    var json = pm.response.json();",
+									"    var regionId = json.id || json.Id;",
+									"    pm.expect(regionId).to.not.be.undefined;",
+									"    pm.collectionVariables.set('csRegionId', regionId.toString());",
+									"    console.log('CS Region Id:', regionId);",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "08. Register Customer Support Staff",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" },
+							{ "key": "Authorization", "value": "Bearer {{adminToken}}" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"customerSupportFirstName\": \"Jane\",\n    \"customerSupportLastName\": \"Support\",\n    \"customerSupportMiddleName\": \"M\",\n    \"address\": \"123 Support Street\",\n    \"city\": \"Pune\",\n    \"state\": \"Maharashtra\",\n    \"mobileNumber\": \"7777777777\",\n    \"emailId\": \"support@medicine.com\",\n    \"alternativeMobileNumber\": \"7777777778\",\n    \"employeeId\": \"CS-001\",\n    \"serviceRegionId\": {{csRegionId}}\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/CustomerSupports/register",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "CustomerSupports", "register"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Customer Support staff registered', function () {",
+									"    pm.expect([200, 201]).to.include(pm.response.code);",
+									"    var json = pm.response.json();",
+									"    var csId = json.customerSupportId || json.CustomerSupportId;",
+									"    pm.expect(csId).to.not.be.undefined;",
+									"    pm.collectionVariables.set('customerSupportId', csId.toString());",
+									"    console.log('CustomerSupportId:', csId);",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "09. Assign CS Region to Support Staff",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" },
+							{ "key": "Authorization", "value": "Bearer {{adminToken}}" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"serviceRegionId\": {{csRegionId}},\n    \"customerSupportId\": \"{{customerSupportId}}\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/ServiceRegions/assign",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "ServiceRegions", "assign"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Region assigned to CS staff', function () {",
+									"    pm.expect([200, 204]).to.include(pm.response.code);",
+									"    console.log('Region assignment response:', pm.response.text());",
+									"});"
+								]
+							}
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "3 - Customer Registration & Profile",
+			"description": "Customer self-registers, logs in, views profile, and adds a delivery address.",
+			"item": [
+				{
+					"name": "10. Register Customer",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"customerFirstName\": \"Ravi\",\n    \"customerLastName\": \"Sharma\",\n    \"customerMiddleName\": \"K\",\n    \"mobileNumber\": \"1234567890\",\n    \"password\": \"Test@1234\",\n    \"alternativeMobileNumber\": \"1234567891\",\n    \"emailId\": \"ravi.sharma@test.com\",\n    \"dateOfBirth\": \"1995-06-15T00:00:00Z\",\n    \"gender\": \"Male\",\n    \"addresses\": []\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/Customers/register",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "Customers", "register"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Customer registered', function () {",
+									"    pm.expect([200, 201]).to.include(pm.response.code);",
+									"    var json = pm.response.json();",
+									"    var custId = json.customerId || json.CustomerId;",
+									"    pm.expect(custId).to.not.be.undefined;",
+									"    pm.collectionVariables.set('customerId', custId.toString());",
+									"    console.log('CustomerId:', custId);",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "11. Customer Login",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"mobileNumber\": \"1234567890\",\n    \"password\": \"Test@1234\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/Auth/login",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "Auth", "login"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Customer login successful', function () {",
+									"    pm.response.to.have.status(200);",
+									"    var json = pm.response.json();",
+									"    pm.expect(json.token).to.be.a('string').and.not.empty;",
+									"    pm.collectionVariables.set('customerToken', json.token);",
+									"    // Also capture entityId (customerId) from auth response if available",
+									"    if (json.entityId) {",
+									"        pm.collectionVariables.set('customerId', json.entityId);",
+									"    }",
+									"    console.log('Customer token set. EntityId:', json.entityId);",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "12. View My Profile",
+					"request": {
+						"method": "GET",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{customerToken}}" }
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/Customers/my-profile",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "Customers", "my-profile"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Customer profile retrieved', function () {",
+									"    pm.response.to.have.status(200);",
+									"    var json = pm.response.json();",
+									"    console.log('Customer profile:', json.customerFirstName, json.customerLastName);",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "13. Add Customer Address",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" },
+							{ "key": "Authorization", "value": "Bearer {{customerToken}}" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"customerId\": \"{{customerId}}\",\n    \"address\": \"Flat 201, Green Tower, MG Road\",\n    \"addressLine1\": \"Flat 201, Green Tower\",\n    \"addressLine2\": \"MG Road\",\n    \"addressLine3\": \"Near City Mall\",\n    \"city\": \"Pune\",\n    \"state\": \"Maharashtra\",\n    \"postalCode\": \"411001\",\n    \"latitude\": 18.52043100,\n    \"longitude\": 73.85674400,\n    \"isDefault\": true\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/CustomerAddresses",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "CustomerAddresses"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Customer address created', function () {",
+									"    pm.expect([200, 201]).to.include(pm.response.code);",
+									"    var json = pm.response.json();",
+									"    var addrId = json.id || json.Id;",
+									"    pm.expect(addrId).to.not.be.undefined;",
+									"    pm.collectionVariables.set('customerAddressId', addrId.toString());",
+									"    console.log('CustomerAddressId:', addrId);",
+									"});"
+								]
+							}
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "4 - Medical Store Registration & Login",
+			"description": "Medical store self-registers, logs in, and views profile.",
+			"item": [
+				{
+					"name": "14. Register Medical Store",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"medicalName\": \"HealthPlus Pharmacy\",\n    \"ownerFirstName\": \"Amit\",\n    \"ownerLastName\": \"Patel\",\n    \"ownerMiddleName\": \"R\",\n    \"password\": \"Chemist@123\",\n    \"addressLine1\": \"Shop 5, Market Yard\",\n    \"addressLine2\": \"Laxmi Road\",\n    \"city\": \"Pune\",\n    \"state\": \"Maharashtra\",\n    \"postalCode\": \"411001\",\n    \"latitude\": 18.51570000,\n    \"longitude\": 73.85620000,\n    \"mobileNumber\": \"5555555555\",\n    \"emailId\": \"chemist@medicine.com\",\n    \"alternativeMobileNumber\": \"5555555556\",\n    \"registrationStatus\": true,\n    \"gstin\": \"27AADCB2230M1Z3\",\n    \"pan\": \"AADCB2230M\",\n    \"fssaiNo\": \"10020031000001\",\n    \"dlNo\": \"MH-PUN-123456\",\n    \"pharmacistFirstName\": \"Suresh\",\n    \"pharmacistLastName\": \"Iyer\",\n    \"pharmacistRegistrationNumber\": \"PH-MH-2020-001\",\n    \"pharmacistMobileNumber\": \"5555555557\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/MedicalStores/register",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "MedicalStores", "register"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Medical Store registered', function () {",
+									"    pm.expect([200, 201]).to.include(pm.response.code);",
+									"    var json = pm.response.json();",
+									"    var storeId = json.medicalStoreId || json.MedicalStoreId;",
+									"    pm.expect(storeId).to.not.be.undefined;",
+									"    pm.collectionVariables.set('medicalStoreId', storeId.toString());",
+									"    console.log('MedicalStoreId:', storeId);",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "15. Medical Store Login",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"mobileNumber\": \"5555555555\",\n    \"password\": \"Chemist@123\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/Auth/login",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "Auth", "login"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Chemist login successful', function () {",
+									"    pm.response.to.have.status(200);",
+									"    var json = pm.response.json();",
+									"    pm.expect(json.token).to.be.a('string').and.not.empty;",
+									"    pm.collectionVariables.set('chemistToken', json.token);",
+									"    if (json.entityId) {",
+									"        pm.collectionVariables.set('medicalStoreId', json.entityId);",
+									"    }",
+									"    console.log('Chemist token set. EntityId:', json.entityId);",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "16. View Medical Store Profile",
+					"request": {
+						"method": "GET",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{chemistToken}}" }
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/MedicalStores/{{medicalStoreId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "MedicalStores", "{{medicalStoreId}}"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Medical store profile retrieved', function () {",
+									"    pm.response.to.have.status(200);",
+									"    var json = pm.response.json();",
+									"    console.log('Medical Store:', json.medicalName, '| City:', json.city);",
+									"});"
+								]
+							}
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "5 - Delivery Boy Setup",
+			"description": "Admin creates a delivery boy linked to the medical store.",
+			"item": [
+				{
+					"name": "17. Create Delivery Boy",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" },
+							{ "key": "Authorization", "value": "Bearer {{adminToken}}" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"firstName\": \"Ramesh\",\n    \"middleName\": \"D\",\n    \"lastName\": \"Jadhav\",\n    \"drivingLicenceNumber\": \"MH12-2020-0056789\",\n    \"mobileNumber\": \"4444444444\",\n    \"medicalStoreId\": \"{{medicalStoreId}}\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/Deliveries",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "Deliveries"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Delivery boy created', function () {",
+									"    pm.expect([200, 201]).to.include(pm.response.code);",
+									"    var json = pm.response.json();",
+									"    var delId = json.id || json.Id;",
+									"    pm.expect(delId).to.not.be.undefined;",
+									"    pm.collectionVariables.set('deliveryId', delId.toString());",
+									"    console.log('DeliveryId:', delId);",
+									"});"
+								]
+							}
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "6 - Order Accept Flow (Happy Path)",
+			"description": "Customer creates an order -> Medical store accepts -> Uploads bill -> Assigns delivery -> Payment -> OTP -> Complete.",
+			"item": [
+				{
+					"name": "18. Create Order (Text type)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{customerToken}}" }
+						],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{ "key": "CustomerId", "value": "{{customerId}}", "type": "text" },
+								{ "key": "CustomerAddressId", "value": "{{customerAddressId}}", "type": "text" },
+								{ "key": "OrderType", "value": "1", "description": "OTC=1", "type": "text" },
+								{ "key": "OrderInputType", "value": "2", "description": "Text=2", "type": "text" },
+								{ "key": "OrderInputText", "value": "Paracetamol 500mg x 10, Crocin Advance x 5, Dolo 650mg x 10", "type": "text" }
+							]
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/Orders",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "Orders"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Order created', function () {",
+									"    pm.expect([200, 201]).to.include(pm.response.code);",
+									"    var json = pm.response.json();",
+									"    var oid = json.orderId || json.OrderId;",
+									"    pm.expect(oid).to.not.be.undefined;",
+									"    pm.collectionVariables.set('orderId', oid.toString());",
+									"    console.log('OrderId:', oid, '| OrderNumber:', json.orderNumber);",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "19. View Order Details",
+					"request": {
+						"method": "GET",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{customerToken}}" }
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/Orders/{{orderId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "Orders", "{{orderId}}"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Order details retrieved', function () {",
+									"    pm.response.to.have.status(200);",
+									"    var json = pm.response.json();",
+									"    console.log('Order Status:', json.orderStatus, '| MedicalStoreId:', json.medicalStoreId);",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "20. Medical Store Views Active Orders",
+					"request": {
+						"method": "GET",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{chemistToken}}" }
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/Orders/medicalstore/{{medicalStoreId}}/active",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "Orders", "medicalstore", "{{medicalStoreId}}", "active"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Active orders retrieved for medical store', function () {",
+									"    pm.response.to.have.status(200);",
+									"    var json = pm.response.json();",
+									"    console.log('Active orders count:', Array.isArray(json) ? json.length : 'N/A');",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "21. Medical Store Accepts Order",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{chemistToken}}" }
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/Orders/{{orderId}}/accept",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "Orders", "{{orderId}}", "accept"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Order accepted by medical store', function () {",
+									"    pm.response.to.have.status(200);",
+									"    console.log('Order accepted. Response:', pm.response.text());",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "22. Upload Bill",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{chemistToken}}" }
+						],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{ "key": "OrderId", "value": "{{orderId}}", "type": "text" },
+								{ "key": "OrderAmount", "value": "450.00", "type": "text" },
+								{ "key": "DeliveryId", "value": "{{deliveryId}}", "type": "text" },
+								{ "key": "BillFile", "type": "file", "src": "", "description": "Attach a bill file (PDF/image) here if running manually. The runner will skip file uploads." }
+							]
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/Orders/{{orderId}}/upload-bill",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "Orders", "{{orderId}}", "upload-bill"]
+						}
+					},
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"// Note: File uploads require manual file selection in Postman UI.",
+									"// In Collection Runner, this may fail if no file is attached.",
+									"// The flow will continue regardless.",
+									"console.log('Upload bill - attach a file in Postman UI if running manually.');"
+								]
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Bill uploaded (or skipped if no file)', function () {",
+									"    // Accept 200/400 since file may not be attached in runner",
+									"    pm.expect([200, 201, 400]).to.include(pm.response.code);",
+									"    console.log('Upload bill response:', pm.response.code, pm.response.text());",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "23. Assign to Delivery Boy",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" },
+							{ "key": "Authorization", "value": "Bearer {{chemistToken}}" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"orderId\": {{orderId}},\n    \"deliveryId\": {{deliveryId}}\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/Orders/assign-to-delivery",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "Orders", "assign-to-delivery"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Order assigned to delivery boy', function () {",
+									"    pm.response.to.have.status(200);",
+									"    console.log('Assign to delivery response:', pm.response.text());",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "24. Record Payment",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" },
+							{ "key": "Authorization", "value": "Bearer {{customerToken}}" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"orderId\": {{orderId}},\n    \"paymentMode\": \"UPI\",\n    \"transactionId\": \"TXN-{{$timestamp}}-001\",\n    \"amount\": 450.00,\n    \"paymentStatus\": 1\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/Payments",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "Payments"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Payment recorded', function () {",
+									"    pm.expect([200, 201]).to.include(pm.response.code);",
+									"    console.log('Payment response:', pm.response.text());",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "25. Get Order (Read OTP)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{customerToken}}" }
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/Orders/{{orderId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "Orders", "{{orderId}}"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('OTP extracted from order', function () {",
+									"    pm.response.to.have.status(200);",
+									"    var json = pm.response.json();",
+									"    var otp = json.otp || json.OTP;",
+									"    if (otp) {",
+									"        pm.collectionVariables.set('orderOtp', otp.toString());",
+									"        console.log('OTP for order:', otp);",
+									"    } else {",
+									"        console.warn('OTP not yet available on order. Order status:', json.orderStatus);",
+									"        // Set a fallback so Complete doesn't fail on undefined",
+									"        pm.collectionVariables.set('orderOtp', '0000');",
+									"    }",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "26. Complete Order (Delivery Handover with OTP)",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" },
+							{ "key": "Authorization", "value": "Bearer {{chemistToken}}" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"otp\": \"{{orderOtp}}\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/Orders/{{orderId}}/complete",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "Orders", "{{orderId}}", "complete"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Order completed with OTP', function () {",
+									"    pm.response.to.have.status(200);",
+									"    console.log('Order complete response:', pm.response.text());",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "27. Verify Order Completed",
+					"request": {
+						"method": "GET",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{customerToken}}" }
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/Orders/{{orderId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "Orders", "{{orderId}}"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Order status is Completed', function () {",
+									"    pm.response.to.have.status(200);",
+									"    var json = pm.response.json();",
+									"    // OrderStatus.Completed = 7",
+									"    pm.expect(json.orderStatus).to.eql(7);",
+									"    console.log('HAPPY PATH COMPLETE! Order', json.orderId, 'status:', json.orderStatus);",
+									"});"
+								]
+							}
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "7 - Order Reject & Customer Support Flow",
+			"description": "Customer creates a second order -> Medical store rejects -> Customer Support reassigns -> Medical store accepts -> Full delivery cycle.",
+			"item": [
+				{
+					"name": "28. Create Second Order",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{customerToken}}" }
+						],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{ "key": "CustomerId", "value": "{{customerId}}", "type": "text" },
+								{ "key": "CustomerAddressId", "value": "{{customerAddressId}}", "type": "text" },
+								{ "key": "OrderType", "value": "2", "description": "PrescriptionDrugs=2", "type": "text" },
+								{ "key": "OrderInputType", "value": "2", "description": "Text=2", "type": "text" },
+								{ "key": "OrderInputText", "value": "Amoxicillin 500mg x 15, Azithromycin 250mg x 6, Cetirizine 10mg x 10", "type": "text" }
+							]
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/Orders",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "Orders"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Second order created', function () {",
+									"    pm.expect([200, 201]).to.include(pm.response.code);",
+									"    var json = pm.response.json();",
+									"    var oid = json.orderId || json.OrderId;",
+									"    pm.expect(oid).to.not.be.undefined;",
+									"    pm.collectionVariables.set('orderId2', oid.toString());",
+									"    console.log('OrderId2:', oid, '| OrderNumber:', json.orderNumber);",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "29. Medical Store Rejects Order",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" },
+							{ "key": "Authorization", "value": "Bearer {{chemistToken}}" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"rejectNote\": \"Out of stock for Amoxicillin and Azithromycin. Cannot fulfil this prescription order.\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/Orders/{{orderId2}}/reject",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "Orders", "{{orderId2}}", "reject"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Order rejected by medical store', function () {",
+									"    pm.response.to.have.status(200);",
+									"    console.log('Order rejected. Response:', pm.response.text());",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "30. Customer Support Login",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"mobileNumber\": \"7777777777\",\n    \"password\": \"Support@123\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/Auth/login",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "Auth", "login"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Customer Support login successful', function () {",
+									"    pm.response.to.have.status(200);",
+									"    var json = pm.response.json();",
+									"    pm.expect(json.token).to.be.a('string').and.not.empty;",
+									"    pm.collectionVariables.set('csToken', json.token);",
+									"    console.log('CS token set. EntityId:', json.entityId);",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "31. CS Views Assigned Orders",
+					"request": {
+						"method": "GET",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{csToken}}" }
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/Orders/customersupport/{{customerSupportId}}/assignedtocustomersupport",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "Orders", "customersupport", "{{customerSupportId}}", "assignedtocustomersupport"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('CS assigned orders retrieved', function () {",
+									"    pm.response.to.have.status(200);",
+									"    var json = pm.response.json();",
+									"    console.log('CS assigned orders count:', Array.isArray(json) ? json.length : 'N/A');",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "32. CS Gets Medical Stores by Order City",
+					"request": {
+						"method": "GET",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{csToken}}" }
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/Orders/{{orderId2}}/medical-stores-by-city",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "Orders", "{{orderId2}}", "medical-stores-by-city"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Medical stores by city retrieved', function () {",
+									"    pm.response.to.have.status(200);",
+									"    var json = pm.response.json();",
+									"    console.log('Available medical stores:', JSON.stringify(json));",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "33. CS Reassigns Order to Medical Store",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" },
+							{ "key": "Authorization", "value": "Bearer {{csToken}}" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"orderId\": {{orderId2}},\n    \"medicalStoreId\": \"{{medicalStoreId}}\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/Orders/assign",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "Orders", "assign"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Order reassigned to medical store by CS', function () {",
+									"    pm.response.to.have.status(200);",
+									"    console.log('Reassignment response:', pm.response.text());",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "34. Medical Store Accepts Reassigned Order",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{chemistToken}}" }
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/Orders/{{orderId2}}/accept",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "Orders", "{{orderId2}}", "accept"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Reassigned order accepted', function () {",
+									"    pm.response.to.have.status(200);",
+									"    console.log('Reassigned order accepted. Response:', pm.response.text());",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "35. Upload Bill for Reassigned Order",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{chemistToken}}" }
+						],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{ "key": "OrderId", "value": "{{orderId2}}", "type": "text" },
+								{ "key": "OrderAmount", "value": "875.50", "type": "text" },
+								{ "key": "DeliveryId", "value": "{{deliveryId}}", "type": "text" },
+								{ "key": "BillFile", "type": "file", "src": "", "description": "Attach bill file here if running manually." }
+							]
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/Orders/{{orderId2}}/upload-bill",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "Orders", "{{orderId2}}", "upload-bill"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Bill uploaded for reassigned order (or skipped)', function () {",
+									"    pm.expect([200, 201, 400]).to.include(pm.response.code);",
+									"    console.log('Upload bill (order 2) response:', pm.response.code, pm.response.text());",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "36. Assign Delivery for Reassigned Order",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" },
+							{ "key": "Authorization", "value": "Bearer {{chemistToken}}" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"orderId\": {{orderId2}},\n    \"deliveryId\": {{deliveryId}}\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/Orders/assign-to-delivery",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "Orders", "assign-to-delivery"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Reassigned order assigned to delivery', function () {",
+									"    pm.response.to.have.status(200);",
+									"    console.log('Delivery assignment (order 2) response:', pm.response.text());",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "37. Record Payment for Reassigned Order",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" },
+							{ "key": "Authorization", "value": "Bearer {{customerToken}}" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"orderId\": {{orderId2}},\n    \"paymentMode\": \"Card\",\n    \"transactionId\": \"TXN-{{$timestamp}}-002\",\n    \"amount\": 875.50,\n    \"paymentStatus\": 1\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/Payments",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "Payments"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Payment recorded for reassigned order', function () {",
+									"    pm.expect([200, 201]).to.include(pm.response.code);",
+									"    console.log('Payment (order 2) response:', pm.response.text());",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "38. Get OTP for Reassigned Order",
+					"request": {
+						"method": "GET",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{customerToken}}" }
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/Orders/{{orderId2}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "Orders", "{{orderId2}}"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('OTP extracted for reassigned order', function () {",
+									"    pm.response.to.have.status(200);",
+									"    var json = pm.response.json();",
+									"    var otp = json.otp || json.OTP;",
+									"    if (otp) {",
+									"        pm.collectionVariables.set('orderOtp2', otp.toString());",
+									"        console.log('OTP for order 2:', otp);",
+									"    } else {",
+									"        console.warn('OTP not yet available for order 2. Status:', json.orderStatus);",
+									"        pm.collectionVariables.set('orderOtp2', '0000');",
+									"    }",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "39. Complete Reassigned Order",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" },
+							{ "key": "Authorization", "value": "Bearer {{chemistToken}}" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"otp\": \"{{orderOtp2}}\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/Orders/{{orderId2}}/complete",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "Orders", "{{orderId2}}", "complete"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Reassigned order completed with OTP', function () {",
+									"    pm.response.to.have.status(200);",
+									"    console.log('Order 2 complete response:', pm.response.text());",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "40. Verify Reassigned Order Completed",
+					"request": {
+						"method": "GET",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{customerToken}}" }
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/Orders/{{orderId2}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "Orders", "{{orderId2}}"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Reassigned order status is Completed', function () {",
+									"    pm.response.to.have.status(200);",
+									"    var json = pm.response.json();",
+									"    // OrderStatus.Completed = 7",
+									"    pm.expect(json.orderStatus).to.eql(7);",
+									"    console.log('REJECT-REASSIGN FLOW COMPLETE! Order', json.orderId, 'status:', json.orderStatus);",
+									"});",
+									"",
+									"console.log('============================================');",
+									"console.log('  MediSwift E2E Business Flow - ALL DONE!  ');",
+									"console.log('============================================');"
+								]
+							}
+						}
+					]
+				}
+			]
+		}
+	]
+}

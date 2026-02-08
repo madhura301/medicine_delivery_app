@@ -3,6 +3,7 @@ using MedicineDelivery.Application.DTOs;
 using MedicineDelivery.Application.Interfaces;
 using MedicineDelivery.Domain.Entities;
 using MedicineDelivery.Domain.Enums;
+using MedicineDelivery.Domain.Exceptions;
 using MedicineDelivery.Domain.Interfaces;
 using MedicineDelivery.Infrastructure.Data;
 using Microsoft.AspNetCore.Http;
@@ -247,6 +248,7 @@ namespace MedicineDelivery.Infrastructure.Services
                     .ThenInclude(ah => ah.MedicalStore)
                 .Include(o => o.AssignmentHistory)
                     .ThenInclude(ah => ah.CustomerSupport)
+                .Include(o => o.Payments)
                 .Include(o => o.CustomerSupport)
                 .FirstOrDefaultAsync(o => o.OrderId == orderId, cancellationToken);
             
@@ -258,7 +260,7 @@ namespace MedicineDelivery.Infrastructure.Services
             // Load all Deliveries referenced in assignment history
             var deliveryIds = order.AssignmentHistory?
                 .Where(ah => ah.DeliveryId.HasValue)
-                .Select(ah => ah.DeliveryId.Value)
+                .Select(ah => ah.DeliveryId!.Value)
                 .Distinct()
                 .ToList() ?? new List<int>();
 
@@ -498,24 +500,31 @@ namespace MedicineDelivery.Infrastructure.Services
                 throw new InvalidOperationException("Customer address does not have a postal code.");
             }
 
-            // Find the CustomerSupportRegion by postal code
-            var regionPinCode = await _unitOfWork.CustomerSupportRegionPinCodes.FirstOrDefaultAsync(
+            // Find the ServiceRegion by postal code (only CustomerSupport type regions)
+            var regionPinCode = await _unitOfWork.ServiceRegionPinCodes.FirstOrDefaultAsync(
                 rpc => rpc.PinCode == customerAddress.PostalCode.Trim());
             
             if (regionPinCode == null)
+            {
+                throw new KeyNotFoundException($"No service region found for postal code: {customerAddress.PostalCode}");
+            }
+
+            // Verify the region is a CustomerSupport type region
+            var region = await _unitOfWork.ServiceRegions.GetByIdAsync(regionPinCode.ServiceRegionId);
+            if (region == null || region.RegionType != Domain.Enums.RegionType.CustomerSupport)
             {
                 throw new KeyNotFoundException($"No customer support region found for postal code: {customerAddress.PostalCode}");
             }
 
             // Get all CustomerSupports assigned to this region
             var customerSupports = await _unitOfWork.CustomerSupports.FindAsync(
-                cs => cs.CustomerSupportRegionId == regionPinCode.CustomerSupportRegionId && 
+                cs => cs.ServiceRegionId == regionPinCode.ServiceRegionId && 
                       cs.IsActive && 
                       !cs.IsDeleted);
 
             if (customerSupports == null || !customerSupports.Any())
             {
-                throw new InvalidOperationException($"No active customer supports found for region ID: {regionPinCode.CustomerSupportRegionId}");
+                throw new InvalidOperationException($"No active customer supports found for region ID: {regionPinCode.ServiceRegionId}");
             }
 
             // Find the CustomerSupport with the least orders in AssignedToCustomerSupport status
@@ -580,6 +589,18 @@ namespace MedicineDelivery.Infrastructure.Services
             if (order.OrderStatus != OrderStatus.OutForDelivery)
             {
                 throw new InvalidOperationException($"Order can only be completed when its status is {OrderStatus.OutForDelivery}. Current status is {order.OrderStatus}.");
+            }
+
+            // Check payment status before allowing completion
+            if (order.OrderPaymentStatus != OrderPaymentStatus.FullyPaid)
+            {
+                var payments = await _unitOfWork.Payments.FindAsync(p => p.OrderId == orderId && p.PaymentStatus == PaymentStatus.Success);
+                var totalPaid = payments.Sum(p => p.Amount);
+                
+                throw new PaymentIncompleteException(
+                    orderId, 
+                    order.TotalAmount ?? 0, 
+                    totalPaid);
             }
 
             if (string.IsNullOrWhiteSpace(order.OTP))

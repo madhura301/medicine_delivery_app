@@ -50,16 +50,16 @@ namespace MedicineDelivery.Infrastructure.Services
                     };
                 }
 
-                // Validate CustomerSupportRegionId if provided
-                if (registrationDto.CustomerSupportRegionId.HasValue)
+                // Validate ServiceRegionId if provided
+                if (registrationDto.ServiceRegionId.HasValue)
                 {
-                    var region = await _unitOfWork.CustomerSupportRegions.GetByIdAsync(registrationDto.CustomerSupportRegionId.Value);
+                    var region = await _unitOfWork.ServiceRegions.GetByIdAsync(registrationDto.ServiceRegionId.Value);
                     if (region == null)
                     {
                         return new CustomerSupportRegistrationResult
                         {
                             Success = false,
-                            Errors = new List<string> { $"Customer support region with ID '{registrationDto.CustomerSupportRegionId.Value}' not found." }
+                            Errors = new List<string> { $"Service region with ID '{registrationDto.ServiceRegionId.Value}' not found." }
                         };
                     }
                 }
@@ -113,7 +113,7 @@ namespace MedicineDelivery.Infrastructure.Services
                         AlternativeMobileNumber = registrationDto.AlternativeMobileNumber,
                         EmployeeId = registrationDto.EmployeeId,
                         UserId = identityUser.Id,
-                        CustomerSupportRegionId = registrationDto.CustomerSupportRegionId,
+                        ServiceRegionId = registrationDto.ServiceRegionId,
                         CreatedOn = DateTime.UtcNow,
                         IsActive = true,
                         IsDeleted = false
@@ -144,7 +144,7 @@ namespace MedicineDelivery.Infrastructure.Services
                         UpdatedOn = customerSupport.UpdatedOn,
                         UpdatedBy = customerSupport.UpdatedBy,
                         UserId = customerSupport.UserId,
-                        CustomerSupportRegionId = customerSupport.CustomerSupportRegionId,
+                        ServiceRegionId = customerSupport.ServiceRegionId,
                         Password = generatedPassword
                     };
 
@@ -211,13 +211,13 @@ namespace MedicineDelivery.Infrastructure.Services
             if (customerSupport == null)
                 return null;
 
-            // Validate CustomerSupportRegionId if provided
-            if (updateDto.CustomerSupportRegionId.HasValue)
+            // Validate ServiceRegionId if provided
+            if (updateDto.ServiceRegionId.HasValue)
             {
-                var region = await _unitOfWork.CustomerSupportRegions.GetByIdAsync(updateDto.CustomerSupportRegionId.Value);
+                var region = await _unitOfWork.ServiceRegions.GetByIdAsync(updateDto.ServiceRegionId.Value);
                 if (region == null)
                 {
-                    throw new KeyNotFoundException($"Customer support region with ID '{updateDto.CustomerSupportRegionId.Value}' not found.");
+                    throw new KeyNotFoundException($"Service region with ID '{updateDto.ServiceRegionId.Value}' not found.");
                 }
             }
 
@@ -230,7 +230,7 @@ namespace MedicineDelivery.Infrastructure.Services
             customerSupport.MobileNumber = updateDto.MobileNumber;
             customerSupport.AlternativeMobileNumber = updateDto.AlternativeMobileNumber;
             customerSupport.EmployeeId = updateDto.EmployeeId;
-            customerSupport.CustomerSupportRegionId = updateDto.CustomerSupportRegionId;
+            customerSupport.ServiceRegionId = updateDto.ServiceRegionId;
             customerSupport.UpdatedOn = DateTime.UtcNow;
 
             _unitOfWork.CustomerSupports.Update(customerSupport);

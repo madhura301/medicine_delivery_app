@@ -165,7 +165,7 @@ namespace MedicineDelivery.API.Services
                 _logger.LogDebug("JWT token generated with {ClaimCount} claims and {RoleCount} roles for user ID: {UserId}", 
                     claims.Count, roles.Count, user.Id);
 
-                var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey));
+                var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey ?? string.Empty));
                 var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
                 var token = new JwtSecurityToken(
@@ -238,7 +238,7 @@ namespace MedicineDelivery.API.Services
                 var audience = jwtSettings["Audience"];
 
                 var tokenHandler = new JwtSecurityTokenHandler();
-                var key = Encoding.UTF8.GetBytes(secretKey);
+                var key = Encoding.UTF8.GetBytes(secretKey ?? string.Empty);
 
                 tokenHandler.ValidateToken(token, new TokenValidationParameters
                 {

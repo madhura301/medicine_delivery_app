@@ -153,7 +153,7 @@ namespace MedicineDelivery.Infrastructure.Services
                         Customer = response
                     };
                 }
-                catch (Exception ex1)
+                catch (Exception)
                 {
                     // Rollback the transaction
                     await _unitOfWork.RollbackTransactionAsync();

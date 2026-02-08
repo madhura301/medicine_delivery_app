@@ -2,22 +2,23 @@ using AutoMapper;
 using MedicineDelivery.Application.DTOs;
 using MedicineDelivery.Application.Interfaces;
 using MedicineDelivery.Domain.Entities;
+using MedicineDelivery.Domain.Enums;
 using MedicineDelivery.Domain.Interfaces;
 
 namespace MedicineDelivery.Infrastructure.Services
 {
-    public class CustomerSupportRegionService : ICustomerSupportRegionService
+    public class ServiceRegionService : IServiceRegionService
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly IMapper _mapper;
 
-        public CustomerSupportRegionService(IUnitOfWork unitOfWork, IMapper mapper)
+        public ServiceRegionService(IUnitOfWork unitOfWork, IMapper mapper)
         {
             _unitOfWork = unitOfWork;
             _mapper = mapper;
         }
 
-        public async Task<CustomerSupportRegionDto> CreateCustomerSupportRegionAsync(CreateCustomerSupportRegionDto createDto)
+        public async Task<ServiceRegionDto> CreateServiceRegionAsync(CreateServiceRegionDto createDto)
         {
             ArgumentNullException.ThrowIfNull(createDto);
 
@@ -36,14 +37,15 @@ namespace MedicineDelivery.Infrastructure.Services
                 throw new ArgumentException("RegionName is required.", nameof(createDto.RegionName));
             }
 
-            var region = new CustomerSupportRegion
+            var region = new ServiceRegion
             {
                 Name = createDto.Name.Trim(),
                 City = createDto.City.Trim(),
-                RegionName = createDto.RegionName.Trim()
+                RegionName = createDto.RegionName.Trim(),
+                RegionType = createDto.RegionType
             };
 
-            await _unitOfWork.CustomerSupportRegions.AddAsync(region);
+            await _unitOfWork.ServiceRegions.AddAsync(region);
             await _unitOfWork.SaveChangesAsync();
 
             // Add pin codes if provided
@@ -53,51 +55,51 @@ namespace MedicineDelivery.Infrastructure.Services
                 {
                     if (!string.IsNullOrWhiteSpace(pinCode))
                     {
-                        var regionPinCode = new CustomerSupportRegionPinCode
+                        var regionPinCode = new ServiceRegionPinCode
                         {
-                            CustomerSupportRegionId = region.Id,
+                            ServiceRegionId = region.Id,
                             PinCode = pinCode.Trim()
                         };
-                        await _unitOfWork.CustomerSupportRegionPinCodes.AddAsync(regionPinCode);
+                        await _unitOfWork.ServiceRegionPinCodes.AddAsync(regionPinCode);
                     }
                 }
                 await _unitOfWork.SaveChangesAsync();
             }
 
-            return await GetCustomerSupportRegionByIdAsync(region.Id) ?? 
+            return await GetServiceRegionByIdAsync(region.Id) ?? 
                 throw new InvalidOperationException("Failed to retrieve created region.");
         }
 
-        public async Task<CustomerSupportRegionDto?> GetCustomerSupportRegionByIdAsync(int id)
+        public async Task<ServiceRegionDto?> GetServiceRegionByIdAsync(int id)
         {
-            var region = await _unitOfWork.CustomerSupportRegions.GetByIdAsync(id);
+            var region = await _unitOfWork.ServiceRegions.GetByIdAsync(id);
             if (region == null)
             {
                 return null;
             }
 
-            var regionDto = _mapper.Map<CustomerSupportRegionDto>(region);
+            var regionDto = _mapper.Map<ServiceRegionDto>(region);
             
             // Load pin codes
-            var pinCodes = await _unitOfWork.CustomerSupportRegionPinCodes.FindAsync(
-                p => p.CustomerSupportRegionId == id);
+            var pinCodes = await _unitOfWork.ServiceRegionPinCodes.FindAsync(
+                p => p.ServiceRegionId == id);
             regionDto.PinCodes = pinCodes.Select(p => p.PinCode).ToList();
 
             return regionDto;
         }
 
-        public async Task<IEnumerable<CustomerSupportRegionDto>> GetAllCustomerSupportRegionsAsync()
+        public async Task<IEnumerable<ServiceRegionDto>> GetAllServiceRegionsAsync()
         {
-            var regions = await _unitOfWork.CustomerSupportRegions.GetAllAsync();
-            var regionDtos = new List<CustomerSupportRegionDto>();
+            var regions = await _unitOfWork.ServiceRegions.GetAllAsync();
+            var regionDtos = new List<ServiceRegionDto>();
 
             foreach (var region in regions)
             {
-                var regionDto = _mapper.Map<CustomerSupportRegionDto>(region);
+                var regionDto = _mapper.Map<ServiceRegionDto>(region);
                 
                 // Load pin codes for each region
-                var pinCodes = await _unitOfWork.CustomerSupportRegionPinCodes.FindAsync(
-                    p => p.CustomerSupportRegionId == region.Id);
+                var pinCodes = await _unitOfWork.ServiceRegionPinCodes.FindAsync(
+                    p => p.ServiceRegionId == region.Id);
                 regionDto.PinCodes = pinCodes.Select(p => p.PinCode).ToList();
 
                 regionDtos.Add(regionDto);
@@ -106,14 +108,34 @@ namespace MedicineDelivery.Infrastructure.Services
             return regionDtos;
         }
 
-        public async Task<CustomerSupportRegionDto> UpdateCustomerSupportRegionAsync(int id, UpdateCustomerSupportRegionDto updateDto)
+        public async Task<IEnumerable<ServiceRegionDto>> GetAllServiceRegionsByTypeAsync(RegionType regionType)
+        {
+            var regions = await _unitOfWork.ServiceRegions.FindAsync(r => r.RegionType == regionType);
+            var regionDtos = new List<ServiceRegionDto>();
+
+            foreach (var region in regions)
+            {
+                var regionDto = _mapper.Map<ServiceRegionDto>(region);
+                
+                // Load pin codes for each region
+                var pinCodes = await _unitOfWork.ServiceRegionPinCodes.FindAsync(
+                    p => p.ServiceRegionId == region.Id);
+                regionDto.PinCodes = pinCodes.Select(p => p.PinCode).ToList();
+
+                regionDtos.Add(regionDto);
+            }
+
+            return regionDtos;
+        }
+
+        public async Task<ServiceRegionDto> UpdateServiceRegionAsync(int id, UpdateServiceRegionDto updateDto)
         {
             ArgumentNullException.ThrowIfNull(updateDto);
 
-            var region = await _unitOfWork.CustomerSupportRegions.GetByIdAsync(id);
+            var region = await _unitOfWork.ServiceRegions.GetByIdAsync(id);
             if (region == null)
             {
-                throw new KeyNotFoundException($"Customer support region with ID '{id}' not found.");
+                throw new KeyNotFoundException($"Service region with ID '{id}' not found.");
             }
 
             // Update basic properties
@@ -126,18 +148,21 @@ namespace MedicineDelivery.Infrastructure.Services
             if (!string.IsNullOrWhiteSpace(updateDto.RegionName))
                 region.RegionName = updateDto.RegionName.Trim();
 
-            _unitOfWork.CustomerSupportRegions.Update(region);
+            if (updateDto.RegionType.HasValue)
+                region.RegionType = updateDto.RegionType.Value;
+
+            _unitOfWork.ServiceRegions.Update(region);
 
             // Update pin codes if provided
             if (updateDto.PinCodes != null)
             {
                 // Remove existing pin codes
-                var existingPinCodes = await _unitOfWork.CustomerSupportRegionPinCodes.FindAsync(
-                    p => p.CustomerSupportRegionId == id);
+                var existingPinCodes = await _unitOfWork.ServiceRegionPinCodes.FindAsync(
+                    p => p.ServiceRegionId == id);
                 
                 foreach (var existingPinCode in existingPinCodes)
                 {
-                    _unitOfWork.CustomerSupportRegionPinCodes.Remove(existingPinCode);
+                    _unitOfWork.ServiceRegionPinCodes.Remove(existingPinCode);
                 }
 
                 // Add new pin codes
@@ -145,40 +170,40 @@ namespace MedicineDelivery.Infrastructure.Services
                 {
                     if (!string.IsNullOrWhiteSpace(pinCode))
                     {
-                        var regionPinCode = new CustomerSupportRegionPinCode
+                        var regionPinCode = new ServiceRegionPinCode
                         {
-                            CustomerSupportRegionId = id,
+                            ServiceRegionId = id,
                             PinCode = pinCode.Trim()
                         };
-                        await _unitOfWork.CustomerSupportRegionPinCodes.AddAsync(regionPinCode);
+                        await _unitOfWork.ServiceRegionPinCodes.AddAsync(regionPinCode);
                     }
                 }
             }
 
             await _unitOfWork.SaveChangesAsync();
 
-            return await GetCustomerSupportRegionByIdAsync(id) ?? 
+            return await GetServiceRegionByIdAsync(id) ?? 
                 throw new InvalidOperationException("Failed to retrieve updated region.");
         }
 
-        public async Task<bool> DeleteCustomerSupportRegionAsync(int id)
+        public async Task<bool> DeleteServiceRegionAsync(int id)
         {
-            var region = await _unitOfWork.CustomerSupportRegions.GetByIdAsync(id);
+            var region = await _unitOfWork.ServiceRegions.GetByIdAsync(id);
             if (region == null)
             {
                 return false;
             }
 
             // Remove all associated pin codes (cascade delete will handle this, but we'll do it explicitly)
-            var pinCodes = await _unitOfWork.CustomerSupportRegionPinCodes.FindAsync(
-                p => p.CustomerSupportRegionId == id);
+            var pinCodes = await _unitOfWork.ServiceRegionPinCodes.FindAsync(
+                p => p.ServiceRegionId == id);
             
             foreach (var pinCode in pinCodes)
             {
-                _unitOfWork.CustomerSupportRegionPinCodes.Remove(pinCode);
+                _unitOfWork.ServiceRegionPinCodes.Remove(pinCode);
             }
 
-            _unitOfWork.CustomerSupportRegions.Remove(region);
+            _unitOfWork.ServiceRegions.Remove(region);
             await _unitOfWork.SaveChangesAsync();
 
             return true;
@@ -194,15 +219,15 @@ namespace MedicineDelivery.Infrastructure.Services
             }
 
             // Validate region exists
-            var region = await _unitOfWork.CustomerSupportRegions.GetByIdAsync(addDto.CustomerSupportRegionId);
+            var region = await _unitOfWork.ServiceRegions.GetByIdAsync(addDto.ServiceRegionId);
             if (region == null)
             {
-                throw new KeyNotFoundException($"Customer support region with ID '{addDto.CustomerSupportRegionId}' not found.");
+                throw new KeyNotFoundException($"Service region with ID '{addDto.ServiceRegionId}' not found.");
             }
 
             // Check if pin code already exists for this region
-            var existingPinCode = await _unitOfWork.CustomerSupportRegionPinCodes.FirstOrDefaultAsync(
-                p => p.CustomerSupportRegionId == addDto.CustomerSupportRegionId && 
+            var existingPinCode = await _unitOfWork.ServiceRegionPinCodes.FirstOrDefaultAsync(
+                p => p.ServiceRegionId == addDto.ServiceRegionId && 
                      p.PinCode == addDto.PinCode.Trim());
             
             if (existingPinCode != null)
@@ -210,13 +235,13 @@ namespace MedicineDelivery.Infrastructure.Services
                 throw new InvalidOperationException($"Pin code '{addDto.PinCode}' already exists for this region.");
             }
 
-            var regionPinCode = new CustomerSupportRegionPinCode
+            var regionPinCode = new ServiceRegionPinCode
             {
-                CustomerSupportRegionId = addDto.CustomerSupportRegionId,
+                ServiceRegionId = addDto.ServiceRegionId,
                 PinCode = addDto.PinCode.Trim()
             };
 
-            await _unitOfWork.CustomerSupportRegionPinCodes.AddAsync(regionPinCode);
+            await _unitOfWork.ServiceRegionPinCodes.AddAsync(regionPinCode);
             await _unitOfWork.SaveChangesAsync();
 
             return true;
@@ -231,8 +256,8 @@ namespace MedicineDelivery.Infrastructure.Services
                 throw new ArgumentException("PinCode is required.", nameof(removeDto.PinCode));
             }
 
-            var regionPinCode = await _unitOfWork.CustomerSupportRegionPinCodes.FirstOrDefaultAsync(
-                p => p.CustomerSupportRegionId == removeDto.CustomerSupportRegionId && 
+            var regionPinCode = await _unitOfWork.ServiceRegionPinCodes.FirstOrDefaultAsync(
+                p => p.ServiceRegionId == removeDto.ServiceRegionId && 
                      p.PinCode == removeDto.PinCode.Trim());
             
             if (regionPinCode == null)
@@ -240,7 +265,7 @@ namespace MedicineDelivery.Infrastructure.Services
                 return false;
             }
 
-            _unitOfWork.CustomerSupportRegionPinCodes.Remove(regionPinCode);
+            _unitOfWork.ServiceRegionPinCodes.Remove(regionPinCode);
             await _unitOfWork.SaveChangesAsync();
 
             return true;
@@ -248,20 +273,20 @@ namespace MedicineDelivery.Infrastructure.Services
 
         public async Task<IEnumerable<string>> GetPinCodesByRegionIdAsync(int regionId)
         {
-            var pinCodes = await _unitOfWork.CustomerSupportRegionPinCodes.FindAsync(
-                p => p.CustomerSupportRegionId == regionId);
+            var pinCodes = await _unitOfWork.ServiceRegionPinCodes.FindAsync(
+                p => p.ServiceRegionId == regionId);
             
             return pinCodes.Select(p => p.PinCode).ToList();
         }
 
-        public async Task<CustomerSupportRegionDto?> GetRegionByPinCodeAsync(string pinCode)
+        public async Task<ServiceRegionDto?> GetRegionByPinCodeAsync(string pinCode)
         {
             if (string.IsNullOrWhiteSpace(pinCode))
             {
                 throw new ArgumentException("PinCode is required.", nameof(pinCode));
             }
 
-            var regionPinCode = await _unitOfWork.CustomerSupportRegionPinCodes.FirstOrDefaultAsync(
+            var regionPinCode = await _unitOfWork.ServiceRegionPinCodes.FirstOrDefaultAsync(
                 p => p.PinCode == pinCode.Trim());
             
             if (regionPinCode == null)
@@ -269,7 +294,7 @@ namespace MedicineDelivery.Infrastructure.Services
                 return null;
             }
 
-            return await GetCustomerSupportRegionByIdAsync(regionPinCode.CustomerSupportRegionId);
+            return await GetServiceRegionByIdAsync(regionPinCode.ServiceRegionId);
         }
 
         public async Task<bool> AssignRegionToCustomerSupportAsync(AssignCustomerSupportRegionDto assignDto)
@@ -277,10 +302,10 @@ namespace MedicineDelivery.Infrastructure.Services
             ArgumentNullException.ThrowIfNull(assignDto);
 
             // Validate region exists
-            var region = await _unitOfWork.CustomerSupportRegions.GetByIdAsync(assignDto.CustomerSupportRegionId);
+            var region = await _unitOfWork.ServiceRegions.GetByIdAsync(assignDto.ServiceRegionId);
             if (region == null)
             {
-                throw new KeyNotFoundException($"Customer support region with ID '{assignDto.CustomerSupportRegionId}' not found.");
+                throw new KeyNotFoundException($"Service region with ID '{assignDto.ServiceRegionId}' not found.");
             }
 
             // Validate customer support exists
@@ -290,7 +315,7 @@ namespace MedicineDelivery.Infrastructure.Services
                 throw new KeyNotFoundException($"Customer support with ID '{assignDto.CustomerSupportId}' not found.");
             }
 
-            customerSupport.CustomerSupportRegionId = assignDto.CustomerSupportRegionId;
+            customerSupport.ServiceRegionId = assignDto.ServiceRegionId;
             _unitOfWork.CustomerSupports.Update(customerSupport);
             await _unitOfWork.SaveChangesAsync();
 
@@ -307,10 +332,10 @@ namespace MedicineDelivery.Infrastructure.Services
             }
 
             // Validate region exists
-            var region = await _unitOfWork.CustomerSupportRegions.GetByIdAsync(assignDto.CustomerSupportRegionId);
+            var region = await _unitOfWork.ServiceRegions.GetByIdAsync(assignDto.ServiceRegionId);
             if (region == null)
             {
-                throw new KeyNotFoundException($"Customer support region with ID '{assignDto.CustomerSupportRegionId}' not found.");
+                throw new KeyNotFoundException($"Service region with ID '{assignDto.ServiceRegionId}' not found.");
             }
 
             var distinctIds = assignDto.CustomerSupportIds.Where(id => id != Guid.Empty).Distinct().ToList();
@@ -331,7 +356,7 @@ namespace MedicineDelivery.Infrastructure.Services
 
             foreach (var cs in customerSupportList)
             {
-                cs.CustomerSupportRegionId = assignDto.CustomerSupportRegionId;
+                cs.ServiceRegionId = assignDto.ServiceRegionId;
             }
 
             _unitOfWork.CustomerSupports.UpdateRange(customerSupportList);
@@ -339,6 +364,73 @@ namespace MedicineDelivery.Infrastructure.Services
 
             return true;
         }
+
+        public async Task<bool> AssignRegionToDeliveryAsync(AssignDeliveryRegionDto assignDto)
+        {
+            ArgumentNullException.ThrowIfNull(assignDto);
+
+            // Validate region exists
+            var region = await _unitOfWork.ServiceRegions.GetByIdAsync(assignDto.ServiceRegionId);
+            if (region == null)
+            {
+                throw new KeyNotFoundException($"Service region with ID '{assignDto.ServiceRegionId}' not found.");
+            }
+
+            // Validate delivery exists
+            var delivery = await _unitOfWork.Deliveries.GetByIdAsync(assignDto.DeliveryId);
+            if (delivery == null || delivery.IsDeleted)
+            {
+                throw new KeyNotFoundException($"Delivery with ID '{assignDto.DeliveryId}' not found.");
+            }
+
+            delivery.ServiceRegionId = assignDto.ServiceRegionId;
+            _unitOfWork.Deliveries.Update(delivery);
+            await _unitOfWork.SaveChangesAsync();
+
+            return true;
+        }
+
+        public async Task<bool> AssignRegionToDeliveriesAsync(AssignDeliveryRegionBulkDto assignDto)
+        {
+            ArgumentNullException.ThrowIfNull(assignDto);
+
+            if (assignDto.DeliveryIds == null || !assignDto.DeliveryIds.Any())
+            {
+                throw new ArgumentException("At least one DeliveryId is required.", nameof(assignDto.DeliveryIds));
+            }
+
+            // Validate region exists
+            var region = await _unitOfWork.ServiceRegions.GetByIdAsync(assignDto.ServiceRegionId);
+            if (region == null)
+            {
+                throw new KeyNotFoundException($"Service region with ID '{assignDto.ServiceRegionId}' not found.");
+            }
+
+            var distinctIds = assignDto.DeliveryIds.Where(id => id > 0).Distinct().ToList();
+            if (!distinctIds.Any())
+            {
+                throw new ArgumentException("At least one valid DeliveryId is required.", nameof(assignDto.DeliveryIds));
+            }
+
+            var deliveries = await _unitOfWork.Deliveries.FindAsync(d => distinctIds.Contains(d.Id) && !d.IsDeleted);
+            var deliveryList = deliveries.ToList();
+
+            var foundIds = deliveryList.Select(d => d.Id).ToHashSet();
+            var missingIds = distinctIds.Where(id => !foundIds.Contains(id)).ToList();
+            if (missingIds.Any())
+            {
+                throw new KeyNotFoundException($"Delivery IDs not found: {string.Join(", ", missingIds)}");
+            }
+
+            foreach (var delivery in deliveryList)
+            {
+                delivery.ServiceRegionId = assignDto.ServiceRegionId;
+            }
+
+            _unitOfWork.Deliveries.UpdateRange(deliveryList);
+            await _unitOfWork.SaveChangesAsync();
+
+            return true;
+        }
     }
 }
-

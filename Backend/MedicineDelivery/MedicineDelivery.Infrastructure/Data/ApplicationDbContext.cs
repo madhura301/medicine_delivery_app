@@ -7,9 +7,9 @@ namespace MedicineDelivery.Infrastructure.Data
 {
     public class ApplicationDbContext : IdentityDbContext<Domain.Entities.ApplicationUser>
     {
-        private readonly IConfiguration _configuration;
+        private readonly IConfiguration? _configuration;
 
-        public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options, IConfiguration configuration = null) : base(options)
+        public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options, IConfiguration? configuration = null) : base(options)
         {
             _configuration = configuration;
         }
@@ -26,8 +26,8 @@ namespace MedicineDelivery.Infrastructure.Data
         public DbSet<OrderAssignmentHistory> OrderAssignmentHistories { get; set; }
         public DbSet<Payment> Payments { get; set; }
         public DbSet<Delivery> Deliveries { get; set; }
-        public DbSet<CustomerSupportRegion> CustomerSupportRegions { get; set; }
-        public DbSet<CustomerSupportRegionPinCode> CustomerSupportRegionPinCodes { get; set; }
+        public DbSet<ServiceRegion> ServiceRegions { get; set; }
+        public DbSet<ServiceRegionPinCode> ServiceRegionPinCodes { get; set; }
         public DbSet<Consent> Consents { get; set; }
         public DbSet<ConsentLog> ConsentLogs { get; set; }
 
@@ -240,13 +240,13 @@ namespace MedicineDelivery.Infrastructure.Data
                 .OnDelete(DeleteBehavior.SetNull);
 
             builder.Entity<CustomerSupport>()
-                .HasOne(cs => cs.CustomerSupportRegion)
+                .HasOne(cs => cs.ServiceRegion)
                 .WithMany()
-                .HasForeignKey(cs => cs.CustomerSupportRegionId)
+                .HasForeignKey(cs => cs.ServiceRegionId)
                 .OnDelete(DeleteBehavior.SetNull);
 
             builder.Entity<CustomerSupport>()
-                .HasIndex(cs => cs.CustomerSupportRegionId);
+                .HasIndex(cs => cs.ServiceRegionId);
 
             // Configure Manager entity
             builder.Entity<Manager>()
@@ -594,52 +594,65 @@ namespace MedicineDelivery.Infrastructure.Data
                     .HasForeignKey(d => d.MedicalStoreId)
                     .OnDelete(DeleteBehavior.SetNull);
 
+                entity.HasOne(d => d.ServiceRegion)
+                    .WithMany()
+                    .HasForeignKey(d => d.ServiceRegionId)
+                    .OnDelete(DeleteBehavior.SetNull);
+
                 entity.HasIndex(d => d.MedicalStoreId);
+                entity.HasIndex(d => d.ServiceRegionId);
                 entity.HasIndex(d => d.IsActive);
                 entity.HasIndex(d => d.IsDeleted);
             });
 
-            // Configure CustomerSupportRegion entity
-            builder.Entity<CustomerSupportRegion>(entity =>
+            // Configure ServiceRegion entity (keeps existing table name)
+            builder.Entity<ServiceRegion>(entity =>
             {
-                entity.HasKey(csr => csr.Id);
+                entity.ToTable("CustomerSupportRegions");
+                entity.HasKey(sr => sr.Id);
 
-                entity.Property(csr => csr.Name)
+                entity.Property(sr => sr.Name)
                     .HasMaxLength(100)
                     .IsRequired();
 
-                entity.Property(csr => csr.City)
+                entity.Property(sr => sr.City)
                     .HasMaxLength(100)
                     .IsRequired();
 
-                entity.Property(csr => csr.RegionName)
+                entity.Property(sr => sr.RegionName)
                     .HasMaxLength(100)
                     .IsRequired();
 
-                entity.HasIndex(csr => csr.Name);
-                entity.HasIndex(csr => csr.City);
-                entity.HasIndex(csr => csr.RegionName);
+                entity.Property(sr => sr.RegionType)
+                    .IsRequired()
+                    .HasDefaultValue(Domain.Enums.RegionType.CustomerSupport);
+
+                entity.HasIndex(sr => sr.Name);
+                entity.HasIndex(sr => sr.City);
+                entity.HasIndex(sr => sr.RegionName);
+                entity.HasIndex(sr => sr.RegionType);
             });
 
-            // Configure CustomerSupportRegionPinCode entity
-            builder.Entity<CustomerSupportRegionPinCode>(entity =>
+            // Configure ServiceRegionPinCode entity (keeps existing table name)
+            builder.Entity<ServiceRegionPinCode>(entity =>
             {
-                entity.HasKey(csrpc => csrpc.Id);
+                entity.ToTable("CustomerSupportRegionPinCodes");
+                entity.HasKey(srpc => srpc.Id);
 
-                entity.Property(csrpc => csrpc.PinCode)
+                entity.Property(srpc => srpc.PinCode)
                     .HasMaxLength(10)
                     .IsRequired();
 
-                entity.HasOne(csrpc => csrpc.CustomerSupportRegion)
-                    .WithMany(csr => csr.RegionPinCodes)
-                    .HasForeignKey(csrpc => csrpc.CustomerSupportRegionId)
+                entity.HasOne(srpc => srpc.ServiceRegion)
+                    .WithMany(sr => sr.RegionPinCodes)
+                    .HasForeignKey(srpc => srpc.ServiceRegionId)
                     .OnDelete(DeleteBehavior.Cascade);
 
-                entity.HasIndex(csrpc => csrpc.CustomerSupportRegionId);
-                entity.HasIndex(csrpc => csrpc.PinCode);
+                entity.HasIndex(srpc => srpc.ServiceRegionId);
+                entity.HasIndex(srpc => srpc.PinCode);
                 
                 // Ensure unique pin code per region
-                entity.HasIndex(csrpc => new { csrpc.CustomerSupportRegionId, csrpc.PinCode })
+                entity.HasIndex(srpc => new { srpc.ServiceRegionId, srpc.PinCode })
                     .IsUnique();
             });
 

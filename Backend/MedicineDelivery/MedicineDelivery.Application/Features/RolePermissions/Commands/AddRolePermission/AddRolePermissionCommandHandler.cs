@@ -33,7 +33,7 @@ namespace MedicineDelivery.Application.Features.RolePermissions.Commands.AddRole
             }
 
             // Add permission to role using RoleService
-            var success = await _roleService.AddPermissionToRoleAsync(request.RoleId, request.PermissionId, request.GrantedBy);
+            var success = await _roleService.AddPermissionToRoleAsync(request.RoleId, request.PermissionId, request.GrantedBy ?? string.Empty);
             
             if (!success)
             {

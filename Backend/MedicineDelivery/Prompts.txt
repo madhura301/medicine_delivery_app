@@ -1,0 +1,44 @@
+Create a .NET 8 Web API using Clean Architecture.
+Use EF Core with PostgreSQL.
+Include:
+- Global exception middleware
+- JWT authentication
+- Repository pattern
+- DTO mapping
+- Swagger
+Generate all necessary files.
+
+
+
+
+
+
+6️⃣ Reusable “power prompts” for C#
+
+Save these mentally 😄
+
+Clean service
+Create a clean, testable C# service.
+No static classes.
+Constructor injection only.
+
+EF Core
+Write EF Core code with:
+- Fluent configuration
+- No lazy loading
+- Explicit includes
+
+Fix bad code
+Refactor this to production-quality C#.
+Apply SOLID and Clean Architecture.
+
+7️⃣ Verify Cursor output like a senior dev 🧠
+
+After generation, ask:
+
+Review this code.
+Point out violations of SOLID or Clean Architecture.
+Refactor if needed.
+
+
+Cursor will self-correct.

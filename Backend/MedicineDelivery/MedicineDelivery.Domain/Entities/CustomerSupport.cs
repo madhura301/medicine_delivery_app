@@ -24,9 +24,9 @@ namespace MedicineDelivery.Domain.Entities
         public DateTime? UpdatedOn { get; set; }
         public Guid? UpdatedBy { get; set; }
         public string? UserId { get; set; } // Reference to the associated user account
-        public int? CustomerSupportRegionId { get; set; }
+        public int? ServiceRegionId { get; set; }
 
         // Navigation properties
-        public CustomerSupportRegion? CustomerSupportRegion { get; set; }
+        public ServiceRegion? ServiceRegion { get; set; }
     }
 }

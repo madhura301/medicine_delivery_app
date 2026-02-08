@@ -143,10 +143,10 @@ namespace MedicineDelivery.Infrastructure.Services
             var claims = new List<Claim>
             {
                 new(ClaimTypes.NameIdentifier, user.Id),
-                new(ClaimTypes.Email, user.Email),
-                new(ClaimTypes.Name, user.Email),
-                new("firstName", user.FirstName),
-                new("lastName", user.LastName),
+                new(ClaimTypes.Email, user.Email ?? string.Empty),
+                new(ClaimTypes.Name, user.Email ?? string.Empty),
+                new("firstName", user.FirstName ?? string.Empty),
+                new("lastName", user.LastName ?? string.Empty),
                 new("role", primaryRole),
                 new("entityId", entityId)
             };
@@ -157,7 +157,7 @@ namespace MedicineDelivery.Infrastructure.Services
                 claims.Add(new Claim(ClaimTypes.Role, role));
             }
 
-            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey));
+            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey ?? string.Empty));
             var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
             // Set token expiry based on StayLoggedIn
@@ -232,7 +232,7 @@ namespace MedicineDelivery.Infrastructure.Services
                 var audience = jwtSettings["Audience"];
 
                 var tokenHandler = new JwtSecurityTokenHandler();
-                var key = Encoding.UTF8.GetBytes(secretKey);
+                var key = Encoding.UTF8.GetBytes(secretKey ?? string.Empty);
 
                 tokenHandler.ValidateToken(token, new TokenValidationParameters
                 {

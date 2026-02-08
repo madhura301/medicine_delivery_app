@@ -11,6 +11,7 @@ namespace MedicineDelivery.Application.DTOs
         public bool IsActive { get; set; }
         public bool IsDeleted { get; set; }
         public Guid? MedicalStoreId { get; set; }
+        public int? ServiceRegionId { get; set; }
         public DateTime AddedOn { get; set; }
         public DateTime? ModifiedOn { get; set; }
         public Guid? AddedBy { get; set; }
@@ -25,6 +26,7 @@ namespace MedicineDelivery.Application.DTOs
         public string? DrivingLicenceNumber { get; set; }
         public string? MobileNumber { get; set; }
         public Guid? MedicalStoreId { get; set; }
+        public int? ServiceRegionId { get; set; }
     }
 
     public class UpdateDeliveryDto
@@ -36,6 +38,7 @@ namespace MedicineDelivery.Application.DTOs
         public string? MobileNumber { get; set; }
         public bool? IsActive { get; set; }
         public Guid? MedicalStoreId { get; set; }
+        public int? ServiceRegionId { get; set; }
     }
 }
 

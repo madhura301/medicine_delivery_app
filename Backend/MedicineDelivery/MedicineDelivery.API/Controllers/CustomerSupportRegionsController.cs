@@ -2,23 +2,165 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using MedicineDelivery.Application.DTOs;
 using MedicineDelivery.Application.Interfaces;
+using MedicineDelivery.Domain.Enums;
 
 namespace MedicineDelivery.API.Controllers
 {
     [ApiController]
-    [Route("api/[controller]")]
+    [Route("api/ServiceRegions")]
     [Authorize]
-    public class CustomerSupportRegionsController : ControllerBase
+    public class ServiceRegionsController : ControllerBase
     {
-        private readonly ICustomerSupportRegionService _customerSupportRegionService;
+        private readonly IServiceRegionService _serviceRegionService;
 
-        public CustomerSupportRegionsController(ICustomerSupportRegionService customerSupportRegionService)
+        public ServiceRegionsController(IServiceRegionService serviceRegionService)
         {
-            _customerSupportRegionService = customerSupportRegionService;
+            _serviceRegionService = serviceRegionService;
         }
 
         /// <summary>
-        /// Assign a customer support region to a single customer support
+        /// Create a new service region
+        /// </summary>
+        /// <param name="createDto">Region creation details</param>
+        /// <returns>Created region details</returns>
+        [HttpPost]
+        [Authorize(Policy = "RequireOrderUpdatePermission")]
+        public async Task<ActionResult<ServiceRegionDto>> CreateServiceRegion([FromBody] CreateServiceRegionDto createDto)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            try
+            {
+                var region = await _serviceRegionService.CreateServiceRegionAsync(createDto);
+                return CreatedAtAction(nameof(GetServiceRegionById), new { id = region.Id }, region);
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { error = ex.Message });
+            }
+            catch (Exception)
+            {
+                return StatusCode(500, new { error = "An error occurred while creating the service region." });
+            }
+        }
+
+        /// <summary>
+        /// Get all service regions, optionally filtered by region type
+        /// </summary>
+        /// <param name="regionType">Optional filter by region type (0 = CustomerSupport, 1 = DeliveryBoy)</param>
+        /// <returns>List of regions</returns>
+        [HttpGet]
+        [Authorize(Policy = "RequireOrderReadPermission")]
+        public async Task<ActionResult<IEnumerable<ServiceRegionDto>>> GetAllServiceRegions([FromQuery] RegionType? regionType = null)
+        {
+            try
+            {
+                IEnumerable<ServiceRegionDto> regions;
+
+                if (regionType.HasValue)
+                {
+                    regions = await _serviceRegionService.GetAllServiceRegionsByTypeAsync(regionType.Value);
+                }
+                else
+                {
+                    regions = await _serviceRegionService.GetAllServiceRegionsAsync();
+                }
+
+                return Ok(regions);
+            }
+            catch (Exception)
+            {
+                return StatusCode(500, new { error = "An error occurred while retrieving service regions." });
+            }
+        }
+
+        /// <summary>
+        /// Get service region by ID
+        /// </summary>
+        /// <param name="id">Region ID</param>
+        /// <returns>Region details</returns>
+        [HttpGet("{id:int}")]
+        [Authorize(Policy = "RequireOrderReadPermission")]
+        public async Task<ActionResult<ServiceRegionDto>> GetServiceRegionById(int id)
+        {
+            try
+            {
+                var region = await _serviceRegionService.GetServiceRegionByIdAsync(id);
+                
+                if (region == null)
+                {
+                    return NotFound(new { error = "Service region not found." });
+                }
+
+                return Ok(region);
+            }
+            catch (Exception)
+            {
+                return StatusCode(500, new { error = "An error occurred while retrieving the service region." });
+            }
+        }
+
+        /// <summary>
+        /// Update service region information
+        /// </summary>
+        /// <param name="id">Region ID</param>
+        /// <param name="updateDto">Region update details</param>
+        /// <returns>Updated region details</returns>
+        [HttpPut("{id:int}")]
+        [Authorize(Policy = "RequireOrderUpdatePermission")]
+        public async Task<ActionResult<ServiceRegionDto>> UpdateServiceRegion(int id, [FromBody] UpdateServiceRegionDto updateDto)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            try
+            {
+                var region = await _serviceRegionService.UpdateServiceRegionAsync(id, updateDto);
+                return Ok(region);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { error = ex.Message });
+            }
+            catch (Exception)
+            {
+                return StatusCode(500, new { error = "An error occurred while updating the service region." });
+            }
+        }
+
+        /// <summary>
+        /// Delete service region
+        /// </summary>
+        /// <param name="id">Region ID</param>
+        /// <returns>Success status</returns>
+        [HttpDelete("{id:int}")]
+        [Authorize(Policy = "RequireOrderUpdatePermission")]
+        public async Task<ActionResult> DeleteServiceRegion(int id)
+        {
+            try
+            {
+                var result = await _serviceRegionService.DeleteServiceRegionAsync(id);
+                
+                if (!result)
+                {
+                    return NotFound(new { error = "Service region not found." });
+                }
+
+                return NoContent();
+            }
+            catch (Exception)
+            {
+                return StatusCode(500, new { error = "An error occurred while deleting the service region." });
+            }
+        }
+
+        /// <summary>
+        /// Assign a service region to a single customer support
         /// </summary>
         [HttpPost("assign")]
         [Authorize(Policy = "RequireOrderUpdatePermission")]
@@ -31,7 +173,7 @@ namespace MedicineDelivery.API.Controllers
 
             try
             {
-                await _customerSupportRegionService.AssignRegionToCustomerSupportAsync(assignDto);
+                await _serviceRegionService.AssignRegionToCustomerSupportAsync(assignDto);
                 return Ok(new { success = true, message = "Region assigned to customer support successfully." });
             }
             catch (KeyNotFoundException ex)
@@ -49,7 +191,7 @@ namespace MedicineDelivery.API.Controllers
         }
 
         /// <summary>
-        /// Assign a customer support region to multiple customer supports
+        /// Assign a service region to multiple customer supports
         /// </summary>
         [HttpPost("assign/bulk")]
         [Authorize(Policy = "RequireOrderUpdatePermission")]
@@ -62,7 +204,7 @@ namespace MedicineDelivery.API.Controllers
 
             try
             {
-                await _customerSupportRegionService.AssignRegionToCustomerSupportsAsync(assignDto);
+                await _serviceRegionService.AssignRegionToCustomerSupportsAsync(assignDto);
                 return Ok(new { success = true, message = "Region assigned to customer supports successfully." });
             }
             catch (KeyNotFoundException ex)
@@ -80,13 +222,11 @@ namespace MedicineDelivery.API.Controllers
         }
 
         /// <summary>
-        /// Create a new customer support region
+        /// Assign a service region to a single delivery
         /// </summary>
-        /// <param name="createDto">Region creation details</param>
-        /// <returns>Created region details</returns>
-        [HttpPost]
+        [HttpPost("assign-delivery")]
         [Authorize(Policy = "RequireOrderUpdatePermission")]
-        public async Task<ActionResult<CustomerSupportRegionDto>> CreateCustomerSupportRegion([FromBody] CreateCustomerSupportRegionDto createDto)
+        public async Task<ActionResult> AssignRegionToDelivery([FromBody] AssignDeliveryRegionDto assignDto)
         {
             if (!ModelState.IsValid)
             {
@@ -95,8 +235,12 @@ namespace MedicineDelivery.API.Controllers
 
             try
             {
-                var region = await _customerSupportRegionService.CreateCustomerSupportRegionAsync(createDto);
-                return CreatedAtAction(nameof(GetCustomerSupportRegionById), new { id = region.Id }, region);
+                await _serviceRegionService.AssignRegionToDeliveryAsync(assignDto);
+                return Ok(new { success = true, message = "Region assigned to delivery successfully." });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { error = ex.Message });
             }
             catch (ArgumentException ex)
             {
@@ -104,64 +248,16 @@ namespace MedicineDelivery.API.Controllers
             }
             catch (Exception)
             {
-                return StatusCode(500, new { error = "An error occurred while creating the customer support region." });
+                return StatusCode(500, new { error = "An error occurred while assigning the region to delivery." });
             }
         }
 
         /// <summary>
-        /// Get all customer support regions
+        /// Assign a service region to multiple deliveries
         /// </summary>
-        /// <returns>List of regions</returns>
-        [HttpGet]
-        [Authorize(Policy = "RequireOrderReadPermission")]
-        public async Task<ActionResult<IEnumerable<CustomerSupportRegionDto>>> GetAllCustomerSupportRegions()
-        {
-            try
-            {
-                var regions = await _customerSupportRegionService.GetAllCustomerSupportRegionsAsync();
-                return Ok(regions);
-            }
-            catch (Exception)
-            {
-                return StatusCode(500, new { error = "An error occurred while retrieving customer support regions." });
-            }
-        }
-
-        /// <summary>
-        /// Get customer support region by ID
-        /// </summary>
-        /// <param name="id">Region ID</param>
-        /// <returns>Region details</returns>
-        [HttpGet("{id:int}")]
-        [Authorize(Policy = "RequireOrderReadPermission")]
-        public async Task<ActionResult<CustomerSupportRegionDto>> GetCustomerSupportRegionById(int id)
-        {
-            try
-            {
-                var region = await _customerSupportRegionService.GetCustomerSupportRegionByIdAsync(id);
-                
-                if (region == null)
-                {
-                    return NotFound(new { error = "Customer support region not found." });
-                }
-
-                return Ok(region);
-            }
-            catch (Exception)
-            {
-                return StatusCode(500, new { error = "An error occurred while retrieving the customer support region." });
-            }
-        }
-
-        /// <summary>
-        /// Update customer support region information
-        /// </summary>
-        /// <param name="id">Region ID</param>
-        /// <param name="updateDto">Region update details</param>
-        /// <returns>Updated region details</returns>
-        [HttpPut("{id:int}")]
+        [HttpPost("assign-delivery/bulk")]
         [Authorize(Policy = "RequireOrderUpdatePermission")]
-        public async Task<ActionResult<CustomerSupportRegionDto>> UpdateCustomerSupportRegion(int id, [FromBody] UpdateCustomerSupportRegionDto updateDto)
+        public async Task<ActionResult> AssignRegionToDeliveries([FromBody] AssignDeliveryRegionBulkDto assignDto)
         {
             if (!ModelState.IsValid)
             {
@@ -170,42 +266,20 @@ namespace MedicineDelivery.API.Controllers
 
             try
             {
-                var region = await _customerSupportRegionService.UpdateCustomerSupportRegionAsync(id, updateDto);
-                return Ok(region);
+                await _serviceRegionService.AssignRegionToDeliveriesAsync(assignDto);
+                return Ok(new { success = true, message = "Region assigned to deliveries successfully." });
             }
             catch (KeyNotFoundException ex)
             {
                 return NotFound(new { error = ex.Message });
             }
-            catch (Exception)
+            catch (ArgumentException ex)
             {
-                return StatusCode(500, new { error = "An error occurred while updating the customer support region." });
-            }
-        }
-
-        /// <summary>
-        /// Delete customer support region
-        /// </summary>
-        /// <param name="id">Region ID</param>
-        /// <returns>Success status</returns>
-        [HttpDelete("{id:int}")]
-        [Authorize(Policy = "RequireOrderUpdatePermission")]
-        public async Task<ActionResult> DeleteCustomerSupportRegion(int id)
-        {
-            try
-            {
-                var result = await _customerSupportRegionService.DeleteCustomerSupportRegionAsync(id);
-                
-                if (!result)
-                {
-                    return NotFound(new { error = "Customer support region not found." });
-                }
-
-                return NoContent();
+                return BadRequest(new { error = ex.Message });
             }
             catch (Exception)
             {
-                return StatusCode(500, new { error = "An error occurred while deleting the customer support region." });
+                return StatusCode(500, new { error = "An error occurred while assigning the region to deliveries." });
             }
         }
 
@@ -225,7 +299,7 @@ namespace MedicineDelivery.API.Controllers
 
             try
             {
-                var result = await _customerSupportRegionService.AddPinCodeToRegionAsync(addDto);
+                var result = await _serviceRegionService.AddPinCodeToRegionAsync(addDto);
                 return Ok(new { success = result, message = "Pin code added successfully." });
             }
             catch (KeyNotFoundException ex)
@@ -262,7 +336,7 @@ namespace MedicineDelivery.API.Controllers
 
             try
             {
-                var result = await _customerSupportRegionService.RemovePinCodeFromRegionAsync(removeDto);
+                var result = await _serviceRegionService.RemovePinCodeFromRegionAsync(removeDto);
                 
                 if (!result)
                 {
@@ -292,7 +366,7 @@ namespace MedicineDelivery.API.Controllers
         {
             try
             {
-                var pinCodes = await _customerSupportRegionService.GetPinCodesByRegionIdAsync(regionId);
+                var pinCodes = await _serviceRegionService.GetPinCodesByRegionIdAsync(regionId);
                 return Ok(pinCodes);
             }
             catch (Exception)
@@ -308,11 +382,11 @@ namespace MedicineDelivery.API.Controllers
         /// <returns>Region details</returns>
         [HttpGet("by-pincode/{pinCode}")]
         [Authorize(Policy = "RequireOrderReadPermission")]
-        public async Task<ActionResult<CustomerSupportRegionDto>> GetRegionByPinCode(string pinCode)
+        public async Task<ActionResult<ServiceRegionDto>> GetRegionByPinCode(string pinCode)
         {
             try
             {
-                var region = await _customerSupportRegionService.GetRegionByPinCodeAsync(pinCode);
+                var region = await _serviceRegionService.GetRegionByPinCodeAsync(pinCode);
                 
                 if (region == null)
                 {
@@ -332,4 +406,3 @@ namespace MedicineDelivery.API.Controllers
         }
     }
 }
-

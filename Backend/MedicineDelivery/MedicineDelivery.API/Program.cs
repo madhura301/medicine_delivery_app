@@ -116,7 +116,7 @@ builder.Services.AddIdentity<MedicineDelivery.Domain.Entities.ApplicationUser, I
 
 // Add JWT Authentication
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");
-var secretKey = jwtSettings["SecretKey"];
+var secretKey = jwtSettings["SecretKey"] ?? string.Empty;
 
 builder.Services.AddAuthentication(options =>
 {
@@ -337,11 +337,12 @@ builder.Services.AddScoped<MedicineDelivery.Application.Interfaces.IManagerServi
 builder.Services.AddScoped<MedicineDelivery.Application.Interfaces.ICustomerService, MedicineDelivery.Infrastructure.Services.CustomerService>();
 builder.Services.AddScoped<MedicineDelivery.Application.Interfaces.ICustomerAddressService, MedicineDelivery.Infrastructure.Services.CustomerAddressService>();
 builder.Services.AddScoped<MedicineDelivery.Application.Interfaces.IDeliveryService, MedicineDelivery.Infrastructure.Services.DeliveryService>();
-builder.Services.AddScoped<MedicineDelivery.Application.Interfaces.ICustomerSupportRegionService, MedicineDelivery.Infrastructure.Services.CustomerSupportRegionService>();
+builder.Services.AddScoped<MedicineDelivery.Application.Interfaces.IServiceRegionService, MedicineDelivery.Infrastructure.Services.ServiceRegionService>();
 builder.Services.AddScoped<MedicineDelivery.Application.Interfaces.IPhotoUploadService, MedicineDelivery.Infrastructure.Services.PhotoUploadService>();
 builder.Services.AddScoped<MedicineDelivery.Application.Interfaces.IPermissionCheckerService, MedicineDelivery.Infrastructure.Services.PermissionCheckerService>();
 builder.Services.AddScoped<MedicineDelivery.Application.Interfaces.IOrderService, MedicineDelivery.Infrastructure.Services.OrderService>();
 builder.Services.AddScoped<MedicineDelivery.Application.Interfaces.IConsentService, MedicineDelivery.Infrastructure.Services.ConsentService>();
+builder.Services.AddScoped<MedicineDelivery.Application.Interfaces.IPaymentService, MedicineDelivery.Infrastructure.Services.PaymentService>();
 builder.Services.AddScoped<MedicineDelivery.Infrastructure.Services.IBrowserInfoService, MedicineDelivery.Infrastructure.Services.BrowserInfoService>();
 
 // Add SignInManager explicitly (not automatically registered with AddIdentity)

@@ -1,0 +1,9 @@
+Create a .NET 8 Web API using Clean Architecture.
+Use EF Core with PostgreSQL.
+Include:
+- Global exception middleware
+- JWT authentication
+- Repository pattern
+- DTO mapping
+- Swagger
+Generate all necessary files.

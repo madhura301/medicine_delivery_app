@@ -53,7 +53,7 @@ namespace MedicineDelivery.API.Controllers
                 var hasCustomerRead = await _permissionCheckerService.HasPermissionAsync(User, "CustomerRead");
 
                 var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-                var result = await _permissionCheckerService.GetPermissionsByUserIdAsync(userId);
+                var result = await _permissionCheckerService.GetPermissionsByUserIdAsync(userId ?? string.Empty);
 
 
                 if (!hasAllCustomerRead && hasCustomerRead)

@@ -20,8 +20,8 @@ namespace MedicineDelivery.Infrastructure.Repositories
         private IRepository<OrderAssignmentHistory>? _orderAssignmentHistories;
         private IRepository<Payment>? _payments;
         private IRepository<Delivery>? _deliveries;
-        private IRepository<CustomerSupportRegion>? _customerSupportRegions;
-        private IRepository<CustomerSupportRegionPinCode>? _customerSupportRegionPinCodes;
+        private IRepository<ServiceRegion>? _serviceRegions;
+        private IRepository<ServiceRegionPinCode>? _serviceRegionPinCodes;
         private IRepository<Consent>? _consents;
         private IRepository<ConsentLog>? _consentLogs;
 
@@ -42,8 +42,8 @@ namespace MedicineDelivery.Infrastructure.Repositories
         public IRepository<OrderAssignmentHistory> OrderAssignmentHistories => _orderAssignmentHistories ??= new Repository<OrderAssignmentHistory>(_context);
         public IRepository<Payment> Payments => _payments ??= new Repository<Payment>(_context);
         public IRepository<Delivery> Deliveries => _deliveries ??= new Repository<Delivery>(_context);
-        public IRepository<CustomerSupportRegion> CustomerSupportRegions => _customerSupportRegions ??= new Repository<CustomerSupportRegion>(_context);
-        public IRepository<CustomerSupportRegionPinCode> CustomerSupportRegionPinCodes => _customerSupportRegionPinCodes ??= new Repository<CustomerSupportRegionPinCode>(_context);
+        public IRepository<ServiceRegion> ServiceRegions => _serviceRegions ??= new Repository<ServiceRegion>(_context);
+        public IRepository<ServiceRegionPinCode> ServiceRegionPinCodes => _serviceRegionPinCodes ??= new Repository<ServiceRegionPinCode>(_context);
         public IRepository<Consent> Consents => _consents ??= new Repository<Consent>(_context);
         public IRepository<ConsentLog> ConsentLogs => _consentLogs ??= new Repository<ConsentLog>(_context);
 

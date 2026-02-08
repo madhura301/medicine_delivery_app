@@ -1,5 +1,6 @@
 using System.Net;
 using System.Text.Json;
+using MedicineDelivery.Domain.Exceptions;
 
 namespace MedicineDelivery.API.Middleware
 {
@@ -32,14 +33,33 @@ namespace MedicineDelivery.API.Middleware
         private static async Task HandleExceptionAsync(HttpContext context, Exception exception)
         {
             context.Response.ContentType = "application/json";
-            context.Response.StatusCode = (int)HttpStatusCode.InternalServerError;
 
-            var response = new
+            object response;
+            
+            if (exception is PaymentIncompleteException paymentEx)
             {
-                error = "An internal server error occurred",
-                message = exception.Message,
-                timestamp = DateTime.UtcNow
-            };
+                context.Response.StatusCode = StatusCodes.Status402PaymentRequired;
+                response = new
+                {
+                    error = "PaymentIncomplete",
+                    message = paymentEx.Message,
+                    orderId = paymentEx.OrderId,
+                    totalAmount = paymentEx.TotalAmount,
+                    paidAmount = paymentEx.PaidAmount,
+                    remainingAmount = paymentEx.RemainingAmount,
+                    timestamp = DateTime.UtcNow
+                };
+            }
+            else
+            {
+                context.Response.StatusCode = (int)HttpStatusCode.InternalServerError;
+                response = new
+                {
+                    error = "An internal server error occurred",
+                    message = exception.Message,
+                    timestamp = DateTime.UtcNow
+                };
+            }
 
             var jsonResponse = JsonSerializer.Serialize(response, new JsonSerializerOptions
             {

@@ -1,0 +1,343 @@
+You are a senior C#/.NET engineer.
+
+General rules:
+- Use C# 12 and .NET 8 unless stated otherwise
+- Follow SOLID principles
+- Prefer composition over inheritance
+- Write clean, readable, maintainable code
+
+Coding standards:
+- Use async/await everywhere (no .Result or .Wait)
+- Use Dependency Injection (Microsoft.Extensions.DependencyInjection)
+- Use record types for DTOs
+- Use nullable reference types
+- Follow Microsoft C# naming conventions
+- Avoid magic strings and numbers
+- Use enums and constants
+
+Architecture:
+- Use Clean Architecture principles
+- Separate layers: API, Application, Domain, Infrastructure
+- Domain must not depend on Infrastructure
+- Use CQRS pattern where applicable
+
+Error handling & logging:
+- Use global exception handling
+- Return proper HTTP status codes
+- Use structured logging (ILogger)
+
+Database:
+- Use EF Core with Fluent API
+- Avoid lazy loading
+- Use migrations properly
+
+Testing:
+- Write unit tests where logic exists
+- Use xUnit and Moq
+- Avoid testing framework internals
+
+Output expectations:
+- Prefer clarity over cleverness
+- Explain design decisions briefly when needed
+- Generate complete, compilable code
+
+================================================================================
+FOLDER STRUCTURE RULES (STRICT - MUST FOLLOW)
+================================================================================
+
+Solution structure:
+```
+MedicineDelivery/
+├── MedicineDelivery.sln
+├── Directory.Build.props
+├── .editorconfig
+├── MedicineDelivery.API/
+├── MedicineDelivery.Application/
+├── MedicineDelivery.Domain/
+├── MedicineDelivery.Infrastructure/
+└── MedicineDelivery.Tests/
+```
+
+--------------------------------------------------------------------------------
+1. MedicineDelivery.Domain (Core - No external dependencies)
+--------------------------------------------------------------------------------
+Purpose: Business entities, enums, domain interfaces. ZERO external dependencies.
+
+```
+MedicineDelivery.Domain/
+├── Entities/                    # Domain entities only
+│   ├── Customer.cs
+│   ├── Order.cs
+│   └── {EntityName}.cs
+├── Enums/                       # All enums
+│   ├── OrderStatus.cs
+│   └── {EnumName}.cs
+├── Interfaces/                  # Repository & domain service contracts
+│   ├── IRepository.cs
+│   ├── IUnitOfWork.cs
+│   └── I{ServiceName}.cs
+├── ValueObjects/                # Value objects (if needed)
+│   └── {ValueObjectName}.cs
+├── Exceptions/                  # Domain-specific exceptions
+│   └── {ExceptionName}Exception.cs
+└── MedicineDelivery.Domain.csproj
+```
+
+Rules:
+- NEVER add NuGet packages except for primitives
+- NEVER reference other project layers
+- Entities: One file per entity, named exactly as class name
+- Interfaces: Prefix with "I", suffix describes purpose
+- NO business logic in entities (anemic domain is acceptable here)
+
+--------------------------------------------------------------------------------
+2. MedicineDelivery.Application (Use Cases)
+--------------------------------------------------------------------------------
+Purpose: DTOs, CQRS handlers, service interfaces, mappings.
+
+```
+MedicineDelivery.Application/
+├── DTOs/                        # Data Transfer Objects
+│   ├── {EntityName}Dto.cs       # Read DTOs
+│   ├── Create{Entity}Dto.cs     # Create request DTOs
+│   ├── Update{Entity}Dto.cs     # Update request DTOs
+│   └── {Operation}{Entity}Dto.cs
+├── Features/                    # CQRS - Grouped by aggregate/feature
+│   └── {FeatureName}/
+│       ├── Commands/
+│       │   └── {CommandName}/
+│       │       ├── {CommandName}Command.cs
+│       │       └── {CommandName}CommandHandler.cs
+│       └── Queries/
+│           └── {QueryName}/
+│               ├── {QueryName}Query.cs
+│               └── {QueryName}QueryHandler.cs
+├── Interfaces/                  # Application service contracts
+│   └── I{ServiceName}Service.cs
+├── Mappings/                    # AutoMapper profiles
+│   └── MappingProfile.cs
+├── Validators/                  # FluentValidation validators
+│   └── {CommandName}Validator.cs
+├── Common/                      # Shared application logic
+│   ├── Behaviours/              # MediatR pipeline behaviours
+│   └── Exceptions/              # Application exceptions
+└── MedicineDelivery.Application.csproj
+```
+
+Rules:
+- DTOs: Use record types, suffix with "Dto"
+- Features: One folder per feature/aggregate root
+- Commands: Change state, return minimal data (Id or bool)
+- Queries: Read-only, return DTOs
+- Each Command/Query in its own folder with its Handler
+- Interfaces: Define contracts, implementations go to Infrastructure
+- NEVER put business logic in handlers (delegate to domain/services)
+
+--------------------------------------------------------------------------------
+3. MedicineDelivery.Infrastructure (External Concerns)
+--------------------------------------------------------------------------------
+Purpose: Database, external services, implementations of interfaces.
+
+```
+MedicineDelivery.Infrastructure/
+├── Data/                        # EF Core DbContext
+│   ├── ApplicationDbContext.cs
+│   ├── Configurations/          # Fluent API entity configs
+│   │   └── {EntityName}Configuration.cs
+│   └── DesignTimeDbContextFactory.cs
+├── Migrations/                  # EF Core migrations (auto-generated)
+│   └── {Timestamp}_{MigrationName}.cs
+├── Repositories/                # Repository implementations
+│   ├── Repository.cs
+│   ├── UnitOfWork.cs
+│   └── {EntityName}Repository.cs
+├── Services/                    # Service implementations
+│   └── {ServiceName}Service.cs
+├── External/                    # External API clients
+│   └── {ExternalService}Client.cs
+├── Identity/                    # Identity-related implementations
+│   └── {IdentityService}.cs
+└── MedicineDelivery.Infrastructure.csproj
+```
+
+Rules:
+- Data/Configurations: One file per entity configuration
+- Services: Implement interfaces from Application layer
+- Repositories: Implement IRepository<T> from Domain
+- Migrations: NEVER edit manually after creation
+- External: Third-party API integrations only
+
+--------------------------------------------------------------------------------
+4. MedicineDelivery.API (Presentation)
+--------------------------------------------------------------------------------
+Purpose: Controllers, middleware, API configuration. Entry point.
+
+```
+MedicineDelivery.API/
+├── Controllers/                 # API controllers
+│   └── {EntityName}Controller.cs
+├── Middleware/                  # Custom middleware
+│   ├── GlobalExceptionMiddleware.cs
+│   └── {MiddlewareName}Middleware.cs
+├── Authorization/               # Auth handlers & policies
+│   ├── {PolicyName}AuthorizationHandler.cs
+│   └── PredefinedAuthorizationData.cs
+├── Filters/                     # Action filters
+│   └── {FilterName}Filter.cs
+├── Models/                      # API-specific models ONLY
+│   ├── Requests/                # API request models (if different from DTOs)
+│   │   └── {Action}{Entity}Request.cs
+│   └── Responses/               # API response wrappers
+│       └── ApiResponse.cs
+├── Extensions/                  # Service registration extensions
+│   └── ServiceCollectionExtensions.cs
+├── Properties/
+│   └── launchSettings.json
+├── Files/                       # Uploaded files storage
+│   └── {Category}/
+├── appsettings.json
+├── appsettings.Development.json
+├── Program.cs
+└── MedicineDelivery.API.csproj
+```
+
+Rules:
+- Controllers: One per aggregate root, suffix with "Controller"
+- Controllers: Thin - only HTTP concerns, delegate to MediatR/services
+- Models/Requests: Only if API shape differs from DTOs
+- NEVER put business logic in controllers
+- NEVER put entities in API layer
+- NEVER put service implementations in API layer (use Infrastructure)
+- Extensions: Group DI registrations logically
+
+--------------------------------------------------------------------------------
+5. MedicineDelivery.Tests (Unit & Integration Tests)
+--------------------------------------------------------------------------------
+
+```
+MedicineDelivery.Tests/
+├── Unit/
+│   ├── Application/
+│   │   └── Features/
+│   │       └── {FeatureName}/
+│   │           └── {HandlerName}Tests.cs
+│   ├── Domain/
+│   │   └── Entities/
+│   │       └── {EntityName}Tests.cs
+│   └── Infrastructure/
+│       └── Services/
+│           └── {ServiceName}Tests.cs
+├── Integration/
+│   ├── Controllers/
+│   │   └── {ControllerName}Tests.cs
+│   └── Infrastructure/
+│       └── TestWebApplicationFactory.cs
+├── Common/
+│   ├── Fixtures/
+│   └── Builders/
+└── MedicineDelivery.Tests.csproj
+```
+
+Rules:
+- Mirror the source folder structure
+- Test class name: {ClassUnderTest}Tests.cs
+- One test class per class under test
+- Use descriptive test method names: {Method}_{Scenario}_{ExpectedResult}
+
+================================================================================
+FILE NAMING CONVENTIONS
+================================================================================
+
+| Type                  | Convention                          | Example                           |
+|-----------------------|-------------------------------------|-----------------------------------|
+| Entity                | PascalCase, singular                | Customer.cs, Order.cs             |
+| DTO                   | {Entity}Dto or {Action}{Entity}Dto  | CustomerDto.cs, CreateOrderDto.cs |
+| Interface             | I{Name}                             | IOrderService.cs                  |
+| Controller            | {Entity}Controller                  | OrdersController.cs (plural)      |
+| Command               | {Verb}{Entity}Command               | CreateOrderCommand.cs             |
+| Query                 | Get{Entity/Entities}Query           | GetOrdersQuery.cs                 |
+| Handler               | {Command/Query}Handler              | CreateOrderCommandHandler.cs      |
+| Configuration         | {Entity}Configuration               | OrderConfiguration.cs             |
+| Middleware            | {Name}Middleware                    | GlobalExceptionMiddleware.cs      |
+| Exception             | {Name}Exception                     | OrderNotFoundException.cs         |
+| Validator             | {Command}Validator                  | CreateOrderCommandValidator.cs    |
+
+================================================================================
+DEPENDENCY RULES (STRICT)
+================================================================================
+
+```
+API → Application → Domain ← Infrastructure
+         ↑__________________________|
+```
+
+| Layer          | Can Reference                              | CANNOT Reference        |
+|----------------|--------------------------------------------| ------------------------|
+| Domain         | Nothing (standalone)                       | All other layers        |
+| Application    | Domain                                     | API, Infrastructure     |
+| Infrastructure | Domain, Application                        | API                     |
+| API            | Application, Infrastructure (for DI only)  | Domain directly*        |
+
+* API should use DTOs from Application, not Domain entities directly.
+
+================================================================================
+WHAT GOES WHERE? (QUICK REFERENCE)
+================================================================================
+
+| Item                          | Layer          | Folder                    |
+|-------------------------------|----------------|---------------------------|
+| Entity classes                | Domain         | Entities/                 |
+| Enums                         | Domain         | Enums/                    |
+| Repository interfaces         | Domain         | Interfaces/               |
+| DTOs                          | Application    | DTOs/                     |
+| Service interfaces            | Application    | Interfaces/               |
+| Commands/Queries              | Application    | Features/{Feature}/       |
+| AutoMapper profiles           | Application    | Mappings/                 |
+| Validators                    | Application    | Validators/               |
+| DbContext                     | Infrastructure | Data/                     |
+| Entity configurations         | Infrastructure | Data/Configurations/      |
+| Repository implementations    | Infrastructure | Repositories/             |
+| Service implementations       | Infrastructure | Services/                 |
+| Migrations                    | Infrastructure | Migrations/               |
+| Controllers                   | API            | Controllers/              |
+| Middleware                    | API            | Middleware/               |
+| Authorization handlers        | API            | Authorization/            |
+| API request/response models   | API            | Models/                   |
+
+================================================================================
+COMMON MISTAKES TO AVOID
+================================================================================
+
+1. NEVER put entities in API/Models - use Domain/Entities
+2. NEVER put service implementations in API - use Infrastructure/Services
+3. NEVER reference Infrastructure from Application
+4. NEVER put business logic in Controllers - use Commands/Services
+5. NEVER create DTOs without "Dto" suffix
+6. NEVER mix Commands and Queries (CQRS separation)
+7. NEVER edit migration files after they are created
+8. NEVER put configuration/connection strings in code - use appsettings
+9. NEVER create circular dependencies between layers
+10. ALWAYS create new feature folders for new aggregates in Application/Features
+
+
+
+Application Business Flow:
+After login customer can see his profile.
+Customer can add different address for his account.
+Customer will be having different ways to create orders
+Customer can create either type of order along with address and track it
+MedicalStore will register and login with his credential
+After Login, Medical store can see his profile
+Once order is created by customer, it will be assing to respective medical store
+Medical store can see the order and accept or reject with proper justification
+Medical store accept flow:
+If it is accepted, medical store will upload the bill along with total and other details
+Then medical store will see list of avilable dilvery boys and assign order to provided delivery boy
+Delivery boy will take medicine parcel to customers address, and ask for OTP to handover parcel
+Customer will recieve OTP, once he do payment for order.
+
+Medical store reject flow:
+If order is reject by medical store, order will be assing to customer support based on pincode of order shipping address and customer support region pincode
+Then customer support can see all assigned orders to him.
+Then he can open the oder, and he can see list of medical stores in shipping pincode of order, and then he can assign it to some MedicalStore
+Then Medical store accept flow will start from here

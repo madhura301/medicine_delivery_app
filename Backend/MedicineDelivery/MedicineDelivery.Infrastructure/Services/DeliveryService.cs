@@ -36,6 +36,16 @@ namespace MedicineDelivery.Infrastructure.Services
                 }
             }
 
+            // Validate ServiceRegionId if provided
+            if (createDto.ServiceRegionId.HasValue)
+            {
+                var region = await _unitOfWork.ServiceRegions.GetByIdAsync(createDto.ServiceRegionId.Value);
+                if (region == null)
+                {
+                    throw new KeyNotFoundException($"Service region with ID '{createDto.ServiceRegionId.Value}' not found.");
+                }
+            }
+
             var delivery = new Delivery
             {
                 FirstName = createDto.FirstName,
@@ -44,6 +54,7 @@ namespace MedicineDelivery.Infrastructure.Services
                 DrivingLicenceNumber = createDto.DrivingLicenceNumber,
                 MobileNumber = createDto.MobileNumber,
                 MedicalStoreId = createDto.MedicalStoreId,
+                ServiceRegionId = createDto.ServiceRegionId,
                 IsActive = true,
                 IsDeleted = false,
                 AddedOn = DateTime.UtcNow,
@@ -135,6 +146,16 @@ namespace MedicineDelivery.Infrastructure.Services
             
             if (updateDto.MedicalStoreId.HasValue)
                 delivery.MedicalStoreId = updateDto.MedicalStoreId;
+
+            if (updateDto.ServiceRegionId.HasValue)
+            {
+                var region = await _unitOfWork.ServiceRegions.GetByIdAsync(updateDto.ServiceRegionId.Value);
+                if (region == null)
+                {
+                    throw new KeyNotFoundException($"Service region with ID '{updateDto.ServiceRegionId.Value}' not found.");
+                }
+                delivery.ServiceRegionId = updateDto.ServiceRegionId;
+            }
 
             delivery.ModifiedOn = DateTime.UtcNow;
             delivery.ModifiedBy = modifiedBy;

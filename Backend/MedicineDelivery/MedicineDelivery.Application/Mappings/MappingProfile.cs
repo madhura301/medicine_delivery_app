@@ -53,8 +53,8 @@ namespace MedicineDelivery.Application.Mappings
             // Delivery mappings
             CreateMap<Delivery, DeliveryDto>();
 
-            // CustomerSupportRegion mappings
-            CreateMap<CustomerSupportRegion, CustomerSupportRegionDto>()
+            // ServiceRegion mappings
+            CreateMap<ServiceRegion, ServiceRegionDto>()
                 .ForMember(dest => dest.PinCodes, opt => opt.Ignore()); // PinCodes loaded separately
 
             // Consent mappings

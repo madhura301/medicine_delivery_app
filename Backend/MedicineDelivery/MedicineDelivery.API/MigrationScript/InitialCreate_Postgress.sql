@@ -1,4 +1,4 @@
-﻿CREATE TABLE IF NOT EXISTS "__EFMigrationsHistory" (
+CREATE TABLE IF NOT EXISTS "__EFMigrationsHistory" (
     "MigrationId" character varying(150) NOT NULL,
     "ProductVersion" character varying(32) NOT NULL,
     CONSTRAINT "PK___EFMigrationsHistory" PRIMARY KEY ("MigrationId")
@@ -951,6 +951,152 @@ BEGIN
     END IF;
 END $EF$;
 
+COMMIT;
+
+START TRANSACTION;
+
+-- Migration: 20260201191445_AddOrderPaymentStatus
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260201191445_AddOrderPaymentStatus') THEN
+    ALTER TABLE "Orders" ADD "OrderPaymentStatus" integer NOT NULL DEFAULT 0;
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260201191445_AddOrderPaymentStatus') THEN
+    INSERT INTO "__EFMigrationsHistory" ("MigrationId", "ProductVersion")
+    VALUES ('20260201191445_AddOrderPaymentStatus', '8.0.0');
+    END IF;
+END $EF$;
+
+COMMIT;
+
+START TRANSACTION;
+
+-- Migration: 20260208175510_RenameToServiceRegionAndAddRegionType
+
+-- Drop existing foreign keys that reference the old column names
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260208175510_RenameToServiceRegionAndAddRegionType') THEN
+    ALTER TABLE "CustomerSupportRegionPinCodes" DROP CONSTRAINT IF EXISTS "FK_CustomerSupportRegionPinCodes_CustomerSupportRegions_Custom~";
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260208175510_RenameToServiceRegionAndAddRegionType') THEN
+    ALTER TABLE "CustomerSupports" DROP CONSTRAINT IF EXISTS "FK_CustomerSupports_CustomerSupportRegions_CustomerSupportRegi~";
+    END IF;
+END $EF$;
+
+-- Rename column CustomerSupportRegionId -> ServiceRegionId in CustomerSupports
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260208175510_RenameToServiceRegionAndAddRegionType') THEN
+    ALTER TABLE "CustomerSupports" RENAME COLUMN "CustomerSupportRegionId" TO "ServiceRegionId";
+    END IF;
+END $EF$;
+
+-- Rename index on CustomerSupports
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260208175510_RenameToServiceRegionAndAddRegionType') THEN
+    ALTER INDEX IF EXISTS "IX_CustomerSupports_CustomerSupportRegionId" RENAME TO "IX_CustomerSupports_ServiceRegionId";
+    END IF;
+END $EF$;
+
+-- Rename column CustomerSupportRegionId -> ServiceRegionId in CustomerSupportRegionPinCodes
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260208175510_RenameToServiceRegionAndAddRegionType') THEN
+    ALTER TABLE "CustomerSupportRegionPinCodes" RENAME COLUMN "CustomerSupportRegionId" TO "ServiceRegionId";
+    END IF;
+END $EF$;
+
+-- Rename unique index on CustomerSupportRegionPinCodes (composite)
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260208175510_RenameToServiceRegionAndAddRegionType') THEN
+    ALTER INDEX IF EXISTS "IX_CustomerSupportRegionPinCodes_CustomerSupportRegionId_PinCo~" RENAME TO "IX_CustomerSupportRegionPinCodes_ServiceRegionId_PinCode";
+    END IF;
+END $EF$;
+
+-- Rename single-column index on CustomerSupportRegionPinCodes
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260208175510_RenameToServiceRegionAndAddRegionType') THEN
+    ALTER INDEX IF EXISTS "IX_CustomerSupportRegionPinCodes_CustomerSupportRegionId" RENAME TO "IX_CustomerSupportRegionPinCodes_ServiceRegionId";
+    END IF;
+END $EF$;
+
+-- Add ServiceRegionId column to Deliveries
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260208175510_RenameToServiceRegionAndAddRegionType') THEN
+    ALTER TABLE "Deliveries" ADD "ServiceRegionId" integer;
+    END IF;
+END $EF$;
+
+-- Add RegionType column to CustomerSupportRegions (default 0 = CustomerSupport)
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260208175510_RenameToServiceRegionAndAddRegionType') THEN
+    ALTER TABLE "CustomerSupportRegions" ADD "RegionType" integer NOT NULL DEFAULT 0;
+    END IF;
+END $EF$;
+
+-- Create index on Deliveries.ServiceRegionId
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260208175510_RenameToServiceRegionAndAddRegionType') THEN
+    CREATE INDEX "IX_Deliveries_ServiceRegionId" ON "Deliveries" ("ServiceRegionId");
+    END IF;
+END $EF$;
+
+-- Create index on CustomerSupportRegions.RegionType
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260208175510_RenameToServiceRegionAndAddRegionType') THEN
+    CREATE INDEX "IX_CustomerSupportRegions_RegionType" ON "CustomerSupportRegions" ("RegionType");
+    END IF;
+END $EF$;
+
+-- Re-create foreign key: CustomerSupportRegionPinCodes -> CustomerSupportRegions (using new column name)
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260208175510_RenameToServiceRegionAndAddRegionType') THEN
+    ALTER TABLE "CustomerSupportRegionPinCodes" ADD CONSTRAINT "FK_CustomerSupportRegionPinCodes_CustomerSupportRegions_Servic~" FOREIGN KEY ("ServiceRegionId") REFERENCES "CustomerSupportRegions" ("Id") ON DELETE CASCADE;
+    END IF;
+END $EF$;
+
+-- Re-create foreign key: CustomerSupports -> CustomerSupportRegions (using new column name)
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260208175510_RenameToServiceRegionAndAddRegionType') THEN
+    ALTER TABLE "CustomerSupports" ADD CONSTRAINT "FK_CustomerSupports_CustomerSupportRegions_ServiceRegionId" FOREIGN KEY ("ServiceRegionId") REFERENCES "CustomerSupportRegions" ("Id") ON DELETE SET NULL;
+    END IF;
+END $EF$;
+
+-- Add foreign key: Deliveries -> CustomerSupportRegions
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260208175510_RenameToServiceRegionAndAddRegionType') THEN
+    ALTER TABLE "Deliveries" ADD CONSTRAINT "FK_Deliveries_CustomerSupportRegions_ServiceRegionId" FOREIGN KEY ("ServiceRegionId") REFERENCES "CustomerSupportRegions" ("Id") ON DELETE SET NULL;
+    END IF;
+END $EF$;
+
+-- Record migration as applied
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260208175510_RenameToServiceRegionAndAddRegionType') THEN
+    INSERT INTO "__EFMigrationsHistory" ("MigrationId", "ProductVersion")
+    VALUES ('20260208175510_RenameToServiceRegionAndAddRegionType', '8.0.0');
+    END IF;
+END $EF$;
 
 COMMIT;
 

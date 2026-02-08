@@ -30,7 +30,7 @@ namespace MedicineDelivery.Infrastructure.Services
             
             // Get the role IDs for these role names from AspNetRoles
             var userRoleIds = await _context.Roles
-                .Where(r => userRoleNames.Contains(r.Name))
+                .Where(r => r.Name != null && userRoleNames.Contains(r.Name))
                 .Select(r => r.Id)
                 .ToListAsync();
 
@@ -54,7 +54,7 @@ namespace MedicineDelivery.Infrastructure.Services
             
             // Get the role IDs for these role names from AspNetRoles
             var userRoleIds = await _context.Roles
-                .Where(r => userRoleNames.Contains(r.Name))
+                .Where(r => r.Name != null && userRoleNames.Contains(r.Name))
                 .Select(r => r.Id)
                 .ToListAsync();
             

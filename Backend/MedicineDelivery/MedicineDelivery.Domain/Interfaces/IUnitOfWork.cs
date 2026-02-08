@@ -16,8 +16,8 @@ namespace MedicineDelivery.Domain.Interfaces
         IRepository<OrderAssignmentHistory> OrderAssignmentHistories { get; }
         IRepository<Payment> Payments { get; }
         IRepository<Delivery> Deliveries { get; }
-        IRepository<CustomerSupportRegion> CustomerSupportRegions { get; }
-        IRepository<CustomerSupportRegionPinCode> CustomerSupportRegionPinCodes { get; }
+        IRepository<ServiceRegion> ServiceRegions { get; }
+        IRepository<ServiceRegionPinCode> ServiceRegionPinCodes { get; }
         IRepository<Consent> Consents { get; }
         IRepository<ConsentLog> ConsentLogs { get; }
         

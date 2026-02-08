@@ -3,6 +3,7 @@ using System;
 using MedicineDelivery.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace MedicineDelivery.Infrastructure.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260201191445_AddOrderPaymentStatus")]
+    partial class AddOrderPaymentStatus
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -372,6 +375,9 @@ namespace MedicineDelivery.Infrastructure.Migrations
                         .HasMaxLength(255)
                         .HasColumnType("character varying(255)");
 
+                    b.Property<int?>("CustomerSupportRegionId")
+                        .HasColumnType("integer");
+
                     b.Property<string>("EmailId")
                         .IsRequired()
                         .HasMaxLength(50)
@@ -393,9 +399,6 @@ namespace MedicineDelivery.Infrastructure.Migrations
                         .HasMaxLength(15)
                         .HasColumnType("character varying(15)");
 
-                    b.Property<int?>("ServiceRegionId")
-                        .HasColumnType("integer");
-
                     b.Property<string>("State")
                         .IsRequired()
                         .HasMaxLength(100)
@@ -412,11 +415,73 @@ namespace MedicineDelivery.Infrastructure.Migrations
 
                     b.HasKey("CustomerSupportId");
 
-                    b.HasIndex("ServiceRegionId");
+                    b.HasIndex("CustomerSupportRegionId");
 
                     b.HasIndex("UserId");
 
                     b.ToTable("CustomerSupports");
+                });
+
+            modelBuilder.Entity("MedicineDelivery.Domain.Entities.CustomerSupportRegion", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("City")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("RegionName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("City");
+
+                    b.HasIndex("Name");
+
+                    b.HasIndex("RegionName");
+
+                    b.ToTable("CustomerSupportRegions");
+                });
+
+            modelBuilder.Entity("MedicineDelivery.Domain.Entities.CustomerSupportRegionPinCode", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("CustomerSupportRegionId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("PinCode")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CustomerSupportRegionId");
+
+                    b.HasIndex("PinCode");
+
+                    b.HasIndex("CustomerSupportRegionId", "PinCode")
+                        .IsUnique();
+
+                    b.ToTable("CustomerSupportRegionPinCodes");
                 });
 
             modelBuilder.Entity("MedicineDelivery.Domain.Entities.Delivery", b =>
@@ -474,9 +539,6 @@ namespace MedicineDelivery.Infrastructure.Migrations
                     b.Property<DateTime?>("ModifiedOn")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<int?>("ServiceRegionId")
-                        .HasColumnType("integer");
-
                     b.HasKey("Id");
 
                     b.HasIndex("IsActive");
@@ -484,8 +546,6 @@ namespace MedicineDelivery.Infrastructure.Migrations
                     b.HasIndex("IsDeleted");
 
                     b.HasIndex("MedicalStoreId");
-
-                    b.HasIndex("ServiceRegionId");
 
                     b.ToTable("Deliveries");
                 });
@@ -1027,75 +1087,6 @@ namespace MedicineDelivery.Infrastructure.Migrations
                     b.ToTable("RolePermissions");
                 });
 
-            modelBuilder.Entity("MedicineDelivery.Domain.Entities.ServiceRegion", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("City")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
-
-                    b.Property<string>("RegionName")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
-
-                    b.Property<int>("RegionType")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
-                        .HasDefaultValue(0);
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("City");
-
-                    b.HasIndex("Name");
-
-                    b.HasIndex("RegionName");
-
-                    b.HasIndex("RegionType");
-
-                    b.ToTable("CustomerSupportRegions", (string)null);
-                });
-
-            modelBuilder.Entity("MedicineDelivery.Domain.Entities.ServiceRegionPinCode", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("PinCode")
-                        .IsRequired()
-                        .HasMaxLength(10)
-                        .HasColumnType("character varying(10)");
-
-                    b.Property<int>("ServiceRegionId")
-                        .HasColumnType("integer");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("PinCode");
-
-                    b.HasIndex("ServiceRegionId");
-
-                    b.HasIndex("ServiceRegionId", "PinCode")
-                        .IsUnique();
-
-                    b.ToTable("CustomerSupportRegionPinCodes", (string)null);
-                });
-
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRole", b =>
                 {
                     b.Property<string>("Id")
@@ -1268,9 +1259,9 @@ namespace MedicineDelivery.Infrastructure.Migrations
 
             modelBuilder.Entity("MedicineDelivery.Domain.Entities.CustomerSupport", b =>
                 {
-                    b.HasOne("MedicineDelivery.Domain.Entities.ServiceRegion", "ServiceRegion")
+                    b.HasOne("MedicineDelivery.Domain.Entities.CustomerSupportRegion", "CustomerSupportRegion")
                         .WithMany()
-                        .HasForeignKey("ServiceRegionId")
+                        .HasForeignKey("CustomerSupportRegionId")
                         .OnDelete(DeleteBehavior.SetNull);
 
                     b.HasOne("MedicineDelivery.Domain.Entities.ApplicationUser", null)
@@ -1278,7 +1269,18 @@ namespace MedicineDelivery.Infrastructure.Migrations
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.SetNull);
 
-                    b.Navigation("ServiceRegion");
+                    b.Navigation("CustomerSupportRegion");
+                });
+
+            modelBuilder.Entity("MedicineDelivery.Domain.Entities.CustomerSupportRegionPinCode", b =>
+                {
+                    b.HasOne("MedicineDelivery.Domain.Entities.CustomerSupportRegion", "CustomerSupportRegion")
+                        .WithMany("RegionPinCodes")
+                        .HasForeignKey("CustomerSupportRegionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("CustomerSupportRegion");
                 });
 
             modelBuilder.Entity("MedicineDelivery.Domain.Entities.Delivery", b =>
@@ -1288,14 +1290,7 @@ namespace MedicineDelivery.Infrastructure.Migrations
                         .HasForeignKey("MedicalStoreId")
                         .OnDelete(DeleteBehavior.SetNull);
 
-                    b.HasOne("MedicineDelivery.Domain.Entities.ServiceRegion", "ServiceRegion")
-                        .WithMany()
-                        .HasForeignKey("ServiceRegionId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
                     b.Navigation("MedicalStore");
-
-                    b.Navigation("ServiceRegion");
                 });
 
             modelBuilder.Entity("MedicineDelivery.Domain.Entities.Manager", b =>
@@ -1418,17 +1413,6 @@ namespace MedicineDelivery.Infrastructure.Migrations
                     b.Navigation("Permission");
                 });
 
-            modelBuilder.Entity("MedicineDelivery.Domain.Entities.ServiceRegionPinCode", b =>
-                {
-                    b.HasOne("MedicineDelivery.Domain.Entities.ServiceRegion", "ServiceRegion")
-                        .WithMany("RegionPinCodes")
-                        .HasForeignKey("ServiceRegionId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("ServiceRegion");
-                });
-
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>
                 {
                     b.HasOne("Microsoft.AspNetCore.Identity.IdentityRole", null)
@@ -1490,6 +1474,11 @@ namespace MedicineDelivery.Infrastructure.Migrations
                     b.Navigation("Addresses");
                 });
 
+            modelBuilder.Entity("MedicineDelivery.Domain.Entities.CustomerSupportRegion", b =>
+                {
+                    b.Navigation("RegionPinCodes");
+                });
+
             modelBuilder.Entity("MedicineDelivery.Domain.Entities.Order", b =>
                 {
                     b.Navigation("AssignmentHistory");
@@ -1500,11 +1489,6 @@ namespace MedicineDelivery.Infrastructure.Migrations
             modelBuilder.Entity("MedicineDelivery.Domain.Entities.Permission", b =>
                 {
                     b.Navigation("RolePermissions");
-                });
-
-            modelBuilder.Entity("MedicineDelivery.Domain.Entities.ServiceRegion", b =>
-                {
-                    b.Navigation("RegionPinCodes");
                 });
 #pragma warning restore 612, 618
         }

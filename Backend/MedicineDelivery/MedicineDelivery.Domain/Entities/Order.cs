@@ -18,6 +18,7 @@ namespace MedicineDelivery.Domain.Entities
         public string? OrderInputText { get; set; }
         public string? OrderBillFileLocation { get; set; }
         public OrderStatus OrderStatus { get; set; } = OrderStatus.PendingPayment;
+        public OrderPaymentStatus OrderPaymentStatus { get; set; } = OrderPaymentStatus.NotPaid;
         public string? OrderNumber { get; set; }
         public string? OTP { get; set; }
         public decimal? TotalAmount { get; set; }
