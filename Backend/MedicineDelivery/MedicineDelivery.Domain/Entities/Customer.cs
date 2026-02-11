@@ -3,6 +3,7 @@ namespace MedicineDelivery.Domain.Entities
     public class Customer
     {
         public Guid CustomerId { get; set; }
+        public string CustomerNumber { get; set; } = string.Empty;
         public string CustomerFirstName { get; set; } = string.Empty;
         public string CustomerLastName { get; set; } = string.Empty;
         public string? CustomerMiddleName { get; set; }

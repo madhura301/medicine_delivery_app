@@ -17,6 +17,7 @@ namespace MedicineDelivery.Domain.Entities
         public Guid? ModifiedBy { get; set; }
 
         public int? ServiceRegionId { get; set; }
+        public string? UserId { get; set; }
 
         // Navigation properties
         public MedicalStore? MedicalStore { get; set; }

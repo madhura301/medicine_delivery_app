@@ -1100,3 +1100,61 @@ END $EF$;
 
 COMMIT;
 
+-- ============================================================================
+-- Migration: 20260210182454_AddDeliveryUserIdAndCustomerNumber
+-- Adds UserId column to Deliveries (FK to AspNetUsers) and
+-- CustomerNumber column to Customers (8-char unique alphanumeric)
+-- ============================================================================
+START TRANSACTION;
+
+-- Add UserId column to Deliveries
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260210182454_AddDeliveryUserIdAndCustomerNumber') THEN
+    ALTER TABLE "Deliveries" ADD "UserId" text NULL;
+    END IF;
+END $EF$;
+
+-- Add CustomerNumber column to Customers
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260210182454_AddDeliveryUserIdAndCustomerNumber') THEN
+    ALTER TABLE "Customers" ADD "CustomerNumber" character varying(8) NOT NULL DEFAULT '';
+    END IF;
+END $EF$;
+
+-- Create index on Deliveries.UserId
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260210182454_AddDeliveryUserIdAndCustomerNumber') THEN
+    CREATE INDEX "IX_Deliveries_UserId" ON "Deliveries" ("UserId");
+    END IF;
+END $EF$;
+
+-- Create unique index on Customers.CustomerNumber
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260210182454_AddDeliveryUserIdAndCustomerNumber') THEN
+    CREATE UNIQUE INDEX "IX_Customers_CustomerNumber" ON "Customers" ("CustomerNumber");
+    END IF;
+END $EF$;
+
+-- Add foreign key: Deliveries.UserId -> AspNetUsers.Id
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260210182454_AddDeliveryUserIdAndCustomerNumber') THEN
+    ALTER TABLE "Deliveries" ADD CONSTRAINT "FK_Deliveries_AspNetUsers_UserId" FOREIGN KEY ("UserId") REFERENCES "AspNetUsers" ("Id") ON DELETE SET NULL;
+    END IF;
+END $EF$;
+
+-- Record migration as applied
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260210182454_AddDeliveryUserIdAndCustomerNumber') THEN
+    INSERT INTO "__EFMigrationsHistory" ("MigrationId", "ProductVersion")
+    VALUES ('20260210182454_AddDeliveryUserIdAndCustomerNumber', '8.0.0');
+    END IF;
+END $EF$;
+
+COMMIT;
+

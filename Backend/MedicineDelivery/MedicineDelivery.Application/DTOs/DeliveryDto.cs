@@ -12,6 +12,7 @@ namespace MedicineDelivery.Application.DTOs
         public bool IsDeleted { get; set; }
         public Guid? MedicalStoreId { get; set; }
         public int? ServiceRegionId { get; set; }
+        public string? UserId { get; set; }
         public DateTime AddedOn { get; set; }
         public DateTime? ModifiedOn { get; set; }
         public Guid? AddedBy { get; set; }
@@ -25,6 +26,7 @@ namespace MedicineDelivery.Application.DTOs
         public string? LastName { get; set; }
         public string? DrivingLicenceNumber { get; set; }
         public string? MobileNumber { get; set; }
+        public string? Password { get; set; }
         public Guid? MedicalStoreId { get; set; }
         public int? ServiceRegionId { get; set; }
     }

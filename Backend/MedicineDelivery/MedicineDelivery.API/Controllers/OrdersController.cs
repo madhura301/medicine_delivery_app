@@ -662,6 +662,99 @@ namespace MedicineDelivery.API.Controllers
                 return StatusCode(500, new { error = "An error occurred while retrieving the orders." });
             }
         }
+
+        /// <summary>
+        /// Get eligible delivery boys for an order based on shipping address pincode
+        /// </summary>
+        /// <param name="orderId">Order ID</param>
+        /// <returns>List of delivery boys whose region pincode matches the order's shipping address</returns>
+        [HttpGet("{orderId:int}/eligible-delivery-boys")]
+        [Authorize(Policy = "RequireOrderReadPermission")]
+        public async Task<IActionResult> GetEligibleDeliveryBoys(int orderId, CancellationToken cancellationToken)
+        {
+            try
+            {
+                var deliveryBoys = await _orderService.GetEligibleDeliveryBoysByOrderIdAsync(orderId, cancellationToken);
+                return Ok(deliveryBoys);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { error = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { error = ex.Message });
+            }
+            catch (OperationCanceledException)
+            {
+                return StatusCode(499, new { error = "Request was cancelled." });
+            }
+            catch (Exception)
+            {
+                return StatusCode(500, new { error = "An error occurred while retrieving eligible delivery boys." });
+            }
+        }
+
+        /// <summary>
+        /// Get orders assigned to the logged-in delivery boy
+        /// </summary>
+        /// <returns>List of orders assigned to the delivery boy</returns>
+        [HttpGet("delivery/my-orders")]
+        [Authorize(Policy = "RequireOrderReadPermission")]
+        public async Task<IActionResult> GetMyDeliveryOrders(CancellationToken cancellationToken)
+        {
+            try
+            {
+                var userIdClaim = User.FindFirst("UserId")?.Value;
+                if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out var deliveryId))
+                {
+                    return Unauthorized(new { error = "Delivery boy ID not found in token." });
+                }
+
+                var orders = await _orderService.GetOrdersByDeliveryIdAsync(deliveryId, cancellationToken);
+                return Ok(orders);
+            }
+            catch (OperationCanceledException)
+            {
+                return StatusCode(499, new { error = "Request was cancelled." });
+            }
+            catch (Exception)
+            {
+                return StatusCode(500, new { error = "An error occurred while retrieving delivery orders." });
+            }
+        }
+
+        /// <summary>
+        /// Get medical stores (chemists) that match the order's shipping address pincode
+        /// </summary>
+        /// <param name="orderId">Order ID</param>
+        /// <returns>List of medical stores in the same pincode</returns>
+        [HttpGet("{orderId:int}/medical-stores-by-pincode")]
+        [Authorize(Policy = "RequireOrderReadPermission")]
+        public async Task<IActionResult> GetMedicalStoresByPinCode(int orderId, CancellationToken cancellationToken)
+        {
+            try
+            {
+                var medicalStores = await _orderService.GetMedicalStoresByOrderPinCodeAsync(orderId, cancellationToken);
+                return Ok(medicalStores);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { error = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { error = ex.Message });
+            }
+            catch (OperationCanceledException)
+            {
+                return StatusCode(499, new { error = "Request was cancelled." });
+            }
+            catch (Exception)
+            {
+                return StatusCode(500, new { error = "An error occurred while retrieving medical stores." });
+            }
+        }
     }
 }
 

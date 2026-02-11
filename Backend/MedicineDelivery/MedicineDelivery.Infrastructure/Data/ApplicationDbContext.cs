@@ -316,6 +316,15 @@ namespace MedicineDelivery.Infrastructure.Data
                 .HasKey(c => c.CustomerId);
 
             builder.Entity<Customer>()
+                .Property(c => c.CustomerNumber)
+                .HasMaxLength(8)
+                .IsRequired();
+
+            builder.Entity<Customer>()
+                .HasIndex(c => c.CustomerNumber)
+                .IsUnique();
+
+            builder.Entity<Customer>()
                 .Property(c => c.CustomerFirstName)
                 .HasMaxLength(100)
                 .IsRequired();
@@ -599,8 +608,14 @@ namespace MedicineDelivery.Infrastructure.Data
                     .HasForeignKey(d => d.ServiceRegionId)
                     .OnDelete(DeleteBehavior.SetNull);
 
+                entity.HasOne<Domain.Entities.ApplicationUser>()
+                    .WithMany()
+                    .HasForeignKey(d => d.UserId)
+                    .OnDelete(DeleteBehavior.SetNull);
+
                 entity.HasIndex(d => d.MedicalStoreId);
                 entity.HasIndex(d => d.ServiceRegionId);
+                entity.HasIndex(d => d.UserId);
                 entity.HasIndex(d => d.IsActive);
                 entity.HasIndex(d => d.IsDeleted);
             });

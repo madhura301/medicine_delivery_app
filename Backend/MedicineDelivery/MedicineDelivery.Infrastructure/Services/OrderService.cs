@@ -836,12 +836,6 @@ namespace MedicineDelivery.Infrastructure.Services
                 throw new KeyNotFoundException($"Active delivery with ID '{assignDto.DeliveryId}' not found.");
             }
 
-            // Validate delivery belongs to the order's medical store
-            if (order.MedicalStoreId.HasValue && delivery.MedicalStoreId != order.MedicalStoreId)
-            {
-                throw new InvalidOperationException("Delivery does not belong to the order's medical store.");
-            }
-
             // Validate order is in a state that can be assigned to delivery
             if (order.OrderStatus != OrderStatus.BillUploaded && order.OrderStatus != OrderStatus.Paid)
             {
@@ -947,6 +941,107 @@ namespace MedicineDelivery.Infrastructure.Services
             var orders = await _unitOfWork.Orders.FindAsync(o => o.CustomerSupportId == customerSupportId);
             
             return _mapper.Map<IEnumerable<OrderDto>>(orders);
+        }
+
+        public async Task<IEnumerable<DeliveryDto>> GetEligibleDeliveryBoysByOrderIdAsync(int orderId, CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            // Find the order
+            var order = await _unitOfWork.Orders.FirstOrDefaultAsync(o => o.OrderId == orderId);
+            if (order == null)
+            {
+                throw new KeyNotFoundException($"Order with ID '{orderId}' not found.");
+            }
+
+            // Get customer address to find postal code
+            var customerAddress = await _unitOfWork.CustomerAddresses.GetByIdAsync(order.CustomerAddressId);
+            if (customerAddress == null)
+            {
+                throw new KeyNotFoundException("Customer address not found for this order.");
+            }
+
+            if (string.IsNullOrWhiteSpace(customerAddress.PostalCode))
+            {
+                throw new InvalidOperationException("Customer address does not have a postal code.");
+            }
+
+            var postalCode = customerAddress.PostalCode.Trim();
+
+            // Find ServiceRegionPinCodes matching the postal code
+            var regionPinCodes = await _unitOfWork.ServiceRegionPinCodes.FindAsync(
+                srpc => srpc.PinCode == postalCode);
+
+            if (!regionPinCodes.Any())
+            {
+                return Enumerable.Empty<DeliveryDto>();
+            }
+
+            // Get the region IDs and filter to DeliveryBoy regions only
+            var regionIds = regionPinCodes.Select(rpc => rpc.ServiceRegionId).Distinct().ToList();
+            var deliveryRegions = await _unitOfWork.ServiceRegions.FindAsync(
+                sr => regionIds.Contains(sr.Id) && sr.RegionType == RegionType.DeliveryBoy);
+
+            var deliveryRegionIds = deliveryRegions.Select(sr => sr.Id).ToList();
+            if (!deliveryRegionIds.Any())
+            {
+                return Enumerable.Empty<DeliveryDto>();
+            }
+
+            // Find all active, non-deleted delivery boys in those regions
+            var deliveries = await _unitOfWork.Deliveries.FindAsync(
+                d => d.ServiceRegionId.HasValue &&
+                     deliveryRegionIds.Contains(d.ServiceRegionId.Value) &&
+                     d.IsActive &&
+                     !d.IsDeleted);
+
+            return _mapper.Map<IEnumerable<DeliveryDto>>(deliveries);
+        }
+
+        public async Task<IEnumerable<OrderDto>> GetOrdersByDeliveryIdAsync(int deliveryId, CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            var orders = await _unitOfWork.Orders.FindAsync(o => o.DeliveryId == deliveryId);
+            return _mapper.Map<IEnumerable<OrderDto>>(orders);
+        }
+
+        public async Task<IEnumerable<MedicalStoreBasicDto>> GetMedicalStoresByOrderPinCodeAsync(int orderId, CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            // Find the order
+            var order = await _unitOfWork.Orders.FirstOrDefaultAsync(o => o.OrderId == orderId);
+            if (order == null)
+            {
+                throw new KeyNotFoundException($"Order with ID '{orderId}' not found.");
+            }
+
+            // Get customer address to find postal code
+            var customerAddress = await _unitOfWork.CustomerAddresses.GetByIdAsync(order.CustomerAddressId);
+            if (customerAddress == null)
+            {
+                throw new KeyNotFoundException("Customer address not found for this order.");
+            }
+
+            if (string.IsNullOrWhiteSpace(customerAddress.PostalCode))
+            {
+                throw new InvalidOperationException("Customer address does not have a postal code.");
+            }
+
+            var postalCode = customerAddress.PostalCode.Trim();
+
+            // Find all active MedicalStores with the same postal code
+            var medicalStores = await _unitOfWork.MedicalStores.FindAsync(
+                ms => ms.PostalCode == postalCode &&
+                      ms.IsActive &&
+                      !ms.IsDeleted);
+
+            return medicalStores.Select(ms => new MedicalStoreBasicDto
+            {
+                MedicalStoreId = ms.MedicalStoreId,
+                MedicalName = ms.MedicalName
+            }).ToList();
         }
     }
 }

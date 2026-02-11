@@ -84,10 +84,14 @@ namespace MedicineDelivery.Infrastructure.Services
                     // Add to Customer Identity role
                     await _userManager.AddToRoleAsync(identityUser, "Customer");
 
+                    // Generate unique CustomerNumber
+                    var customerNumber = await GenerateUniqueCustomerNumberAsync();
+
                     // Create customer
                     var customer = new Customer
                     {
                         CustomerId = Guid.NewGuid(),
+                        CustomerNumber = customerNumber,
                         CustomerFirstName = registrationDto.CustomerFirstName,
                         CustomerLastName = registrationDto.CustomerLastName,
                         CustomerMiddleName = registrationDto.CustomerMiddleName,
@@ -293,6 +297,30 @@ namespace MedicineDelivery.Infrastructure.Services
 
             await _unitOfWork.SaveChangesAsync();
             return true;
+        }
+
+        private async Task<string> GenerateUniqueCustomerNumberAsync()
+        {
+            const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+            const int length = 8;
+            var random = new Random();
+
+            for (int attempt = 0; attempt < 10; attempt++)
+            {
+                var customerNumber = new string(Enumerable.Range(0, length)
+                    .Select(_ => chars[random.Next(chars.Length)])
+                    .ToArray());
+
+                var existing = await _unitOfWork.Customers.FirstOrDefaultAsync(
+                    c => c.CustomerNumber == customerNumber);
+
+                if (existing == null)
+                {
+                    return customerNumber;
+                }
+            }
+
+            throw new InvalidOperationException("Failed to generate a unique customer number after multiple attempts.");
         }
     }
 }

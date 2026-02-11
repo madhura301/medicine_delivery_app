@@ -313,6 +313,19 @@ builder.Services.AddAuthorization(options =>
     
     options.AddPolicy("RequireReadConsentLogsPermission", policy => 
         policy.Requirements.Add(new MedicineDelivery.API.Authorization.PermissionRequirement("ReadConsentLogs")));
+    
+    // Delivery CRUD Policies
+    options.AddPolicy("RequireDeliveryReadPermission", policy => 
+        policy.Requirements.Add(new MedicineDelivery.API.Authorization.PermissionRequirement("DeliveryRead")));
+    
+    options.AddPolicy("RequireDeliveryCreatePermission", policy => 
+        policy.Requirements.Add(new MedicineDelivery.API.Authorization.PermissionRequirement("DeliveryCreate")));
+    
+    options.AddPolicy("RequireDeliveryUpdatePermission", policy => 
+        policy.Requirements.Add(new MedicineDelivery.API.Authorization.PermissionRequirement("DeliveryUpdate")));
+    
+    options.AddPolicy("RequireDeliveryDeletePermission", policy => 
+        policy.Requirements.Add(new MedicineDelivery.API.Authorization.PermissionRequirement("DeliveryDelete")));
 });
 
 // Register the permission authorization handler

@@ -2,7 +2,7 @@
 	"info": {
 		"_postman_id": "mediswift-e2e-business-flow",
 		"name": "MediSwift - End-to-End Business Flow",
-		"description": "Complete end-to-end test of the Medicine Delivery Application business flow.\n\nRun this collection using Postman's Collection Runner to execute all requests sequentially with a single click.\n\nCovers:\n- System bootstrap (roles, permissions, users)\n- Customer registration, login, address management\n- Medical store registration and login\n- Order creation, acceptance, bill upload, delivery, payment, OTP completion\n- Order rejection and customer support reassignment flow",
+		"description": "Complete end-to-end test of the Medicine Delivery Application business flow.\n\nRun this collection using Postman's Collection Runner to execute all requests sequentially with a single click.\n\n**IMPORTANT - Working Directory Setup:**\nFor bill upload steps to work, set the Postman working directory to the folder containing `test_bill.pdf`:\n  Settings > General > Working Directory > set to the `PostmanCollections` folder.\n\nCovers:\n- System bootstrap (roles, permissions, users)\n- Admin login, service region & customer support setup\n- Customer registration, login, address management\n- Medical store registration and login\n- Order creation, acceptance, bill upload, delivery, payment, OTP completion (Happy Path)\n- Order rejection and customer support reassignment flow (Reject Path)",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
 	},
 	"variable": [
@@ -11,6 +11,7 @@
 		{ "key": "customerToken", "value": "", "type": "string" },
 		{ "key": "chemistToken", "value": "", "type": "string" },
 		{ "key": "csToken", "value": "", "type": "string" },
+		{ "key": "csPassword", "value": "", "type": "string" },
 		{ "key": "customerId", "value": "", "type": "string" },
 		{ "key": "customerAddressId", "value": "", "type": "string" },
 		{ "key": "medicalStoreId", "value": "", "type": "string" },
@@ -22,10 +23,34 @@
 		{ "key": "orderOtp", "value": "", "type": "string" },
 		{ "key": "orderOtp2", "value": "", "type": "string" }
 	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					"console.log('\\n========== ' + pm.info.requestName + ' ==========');"
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					"// Global diagnostic logging for every response",
+					"console.log('[' + pm.info.requestName + '] Status: ' + pm.response.code + ' ' + pm.response.status);",
+					"if (pm.response.code >= 400) {",
+					"    console.error('[' + pm.info.requestName + '] ERROR BODY: ' + pm.response.text());",
+					"}"
+				]
+			}
+		}
+	],
 	"item": [
 		{
 			"name": "1 - System Bootstrap (Setup)",
-			"description": "One-time setup: creates predefined roles, permissions, role-permission mappings, and seed users.",
+			"description": "One-time setup: creates predefined roles, permissions, role-permission mappings, and admin seed user.",
 			"item": [
 				{
 					"name": "01. Create Predefined Roles",
@@ -46,8 +71,7 @@
 								"exec": [
 									"pm.test('Predefined roles created or already exist', function () {",
 									"    pm.expect([200, 409]).to.include(pm.response.code);",
-									"});",
-									"console.log('Roles response:', pm.response.text());"
+									"});"
 								]
 							}
 						}
@@ -72,8 +96,7 @@
 								"exec": [
 									"pm.test('Predefined permissions created or already exist', function () {",
 									"    pm.expect([200, 409]).to.include(pm.response.code);",
-									"});",
-									"console.log('Permissions response:', pm.response.text());"
+									"});"
 								]
 							}
 						}
@@ -98,8 +121,7 @@
 								"exec": [
 									"pm.test('Role-permission mappings created or already exist', function () {",
 									"    pm.expect([200, 409]).to.include(pm.response.code);",
-									"});",
-									"console.log('Role-Permissions response:', pm.response.text());"
+									"});"
 								]
 							}
 						}
@@ -124,34 +146,7 @@
 								"exec": [
 									"pm.test('Admin user created or already exists', function () {",
 									"    pm.expect([200, 409]).to.include(pm.response.code);",
-									"});",
-									"console.log('Admin user response:', pm.response.text());"
-								]
-							}
-						}
-					]
-				},
-				{
-					"name": "05. Create Customer Support User",
-					"request": {
-						"method": "POST",
-						"header": [],
-						"url": {
-							"raw": "{{baseUrl}}/api/setup/users/customer-support",
-							"host": ["{{baseUrl}}"],
-							"path": ["api", "setup", "users", "customer-support"]
-						}
-					},
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"type": "text/javascript",
-								"exec": [
-									"pm.test('Customer Support user created or already exists', function () {",
-									"    pm.expect([200, 409]).to.include(pm.response.code);",
-									"});",
-									"console.log('CS user response:', pm.response.text());"
+									"});"
 								]
 							}
 						}
@@ -161,10 +156,10 @@
 		},
 		{
 			"name": "2 - Admin Login & Region Setup",
-			"description": "Admin logs in, creates a CustomerSupport-type service region with pin codes, registers customer support staff, and assigns the region.",
+			"description": "Admin logs in, creates a CustomerSupport-type service region with pin codes, registers customer support staff (which creates the CS Identity user), and assigns the region.",
 			"item": [
 				{
-					"name": "06. Admin Login",
+					"name": "05. Admin Login",
 					"request": {
 						"method": "POST",
 						"header": [
@@ -189,9 +184,10 @@
 									"pm.test('Admin login successful', function () {",
 									"    pm.response.to.have.status(200);",
 									"    var json = pm.response.json();",
+									"    pm.expect(json.success).to.eql(true);",
 									"    pm.expect(json.token).to.be.a('string').and.not.empty;",
 									"    pm.collectionVariables.set('adminToken', json.token);",
-									"    console.log('Admin token set. Role:', json.role);",
+									"    console.log('Admin token captured.');",
 									"});"
 								]
 							}
@@ -199,7 +195,7 @@
 					]
 				},
 				{
-					"name": "07. Create CS Region (CustomerSupport type)",
+					"name": "06. Create CS Region (CustomerSupport type)",
 					"request": {
 						"method": "POST",
 						"header": [
@@ -225,10 +221,10 @@
 									"pm.test('CS Region created', function () {",
 									"    pm.expect([200, 201]).to.include(pm.response.code);",
 									"    var json = pm.response.json();",
-									"    var regionId = json.id || json.Id;",
+									"    var regionId = json.id;",
 									"    pm.expect(regionId).to.not.be.undefined;",
 									"    pm.collectionVariables.set('csRegionId', regionId.toString());",
-									"    console.log('CS Region Id:', regionId);",
+									"    console.log('csRegionId =', regionId);",
 									"});"
 								]
 							}
@@ -236,7 +232,7 @@
 					]
 				},
 				{
-					"name": "08. Register Customer Support Staff",
+					"name": "07. Register Customer Support Staff",
 					"request": {
 						"method": "POST",
 						"header": [
@@ -260,12 +256,18 @@
 								"type": "text/javascript",
 								"exec": [
 									"pm.test('Customer Support staff registered', function () {",
-									"    pm.expect([200, 201]).to.include(pm.response.code);",
+									"    pm.response.to.have.status(200);",
 									"    var json = pm.response.json();",
-									"    var csId = json.customerSupportId || json.CustomerSupportId;",
+									"    // Response is CustomerSupportResponseDto (flat, not wrapped)",
+									"    var csId = json.customerSupportId;",
 									"    pm.expect(csId).to.not.be.undefined;",
 									"    pm.collectionVariables.set('customerSupportId', csId.toString());",
-									"    console.log('CustomerSupportId:', csId);",
+									"    // BUG FIX #2: Capture the randomly generated password for CS login later",
+									"    var csPass = json.password;",
+									"    pm.expect(csPass).to.be.a('string').and.not.empty;",
+									"    pm.collectionVariables.set('csPassword', csPass);",
+									"    console.log('customerSupportId =', csId);",
+									"    console.log('csPassword captured (length:', csPass.length, ')');",
 									"});"
 								]
 							}
@@ -273,7 +275,7 @@
 					]
 				},
 				{
-					"name": "09. Assign CS Region to Support Staff",
+					"name": "08. Assign CS Region to Support Staff",
 					"request": {
 						"method": "POST",
 						"header": [
@@ -297,7 +299,7 @@
 								"type": "text/javascript",
 								"exec": [
 									"pm.test('Region assigned to CS staff', function () {",
-									"    pm.expect([200, 204]).to.include(pm.response.code);",
+									"    pm.response.to.have.status(200);",
 									"    console.log('Region assignment response:', pm.response.text());",
 									"});"
 								]
@@ -312,7 +314,7 @@
 			"description": "Customer self-registers, logs in, views profile, and adds a delivery address.",
 			"item": [
 				{
-					"name": "10. Register Customer",
+					"name": "09. Register Customer",
 					"request": {
 						"method": "POST",
 						"header": [
@@ -337,10 +339,12 @@
 									"pm.test('Customer registered', function () {",
 									"    pm.expect([200, 201]).to.include(pm.response.code);",
 									"    var json = pm.response.json();",
-									"    var custId = json.customerId || json.CustomerId;",
+									"    // BUG FIX #3: Response is wrapped: { success, customer: { customerId: ... }, errors }",
+									"    pm.expect(json.success).to.eql(true);",
+									"    var custId = json.customer.customerId;",
 									"    pm.expect(custId).to.not.be.undefined;",
 									"    pm.collectionVariables.set('customerId', custId.toString());",
-									"    console.log('CustomerId:', custId);",
+									"    console.log('customerId =', custId);",
 									"});"
 								]
 							}
@@ -348,7 +352,7 @@
 					]
 				},
 				{
-					"name": "11. Customer Login",
+					"name": "10. Customer Login",
 					"request": {
 						"method": "POST",
 						"header": [
@@ -373,13 +377,11 @@
 									"pm.test('Customer login successful', function () {",
 									"    pm.response.to.have.status(200);",
 									"    var json = pm.response.json();",
+									"    pm.expect(json.success).to.eql(true);",
 									"    pm.expect(json.token).to.be.a('string').and.not.empty;",
 									"    pm.collectionVariables.set('customerToken', json.token);",
-									"    // Also capture entityId (customerId) from auth response if available",
-									"    if (json.entityId) {",
-									"        pm.collectionVariables.set('customerId', json.entityId);",
-									"    }",
-									"    console.log('Customer token set. EntityId:', json.entityId);",
+									"    // BUG FIX #4: entityId is always null in API AuthService - don't try to read it",
+									"    console.log('Customer token captured. customerId already set to:', pm.collectionVariables.get('customerId'));",
 									"});"
 								]
 							}
@@ -387,7 +389,7 @@
 					]
 				},
 				{
-					"name": "12. View My Profile",
+					"name": "11. View My Profile",
 					"request": {
 						"method": "GET",
 						"header": [
@@ -408,7 +410,7 @@
 									"pm.test('Customer profile retrieved', function () {",
 									"    pm.response.to.have.status(200);",
 									"    var json = pm.response.json();",
-									"    console.log('Customer profile:', json.customerFirstName, json.customerLastName);",
+									"    console.log('Profile:', json.customerFirstName, json.customerLastName, '| CustomerId:', json.customerId);",
 									"});"
 								]
 							}
@@ -416,7 +418,7 @@
 					]
 				},
 				{
-					"name": "13. Add Customer Address",
+					"name": "12. Add Customer Address",
 					"request": {
 						"method": "POST",
 						"header": [
@@ -442,10 +444,10 @@
 									"pm.test('Customer address created', function () {",
 									"    pm.expect([200, 201]).to.include(pm.response.code);",
 									"    var json = pm.response.json();",
-									"    var addrId = json.id || json.Id;",
+									"    var addrId = json.id;",
 									"    pm.expect(addrId).to.not.be.undefined;",
 									"    pm.collectionVariables.set('customerAddressId', addrId.toString());",
-									"    console.log('CustomerAddressId:', addrId);",
+									"    console.log('customerAddressId =', addrId);",
 									"});"
 								]
 							}
@@ -459,7 +461,7 @@
 			"description": "Medical store self-registers, logs in, and views profile.",
 			"item": [
 				{
-					"name": "14. Register Medical Store",
+					"name": "13. Register Medical Store",
 					"request": {
 						"method": "POST",
 						"header": [
@@ -482,12 +484,14 @@
 								"type": "text/javascript",
 								"exec": [
 									"pm.test('Medical Store registered', function () {",
-									"    pm.expect([200, 201]).to.include(pm.response.code);",
+									"    pm.response.to.have.status(200);",
 									"    var json = pm.response.json();",
-									"    var storeId = json.medicalStoreId || json.MedicalStoreId;",
+									"    // BUG FIX #5: Response is wrapped: { success, medicalStore: { medicalStoreId: ... }, errors }",
+									"    pm.expect(json.success).to.eql(true);",
+									"    var storeId = json.medicalStore.medicalStoreId;",
 									"    pm.expect(storeId).to.not.be.undefined;",
 									"    pm.collectionVariables.set('medicalStoreId', storeId.toString());",
-									"    console.log('MedicalStoreId:', storeId);",
+									"    console.log('medicalStoreId =', storeId);",
 									"});"
 								]
 							}
@@ -495,7 +499,7 @@
 					]
 				},
 				{
-					"name": "15. Medical Store Login",
+					"name": "14. Medical Store Login",
 					"request": {
 						"method": "POST",
 						"header": [
@@ -520,12 +524,11 @@
 									"pm.test('Chemist login successful', function () {",
 									"    pm.response.to.have.status(200);",
 									"    var json = pm.response.json();",
+									"    pm.expect(json.success).to.eql(true);",
 									"    pm.expect(json.token).to.be.a('string').and.not.empty;",
 									"    pm.collectionVariables.set('chemistToken', json.token);",
-									"    if (json.entityId) {",
-									"        pm.collectionVariables.set('medicalStoreId', json.entityId);",
-									"    }",
-									"    console.log('Chemist token set. EntityId:', json.entityId);",
+									"    // BUG FIX #4: entityId is always null in API AuthService - don't use it",
+									"    console.log('Chemist token captured. medicalStoreId already set to:', pm.collectionVariables.get('medicalStoreId'));",
 									"});"
 								]
 							}
@@ -533,7 +536,7 @@
 					]
 				},
 				{
-					"name": "16. View Medical Store Profile",
+					"name": "15. View Medical Store Profile",
 					"request": {
 						"method": "GET",
 						"header": [
@@ -568,7 +571,7 @@
 			"description": "Admin creates a delivery boy linked to the medical store.",
 			"item": [
 				{
-					"name": "17. Create Delivery Boy",
+					"name": "16. Create Delivery Boy",
 					"request": {
 						"method": "POST",
 						"header": [
@@ -594,10 +597,10 @@
 									"pm.test('Delivery boy created', function () {",
 									"    pm.expect([200, 201]).to.include(pm.response.code);",
 									"    var json = pm.response.json();",
-									"    var delId = json.id || json.Id;",
+									"    var delId = json.id;",
 									"    pm.expect(delId).to.not.be.undefined;",
 									"    pm.collectionVariables.set('deliveryId', delId.toString());",
-									"    console.log('DeliveryId:', delId);",
+									"    console.log('deliveryId =', delId);",
 									"});"
 								]
 							}
@@ -611,7 +614,7 @@
 			"description": "Customer creates an order -> Medical store accepts -> Uploads bill -> Assigns delivery -> Payment -> OTP -> Complete.",
 			"item": [
 				{
-					"name": "18. Create Order (Text type)",
+					"name": "17. Create Order (Text type)",
 					"request": {
 						"method": "POST",
 						"header": [
@@ -642,10 +645,10 @@
 									"pm.test('Order created', function () {",
 									"    pm.expect([200, 201]).to.include(pm.response.code);",
 									"    var json = pm.response.json();",
-									"    var oid = json.orderId || json.OrderId;",
+									"    var oid = json.orderId;",
 									"    pm.expect(oid).to.not.be.undefined;",
 									"    pm.collectionVariables.set('orderId', oid.toString());",
-									"    console.log('OrderId:', oid, '| OrderNumber:', json.orderNumber);",
+									"    console.log('orderId =', oid, '| orderNumber:', json.orderNumber, '| orderStatus:', json.orderStatus);",
 									"});"
 								]
 							}
@@ -653,7 +656,7 @@
 					]
 				},
 				{
-					"name": "19. View Order Details",
+					"name": "18. View Order Details",
 					"request": {
 						"method": "GET",
 						"header": [
@@ -674,7 +677,7 @@
 									"pm.test('Order details retrieved', function () {",
 									"    pm.response.to.have.status(200);",
 									"    var json = pm.response.json();",
-									"    console.log('Order Status:', json.orderStatus, '| MedicalStoreId:', json.medicalStoreId);",
+									"    console.log('orderStatus:', json.orderStatus, '| medicalStoreId:', json.medicalStoreId);",
 									"});"
 								]
 							}
@@ -682,7 +685,7 @@
 					]
 				},
 				{
-					"name": "20. Medical Store Views Active Orders",
+					"name": "19. Medical Store Views Active Orders",
 					"request": {
 						"method": "GET",
 						"header": [
@@ -711,7 +714,7 @@
 					]
 				},
 				{
-					"name": "21. Medical Store Accepts Order",
+					"name": "20. Medical Store Accepts Order",
 					"request": {
 						"method": "PUT",
 						"header": [
@@ -731,7 +734,8 @@
 								"exec": [
 									"pm.test('Order accepted by medical store', function () {",
 									"    pm.response.to.have.status(200);",
-									"    console.log('Order accepted. Response:', pm.response.text());",
+									"    var json = pm.response.json();",
+									"    console.log('Order accepted. orderStatus:', json.orderStatus);",
 									"});"
 								]
 							}
@@ -739,7 +743,7 @@
 					]
 				},
 				{
-					"name": "22. Upload Bill",
+					"name": "21. Upload Bill",
 					"request": {
 						"method": "POST",
 						"header": [
@@ -751,7 +755,7 @@
 								{ "key": "OrderId", "value": "{{orderId}}", "type": "text" },
 								{ "key": "OrderAmount", "value": "450.00", "type": "text" },
 								{ "key": "DeliveryId", "value": "{{deliveryId}}", "type": "text" },
-								{ "key": "BillFile", "type": "file", "src": "", "description": "Attach a bill file (PDF/image) here if running manually. The runner will skip file uploads." }
+								{ "key": "BillFile", "type": "file", "src": "test_bill.pdf", "description": "Dummy bill PDF. Ensure Postman working directory points to the PostmanCollections folder." }
 							]
 						},
 						"url": {
@@ -762,26 +766,14 @@
 					},
 					"event": [
 						{
-							"listen": "prerequest",
-							"script": {
-								"type": "text/javascript",
-								"exec": [
-									"// Note: File uploads require manual file selection in Postman UI.",
-									"// In Collection Runner, this may fail if no file is attached.",
-									"// The flow will continue regardless.",
-									"console.log('Upload bill - attach a file in Postman UI if running manually.');"
-								]
-							}
-						},
-						{
 							"listen": "test",
 							"script": {
 								"type": "text/javascript",
 								"exec": [
-									"pm.test('Bill uploaded (or skipped if no file)', function () {",
-									"    // Accept 200/400 since file may not be attached in runner",
-									"    pm.expect([200, 201, 400]).to.include(pm.response.code);",
-									"    console.log('Upload bill response:', pm.response.code, pm.response.text());",
+									"pm.test('Bill uploaded successfully', function () {",
+									"    pm.response.to.have.status(200);",
+									"    var json = pm.response.json();",
+									"    console.log('Bill uploaded. orderStatus:', json.orderStatus, '| totalAmount:', json.totalAmount);",
 									"});"
 								]
 							}
@@ -789,7 +781,7 @@
 					]
 				},
 				{
-					"name": "23. Assign to Delivery Boy",
+					"name": "22. Assign to Delivery Boy",
 					"request": {
 						"method": "POST",
 						"header": [
@@ -814,7 +806,8 @@
 								"exec": [
 									"pm.test('Order assigned to delivery boy', function () {",
 									"    pm.response.to.have.status(200);",
-									"    console.log('Assign to delivery response:', pm.response.text());",
+									"    var json = pm.response.json();",
+									"    console.log('Assigned to delivery. orderStatus:', json.orderStatus);",
 									"});"
 								]
 							}
@@ -822,7 +815,7 @@
 					]
 				},
 				{
-					"name": "24. Record Payment",
+					"name": "23. Record Payment",
 					"request": {
 						"method": "POST",
 						"header": [
@@ -847,7 +840,8 @@
 								"exec": [
 									"pm.test('Payment recorded', function () {",
 									"    pm.expect([200, 201]).to.include(pm.response.code);",
-									"    console.log('Payment response:', pm.response.text());",
+									"    var json = pm.response.json();",
+									"    console.log('Payment recorded. paymentId:', json.paymentId, '| amount:', json.amount);",
 									"});"
 								]
 							}
@@ -855,7 +849,7 @@
 					]
 				},
 				{
-					"name": "25. Get Order (Read OTP)",
+					"name": "24. Get Order (Read OTP)",
 					"request": {
 						"method": "GET",
 						"header": [
@@ -876,13 +870,12 @@
 									"pm.test('OTP extracted from order', function () {",
 									"    pm.response.to.have.status(200);",
 									"    var json = pm.response.json();",
-									"    var otp = json.otp || json.OTP;",
+									"    var otp = json.otp;",
 									"    if (otp) {",
 									"        pm.collectionVariables.set('orderOtp', otp.toString());",
-									"        console.log('OTP for order:', otp);",
+									"        console.log('orderOtp =', otp, '| orderStatus:', json.orderStatus, '| orderPaymentStatus:', json.orderPaymentStatus);",
 									"    } else {",
-									"        console.warn('OTP not yet available on order. Order status:', json.orderStatus);",
-									"        // Set a fallback so Complete doesn't fail on undefined",
+									"        console.warn('OTP not yet available. orderStatus:', json.orderStatus, '| orderPaymentStatus:', json.orderPaymentStatus);",
 									"        pm.collectionVariables.set('orderOtp', '0000');",
 									"    }",
 									"});"
@@ -892,7 +885,7 @@
 					]
 				},
 				{
-					"name": "26. Complete Order (Delivery Handover with OTP)",
+					"name": "25. Complete Order (Delivery Handover with OTP)",
 					"request": {
 						"method": "PUT",
 						"header": [
@@ -917,7 +910,8 @@
 								"exec": [
 									"pm.test('Order completed with OTP', function () {",
 									"    pm.response.to.have.status(200);",
-									"    console.log('Order complete response:', pm.response.text());",
+									"    var json = pm.response.json();",
+									"    console.log('Order completed. orderStatus:', json.orderStatus);",
 									"});"
 								]
 							}
@@ -925,7 +919,7 @@
 					]
 				},
 				{
-					"name": "27. Verify Order Completed",
+					"name": "26. Verify Order Completed",
 					"request": {
 						"method": "GET",
 						"header": [
@@ -943,12 +937,11 @@
 							"script": {
 								"type": "text/javascript",
 								"exec": [
-									"pm.test('Order status is Completed', function () {",
+									"pm.test('Order status is Completed (7)', function () {",
 									"    pm.response.to.have.status(200);",
 									"    var json = pm.response.json();",
-									"    // OrderStatus.Completed = 7",
 									"    pm.expect(json.orderStatus).to.eql(7);",
-									"    console.log('HAPPY PATH COMPLETE! Order', json.orderId, 'status:', json.orderStatus);",
+									"    console.log('HAPPY PATH COMPLETE! orderId:', json.orderId, '| orderStatus:', json.orderStatus);",
 									"});"
 								]
 							}
@@ -962,7 +955,7 @@
 			"description": "Customer creates a second order -> Medical store rejects -> Customer Support reassigns -> Medical store accepts -> Full delivery cycle.",
 			"item": [
 				{
-					"name": "28. Create Second Order",
+					"name": "27. Create Second Order",
 					"request": {
 						"method": "POST",
 						"header": [
@@ -993,10 +986,10 @@
 									"pm.test('Second order created', function () {",
 									"    pm.expect([200, 201]).to.include(pm.response.code);",
 									"    var json = pm.response.json();",
-									"    var oid = json.orderId || json.OrderId;",
+									"    var oid = json.orderId;",
 									"    pm.expect(oid).to.not.be.undefined;",
 									"    pm.collectionVariables.set('orderId2', oid.toString());",
-									"    console.log('OrderId2:', oid, '| OrderNumber:', json.orderNumber);",
+									"    console.log('orderId2 =', oid, '| orderNumber:', json.orderNumber, '| orderStatus:', json.orderStatus);",
 									"});"
 								]
 							}
@@ -1004,7 +997,7 @@
 					]
 				},
 				{
-					"name": "29. Medical Store Rejects Order",
+					"name": "28. Medical Store Rejects Order",
 					"request": {
 						"method": "PUT",
 						"header": [
@@ -1029,7 +1022,8 @@
 								"exec": [
 									"pm.test('Order rejected by medical store', function () {",
 									"    pm.response.to.have.status(200);",
-									"    console.log('Order rejected. Response:', pm.response.text());",
+									"    var json = pm.response.json();",
+									"    console.log('Order rejected. orderStatus:', json.orderStatus);",
 									"});"
 								]
 							}
@@ -1037,7 +1031,7 @@
 					]
 				},
 				{
-					"name": "30. Customer Support Login",
+					"name": "29. Customer Support Login",
 					"request": {
 						"method": "POST",
 						"header": [
@@ -1045,7 +1039,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"mobileNumber\": \"7777777777\",\n    \"password\": \"Support@123\"\n}"
+							"raw": "{\n    \"mobileNumber\": \"7777777777\",\n    \"password\": \"{{csPassword}}\"\n}"
 						},
 						"url": {
 							"raw": "{{baseUrl}}/api/Auth/login",
@@ -1062,9 +1056,10 @@
 									"pm.test('Customer Support login successful', function () {",
 									"    pm.response.to.have.status(200);",
 									"    var json = pm.response.json();",
+									"    pm.expect(json.success).to.eql(true);",
 									"    pm.expect(json.token).to.be.a('string').and.not.empty;",
 									"    pm.collectionVariables.set('csToken', json.token);",
-									"    console.log('CS token set. EntityId:', json.entityId);",
+									"    console.log('CS token captured.');",
 									"});"
 								]
 							}
@@ -1072,7 +1067,7 @@
 					]
 				},
 				{
-					"name": "31. CS Views Assigned Orders",
+					"name": "30. CS Views Assigned Orders",
 					"request": {
 						"method": "GET",
 						"header": [
@@ -1101,7 +1096,7 @@
 					]
 				},
 				{
-					"name": "32. CS Gets Medical Stores by Order City",
+					"name": "31. CS Gets Medical Stores by Order City",
 					"request": {
 						"method": "GET",
 						"header": [
@@ -1130,7 +1125,7 @@
 					]
 				},
 				{
-					"name": "33. CS Reassigns Order to Medical Store",
+					"name": "32. CS Reassigns Order to Medical Store",
 					"request": {
 						"method": "PUT",
 						"header": [
@@ -1155,7 +1150,8 @@
 								"exec": [
 									"pm.test('Order reassigned to medical store by CS', function () {",
 									"    pm.response.to.have.status(200);",
-									"    console.log('Reassignment response:', pm.response.text());",
+									"    var json = pm.response.json();",
+									"    console.log('Reassigned. orderStatus:', json.orderStatus);",
 									"});"
 								]
 							}
@@ -1163,7 +1159,7 @@
 					]
 				},
 				{
-					"name": "34. Medical Store Accepts Reassigned Order",
+					"name": "33. Medical Store Accepts Reassigned Order",
 					"request": {
 						"method": "PUT",
 						"header": [
@@ -1183,7 +1179,8 @@
 								"exec": [
 									"pm.test('Reassigned order accepted', function () {",
 									"    pm.response.to.have.status(200);",
-									"    console.log('Reassigned order accepted. Response:', pm.response.text());",
+									"    var json = pm.response.json();",
+									"    console.log('Reassigned order accepted. orderStatus:', json.orderStatus);",
 									"});"
 								]
 							}
@@ -1191,7 +1188,7 @@
 					]
 				},
 				{
-					"name": "35. Upload Bill for Reassigned Order",
+					"name": "34. Upload Bill for Reassigned Order",
 					"request": {
 						"method": "POST",
 						"header": [
@@ -1203,7 +1200,7 @@
 								{ "key": "OrderId", "value": "{{orderId2}}", "type": "text" },
 								{ "key": "OrderAmount", "value": "875.50", "type": "text" },
 								{ "key": "DeliveryId", "value": "{{deliveryId}}", "type": "text" },
-								{ "key": "BillFile", "type": "file", "src": "", "description": "Attach bill file here if running manually." }
+								{ "key": "BillFile", "type": "file", "src": "test_bill.pdf", "description": "Dummy bill PDF. Ensure Postman working directory points to the PostmanCollections folder." }
 							]
 						},
 						"url": {
@@ -1218,9 +1215,10 @@
 							"script": {
 								"type": "text/javascript",
 								"exec": [
-									"pm.test('Bill uploaded for reassigned order (or skipped)', function () {",
-									"    pm.expect([200, 201, 400]).to.include(pm.response.code);",
-									"    console.log('Upload bill (order 2) response:', pm.response.code, pm.response.text());",
+									"pm.test('Bill uploaded for reassigned order', function () {",
+									"    pm.response.to.have.status(200);",
+									"    var json = pm.response.json();",
+									"    console.log('Bill uploaded (order 2). orderStatus:', json.orderStatus, '| totalAmount:', json.totalAmount);",
 									"});"
 								]
 							}
@@ -1228,7 +1226,7 @@
 					]
 				},
 				{
-					"name": "36. Assign Delivery for Reassigned Order",
+					"name": "35. Assign Delivery for Reassigned Order",
 					"request": {
 						"method": "POST",
 						"header": [
@@ -1253,7 +1251,8 @@
 								"exec": [
 									"pm.test('Reassigned order assigned to delivery', function () {",
 									"    pm.response.to.have.status(200);",
-									"    console.log('Delivery assignment (order 2) response:', pm.response.text());",
+									"    var json = pm.response.json();",
+									"    console.log('Delivery assigned (order 2). orderStatus:', json.orderStatus);",
 									"});"
 								]
 							}
@@ -1261,7 +1260,7 @@
 					]
 				},
 				{
-					"name": "37. Record Payment for Reassigned Order",
+					"name": "36. Record Payment for Reassigned Order",
 					"request": {
 						"method": "POST",
 						"header": [
@@ -1286,7 +1285,8 @@
 								"exec": [
 									"pm.test('Payment recorded for reassigned order', function () {",
 									"    pm.expect([200, 201]).to.include(pm.response.code);",
-									"    console.log('Payment (order 2) response:', pm.response.text());",
+									"    var json = pm.response.json();",
+									"    console.log('Payment recorded (order 2). paymentId:', json.paymentId, '| amount:', json.amount);",
 									"});"
 								]
 							}
@@ -1294,7 +1294,7 @@
 					]
 				},
 				{
-					"name": "38. Get OTP for Reassigned Order",
+					"name": "37. Get OTP for Reassigned Order",
 					"request": {
 						"method": "GET",
 						"header": [
@@ -1315,12 +1315,12 @@
 									"pm.test('OTP extracted for reassigned order', function () {",
 									"    pm.response.to.have.status(200);",
 									"    var json = pm.response.json();",
-									"    var otp = json.otp || json.OTP;",
+									"    var otp = json.otp;",
 									"    if (otp) {",
 									"        pm.collectionVariables.set('orderOtp2', otp.toString());",
-									"        console.log('OTP for order 2:', otp);",
+									"        console.log('orderOtp2 =', otp, '| orderStatus:', json.orderStatus, '| orderPaymentStatus:', json.orderPaymentStatus);",
 									"    } else {",
-									"        console.warn('OTP not yet available for order 2. Status:', json.orderStatus);",
+									"        console.warn('OTP not yet available for order 2. orderStatus:', json.orderStatus, '| orderPaymentStatus:', json.orderPaymentStatus);",
 									"        pm.collectionVariables.set('orderOtp2', '0000');",
 									"    }",
 									"});"
@@ -1330,7 +1330,7 @@
 					]
 				},
 				{
-					"name": "39. Complete Reassigned Order",
+					"name": "38. Complete Reassigned Order",
 					"request": {
 						"method": "PUT",
 						"header": [
@@ -1355,7 +1355,8 @@
 								"exec": [
 									"pm.test('Reassigned order completed with OTP', function () {",
 									"    pm.response.to.have.status(200);",
-									"    console.log('Order 2 complete response:', pm.response.text());",
+									"    var json = pm.response.json();",
+									"    console.log('Order 2 completed. orderStatus:', json.orderStatus);",
 									"});"
 								]
 							}
@@ -1363,7 +1364,7 @@
 					]
 				},
 				{
-					"name": "40. Verify Reassigned Order Completed",
+					"name": "39. Verify Reassigned Order Completed",
 					"request": {
 						"method": "GET",
 						"header": [
@@ -1381,12 +1382,11 @@
 							"script": {
 								"type": "text/javascript",
 								"exec": [
-									"pm.test('Reassigned order status is Completed', function () {",
+									"pm.test('Reassigned order status is Completed (7)', function () {",
 									"    pm.response.to.have.status(200);",
 									"    var json = pm.response.json();",
-									"    // OrderStatus.Completed = 7",
 									"    pm.expect(json.orderStatus).to.eql(7);",
-									"    console.log('REJECT-REASSIGN FLOW COMPLETE! Order', json.orderId, 'status:', json.orderStatus);",
+									"    console.log('REJECT-REASSIGN FLOW COMPLETE! orderId:', json.orderId, '| orderStatus:', json.orderStatus);",
 									"});",
 									"",
 									"console.log('============================================');",

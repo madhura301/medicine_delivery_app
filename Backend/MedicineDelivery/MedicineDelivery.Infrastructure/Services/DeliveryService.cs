@@ -1,4 +1,5 @@
 using AutoMapper;
+using Microsoft.AspNetCore.Identity;
 using MedicineDelivery.Application.DTOs;
 using MedicineDelivery.Application.Interfaces;
 using MedicineDelivery.Domain.Entities;
@@ -10,16 +11,35 @@ namespace MedicineDelivery.Infrastructure.Services
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly IMapper _mapper;
+        private readonly UserManager<ApplicationUser> _userManager;
 
-        public DeliveryService(IUnitOfWork unitOfWork, IMapper mapper)
+        public DeliveryService(IUnitOfWork unitOfWork, IMapper mapper, UserManager<ApplicationUser> userManager)
         {
             _unitOfWork = unitOfWork;
             _mapper = mapper;
+            _userManager = userManager;
         }
 
         public async Task<DeliveryDto> CreateDeliveryAsync(CreateDeliveryDto createDto, Guid? addedBy = null)
         {
             ArgumentNullException.ThrowIfNull(createDto);
+
+            if (string.IsNullOrWhiteSpace(createDto.MobileNumber))
+            {
+                throw new ArgumentException("MobileNumber is required to create a delivery boy.");
+            }
+
+            if (string.IsNullOrWhiteSpace(createDto.Password))
+            {
+                throw new ArgumentException("Password is required to create a delivery boy.");
+            }
+
+            // Check if user with this mobile number already exists
+            var existingUser = await _userManager.FindByNameAsync(createDto.MobileNumber);
+            if (existingUser != null)
+            {
+                throw new InvalidOperationException("A user with this mobile number already exists.");
+            }
 
             // Validate MedicalStoreId if provided
             if (createDto.MedicalStoreId.HasValue)
@@ -46,25 +66,71 @@ namespace MedicineDelivery.Infrastructure.Services
                 }
             }
 
-            var delivery = new Delivery
+            // Begin transaction for atomicity
+            await _unitOfWork.BeginTransactionAsync();
+            ApplicationUser? identityUser = null;
+
+            try
             {
-                FirstName = createDto.FirstName,
-                MiddleName = createDto.MiddleName,
-                LastName = createDto.LastName,
-                DrivingLicenceNumber = createDto.DrivingLicenceNumber,
-                MobileNumber = createDto.MobileNumber,
-                MedicalStoreId = createDto.MedicalStoreId,
-                ServiceRegionId = createDto.ServiceRegionId,
-                IsActive = true,
-                IsDeleted = false,
-                AddedOn = DateTime.UtcNow,
-                AddedBy = addedBy
-            };
+                // Create Identity user
+                identityUser = new ApplicationUser
+                {
+                    UserName = createDto.MobileNumber,
+                    Email = $"{createDto.MobileNumber}@delivery.local",
+                    PhoneNumber = createDto.MobileNumber,
+                    FirstName = createDto.FirstName ?? string.Empty,
+                    LastName = createDto.LastName ?? string.Empty,
+                    EmailConfirmed = true
+                };
 
-            await _unitOfWork.Deliveries.AddAsync(delivery);
-            await _unitOfWork.SaveChangesAsync();
+                var userResult = await _userManager.CreateAsync(identityUser, createDto.Password);
+                if (!userResult.Succeeded)
+                {
+                    await _unitOfWork.RollbackTransactionAsync();
+                    var errors = string.Join("; ", userResult.Errors.Select(e => e.Description));
+                    throw new InvalidOperationException($"Failed to create identity user: {errors}");
+                }
 
-            return _mapper.Map<DeliveryDto>(delivery);
+                // Add to DeliveryBoy role
+                await _userManager.AddToRoleAsync(identityUser, "DeliveryBoy");
+
+                // Create Delivery entity
+                var delivery = new Delivery
+                {
+                    FirstName = createDto.FirstName,
+                    MiddleName = createDto.MiddleName,
+                    LastName = createDto.LastName,
+                    DrivingLicenceNumber = createDto.DrivingLicenceNumber,
+                    MobileNumber = createDto.MobileNumber,
+                    MedicalStoreId = createDto.MedicalStoreId,
+                    ServiceRegionId = createDto.ServiceRegionId,
+                    UserId = identityUser.Id,
+                    IsActive = true,
+                    IsDeleted = false,
+                    AddedOn = DateTime.UtcNow,
+                    AddedBy = addedBy
+                };
+
+                await _unitOfWork.Deliveries.AddAsync(delivery);
+                await _unitOfWork.SaveChangesAsync();
+                await _unitOfWork.CommitTransactionAsync();
+
+                return _mapper.Map<DeliveryDto>(delivery);
+            }
+            catch (Exception)
+            {
+                await _unitOfWork.RollbackTransactionAsync();
+                // Clean up the Identity user if it was created
+                if (identityUser != null)
+                {
+                    var createdUser = await _userManager.FindByIdAsync(identityUser.Id);
+                    if (createdUser != null)
+                    {
+                        await _userManager.DeleteAsync(createdUser);
+                    }
+                }
+                throw;
+            }
         }
 
         public async Task<DeliveryDto?> GetDeliveryByIdAsync(int id)

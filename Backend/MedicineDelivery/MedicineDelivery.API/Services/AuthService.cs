@@ -213,6 +213,11 @@ namespace MedicineDelivery.API.Services
                         _logger.LogDebug("MedicalStore found: {MedicalStoreId}", medicalStore?.MedicalStoreId);
                         return medicalStore?.MedicalStoreId.ToString() ?? "";
                     
+                    case "deliveryboy":
+                        var delivery = await _unitOfWork.Deliveries.FirstOrDefaultAsync(d => d.UserId == userId);
+                        _logger.LogDebug("Delivery found: {DeliveryId}", delivery?.Id);
+                        return delivery?.Id.ToString() ?? "";
+                    
                     case "admin":
                     default:
                         _logger.LogDebug("Using empty string for role: {Role}", role);
