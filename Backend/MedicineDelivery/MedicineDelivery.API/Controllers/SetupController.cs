@@ -407,6 +407,79 @@ namespace MedicineDelivery.API.Controllers
         }
 
         /// <summary>
+        /// Finds all customers that do not have a CustomerNumber and assigns them a unique one.
+        /// </summary>
+        [HttpPost("customers/fix-missing-customer-numbers")]
+        [AllowAnonymous]
+        public async Task<IActionResult> FixMissingCustomerNumbers()
+        {
+            var customersWithoutNumber = await _context.Customers
+                .Where(c => c.CustomerNumber == null || c.CustomerNumber == string.Empty)
+                .ToListAsync();
+
+            if (customersWithoutNumber.Count == 0)
+            {
+                return Ok(new { Message = "All customers already have a CustomerNumber.", Updated = 0 });
+            }
+
+            var existingNumbers = await _context.Customers
+                .Where(c => c.CustomerNumber != null && c.CustomerNumber != string.Empty)
+                .Select(c => c.CustomerNumber)
+                .ToListAsync();
+
+            var existingNumberSet = new HashSet<string>(existingNumbers);
+
+            const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+            const int length = 8;
+            var random = new Random();
+            var updatedCustomers = new List<object>();
+
+            foreach (var customer in customersWithoutNumber)
+            {
+                string customerNumber;
+                int attempts = 0;
+
+                do
+                {
+                    customerNumber = new string(Enumerable.Range(0, length)
+                        .Select(_ => chars[random.Next(chars.Length)])
+                        .ToArray());
+                    attempts++;
+
+                    if (attempts > 100)
+                    {
+                        return StatusCode(StatusCodes.Status500InternalServerError, new
+                        {
+                            Message = $"Failed to generate a unique customer number for customer {customer.CustomerId} after 100 attempts.",
+                            UpdatedSoFar = updatedCustomers.Count
+                        });
+                    }
+                }
+                while (existingNumberSet.Contains(customerNumber));
+
+                customer.CustomerNumber = customerNumber;
+                customer.UpdatedOn = DateTime.UtcNow;
+                existingNumberSet.Add(customerNumber);
+
+                updatedCustomers.Add(new
+                {
+                    customer.CustomerId,
+                    Name = $"{customer.CustomerFirstName} {customer.CustomerLastName}",
+                    AssignedCustomerNumber = customerNumber
+                });
+            }
+
+            await _context.SaveChangesAsync();
+
+            return Ok(new
+            {
+                Message = $"Successfully assigned CustomerNumber to {updatedCustomers.Count} customer(s).",
+                Updated = updatedCustomers.Count,
+                Customers = updatedCustomers
+            });
+        }
+
+        /// <summary>
         /// Helper method to create a user with the specified role and credentials.
         /// </summary>
         private async Task<IActionResult> CreateUserAsync(

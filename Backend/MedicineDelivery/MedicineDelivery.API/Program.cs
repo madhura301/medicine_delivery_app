@@ -17,7 +17,11 @@ using System.Reflection;
 using Microsoft.AspNetCore.Authorization;
 using Serilog;
 
-// Configure Serilog - This will be configured later with the builder's configuration
+// Bootstrap logger (before config is available) so early log messages are not lost
+Log.Logger = new LoggerConfiguration()
+    .MinimumLevel.Information()
+    .WriteTo.Console()
+    .CreateLogger();
 
 try
 {
@@ -25,12 +29,12 @@ try
 
     var builder = WebApplication.CreateBuilder(args);
 
-    // Configure Serilog with the builder's configuration
+    // Replace bootstrap logger with fully configured logger from appsettings
     Log.Logger = new LoggerConfiguration()
         .ReadFrom.Configuration(builder.Configuration)
         .CreateLogger();
 
-    // Add Serilog
+    // Add Serilog as the logging provider
     builder.Host.UseSerilog();
 
 // Add services to the container.
@@ -364,13 +368,6 @@ builder.Services.AddScoped<SignInManager<MedicineDelivery.Domain.Entities.Applic
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
-{
-    app.UseSwagger();
-    app.UseSwaggerUI();
-    Log.Information("Swagger UI enabled for development environment");
-}
-app.UseStaticFiles();
 app.UseSwagger();
 app.UseSwaggerUI();
 
@@ -378,7 +375,6 @@ app.UseHttpsRedirection();
 
 // Add global exception handling middleware
 app.UseMiddleware<GlobalExceptionMiddleware>();
-
 
 // Serve static files from wwwroot
 app.UseStaticFiles();
