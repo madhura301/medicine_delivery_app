@@ -371,6 +371,9 @@ var app = builder.Build();
 app.UseSwagger();
 app.UseSwaggerUI();
 
+// Serilog request logging - logs every HTTP request with method, path, status code, and duration
+app.UseSerilogRequestLogging();
+
 app.UseHttpsRedirection();
 
 // Add global exception handling middleware

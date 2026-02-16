@@ -2,6 +2,7 @@ using MedicineDelivery.Application.Interfaces;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using System.Security.Cryptography;
 
 namespace MedicineDelivery.Infrastructure.Services
@@ -10,22 +11,30 @@ namespace MedicineDelivery.Infrastructure.Services
     {
         private readonly IHostEnvironment _environment;
         private readonly IConfiguration _configuration;
+        private readonly ILogger<PhotoUploadService> _logger;
         private readonly string[] _allowedExtensions = { ".jpg", ".jpeg", ".png", ".gif", ".bmp" };
         private readonly long _maxFileSizeInBytes = 5 * 1024 * 1024; // 5MB
 
-        public PhotoUploadService(IHostEnvironment environment, IConfiguration configuration)
+        public PhotoUploadService(IHostEnvironment environment, IConfiguration configuration, ILogger<PhotoUploadService> logger)
         {
             _environment = environment;
             _configuration = configuration;
+            _logger = logger;
         }
 
         public async Task<string> UploadPhotoAsync(IFormFile photo, string entityType, Guid entityId)
         {
             if (photo == null || photo.Length == 0)
+            {
+                _logger.LogWarning("Upload attempted with no photo file for entity {EntityType}/{EntityId}", entityType, entityId);
                 throw new ArgumentException("No photo file provided");
+            }
 
             if (!IsValidPhotoFile(photo))
+            {
+                _logger.LogWarning("Upload attempted with invalid photo file for entity {EntityType}/{EntityId}. FileName: {FileName}, Size: {FileSize}", entityType, entityId, photo.FileName, photo.Length);
                 throw new ArgumentException("Invalid photo file format or size");
+            }
 
             // Create upload directory if it doesn't exist
             var uploadPath = Path.Combine(_environment.ContentRootPath, "wwwroot", "uploads", entityType.ToLower());
@@ -61,8 +70,9 @@ namespace MedicineDelivery.Infrastructure.Services
                     File.Delete(filePath);
                     return true;
                 }
-                catch
+                catch (Exception ex)
                 {
+                    _logger.LogWarning(ex, "Failed to delete photo file {FileName} for entity type {EntityType}", fileName, entityType);
                     return false;
                 }
             }

@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using MedicineDelivery.Domain.Entities;
 using MedicineDelivery.Domain.Interfaces;
 
@@ -7,10 +8,12 @@ namespace MedicineDelivery.Infrastructure.Services
     public class PermissionService : IPermissionService
     {
         private readonly IRoleService _roleService;
+        private readonly ILogger<PermissionService> _logger;
 
-        public PermissionService(IRoleService roleService)
+        public PermissionService(IRoleService roleService, ILogger<PermissionService> logger)
         {
             _roleService = roleService;
+            _logger = logger;
         }
 
         public async Task<bool> HasPermissionAsync(string userId, string permissionName)
@@ -27,6 +30,7 @@ namespace MedicineDelivery.Infrastructure.Services
         {
             // This method is now deprecated in favor of role-based permissions
             // Permissions should be granted through roles, not directly to users
+            _logger.LogWarning("Attempted to call deprecated GrantPermissionAsync for user {UserId}, permission {PermissionId}", userId, permissionId);
             throw new NotImplementedException("Direct permission granting is not supported. Use role-based permissions instead.");
         }
 
@@ -34,6 +38,7 @@ namespace MedicineDelivery.Infrastructure.Services
         {
             // This method is now deprecated in favor of role-based permissions
             // Permissions should be revoked through roles, not directly from users
+            _logger.LogWarning("Attempted to call deprecated RevokePermissionAsync for user {UserId}, permission {PermissionId}", userId, permissionId);
             throw new NotImplementedException("Direct permission revoking is not supported. Use role-based permissions instead.");
         }
 

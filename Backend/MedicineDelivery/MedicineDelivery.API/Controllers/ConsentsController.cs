@@ -2,6 +2,7 @@ using MedicineDelivery.Application.DTOs;
 using MedicineDelivery.Application.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
 using System.Security.Claims;
 
 namespace MedicineDelivery.API.Controllers
@@ -12,10 +13,12 @@ namespace MedicineDelivery.API.Controllers
     public class ConsentsController : ControllerBase
     {
         private readonly IConsentService _consentService;
+        private readonly ILogger<ConsentsController> _logger;
 
-        public ConsentsController(IConsentService consentService)
+        public ConsentsController(IConsentService consentService, ILogger<ConsentsController> logger)
         {
             _consentService = consentService;
+            _logger = logger;
         }
 
         /// <summary>
@@ -32,6 +35,7 @@ namespace MedicineDelivery.API.Controllers
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Error in GetAllConsents");
                 return StatusCode(500, new { error = "An error occurred while retrieving consents." });
             }
         }
@@ -50,6 +54,7 @@ namespace MedicineDelivery.API.Controllers
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Error in GetActiveConsents");
                 return StatusCode(500, new { error = "An error occurred while retrieving active consents." });
             }
         }
@@ -73,6 +78,7 @@ namespace MedicineDelivery.API.Controllers
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Error in GetConsentById for Consent {ConsentId}", id);
                 return StatusCode(500, new { error = "An error occurred while retrieving the consent." });
             }
         }
@@ -96,6 +102,7 @@ namespace MedicineDelivery.API.Controllers
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Error in CreateConsent");
                 return StatusCode(500, new { error = "An error occurred while creating the consent." });
             }
         }
@@ -124,6 +131,7 @@ namespace MedicineDelivery.API.Controllers
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Error in UpdateConsent for Consent {ConsentId}", id);
                 return StatusCode(500, new { error = "An error occurred while updating the consent." });
             }
         }
@@ -147,6 +155,7 @@ namespace MedicineDelivery.API.Controllers
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Error in DeleteConsent for Consent {ConsentId}", id);
                 return StatusCode(500, new { error = "An error occurred while deleting the consent." });
             }
         }
@@ -171,10 +180,12 @@ namespace MedicineDelivery.API.Controllers
             }
             catch (KeyNotFoundException ex)
             {
+                _logger.LogWarning("AcceptConsent: {Message}", ex.Message);
                 return NotFound(new { error = ex.Message });
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Error in AcceptConsent for Consent {ConsentId}", id);
                 return StatusCode(500, new { error = "An error occurred while accepting the consent." });
             }
         }
@@ -199,10 +210,12 @@ namespace MedicineDelivery.API.Controllers
             }
             catch (KeyNotFoundException ex)
             {
+                _logger.LogWarning("RejectConsent: {Message}", ex.Message);
                 return NotFound(new { error = ex.Message });
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Error in RejectConsent for Consent {ConsentId}", id);
                 return StatusCode(500, new { error = "An error occurred while rejecting the consent." });
             }
         }
@@ -221,6 +234,7 @@ namespace MedicineDelivery.API.Controllers
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Error in GetConsentLogs for Consent {ConsentId}", id);
                 return StatusCode(500, new { error = "An error occurred while retrieving consent logs." });
             }
         }
@@ -244,6 +258,7 @@ namespace MedicineDelivery.API.Controllers
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Error in GetMyConsentLogs");
                 return StatusCode(500, new { error = "An error occurred while retrieving your consent logs." });
             }
         }

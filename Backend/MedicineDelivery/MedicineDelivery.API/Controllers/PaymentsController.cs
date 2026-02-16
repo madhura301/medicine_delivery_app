@@ -13,10 +13,12 @@ namespace MedicineDelivery.API.Controllers
     public class PaymentsController : ControllerBase
     {
         private readonly IPaymentService _paymentService;
+        private readonly ILogger<PaymentsController> _logger;
 
-        public PaymentsController(IPaymentService paymentService)
+        public PaymentsController(IPaymentService paymentService, ILogger<PaymentsController> logger)
         {
             _paymentService = paymentService;
+            _logger = logger;
         }
 
         /// <summary>
@@ -41,18 +43,21 @@ namespace MedicineDelivery.API.Controllers
             }
             catch (KeyNotFoundException ex)
             {
+                _logger.LogWarning("RecordPayment: {Message}", ex.Message);
                 return NotFound(new { error = ex.Message });
             }
             catch (ArgumentException ex)
             {
+                _logger.LogWarning("RecordPayment: {Message}", ex.Message);
                 return BadRequest(new { error = ex.Message });
             }
             catch (OperationCanceledException)
             {
                 return StatusCode(499, new { error = "Request was cancelled." });
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                _logger.LogError(ex, "Error recording payment");
                 return StatusCode(500, new { error = "An error occurred while recording the payment." });
             }
         }
@@ -76,8 +81,9 @@ namespace MedicineDelivery.API.Controllers
             {
                 return StatusCode(499, new { error = "Request was cancelled." });
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                _logger.LogError(ex, "Error retrieving payments for order {OrderId}", orderId);
                 return StatusCode(500, new { error = "An error occurred while retrieving payments." });
             }
         }
@@ -101,8 +107,9 @@ namespace MedicineDelivery.API.Controllers
             {
                 return StatusCode(499, new { error = "Request was cancelled." });
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                _logger.LogError(ex, "Error retrieving total paid amount for order {OrderId}", orderId);
                 return StatusCode(500, new { error = "An error occurred while retrieving total paid amount." });
             }
         }

@@ -4,6 +4,7 @@ using MedicineDelivery.Application.Interfaces;
 using MedicineDelivery.Domain.Entities;
 using MedicineDelivery.Domain.Enums;
 using MedicineDelivery.Domain.Interfaces;
+using Microsoft.Extensions.Logging;
 
 namespace MedicineDelivery.Infrastructure.Services
 {
@@ -11,11 +12,13 @@ namespace MedicineDelivery.Infrastructure.Services
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly IMapper _mapper;
+        private readonly ILogger<PaymentService> _logger;
 
-        public PaymentService(IUnitOfWork unitOfWork, IMapper mapper)
+        public PaymentService(IUnitOfWork unitOfWork, IMapper mapper, ILogger<PaymentService> logger)
         {
             _unitOfWork = unitOfWork;
             _mapper = mapper;
+            _logger = logger;
         }
 
         public async Task<PaymentDto> RecordPaymentAsync(RecordPaymentDto paymentDto, CancellationToken ct = default)
@@ -27,6 +30,7 @@ namespace MedicineDelivery.Infrastructure.Services
             var order = await _unitOfWork.Orders.FirstOrDefaultAsync(o => o.OrderId == paymentDto.OrderId);
             if (order == null)
             {
+                _logger.LogWarning("RecordPaymentAsync failed: Order {OrderId} not found", paymentDto.OrderId);
                 throw new KeyNotFoundException($"Order with ID {paymentDto.OrderId} not found.");
             }
 
@@ -43,6 +47,9 @@ namespace MedicineDelivery.Infrastructure.Services
 
             await _unitOfWork.Payments.AddAsync(payment);
             await _unitOfWork.SaveChangesAsync();
+
+            _logger.LogInformation("Payment recorded for Order {OrderId}: Amount={Amount}, Mode={PaymentMode}, Status={PaymentStatus}, TransactionId={TransactionId}",
+                paymentDto.OrderId, paymentDto.Amount, paymentDto.PaymentMode, paymentDto.PaymentStatus, paymentDto.TransactionId);
 
             // Update order payment status if this payment was successful
             if (paymentDto.PaymentStatus == PaymentStatus.Success)
@@ -96,6 +103,9 @@ namespace MedicineDelivery.Infrastructure.Services
             // Update order if status changed
             if (order.OrderPaymentStatus != newStatus)
             {
+                _logger.LogInformation("Order {OrderId} payment status changed from {OldStatus} to {NewStatus}. TotalPaid={TotalPaid}, TotalAmount={TotalAmount}",
+                    order.OrderId, order.OrderPaymentStatus, newStatus, totalPaid, totalAmount);
+
                 order.OrderPaymentStatus = newStatus;
                 order.UpdatedOn = DateTime.UtcNow;
                 _unitOfWork.Orders.Update(order);

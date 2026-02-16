@@ -13,11 +13,13 @@ namespace MedicineDelivery.API.Controllers
     {
         private readonly IManagerService _managerService;
         private readonly IPhotoUploadService _photoUploadService;
+        private readonly ILogger<ManagersController> _logger;
 
-        public ManagersController(IManagerService managerService, IPhotoUploadService photoUploadService)
+        public ManagersController(IManagerService managerService, IPhotoUploadService photoUploadService, ILogger<ManagersController> logger)
         {
             _managerService = managerService;
             _photoUploadService = photoUploadService;
+            _logger = logger;
         }
 
         /// <summary>
@@ -29,19 +31,27 @@ namespace MedicineDelivery.API.Controllers
         [Authorize(Policy = "RequireManagerSupportCreatePermission")]
         public async Task<ActionResult<ManagerResponseDto>> RegisterManager([FromBody] ManagerRegistrationDto registrationDto)
         {
-            if (!ModelState.IsValid)
+            try
             {
-                return BadRequest(ModelState);
-            }
+                if (!ModelState.IsValid)
+                {
+                    return BadRequest(ModelState);
+                }
 
-            var result = await _managerService.RegisterManagerAsync(registrationDto);
+                var result = await _managerService.RegisterManagerAsync(registrationDto);
             
-            if (!result.Success)
-            {
-                return BadRequest(new { errors = result.Errors });
-            }
+                if (!result.Success)
+                {
+                    return BadRequest(new { errors = result.Errors });
+                }
 
-            return Ok(result.Manager);
+                return Ok(result.Manager);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error in RegisterManager");
+                return StatusCode(500, new { error = "An error occurred while registering the manager." });
+            }
         }
 
         /// <summary>
@@ -52,8 +62,16 @@ namespace MedicineDelivery.API.Controllers
         [Authorize(Policy = "RequireManagerSupportReadPermission")]
         public async Task<ActionResult<List<ManagerDto>>> GetAllManagers()
         {
-            var managers = await _managerService.GetAllManagersAsync();
-            return Ok(managers);
+            try
+            {
+                var managers = await _managerService.GetAllManagersAsync();
+                return Ok(managers);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error in GetAllManagers");
+                return StatusCode(500, new { error = "An error occurred while retrieving managers." });
+            }
         }
 
         /// <summary>
@@ -65,14 +83,22 @@ namespace MedicineDelivery.API.Controllers
         [Authorize(Policy = "RequireManagerSupportReadPermission")]
         public async Task<ActionResult<ManagerDto>> GetManagerById(Guid id)
         {
-            var manager = await _managerService.GetManagerByIdAsync(id);
-            
-            if (manager == null)
+            try
             {
-                return NotFound();
-            }
+                var manager = await _managerService.GetManagerByIdAsync(id);
+            
+                if (manager == null)
+                {
+                    return NotFound();
+                }
 
-            return Ok(manager);
+                return Ok(manager);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error in GetManagerById for {Id}", id);
+                return StatusCode(500, new { error = "An error occurred while retrieving the manager." });
+            }
         }
 
         /// <summary>
@@ -84,14 +110,22 @@ namespace MedicineDelivery.API.Controllers
         [Authorize(Policy = "RequireManagerSupportReadPermission")]
         public async Task<ActionResult<ManagerDto>> GetManagerByEmail(string email)
         {
-            var manager = await _managerService.GetManagerByEmailAsync(email);
-            
-            if (manager == null)
+            try
             {
-                return NotFound();
-            }
+                var manager = await _managerService.GetManagerByEmailAsync(email);
+            
+                if (manager == null)
+                {
+                    return NotFound();
+                }
 
-            return Ok(manager);
+                return Ok(manager);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error in GetManagerByEmail for {Email}", email);
+                return StatusCode(500, new { error = "An error occurred while retrieving the manager." });
+            }
         }
 
         /// <summary>
@@ -104,19 +138,27 @@ namespace MedicineDelivery.API.Controllers
         [Authorize(Policy = "RequireManagerSupportUpdatePermission")]
         public async Task<ActionResult<ManagerDto>> UpdateManager(Guid id, [FromBody] ManagerRegistrationDto updateDto)
         {
-            if (!ModelState.IsValid)
+            try
             {
-                return BadRequest(ModelState);
-            }
+                if (!ModelState.IsValid)
+                {
+                    return BadRequest(ModelState);
+                }
 
-            var manager = await _managerService.UpdateManagerAsync(id, updateDto);
+                var manager = await _managerService.UpdateManagerAsync(id, updateDto);
             
-            if (manager == null)
-            {
-                return NotFound();
-            }
+                if (manager == null)
+                {
+                    return NotFound();
+                }
 
-            return Ok(manager);
+                return Ok(manager);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error in UpdateManager for {Id}", id);
+                return StatusCode(500, new { error = "An error occurred while updating the manager." });
+            }
         }
 
         /// <summary>
@@ -128,14 +170,22 @@ namespace MedicineDelivery.API.Controllers
         [Authorize(Policy = "RequireManagerSupportDeletePermission")]
         public async Task<ActionResult> DeleteManager(Guid id)
         {
-            var result = await _managerService.DeleteManagerAsync(id);
-            
-            if (!result)
+            try
             {
-                return NotFound();
-            }
+                var result = await _managerService.DeleteManagerAsync(id);
+            
+                if (!result)
+                {
+                    return NotFound();
+                }
 
-            return NoContent();
+                return NoContent();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error in DeleteManager for {Id}", id);
+                return StatusCode(500, new { error = "An error occurred while deleting the manager." });
+            }
         }
 
         /// <summary>
@@ -177,6 +227,7 @@ namespace MedicineDelivery.API.Controllers
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Error in UploadPhoto for manager {Id}", id);
                 return StatusCode(500, $"Error uploading photo: {ex.Message}");
             }
         }

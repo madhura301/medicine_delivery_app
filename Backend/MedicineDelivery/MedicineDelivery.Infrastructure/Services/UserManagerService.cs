@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Identity;
+using Microsoft.Extensions.Logging;
 using MedicineDelivery.Domain.Interfaces;
 using MedicineDelivery.Infrastructure.Data;
 
@@ -7,10 +8,12 @@ namespace MedicineDelivery.Infrastructure.Services
     public class UserManagerService : IUserManager
     {
         private readonly UserManager<Domain.Entities.ApplicationUser> _userManager;
+        private readonly ILogger<UserManagerService> _logger;
 
-        public UserManagerService(UserManager<Domain.Entities.ApplicationUser> userManager)
+        public UserManagerService(UserManager<Domain.Entities.ApplicationUser> userManager, ILogger<UserManagerService> logger)
         {
             _userManager = userManager;
+            _logger = logger;
         }
 
         public async Task<IApplicationUser?> FindByEmailAsync(string email)
@@ -39,6 +42,10 @@ namespace MedicineDelivery.Infrastructure.Services
             {
                 ((ApplicationUserWrapper)user).Id = appUser.Id;
             }
+            else
+            {
+                _logger.LogWarning("Failed to create user {Email}. Errors: {Errors}", user.Email, string.Join(", ", result.Errors.Select(e => e.Description)));
+            }
 
             return ConvertToDomainResult(result);
         }
@@ -48,10 +55,15 @@ namespace MedicineDelivery.Infrastructure.Services
             var appUser = await _userManager.FindByIdAsync(user.Id);
             if (appUser == null)
             {
+                _logger.LogWarning("AddToRoleAsync: User {UserId} not found when assigning role {Role}", user.Id, role);
                 return new MedicineDelivery.Domain.Interfaces.IdentityResult { Succeeded = false, Errors = new[] { new MedicineDelivery.Domain.Interfaces.IdentityError { Description = "User not found" } } };
             }
 
             var result = await _userManager.AddToRoleAsync(appUser, role);
+            if (!result.Succeeded)
+            {
+                _logger.LogWarning("AddToRoleAsync: Failed to assign role {Role} to user {UserId}. Errors: {Errors}", role, user.Id, string.Join(", ", result.Errors.Select(e => e.Description)));
+            }
             return ConvertToDomainResult(result);
         }
 
@@ -60,6 +72,7 @@ namespace MedicineDelivery.Infrastructure.Services
             var appUser = await _userManager.FindByIdAsync(user.Id);
             if (appUser == null)
             {
+                _logger.LogWarning("GenerateEmailConfirmationTokenAsync: User {UserId} not found", user.Id);
                 throw new InvalidOperationException("User not found");
             }
 
@@ -83,10 +96,15 @@ namespace MedicineDelivery.Infrastructure.Services
             var appUser = await _userManager.FindByIdAsync(user.Id);
             if (appUser == null)
             {
+                _logger.LogWarning("DeleteAsync: User {UserId} not found", user.Id);
                 return new MedicineDelivery.Domain.Interfaces.IdentityResult { Succeeded = false, Errors = new[] { new MedicineDelivery.Domain.Interfaces.IdentityError { Description = "User not found" } } };
             }
 
             var result = await _userManager.DeleteAsync(appUser);
+            if (!result.Succeeded)
+            {
+                _logger.LogWarning("DeleteAsync: Failed to delete user {UserId}. Errors: {Errors}", user.Id, string.Join(", ", result.Errors.Select(e => e.Description)));
+            }
             return ConvertToDomainResult(result);
         }
 

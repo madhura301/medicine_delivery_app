@@ -1,0 +1,920 @@
+{
+	"info": {
+		"_postman_id": "mediswift-deliveryboy-region-testing",
+		"name": "MediSwift - DeliveryBoy Region Testing",
+		"description": "End-to-end test of the DeliveryBoy Region flow.\n\nCovers:\n- System bootstrap (roles, permissions, users)\n- Admin login\n- Create DeliveryBoy-type service region with pin codes\n- Create delivery boy linked to a medical store\n- Assign DeliveryBoy region to delivery boy (single & bulk)\n- Get regions filtered by DeliveryBoy type\n- Add / remove pin codes from region\n- Get region by pin code\n- Update & delete region\n\nRun this collection using Postman's Collection Runner to execute all requests sequentially.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"variable": [
+		{ "key": "baseUrl", "value": "http://localhost:5000", "type": "string" },
+		{ "key": "adminToken", "value": "", "type": "string" },
+		{ "key": "chemistToken", "value": "", "type": "string" },
+		{ "key": "deliveryBoyRegionId", "value": "", "type": "string" },
+		{ "key": "deliveryBoyRegionId2", "value": "", "type": "string" },
+		{ "key": "medicalStoreId", "value": "", "type": "string" },
+		{ "key": "deliveryId", "value": "", "type": "string" },
+		{ "key": "deliveryId2", "value": "", "type": "string" }
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					"console.log('\\n========== ' + pm.info.requestName + ' ==========');"
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					"console.log('[' + pm.info.requestName + '] Status: ' + pm.response.code + ' ' + pm.response.status);",
+					"if (pm.response.code >= 400) {",
+					"    console.error('[' + pm.info.requestName + '] ERROR BODY: ' + pm.response.text());",
+					"}"
+				]
+			}
+		}
+	],
+	"item": [
+		{
+			"name": "1 - System Bootstrap",
+			"description": "One-time setup: creates roles, permissions, role-permission mappings, and admin seed user.",
+			"item": [
+				{
+					"name": "01. Create Predefined Roles",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/setup/roles/predefined",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "setup", "roles", "predefined"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Predefined roles created or already exist', function () {",
+									"    pm.expect([200, 409]).to.include(pm.response.code);",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "02. Create Predefined Permissions",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/setup/permissions/predefined",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "setup", "permissions", "predefined"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Predefined permissions created or already exist', function () {",
+									"    pm.expect([200, 409]).to.include(pm.response.code);",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "03. Map Role Permissions",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/setup/role-permissions/predefined",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "setup", "role-permissions", "predefined"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Role-permission mappings created or already exist', function () {",
+									"    pm.expect([200, 409]).to.include(pm.response.code);",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "04. Create Admin User",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/setup/users/admin",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "setup", "users", "admin"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Admin user created or already exists', function () {",
+									"    pm.expect([200, 409]).to.include(pm.response.code);",
+									"});"
+								]
+							}
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "2 - Admin Login & Medical Store Setup",
+			"description": "Admin logs in and registers a medical store for linking delivery boys.",
+			"item": [
+				{
+					"name": "05. Admin Login",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"mobileNumber\": \"9999999999\",\n    \"password\": \"Admin@123\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/Auth/login",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "Auth", "login"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Admin login successful', function () {",
+									"    pm.response.to.have.status(200);",
+									"    var json = pm.response.json();",
+									"    pm.expect(json.success).to.eql(true);",
+									"    pm.expect(json.token).to.be.a('string').and.not.empty;",
+									"    pm.collectionVariables.set('adminToken', json.token);",
+									"    console.log('Admin token captured.');",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "06. Register Medical Store",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"medicalName\": \"HealthPlus Pharmacy\",\n    \"ownerFirstName\": \"Amit\",\n    \"ownerLastName\": \"Patel\",\n    \"ownerMiddleName\": \"R\",\n    \"password\": \"Chemist@123\",\n    \"addressLine1\": \"Shop 5, Market Yard\",\n    \"addressLine2\": \"Laxmi Road\",\n    \"city\": \"Pune\",\n    \"state\": \"Maharashtra\",\n    \"postalCode\": \"411001\",\n    \"latitude\": 18.51570000,\n    \"longitude\": 73.85620000,\n    \"mobileNumber\": \"5555555555\",\n    \"emailId\": \"chemist@medicine.com\",\n    \"alternativeMobileNumber\": \"5555555556\",\n    \"registrationStatus\": true,\n    \"gstin\": \"27AADCB2230M1Z3\",\n    \"pan\": \"AADCB2230M\",\n    \"fssaiNo\": \"10020031000001\",\n    \"dlNo\": \"MH-PUN-123456\",\n    \"pharmacistFirstName\": \"Suresh\",\n    \"pharmacistLastName\": \"Iyer\",\n    \"pharmacistRegistrationNumber\": \"PH-MH-2020-001\",\n    \"pharmacistMobileNumber\": \"5555555557\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/MedicalStores/register",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "MedicalStores", "register"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Medical Store registered', function () {",
+									"    pm.response.to.have.status(200);",
+									"    var json = pm.response.json();",
+									"    pm.expect(json.success).to.eql(true);",
+									"    var storeId = json.medicalStore.medicalStoreId;",
+									"    pm.expect(storeId).to.not.be.undefined;",
+									"    pm.collectionVariables.set('medicalStoreId', storeId.toString());",
+									"    console.log('medicalStoreId =', storeId);",
+									"});"
+								]
+							}
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "3 - DeliveryBoy Region CRUD",
+			"description": "Create DeliveryBoy-type regions, list/filter them, update, and manage pin codes.",
+			"item": [
+				{
+					"name": "07. Create DeliveryBoy Region (Pune East)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" },
+							{ "key": "Authorization", "value": "Bearer {{adminToken}}" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Pune East Delivery Zone\",\n    \"city\": \"Pune\",\n    \"regionName\": \"Pune East\",\n    \"regionType\": 1,\n    \"pinCodes\": [\"411001\", \"411002\", \"411003\", \"411004\"]\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/ServiceRegions",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "ServiceRegions"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('DeliveryBoy region created', function () {",
+									"    pm.expect([200, 201]).to.include(pm.response.code);",
+									"    var json = pm.response.json();",
+									"    pm.expect(json.id).to.not.be.undefined;",
+									"    pm.expect(json.regionType).to.eql(1);",
+									"    pm.collectionVariables.set('deliveryBoyRegionId', json.id.toString());",
+									"    console.log('deliveryBoyRegionId =', json.id);",
+									"    console.log('pinCodes =', JSON.stringify(json.pinCodes));",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "08. Create DeliveryBoy Region (Pune West)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" },
+							{ "key": "Authorization", "value": "Bearer {{adminToken}}" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Pune West Delivery Zone\",\n    \"city\": \"Pune\",\n    \"regionName\": \"Pune West\",\n    \"regionType\": 1,\n    \"pinCodes\": [\"411038\", \"411041\", \"411045\"]\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/ServiceRegions",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "ServiceRegions"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Second DeliveryBoy region created', function () {",
+									"    pm.expect([200, 201]).to.include(pm.response.code);",
+									"    var json = pm.response.json();",
+									"    pm.expect(json.id).to.not.be.undefined;",
+									"    pm.expect(json.regionType).to.eql(1);",
+									"    pm.collectionVariables.set('deliveryBoyRegionId2', json.id.toString());",
+									"    console.log('deliveryBoyRegionId2 =', json.id);",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "09. Get All Regions (No Filter)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{adminToken}}" }
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/ServiceRegions",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "ServiceRegions"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('All regions returned', function () {",
+									"    pm.response.to.have.status(200);",
+									"    var json = pm.response.json();",
+									"    pm.expect(json).to.be.an('array');",
+									"    console.log('Total regions:', json.length);",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "10. Get Regions Filtered by DeliveryBoy Type",
+					"request": {
+						"method": "GET",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{adminToken}}" }
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/ServiceRegions?regionType=1",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "ServiceRegions"],
+							"query": [
+								{ "key": "regionType", "value": "1", "description": "1 = DeliveryBoy" }
+							]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Only DeliveryBoy regions returned', function () {",
+									"    pm.response.to.have.status(200);",
+									"    var json = pm.response.json();",
+									"    pm.expect(json).to.be.an('array').with.length.greaterThan(0);",
+									"    json.forEach(function(region) {",
+									"        pm.expect(region.regionType).to.eql(1);",
+									"    });",
+									"    console.log('DeliveryBoy regions count:', json.length);",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "11. Get Regions Filtered by CustomerSupport Type",
+					"request": {
+						"method": "GET",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{adminToken}}" }
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/ServiceRegions?regionType=0",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "ServiceRegions"],
+							"query": [
+								{ "key": "regionType", "value": "0", "description": "0 = CustomerSupport" }
+							]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Only CustomerSupport regions returned (should have none from this collection)', function () {",
+									"    pm.response.to.have.status(200);",
+									"    var json = pm.response.json();",
+									"    pm.expect(json).to.be.an('array');",
+									"    json.forEach(function(region) {",
+									"        pm.expect(region.regionType).to.eql(0);",
+									"    });",
+									"    console.log('CustomerSupport regions count:', json.length);",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "12. Get DeliveryBoy Region by ID",
+					"request": {
+						"method": "GET",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{adminToken}}" }
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/ServiceRegions/{{deliveryBoyRegionId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "ServiceRegions", "{{deliveryBoyRegionId}}"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Region details retrieved', function () {",
+									"    pm.response.to.have.status(200);",
+									"    var json = pm.response.json();",
+									"    pm.expect(json.id.toString()).to.eql(pm.collectionVariables.get('deliveryBoyRegionId'));",
+									"    pm.expect(json.regionType).to.eql(1);",
+									"    console.log('Region:', json.name, '| City:', json.city, '| PinCodes:', JSON.stringify(json.pinCodes));",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "13. Update DeliveryBoy Region",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" },
+							{ "key": "Authorization", "value": "Bearer {{adminToken}}" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Pune East Delivery Zone (Updated)\",\n    \"city\": \"Pune\",\n    \"regionName\": \"Pune East Extended\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/ServiceRegions/{{deliveryBoyRegionId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "ServiceRegions", "{{deliveryBoyRegionId}}"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Region updated successfully', function () {",
+									"    pm.response.to.have.status(200);",
+									"    var json = pm.response.json();",
+									"    pm.expect(json.name).to.include('Updated');",
+									"    console.log('Updated region name:', json.name);",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "14. Add Pin Code to Region",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" },
+							{ "key": "Authorization", "value": "Bearer {{adminToken}}" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"serviceRegionId\": {{deliveryBoyRegionId}},\n    \"pinCode\": \"411005\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/ServiceRegions/add-pincode",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "ServiceRegions", "add-pincode"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Pin code added to region', function () {",
+									"    pm.response.to.have.status(200);",
+									"    var json = pm.response.json();",
+									"    pm.expect(json.success).to.eql(true);",
+									"    console.log('Pin code 411005 added.');",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "15. Get Pin Codes by Region ID",
+					"request": {
+						"method": "GET",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{adminToken}}" }
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/ServiceRegions/{{deliveryBoyRegionId}}/pincodes",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "ServiceRegions", "{{deliveryBoyRegionId}}", "pincodes"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Pin codes retrieved and includes newly added one', function () {",
+									"    pm.response.to.have.status(200);",
+									"    var json = pm.response.json();",
+									"    pm.expect(json).to.be.an('array');",
+									"    pm.expect(json).to.include('411005');",
+									"    console.log('Pin codes:', JSON.stringify(json));",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "16. Get Region by Pin Code",
+					"request": {
+						"method": "GET",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{adminToken}}" }
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/ServiceRegions/by-pincode/411001",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "ServiceRegions", "by-pincode", "411001"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Region found by pin code', function () {",
+									"    pm.response.to.have.status(200);",
+									"    var json = pm.response.json();",
+									"    pm.expect(json.pinCodes).to.include('411001');",
+									"    console.log('Region for 411001:', json.name, '| Type:', json.regionType);",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "17. Remove Pin Code from Region",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" },
+							{ "key": "Authorization", "value": "Bearer {{adminToken}}" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"serviceRegionId\": {{deliveryBoyRegionId}},\n    \"pinCode\": \"411005\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/ServiceRegions/remove-pincode",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "ServiceRegions", "remove-pincode"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Pin code removed from region', function () {",
+									"    pm.response.to.have.status(200);",
+									"    var json = pm.response.json();",
+									"    pm.expect(json.success).to.eql(true);",
+									"    console.log('Pin code 411005 removed.');",
+									"});"
+								]
+							}
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "4 - Delivery Boy Setup & Region Assignment",
+			"description": "Create delivery boys and assign DeliveryBoy-type regions to them (single & bulk).",
+			"item": [
+				{
+					"name": "18. Create Delivery Boy 1",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" },
+							{ "key": "Authorization", "value": "Bearer {{adminToken}}" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"firstName\": \"Ramesh\",\n    \"middleName\": \"D\",\n    \"lastName\": \"Jadhav\",\n    \"drivingLicenceNumber\": \"MH12-2020-0056789\",\n    \"mobileNumber\": \"4444444444\",\n    \"password\": \"Delivery@123\",\n    \"medicalStoreId\": \"{{medicalStoreId}}\",\n    \"serviceRegionId\": {{deliveryBoyRegionId}}\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/Deliveries",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "Deliveries"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Delivery boy 1 created', function () {",
+									"    pm.expect([200, 201]).to.include(pm.response.code);",
+									"    var json = pm.response.json();",
+									"    pm.expect(json.id).to.not.be.undefined;",
+									"    pm.collectionVariables.set('deliveryId', json.id.toString());",
+									"    console.log('deliveryId =', json.id);",
+									"    console.log('serviceRegionId =', json.serviceRegionId);",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "19. Create Delivery Boy 2",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" },
+							{ "key": "Authorization", "value": "Bearer {{adminToken}}" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"firstName\": \"Sunil\",\n    \"middleName\": \"K\",\n    \"lastName\": \"Patil\",\n    \"drivingLicenceNumber\": \"MH12-2021-0098765\",\n    \"mobileNumber\": \"3333333333\",\n    \"password\": \"Delivery@456\",\n    \"medicalStoreId\": \"{{medicalStoreId}}\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/Deliveries",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "Deliveries"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Delivery boy 2 created (no region yet)', function () {",
+									"    pm.expect([200, 201]).to.include(pm.response.code);",
+									"    var json = pm.response.json();",
+									"    pm.expect(json.id).to.not.be.undefined;",
+									"    pm.collectionVariables.set('deliveryId2', json.id.toString());",
+									"    console.log('deliveryId2 =', json.id);",
+									"    console.log('serviceRegionId =', json.serviceRegionId, '(should be null)');",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "20. Assign Region to Delivery Boy (Single)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" },
+							{ "key": "Authorization", "value": "Bearer {{adminToken}}" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"serviceRegionId\": {{deliveryBoyRegionId}},\n    \"deliveryId\": {{deliveryId2}}\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/ServiceRegions/assign-delivery",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "ServiceRegions", "assign-delivery"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Region assigned to delivery boy', function () {",
+									"    pm.response.to.have.status(200);",
+									"    var json = pm.response.json();",
+									"    pm.expect(json.success).to.eql(true);",
+									"    console.log('Region assigned to deliveryId2');",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "21. Verify Delivery Boy 2 Has Region",
+					"request": {
+						"method": "GET",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{adminToken}}" }
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/Deliveries/{{deliveryId2}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "Deliveries", "{{deliveryId2}}"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Delivery boy 2 now has the assigned region', function () {",
+									"    pm.response.to.have.status(200);",
+									"    var json = pm.response.json();",
+									"    pm.expect(json.serviceRegionId).to.not.be.null;",
+									"    pm.expect(json.serviceRegionId.toString()).to.eql(pm.collectionVariables.get('deliveryBoyRegionId'));",
+									"    console.log('deliveryId2 serviceRegionId =', json.serviceRegionId);",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "22. Assign Region to Deliveries (Bulk)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" },
+							{ "key": "Authorization", "value": "Bearer {{adminToken}}" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"serviceRegionId\": {{deliveryBoyRegionId2}},\n    \"deliveryIds\": [{{deliveryId}}, {{deliveryId2}}]\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/ServiceRegions/assign-delivery/bulk",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "ServiceRegions", "assign-delivery", "bulk"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Region bulk-assigned to delivery boys', function () {",
+									"    pm.response.to.have.status(200);",
+									"    var json = pm.response.json();",
+									"    pm.expect(json.success).to.eql(true);",
+									"    console.log('Bulk assignment to region2 successful');",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "23. Verify Both Delivery Boys Have Region 2",
+					"request": {
+						"method": "GET",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{adminToken}}" }
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/Deliveries",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "Deliveries"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Both delivery boys now have region 2', function () {",
+									"    pm.response.to.have.status(200);",
+									"    var json = pm.response.json();",
+									"    pm.expect(json).to.be.an('array');",
+									"    var region2Id = pm.collectionVariables.get('deliveryBoyRegionId2');",
+									"    var del1 = json.find(d => d.id.toString() === pm.collectionVariables.get('deliveryId'));",
+									"    var del2 = json.find(d => d.id.toString() === pm.collectionVariables.get('deliveryId2'));",
+									"    if (del1) pm.expect(del1.serviceRegionId.toString()).to.eql(region2Id);",
+									"    if (del2) pm.expect(del2.serviceRegionId.toString()).to.eql(region2Id);",
+									"    console.log('del1 regionId =', del1 ? del1.serviceRegionId : 'not found');",
+									"    console.log('del2 regionId =', del2 ? del2.serviceRegionId : 'not found');",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "24. Get Active Deliveries by Medical Store",
+					"request": {
+						"method": "GET",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{adminToken}}" }
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/Deliveries/medicalstore/{{medicalStoreId}}/active",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "Deliveries", "medicalstore", "{{medicalStoreId}}", "active"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Active deliveries returned for medical store', function () {",
+									"    pm.response.to.have.status(200);",
+									"    var json = pm.response.json();",
+									"    pm.expect(json).to.be.an('array').with.length.greaterThan(0);",
+									"    json.forEach(function(d) {",
+									"        pm.expect(d.isActive).to.eql(true);",
+									"    });",
+									"    console.log('Active deliveries count:', json.length);",
+									"});"
+								]
+							}
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "5 - Cleanup (Delete Region)",
+			"description": "Delete the second DeliveryBoy region to test deletion.",
+			"item": [
+				{
+					"name": "25. Delete DeliveryBoy Region 2",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{adminToken}}" }
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/ServiceRegions/{{deliveryBoyRegionId2}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "ServiceRegions", "{{deliveryBoyRegionId2}}"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('DeliveryBoy region 2 deleted', function () {",
+									"    pm.response.to.have.status(204);",
+									"    console.log('Region 2 deleted successfully.');",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "26. Verify Region 2 Deleted (404)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{adminToken}}" }
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/ServiceRegions/{{deliveryBoyRegionId2}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "ServiceRegions", "{{deliveryBoyRegionId2}}"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Region 2 no longer exists', function () {",
+									"    pm.response.to.have.status(404);",
+									"    console.log('Confirmed: region 2 returns 404.');",
+									"});"
+								]
+							}
+						}
+					]
+				}
+			]
+		}
+	]
+}

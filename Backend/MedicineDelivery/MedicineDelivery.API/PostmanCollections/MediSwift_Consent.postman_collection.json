@@ -1,0 +1,832 @@
+{
+	"info": {
+		"_postman_id": "mediswift-consent-testing",
+		"name": "MediSwift - Consent Testing",
+		"description": "End-to-end test of the Consent management flow.\n\nCovers:\n- System bootstrap (roles, permissions, users)\n- Admin login & consent CRUD (create, read, update, delete)\n- Get all consents & active consents\n- Customer registration, login & consent accept/reject\n- Consent logs (per consent, per user)\n- Manager consent management\n\nRun this collection using Postman's Collection Runner to execute all requests sequentially.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"variable": [
+		{ "key": "baseUrl", "value": "http://localhost:5000", "type": "string" },
+		{ "key": "adminToken", "value": "", "type": "string" },
+		{ "key": "customerToken", "value": "", "type": "string" },
+		{ "key": "customerId", "value": "", "type": "string" },
+		{ "key": "consentId1", "value": "", "type": "string" },
+		{ "key": "consentId2", "value": "", "type": "string" },
+		{ "key": "consentId3", "value": "", "type": "string" }
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					"console.log('\\n========== ' + pm.info.requestName + ' ==========');"
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					"console.log('[' + pm.info.requestName + '] Status: ' + pm.response.code + ' ' + pm.response.status);",
+					"if (pm.response.code >= 400) {",
+					"    console.error('[' + pm.info.requestName + '] ERROR BODY: ' + pm.response.text());",
+					"}"
+				]
+			}
+		}
+	],
+	"item": [
+		{
+			"name": "1 - System Bootstrap",
+			"description": "One-time setup: creates roles, permissions, role-permission mappings, and admin seed user.",
+			"item": [
+				{
+					"name": "01. Create Predefined Roles",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/setup/roles/predefined",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "setup", "roles", "predefined"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Predefined roles created or already exist', function () {",
+									"    pm.expect([200, 409]).to.include(pm.response.code);",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "02. Create Predefined Permissions",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/setup/permissions/predefined",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "setup", "permissions", "predefined"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Predefined permissions created or already exist', function () {",
+									"    pm.expect([200, 409]).to.include(pm.response.code);",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "03. Map Role Permissions",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/setup/role-permissions/predefined",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "setup", "role-permissions", "predefined"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Role-permission mappings created or already exist', function () {",
+									"    pm.expect([200, 409]).to.include(pm.response.code);",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "04. Create Admin User",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/setup/users/admin",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "setup", "users", "admin"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Admin user created or already exists', function () {",
+									"    pm.expect([200, 409]).to.include(pm.response.code);",
+									"});"
+								]
+							}
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "2 - Admin Login & Consent CRUD",
+			"description": "Admin logs in and performs full CRUD on consent records.",
+			"item": [
+				{
+					"name": "05. Admin Login",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"mobileNumber\": \"9999999999\",\n    \"password\": \"Admin@123\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/Auth/login",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "Auth", "login"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Admin login successful', function () {",
+									"    pm.response.to.have.status(200);",
+									"    var json = pm.response.json();",
+									"    pm.expect(json.success).to.eql(true);",
+									"    pm.expect(json.token).to.be.a('string').and.not.empty;",
+									"    pm.collectionVariables.set('adminToken', json.token);",
+									"    console.log('Admin token captured.');",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "06. Create Consent - Terms & Conditions",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" },
+							{ "key": "Authorization", "value": "Bearer {{adminToken}}" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"title\": \"Terms and Conditions\",\n    \"description\": \"General terms and conditions for using the MediSwift platform.\",\n    \"content\": \"By using MediSwift, you agree to the following terms and conditions: 1. You must be at least 18 years old to use this service. 2. All prescriptions uploaded must be valid and issued by a licensed medical practitioner. 3. MediSwift is not liable for misuse of medicine. 4. Delivery timelines are estimated and may vary based on availability and location. 5. Payment must be completed before or at the time of delivery. 6. Users must provide accurate personal and medical information. 7. MediSwift reserves the right to refuse service in case of suspected abuse or fraud.\",\n    \"isActive\": true\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/Consents",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "Consents"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Terms & Conditions consent created', function () {",
+									"    pm.expect([200, 201]).to.include(pm.response.code);",
+									"    var json = pm.response.json();",
+									"    pm.expect(json.consentId).to.not.be.undefined;",
+									"    pm.expect(json.title).to.eql('Terms and Conditions');",
+									"    pm.expect(json.isActive).to.eql(true);",
+									"    pm.collectionVariables.set('consentId1', json.consentId);",
+									"    console.log('consentId1 (T&C) =', json.consentId);",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "07. Create Consent - Privacy Policy",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" },
+							{ "key": "Authorization", "value": "Bearer {{adminToken}}" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"title\": \"Privacy Policy\",\n    \"description\": \"Privacy policy governing how user data is collected, stored, and used.\",\n    \"content\": \"MediSwift Privacy Policy: 1. We collect personal information such as name, phone number, email, and delivery address for the purpose of providing medicine delivery services. 2. Prescription images and order history are stored securely and are accessible only by authorized personnel. 3. We do not share your personal data with third parties except delivery partners and pharmacies involved in fulfilling your orders. 4. You can request deletion of your account and associated data at any time by contacting support. 5. We use industry-standard encryption to protect data in transit and at rest.\",\n    \"isActive\": true\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/Consents",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "Consents"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Privacy Policy consent created', function () {",
+									"    pm.expect([200, 201]).to.include(pm.response.code);",
+									"    var json = pm.response.json();",
+									"    pm.expect(json.consentId).to.not.be.undefined;",
+									"    pm.expect(json.title).to.eql('Privacy Policy');",
+									"    pm.collectionVariables.set('consentId2', json.consentId);",
+									"    console.log('consentId2 (Privacy) =', json.consentId);",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "08. Create Consent - Data Sharing (Inactive)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" },
+							{ "key": "Authorization", "value": "Bearer {{adminToken}}" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"title\": \"Data Sharing Consent\",\n    \"description\": \"Optional consent for sharing anonymized data for research purposes.\",\n    \"content\": \"By accepting this consent, you agree to allow MediSwift to share your anonymized order and usage data with healthcare research organizations. No personally identifiable information will be shared. This consent is optional and does not affect your ability to use the platform.\",\n    \"isActive\": false\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/Consents",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "Consents"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Data Sharing consent created (inactive)', function () {",
+									"    pm.expect([200, 201]).to.include(pm.response.code);",
+									"    var json = pm.response.json();",
+									"    pm.expect(json.consentId).to.not.be.undefined;",
+									"    pm.expect(json.isActive).to.eql(false);",
+									"    pm.collectionVariables.set('consentId3', json.consentId);",
+									"    console.log('consentId3 (Data Sharing, inactive) =', json.consentId);",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "09. Get All Consents",
+					"request": {
+						"method": "GET",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{adminToken}}" }
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/Consents",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "Consents"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('All consents returned', function () {",
+									"    pm.response.to.have.status(200);",
+									"    var json = pm.response.json();",
+									"    pm.expect(json).to.be.an('array').with.length.greaterThan(0);",
+									"    console.log('Total consents:', json.length);",
+									"    json.forEach(function(c) {",
+									"        console.log('  -', c.title, '| active:', c.isActive);",
+									"    });",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "10. Get Active Consents Only",
+					"request": {
+						"method": "GET",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{adminToken}}" }
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/Consents/active",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "Consents", "active"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Only active consents returned', function () {",
+									"    pm.response.to.have.status(200);",
+									"    var json = pm.response.json();",
+									"    pm.expect(json).to.be.an('array');",
+									"    json.forEach(function(c) {",
+									"        pm.expect(c.isActive).to.eql(true);",
+									"    });",
+									"    console.log('Active consents count:', json.length);",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "11. Get Consent by ID",
+					"request": {
+						"method": "GET",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{adminToken}}" }
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/Consents/{{consentId1}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "Consents", "{{consentId1}}"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Consent details retrieved by ID', function () {",
+									"    pm.response.to.have.status(200);",
+									"    var json = pm.response.json();",
+									"    pm.expect(json.consentId).to.eql(pm.collectionVariables.get('consentId1'));",
+									"    pm.expect(json.title).to.eql('Terms and Conditions');",
+									"    console.log('Consent:', json.title, '| Content length:', json.content.length);",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "12. Update Consent - Activate Data Sharing",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" },
+							{ "key": "Authorization", "value": "Bearer {{adminToken}}" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"title\": \"Data Sharing Consent (v2)\",\n    \"description\": \"Updated: Optional consent for sharing anonymized data for research purposes.\",\n    \"content\": \"By accepting this consent, you agree to allow MediSwift to share your anonymized order and usage data with healthcare research organizations. No personally identifiable information will be shared. This consent is optional and does not affect your ability to use the platform. Updated: Data retention period is limited to 2 years.\",\n    \"isActive\": true\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/Consents/{{consentId3}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "Consents", "{{consentId3}}"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Consent updated and activated', function () {",
+									"    pm.response.to.have.status(200);",
+									"    var json = pm.response.json();",
+									"    pm.expect(json.isActive).to.eql(true);",
+									"    pm.expect(json.title).to.include('v2');",
+									"    pm.expect(json.updatedOn).to.not.be.null;",
+									"    console.log('Updated consent:', json.title, '| isActive:', json.isActive);",
+									"});"
+								]
+							}
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "3 - Customer Consent Accept / Reject",
+			"description": "Customer registers, logs in, accepts some consents, rejects one, and views their consent logs.",
+			"item": [
+				{
+					"name": "13. Register Customer",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"customerFirstName\": \"Ravi\",\n    \"customerLastName\": \"Sharma\",\n    \"customerMiddleName\": \"K\",\n    \"mobileNumber\": \"1234567890\",\n    \"password\": \"Test@1234\",\n    \"alternativeMobileNumber\": \"1234567891\",\n    \"emailId\": \"ravi.sharma@test.com\",\n    \"dateOfBirth\": \"1995-06-15T00:00:00Z\",\n    \"gender\": \"Male\",\n    \"addresses\": []\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/Customers/register",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "Customers", "register"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Customer registered', function () {",
+									"    pm.expect([200, 201]).to.include(pm.response.code);",
+									"    var json = pm.response.json();",
+									"    pm.expect(json.success).to.eql(true);",
+									"    var custId = json.customer.customerId;",
+									"    pm.expect(custId).to.not.be.undefined;",
+									"    pm.collectionVariables.set('customerId', custId.toString());",
+									"    console.log('customerId =', custId);",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "14. Customer Login",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"mobileNumber\": \"1234567890\",\n    \"password\": \"Test@1234\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/Auth/login",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "Auth", "login"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Customer login successful', function () {",
+									"    pm.response.to.have.status(200);",
+									"    var json = pm.response.json();",
+									"    pm.expect(json.success).to.eql(true);",
+									"    pm.expect(json.token).to.be.a('string').and.not.empty;",
+									"    pm.collectionVariables.set('customerToken', json.token);",
+									"    console.log('Customer token captured.');",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "15. Customer Accepts Terms & Conditions",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" },
+							{ "key": "Authorization", "value": "Bearer {{customerToken}}" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"deviceInfo\": \"PostmanRuntime/Android 13/Pixel 6\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/Consents/{{consentId1}}/accept",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "Consents", "{{consentId1}}", "accept"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Customer accepted Terms & Conditions', function () {",
+									"    pm.response.to.have.status(200);",
+									"    var json = pm.response.json();",
+									"    pm.expect(json.consentId).to.eql(pm.collectionVariables.get('consentId1'));",
+									"    pm.expect(json.action).to.satisfy(function(val) {",
+									"        return val === 1 || val === 'Accept';",
+									"    });",
+									"    console.log('Consent accepted. LogId:', json.consentLogId);",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "16. Customer Accepts Privacy Policy",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" },
+							{ "key": "Authorization", "value": "Bearer {{customerToken}}" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"deviceInfo\": \"PostmanRuntime/Android 13/Pixel 6\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/Consents/{{consentId2}}/accept",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "Consents", "{{consentId2}}", "accept"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Customer accepted Privacy Policy', function () {",
+									"    pm.response.to.have.status(200);",
+									"    var json = pm.response.json();",
+									"    pm.expect(json.consentId).to.eql(pm.collectionVariables.get('consentId2'));",
+									"    console.log('Privacy Policy accepted. LogId:', json.consentLogId);",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "17. Customer Rejects Data Sharing Consent",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" },
+							{ "key": "Authorization", "value": "Bearer {{customerToken}}" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"deviceInfo\": \"PostmanRuntime/Android 13/Pixel 6\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/Consents/{{consentId3}}/reject",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "Consents", "{{consentId3}}", "reject"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Customer rejected Data Sharing consent', function () {",
+									"    pm.response.to.have.status(200);",
+									"    var json = pm.response.json();",
+									"    pm.expect(json.consentId).to.eql(pm.collectionVariables.get('consentId3'));",
+									"    pm.expect(json.action).to.satisfy(function(val) {",
+									"        return val === 2 || val === 'Reject';",
+									"    });",
+									"    console.log('Data Sharing rejected. LogId:', json.consentLogId);",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "18. Customer Views My Consent Logs",
+					"request": {
+						"method": "GET",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{customerToken}}" }
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/Consents/my-logs",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "Consents", "my-logs"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Customer consent logs returned', function () {",
+									"    pm.response.to.have.status(200);",
+									"    var json = pm.response.json();",
+									"    pm.expect(json).to.be.an('array').with.length.greaterThan(0);",
+									"    console.log('My consent logs count:', json.length);",
+									"    json.forEach(function(log) {",
+									"        console.log('  - ConsentId:', log.consentId, '| Action:', log.action, '| Device:', log.deviceInfo);",
+									"    });",
+									"});"
+								]
+							}
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "4 - Admin Views Consent Logs",
+			"description": "Admin views consent logs per consent and verifies accept/reject actions.",
+			"item": [
+				{
+					"name": "19. Admin Views Logs for Terms & Conditions",
+					"request": {
+						"method": "GET",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{adminToken}}" }
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/Consents/{{consentId1}}/logs",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "Consents", "{{consentId1}}", "logs"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('T&C consent logs returned with accept actions', function () {",
+									"    pm.response.to.have.status(200);",
+									"    var json = pm.response.json();",
+									"    pm.expect(json).to.be.an('array').with.length.greaterThan(0);",
+									"    json.forEach(function(log) {",
+									"        pm.expect(log.action).to.satisfy(function(val) {",
+									"            return val === 1 || val === 'Accept';",
+									"        });",
+									"    });",
+									"    console.log('T&C logs count:', json.length);",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "20. Admin Views Logs for Data Sharing Consent",
+					"request": {
+						"method": "GET",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{adminToken}}" }
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/Consents/{{consentId3}}/logs",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "Consents", "{{consentId3}}", "logs"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Data Sharing consent logs returned with reject actions', function () {",
+									"    pm.response.to.have.status(200);",
+									"    var json = pm.response.json();",
+									"    pm.expect(json).to.be.an('array').with.length.greaterThan(0);",
+									"    json.forEach(function(log) {",
+									"        pm.expect(log.action).to.satisfy(function(val) {",
+									"            return val === 2 || val === 'Reject';",
+									"        });",
+									"    });",
+									"    console.log('Data Sharing logs count:', json.length);",
+									"});"
+								]
+							}
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "5 - Consent Deletion",
+			"description": "Admin deletes a consent and verifies it returns 404.",
+			"item": [
+				{
+					"name": "21. Delete Data Sharing Consent",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{adminToken}}" }
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/Consents/{{consentId3}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "Consents", "{{consentId3}}"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Consent deleted', function () {",
+									"    pm.response.to.have.status(204);",
+									"    console.log('Data Sharing consent deleted.');",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "22. Verify Consent Deleted (404)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{adminToken}}" }
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/Consents/{{consentId3}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "Consents", "{{consentId3}}"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Deleted consent returns 404', function () {",
+									"    pm.response.to.have.status(404);",
+									"    console.log('Confirmed: deleted consent returns 404.');",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "23. Verify Remaining Active Consents",
+					"request": {
+						"method": "GET",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{adminToken}}" }
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/Consents/active",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "Consents", "active"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Remaining active consents are correct', function () {",
+									"    pm.response.to.have.status(200);",
+									"    var json = pm.response.json();",
+									"    pm.expect(json).to.be.an('array');",
+									"    var ids = json.map(function(c) { return c.consentId; });",
+									"    pm.expect(ids).to.not.include(pm.collectionVariables.get('consentId3'));",
+									"    console.log('Remaining active consents:', json.length);",
+									"    json.forEach(function(c) {",
+									"        console.log('  -', c.title);",
+									"    });",
+									"});"
+								]
+							}
+						}
+					]
+				}
+			]
+		}
+	]
+}

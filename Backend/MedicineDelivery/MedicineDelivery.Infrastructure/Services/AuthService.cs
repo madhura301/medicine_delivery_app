@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
@@ -25,17 +26,20 @@ namespace MedicineDelivery.Infrastructure.Services
         private readonly SignInManager<ApplicationUser> _signInManager;
         private readonly IConfiguration _configuration;
         private readonly IUnitOfWork _unitOfWork;
+        private readonly ILogger<AuthService> _logger;
 
         public AuthService(
             UserManager<ApplicationUser> userManager,
             SignInManager<ApplicationUser> signInManager,
             IConfiguration configuration,
-            IUnitOfWork unitOfWork)
+            IUnitOfWork unitOfWork,
+            ILogger<AuthService> logger)
         {
             _userManager = userManager;
             _signInManager = signInManager;
             _configuration = configuration;
             _unitOfWork = unitOfWork;
+            _logger = logger;
         }
 
         public async Task<AuthResult> LoginAsync(string mobileNumber, string password, bool stayLoggedIn = false)
@@ -128,8 +132,7 @@ namespace MedicineDelivery.Infrastructure.Services
                 roles = (await _userManager.GetRolesAsync(identityUser)).ToList();
                 primaryRole = roles.FirstOrDefault() ?? "";
                 
-                // Debug: Log the roles found
-                Console.WriteLine($"User {user.Id} has Identity roles: {string.Join(", ", roles)}");
+                _logger.LogDebug("User {UserId} has Identity roles: {Roles}", user.Id, string.Join(", ", roles));
                 
                 // All roles are now managed through Identity
             }
@@ -137,8 +140,7 @@ namespace MedicineDelivery.Infrastructure.Services
             // Get entity-specific ID based on role
             entityId = await GetEntityIdByRole(user.Id, primaryRole);
             
-            // Debug: Log the entity ID found
-            Console.WriteLine($"User {user.Id} with role {primaryRole} has entityId: {entityId}");
+            _logger.LogDebug("User {UserId} with role {Role} has EntityId: {EntityId}", user.Id, primaryRole, entityId);
 
             var claims = new List<Claim>
             {
@@ -185,39 +187,39 @@ namespace MedicineDelivery.Infrastructure.Services
         {
             try
             {
-                Console.WriteLine($"GetEntityIdByRole: userId={userId}, role={role}");
+                _logger.LogDebug("GetEntityIdByRole: UserId={UserId}, Role={Role}", userId, role);
                 
                 switch (role.ToLower())
                 {
                     case "customer":
                         var customer = await _unitOfWork.Customers.FirstOrDefaultAsync(c => c.UserId == userId);
-                        Console.WriteLine($"Customer found: {customer?.CustomerId}");
+                        _logger.LogDebug("Customer found for User {UserId}: {CustomerId}", userId, customer?.CustomerId);
                         return customer?.CustomerId.ToString() ?? "";
                     
                     case "manager":
                         var manager = await _unitOfWork.Managers.FirstOrDefaultAsync(m => m.UserId == userId);
-                        Console.WriteLine($"Manager found: {manager?.ManagerId}");
+                        _logger.LogDebug("Manager found for User {UserId}: {ManagerId}", userId, manager?.ManagerId);
                         return manager?.ManagerId.ToString() ?? "";
                     
                     case "customersupport":
                         var customerSupport = await _unitOfWork.CustomerSupports.FirstOrDefaultAsync(cs => cs.UserId == userId);
-                        Console.WriteLine($"CustomerSupport found: {customerSupport?.CustomerSupportId}");
+                        _logger.LogDebug("CustomerSupport found for User {UserId}: {CustomerSupportId}", userId, customerSupport?.CustomerSupportId);
                         return customerSupport?.CustomerSupportId.ToString() ?? "";
                     
                     case "chemist":
                         var medicalStore = await _unitOfWork.MedicalStores.FirstOrDefaultAsync(ms => ms.UserId == userId);
-                        Console.WriteLine($"MedicalStore found: {medicalStore?.MedicalStoreId}");
+                        _logger.LogDebug("MedicalStore found for User {UserId}: {MedicalStoreId}", userId, medicalStore?.MedicalStoreId);
                         return medicalStore?.MedicalStoreId.ToString() ?? "";
                     
                     case "admin":
                     default:
-                        Console.WriteLine($"Using userId as entityId for role: {role}");
+                        _logger.LogDebug("Using UserId as EntityId for User {UserId} with role: {Role}", userId, role);
                         return userId; // For admin, use userId as entityId
                 }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error in GetEntityIdByRole: {ex.Message}");
+                _logger.LogError(ex, "Error in GetEntityIdByRole for User {UserId} with role {Role}", userId, role);
                 return userId; // Fallback to userId if any error occurs
             }
         }
@@ -248,8 +250,9 @@ namespace MedicineDelivery.Infrastructure.Services
 
                 return true;
             }
-            catch
+            catch (Exception ex)
             {
+                _logger.LogWarning(ex, "Token validation failed");
                 return false;
             }
         }

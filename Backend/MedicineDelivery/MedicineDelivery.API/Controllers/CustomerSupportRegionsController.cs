@@ -12,10 +12,12 @@ namespace MedicineDelivery.API.Controllers
     public class ServiceRegionsController : ControllerBase
     {
         private readonly IServiceRegionService _serviceRegionService;
+        private readonly ILogger<ServiceRegionsController> _logger;
 
-        public ServiceRegionsController(IServiceRegionService serviceRegionService)
+        public ServiceRegionsController(IServiceRegionService serviceRegionService, ILogger<ServiceRegionsController> logger)
         {
             _serviceRegionService = serviceRegionService;
+            _logger = logger;
         }
 
         /// <summary>
@@ -39,10 +41,12 @@ namespace MedicineDelivery.API.Controllers
             }
             catch (ArgumentException ex)
             {
+                _logger.LogWarning("CreateServiceRegion: {Message}", ex.Message);
                 return BadRequest(new { error = ex.Message });
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                _logger.LogError(ex, "Error creating service region");
                 return StatusCode(500, new { error = "An error occurred while creating the service region." });
             }
         }
@@ -71,8 +75,9 @@ namespace MedicineDelivery.API.Controllers
 
                 return Ok(regions);
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                _logger.LogError(ex, "Error retrieving service regions");
                 return StatusCode(500, new { error = "An error occurred while retrieving service regions." });
             }
         }
@@ -97,8 +102,9 @@ namespace MedicineDelivery.API.Controllers
 
                 return Ok(region);
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                _logger.LogError(ex, "Error retrieving service region {RegionId}", id);
                 return StatusCode(500, new { error = "An error occurred while retrieving the service region." });
             }
         }
@@ -125,10 +131,12 @@ namespace MedicineDelivery.API.Controllers
             }
             catch (KeyNotFoundException ex)
             {
+                _logger.LogWarning("UpdateServiceRegion: {Message}", ex.Message);
                 return NotFound(new { error = ex.Message });
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                _logger.LogError(ex, "Error updating service region {RegionId}", id);
                 return StatusCode(500, new { error = "An error occurred while updating the service region." });
             }
         }
@@ -153,8 +161,9 @@ namespace MedicineDelivery.API.Controllers
 
                 return NoContent();
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                _logger.LogError(ex, "Error deleting service region {RegionId}", id);
                 return StatusCode(500, new { error = "An error occurred while deleting the service region." });
             }
         }
@@ -178,14 +187,17 @@ namespace MedicineDelivery.API.Controllers
             }
             catch (KeyNotFoundException ex)
             {
+                _logger.LogWarning("AssignRegionToCustomerSupport: {Message}", ex.Message);
                 return NotFound(new { error = ex.Message });
             }
             catch (ArgumentException ex)
             {
+                _logger.LogWarning("AssignRegionToCustomerSupport: {Message}", ex.Message);
                 return BadRequest(new { error = ex.Message });
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                _logger.LogError(ex, "Error assigning region to customer support");
                 return StatusCode(500, new { error = "An error occurred while assigning the region." });
             }
         }
@@ -209,14 +221,17 @@ namespace MedicineDelivery.API.Controllers
             }
             catch (KeyNotFoundException ex)
             {
+                _logger.LogWarning("AssignRegionToCustomerSupports: {Message}", ex.Message);
                 return NotFound(new { error = ex.Message });
             }
             catch (ArgumentException ex)
             {
+                _logger.LogWarning("AssignRegionToCustomerSupports: {Message}", ex.Message);
                 return BadRequest(new { error = ex.Message });
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                _logger.LogError(ex, "Error assigning region to customer supports in bulk");
                 return StatusCode(500, new { error = "An error occurred while assigning the region." });
             }
         }
@@ -240,14 +255,17 @@ namespace MedicineDelivery.API.Controllers
             }
             catch (KeyNotFoundException ex)
             {
+                _logger.LogWarning("AssignRegionToDelivery: {Message}", ex.Message);
                 return NotFound(new { error = ex.Message });
             }
             catch (ArgumentException ex)
             {
+                _logger.LogWarning("AssignRegionToDelivery: {Message}", ex.Message);
                 return BadRequest(new { error = ex.Message });
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                _logger.LogError(ex, "Error assigning region to delivery");
                 return StatusCode(500, new { error = "An error occurred while assigning the region to delivery." });
             }
         }
@@ -271,14 +289,17 @@ namespace MedicineDelivery.API.Controllers
             }
             catch (KeyNotFoundException ex)
             {
+                _logger.LogWarning("AssignRegionToDeliveries: {Message}", ex.Message);
                 return NotFound(new { error = ex.Message });
             }
             catch (ArgumentException ex)
             {
+                _logger.LogWarning("AssignRegionToDeliveries: {Message}", ex.Message);
                 return BadRequest(new { error = ex.Message });
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                _logger.LogError(ex, "Error assigning region to deliveries in bulk");
                 return StatusCode(500, new { error = "An error occurred while assigning the region to deliveries." });
             }
         }
@@ -304,18 +325,22 @@ namespace MedicineDelivery.API.Controllers
             }
             catch (KeyNotFoundException ex)
             {
+                _logger.LogWarning("AddPinCodeToRegion: {Message}", ex.Message);
                 return NotFound(new { error = ex.Message });
             }
             catch (ArgumentException ex)
             {
+                _logger.LogWarning("AddPinCodeToRegion: {Message}", ex.Message);
                 return BadRequest(new { error = ex.Message });
             }
             catch (InvalidOperationException ex)
             {
+                _logger.LogWarning("AddPinCodeToRegion: {Message}", ex.Message);
                 return BadRequest(new { error = ex.Message });
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                _logger.LogError(ex, "Error adding pin code to region");
                 return StatusCode(500, new { error = "An error occurred while adding the pin code." });
             }
         }
@@ -347,10 +372,12 @@ namespace MedicineDelivery.API.Controllers
             }
             catch (ArgumentException ex)
             {
+                _logger.LogWarning("RemovePinCodeFromRegion: {Message}", ex.Message);
                 return BadRequest(new { error = ex.Message });
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                _logger.LogError(ex, "Error removing pin code from region");
                 return StatusCode(500, new { error = "An error occurred while removing the pin code." });
             }
         }
@@ -369,8 +396,9 @@ namespace MedicineDelivery.API.Controllers
                 var pinCodes = await _serviceRegionService.GetPinCodesByRegionIdAsync(regionId);
                 return Ok(pinCodes);
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                _logger.LogError(ex, "Error retrieving pin codes for region {RegionId}", regionId);
                 return StatusCode(500, new { error = "An error occurred while retrieving pin codes." });
             }
         }
@@ -397,10 +425,12 @@ namespace MedicineDelivery.API.Controllers
             }
             catch (ArgumentException ex)
             {
+                _logger.LogWarning("GetRegionByPinCode: {Message}", ex.Message);
                 return BadRequest(new { error = ex.Message });
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                _logger.LogError(ex, "Error retrieving region for pin code {PinCode}", pinCode);
                 return StatusCode(500, new { error = "An error occurred while retrieving the region." });
             }
         }

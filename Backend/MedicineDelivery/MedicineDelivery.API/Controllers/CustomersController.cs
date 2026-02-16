@@ -3,6 +3,7 @@ using MedicineDelivery.Application.Interfaces;
 using MedicineDelivery.Domain.Entities;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
 using System.Security.Claims;
 
 namespace MedicineDelivery.API.Controllers
@@ -14,11 +15,13 @@ namespace MedicineDelivery.API.Controllers
     {
         private readonly ICustomerService _customerService;
         private readonly IPermissionCheckerService _permissionCheckerService;
+        private readonly ILogger<CustomersController> _logger;
 
-        public CustomersController(ICustomerService customerService, IPermissionCheckerService permissionCheckerService)
+        public CustomersController(ICustomerService customerService, IPermissionCheckerService permissionCheckerService, ILogger<CustomersController> logger)
         {
             _customerService = customerService;
             _permissionCheckerService = permissionCheckerService;
+            _logger = logger;
         }
 
         [HttpGet]
@@ -32,6 +35,7 @@ namespace MedicineDelivery.API.Controllers
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Error in GetCustomers");
                 return StatusCode(500, new { error = "An error occurred while retrieving customers." });
             }
         }
@@ -70,6 +74,7 @@ namespace MedicineDelivery.API.Controllers
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Error in GetCustomer for Customer {CustomerId}", id);
                 return StatusCode(500, new { error = "An error occurred while retrieving the customer." });
             }
         }
@@ -104,6 +109,7 @@ namespace MedicineDelivery.API.Controllers
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Error in GetCustomerByMobile for MobileNumber {MobileNumber}", mobileNumber);
                 return StatusCode(500, new { error = "An error occurred while retrieving the customer." });
             }
         }
@@ -130,6 +136,7 @@ namespace MedicineDelivery.API.Controllers
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Error in GetMyProfile");
                 return StatusCode(500, new { error = "An error occurred while retrieving your profile." });
             }
         }
@@ -157,6 +164,7 @@ namespace MedicineDelivery.API.Controllers
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Error in RegisterCustomer");
                 return StatusCode(500, new { error = "An error occurred while registering the customer." });
             }
         }
@@ -200,6 +208,7 @@ namespace MedicineDelivery.API.Controllers
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Error in CreateCustomer");
                 return StatusCode(500, new { error = "An error occurred while creating the customer." });
             }
         }
@@ -246,6 +255,7 @@ namespace MedicineDelivery.API.Controllers
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Error in UpdateCustomer for Customer {CustomerId}", id);
                 return StatusCode(500, new { error = "An error occurred while updating the customer." });
             }
         }
@@ -289,6 +299,7 @@ namespace MedicineDelivery.API.Controllers
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Error in DeleteCustomer for Customer {CustomerId}", id);
                 return StatusCode(500, new { error = "An error occurred while deleting the customer." });
             }
         }

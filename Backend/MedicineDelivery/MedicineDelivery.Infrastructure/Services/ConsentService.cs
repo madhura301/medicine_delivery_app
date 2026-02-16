@@ -7,6 +7,7 @@ using MedicineDelivery.Domain.Interfaces;
 using MedicineDelivery.Infrastructure.Services;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.Extensions.Logging;
 using System.Security.Claims;
 
 namespace MedicineDelivery.Infrastructure.Services
@@ -17,17 +18,20 @@ namespace MedicineDelivery.Infrastructure.Services
         private readonly IMapper _mapper;
         private readonly IBrowserInfoService _browserInfoService;
         private readonly UserManager<ApplicationUser> _userManager;
+        private readonly ILogger<ConsentService> _logger;
 
         public ConsentService(
             IUnitOfWork unitOfWork,
             IMapper mapper,
             IBrowserInfoService browserInfoService,
-            UserManager<ApplicationUser> userManager)
+            UserManager<ApplicationUser> userManager,
+            ILogger<ConsentService> logger)
         {
             _unitOfWork = unitOfWork;
             _mapper = mapper;
             _browserInfoService = browserInfoService;
             _userManager = userManager;
+            _logger = logger;
         }
 
         public async Task<ConsentDto?> GetConsentByIdAsync(Guid id)
@@ -50,6 +54,8 @@ namespace MedicineDelivery.Infrastructure.Services
 
         public async Task<ConsentDto> CreateConsentAsync(CreateConsentDto createDto)
         {
+            _logger.LogInformation("Creating new consent with title {Title}", createDto.Title);
+
             var consent = _mapper.Map<Consent>(createDto);
             consent.ConsentId = Guid.NewGuid();
             consent.CreatedOn = DateTime.UtcNow;
@@ -57,14 +63,20 @@ namespace MedicineDelivery.Infrastructure.Services
             await _unitOfWork.Consents.AddAsync(consent);
             await _unitOfWork.SaveChangesAsync();
 
+            _logger.LogInformation("Consent created successfully with ID {ConsentId}", consent.ConsentId);
             return _mapper.Map<ConsentDto>(consent);
         }
 
         public async Task<ConsentDto?> UpdateConsentAsync(Guid id, UpdateConsentDto updateDto)
         {
+            _logger.LogInformation("Updating consent {ConsentId}", id);
+
             var consent = await _unitOfWork.Consents.GetByIdAsync(id);
             if (consent == null)
+            {
+                _logger.LogWarning("UpdateConsentAsync: Consent {ConsentId} not found", id);
                 return null;
+            }
 
             consent.Title = updateDto.Title;
             consent.Description = updateDto.Description;
@@ -80,13 +92,19 @@ namespace MedicineDelivery.Infrastructure.Services
 
         public async Task<bool> DeleteConsentAsync(Guid id)
         {
+            _logger.LogInformation("Deleting consent {ConsentId}", id);
+
             var consent = await _unitOfWork.Consents.GetByIdAsync(id);
             if (consent == null)
+            {
+                _logger.LogWarning("DeleteConsentAsync: Consent {ConsentId} not found", id);
                 return false;
+            }
 
             _unitOfWork.Consents.Remove(consent);
             await _unitOfWork.SaveChangesAsync();
 
+            _logger.LogInformation("Consent {ConsentId} deleted successfully", id);
             return true;
         }
 
@@ -96,6 +114,7 @@ namespace MedicineDelivery.Infrastructure.Services
             AcceptRejectConsentDto request,
             HttpContext httpContext)
         {
+            _logger.LogInformation("User {UserId} accepting consent {ConsentId}", userId, consentId);
             return await LogConsentActionAsync(
                 consentId,
                 userId,
@@ -110,6 +129,7 @@ namespace MedicineDelivery.Infrastructure.Services
             AcceptRejectConsentDto request,
             HttpContext httpContext)
         {
+            _logger.LogInformation("User {UserId} rejecting consent {ConsentId}", userId, consentId);
             return await LogConsentActionAsync(
                 consentId,
                 userId,
@@ -129,6 +149,7 @@ namespace MedicineDelivery.Infrastructure.Services
             var consent = await _unitOfWork.Consents.GetByIdAsync(consentId);
             if (consent == null)
             {
+                _logger.LogWarning("LogConsentActionAsync failed: Consent {ConsentId} not found", consentId);
                 throw new KeyNotFoundException($"Consent with ID {consentId} not found.");
             }
 
@@ -136,6 +157,7 @@ namespace MedicineDelivery.Infrastructure.Services
             var user = await _userManager.FindByIdAsync(userId);
             if (user == null)
             {
+                _logger.LogWarning("LogConsentActionAsync failed: User {UserId} not found", userId);
                 throw new KeyNotFoundException($"User with ID {userId} not found.");
             }
 
@@ -172,6 +194,8 @@ namespace MedicineDelivery.Infrastructure.Services
             await _unitOfWork.ConsentLogs.AddAsync(consentLog);
             await _unitOfWork.SaveChangesAsync();
 
+            _logger.LogInformation("Consent action {Action} logged for consent {ConsentId} by user {UserId} (type: {UserType})", action, consentId, userId, userType);
+
             var logDto = _mapper.Map<ConsentLogDto>(consentLog);
             logDto.Consent = _mapper.Map<ConsentDto>(consent);
 
@@ -204,8 +228,9 @@ namespace MedicineDelivery.Infrastructure.Services
                     _ => null
                 };
             }
-            catch
+            catch (Exception ex)
             {
+                _logger.LogError(ex, "Error retrieving respective entity ID for user {UserId} with type {UserType}", userId, userType);
                 return null; // Return null if entity not found
             }
         }

@@ -1,5 +1,6 @@
 using AutoMapper;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.Extensions.Logging;
 using MedicineDelivery.Application.DTOs;
 using MedicineDelivery.Application.Interfaces;
 using MedicineDelivery.Domain.Entities;
@@ -12,25 +13,30 @@ namespace MedicineDelivery.Infrastructure.Services
         private readonly IUnitOfWork _unitOfWork;
         private readonly IMapper _mapper;
         private readonly UserManager<ApplicationUser> _userManager;
+        private readonly ILogger<DeliveryService> _logger;
 
-        public DeliveryService(IUnitOfWork unitOfWork, IMapper mapper, UserManager<ApplicationUser> userManager)
+        public DeliveryService(IUnitOfWork unitOfWork, IMapper mapper, UserManager<ApplicationUser> userManager, ILogger<DeliveryService> logger)
         {
             _unitOfWork = unitOfWork;
             _mapper = mapper;
             _userManager = userManager;
+            _logger = logger;
         }
 
         public async Task<DeliveryDto> CreateDeliveryAsync(CreateDeliveryDto createDto, Guid? addedBy = null)
         {
             ArgumentNullException.ThrowIfNull(createDto);
+            _logger.LogInformation("Creating delivery for mobile number {MobileNumber}, added by {AddedBy}", createDto.MobileNumber, addedBy);
 
             if (string.IsNullOrWhiteSpace(createDto.MobileNumber))
             {
+                _logger.LogWarning("CreateDeliveryAsync failed: MobileNumber is required");
                 throw new ArgumentException("MobileNumber is required to create a delivery boy.");
             }
 
             if (string.IsNullOrWhiteSpace(createDto.Password))
             {
+                _logger.LogWarning("CreateDeliveryAsync failed: Password is required");
                 throw new ArgumentException("Password is required to create a delivery boy.");
             }
 
@@ -38,6 +44,7 @@ namespace MedicineDelivery.Infrastructure.Services
             var existingUser = await _userManager.FindByNameAsync(createDto.MobileNumber);
             if (existingUser != null)
             {
+                _logger.LogWarning("CreateDeliveryAsync failed: User with mobile number {MobileNumber} already exists", createDto.MobileNumber);
                 throw new InvalidOperationException("A user with this mobile number already exists.");
             }
 
@@ -47,11 +54,13 @@ namespace MedicineDelivery.Infrastructure.Services
                 var medicalStore = await _unitOfWork.MedicalStores.GetByIdAsync(createDto.MedicalStoreId.Value);
                 if (medicalStore == null)
                 {
+                    _logger.LogWarning("CreateDeliveryAsync failed: Medical store {MedicalStoreId} not found", createDto.MedicalStoreId.Value);
                     throw new KeyNotFoundException($"Medical store with ID '{createDto.MedicalStoreId.Value}' not found.");
                 }
 
                 if (!medicalStore.IsActive || medicalStore.IsDeleted)
                 {
+                    _logger.LogWarning("CreateDeliveryAsync failed: Medical store {MedicalStoreId} is inactive or deleted", createDto.MedicalStoreId.Value);
                     throw new InvalidOperationException("Cannot assign delivery to an inactive or deleted medical store.");
                 }
             }
@@ -62,6 +71,7 @@ namespace MedicineDelivery.Infrastructure.Services
                 var region = await _unitOfWork.ServiceRegions.GetByIdAsync(createDto.ServiceRegionId.Value);
                 if (region == null)
                 {
+                    _logger.LogWarning("CreateDeliveryAsync failed: Service region {ServiceRegionId} not found", createDto.ServiceRegionId.Value);
                     throw new KeyNotFoundException($"Service region with ID '{createDto.ServiceRegionId.Value}' not found.");
                 }
             }
@@ -88,6 +98,7 @@ namespace MedicineDelivery.Infrastructure.Services
                 {
                     await _unitOfWork.RollbackTransactionAsync();
                     var errors = string.Join("; ", userResult.Errors.Select(e => e.Description));
+                    _logger.LogWarning("CreateDeliveryAsync failed: Identity user creation failed for {MobileNumber}. Errors: {Errors}", createDto.MobileNumber, errors);
                     throw new InvalidOperationException($"Failed to create identity user: {errors}");
                 }
 
@@ -115,10 +126,12 @@ namespace MedicineDelivery.Infrastructure.Services
                 await _unitOfWork.SaveChangesAsync();
                 await _unitOfWork.CommitTransactionAsync();
 
+                _logger.LogInformation("Delivery created successfully with ID {DeliveryId} for mobile number {MobileNumber}", delivery.Id, createDto.MobileNumber);
                 return _mapper.Map<DeliveryDto>(delivery);
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                _logger.LogError(ex, "Error creating delivery for mobile number {MobileNumber}. Rolling back transaction", createDto.MobileNumber);
                 await _unitOfWork.RollbackTransactionAsync();
                 // Clean up the Identity user if it was created
                 if (identityUser != null)
@@ -169,10 +182,12 @@ namespace MedicineDelivery.Infrastructure.Services
         public async Task<DeliveryDto> UpdateDeliveryAsync(int id, UpdateDeliveryDto updateDto, Guid? modifiedBy = null)
         {
             ArgumentNullException.ThrowIfNull(updateDto);
+            _logger.LogInformation("Updating delivery {DeliveryId}, modified by {ModifiedBy}", id, modifiedBy);
 
             var delivery = await _unitOfWork.Deliveries.GetByIdAsync(id);
             if (delivery == null || delivery.IsDeleted)
             {
+                _logger.LogWarning("UpdateDeliveryAsync failed: Delivery {DeliveryId} not found or deleted", id);
                 throw new KeyNotFoundException($"Delivery with ID '{id}' not found.");
             }
 
@@ -182,11 +197,13 @@ namespace MedicineDelivery.Infrastructure.Services
                 var medicalStore = await _unitOfWork.MedicalStores.GetByIdAsync(updateDto.MedicalStoreId.Value);
                 if (medicalStore == null)
                 {
+                    _logger.LogWarning("UpdateDeliveryAsync failed: Medical store {MedicalStoreId} not found", updateDto.MedicalStoreId.Value);
                     throw new KeyNotFoundException($"Medical store with ID '{updateDto.MedicalStoreId.Value}' not found.");
                 }
 
                 if (!medicalStore.IsActive || medicalStore.IsDeleted)
                 {
+                    _logger.LogWarning("UpdateDeliveryAsync failed: Medical store {MedicalStoreId} is inactive or deleted", updateDto.MedicalStoreId.Value);
                     throw new InvalidOperationException("Cannot assign delivery to an inactive or deleted medical store.");
                 }
             }
@@ -218,6 +235,7 @@ namespace MedicineDelivery.Infrastructure.Services
                 var region = await _unitOfWork.ServiceRegions.GetByIdAsync(updateDto.ServiceRegionId.Value);
                 if (region == null)
                 {
+                    _logger.LogWarning("UpdateDeliveryAsync failed: Service region {ServiceRegionId} not found", updateDto.ServiceRegionId.Value);
                     throw new KeyNotFoundException($"Service region with ID '{updateDto.ServiceRegionId.Value}' not found.");
                 }
                 delivery.ServiceRegionId = updateDto.ServiceRegionId;
@@ -229,14 +247,18 @@ namespace MedicineDelivery.Infrastructure.Services
             _unitOfWork.Deliveries.Update(delivery);
             await _unitOfWork.SaveChangesAsync();
 
+            _logger.LogInformation("Delivery {DeliveryId} updated successfully", id);
             return _mapper.Map<DeliveryDto>(delivery);
         }
 
         public async Task<bool> DeleteDeliveryAsync(int id)
         {
+            _logger.LogInformation("Deleting delivery {DeliveryId} (soft delete)", id);
+
             var delivery = await _unitOfWork.Deliveries.GetByIdAsync(id);
             if (delivery == null || delivery.IsDeleted)
             {
+                _logger.LogWarning("DeleteDeliveryAsync: Delivery {DeliveryId} not found or already deleted", id);
                 return false;
             }
 
@@ -248,6 +270,7 @@ namespace MedicineDelivery.Infrastructure.Services
             _unitOfWork.Deliveries.Update(delivery);
             await _unitOfWork.SaveChangesAsync();
 
+            _logger.LogInformation("Delivery {DeliveryId} soft-deleted successfully", id);
             return true;
         }
     }
