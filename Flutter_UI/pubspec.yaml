@@ -57,6 +57,9 @@ dependencies:
   # Logging
   logger: ^2.0.2+1
 
+  # For device info logging
+  device_info_plus: ^9.1.0  
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -69,6 +72,7 @@ flutter:
   assets:
     - assets/images/
     - assets/icons/
+    - assets/images/payments/
     
 flutter_launcher_icons:
   android: "launcher_icon"

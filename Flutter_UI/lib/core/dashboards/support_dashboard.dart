@@ -863,6 +863,7 @@ class _WhatsAppOrderCreationPageState extends State<WhatsAppOrderCreationPage>
 
         final firstName = customerData['customerFirstName'] ?? '';
         final lastName = customerData['customerLastName'] ?? '';
+        //final customerNumber = customerData['customerNumber'] ?? '';
         final fullName = '$firstName $lastName'.trim();
 
         _showSuccess(

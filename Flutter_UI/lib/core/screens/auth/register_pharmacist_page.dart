@@ -7,6 +7,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:pharmaish/core/services/auth_service.dart';
 import 'package:pharmaish/core/services/location_service.dart';
+import 'package:pharmaish/utils/consent_manager.dart';
 import 'package:pharmaish/utils/constants.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -104,7 +105,8 @@ class _PharmacistRegistrationPageState
   ];
 
   Future<void> _openAreaRetailerPolicy() async {
-    const String pdfUrl = '${AppConstants.documentsProdBaseUrl}/AREA_RETAILER_POLICY.pdf';
+    const String pdfUrl =
+        '${AppConstants.documentsProdBaseUrl}/AREA_RETAILER_POLICY.pdf';
     // Test URL: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf'
 
     try {
@@ -1383,6 +1385,22 @@ class _PharmacistRegistrationPageState
   }
 
   Future<void> _submitRegistration() async {
+    final consentAccepted =
+        await PharmacistConsentManager.showRetailerRegistrationConsent(context);
+
+    if (!consentAccepted) {
+      if (mounted) {
+        Navigator.of(context).pop(); // Exit if declined
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Registration consent is required to proceed'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+      return; // Stop registration
+    }
+    
     if (!_validateCurrentStep()) return;
 
     setState(() {

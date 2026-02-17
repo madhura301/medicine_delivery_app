@@ -1,7 +1,9 @@
-//Forgot password page
-// Step 1: Username Entry for Password Reset
-import 'package:pharmaish/utils/app_logger.dart';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import 'package:pharmaish/utils/app_logger.dart';
+import 'package:pharmaish/utils/constants.dart';
+import 'package:pharmaish/core/screens/auth/reset_password_page.dart';
 
 class ForgotPasswordPage extends StatefulWidget {
   const ForgotPasswordPage({super.key});
@@ -12,11 +14,9 @@ class ForgotPasswordPage extends StatefulWidget {
 
 class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
   final _formKey = GlobalKey<FormState>();
-  final _usernameController = TextEditingController();
+  final _mobileNumberController = TextEditingController();
   bool _isLoading = false;
   String _errorMessage = '';
-
-  // Demo users removed - app now uses real API authentication
 
   @override
   Widget build(BuildContext context) {
@@ -65,7 +65,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
               const SizedBox(height: 8),
 
               Text(
-                'Enter your username and we\'ll send you a reset code',
+                'Enter your mobile number and we\'ll send you a reset token',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 16,
@@ -75,13 +75,15 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
 
               const SizedBox(height: 40),
 
-              // Username Field
+              // Mobile Number Field
               TextFormField(
-                controller: _usernameController,
+                controller: _mobileNumberController,
+                keyboardType: TextInputType.phone,
+                maxLength: 10,
                 decoration: InputDecoration(
-                  labelText: 'Username',
-                  hintText: 'Enter your username',
-                  prefixIcon: const Icon(Icons.person_outline),
+                  labelText: 'Mobile Number',
+                  hintText: 'Enter your mobile number',
+                  prefixIcon: const Icon(Icons.phone),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
@@ -90,10 +92,16 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                     borderSide:
                         const BorderSide(color: Color(0xFF2E7D32), width: 2),
                   ),
+                  counterText: '', // Hide character counter
                 ),
                 validator: (value) {
                   if (value?.isEmpty ?? true) {
-                    return 'Please enter your username';
+                    return 'Please enter your mobile number';
+                  }
+                  // Phone number validation - only allow numbers
+                  final phoneRegex = RegExp(r'^[0-9]{10}$');
+                  if (!phoneRegex.hasMatch(value!)) {
+                    return 'Please enter a valid 10-digit mobile number';
                   }
                   return null;
                 },
@@ -138,12 +146,12 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
 
               const SizedBox(height: 30),
 
-              // Send Reset Code Button
+              // Send Reset Token Button
               SizedBox(
                 width: double.infinity,
                 height: 56,
                 child: ElevatedButton(
-                  onPressed: _isLoading ? null : _sendResetCode,
+                  onPressed: _isLoading ? null : _sendResetToken,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF2E7D32),
                     foregroundColor: Colors.white,
@@ -162,45 +170,39 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                           ),
                         )
                       : const Text(
-                          'Send Reset Code',
+                          'Send Reset Token',
                           style: TextStyle(
                               fontSize: 18, fontWeight: FontWeight.w600),
                         ),
                 ),
               ),
 
-              //   const SizedBox(height: 30),
+              const SizedBox(height: 20),
 
-              //   // Demo Info
-              //   Container(
-              //     padding: const EdgeInsets.all(16),
-              //     decoration: BoxDecoration(
-              //       color: Colors.blue.shade50,
-              //       borderRadius: BorderRadius.circular(12),
-              //       border: Border.all(color: Colors.blue.shade200),
-              //     ),
-              //     child: Column(
-              //       crossAxisAlignment: CrossAxisAlignment.start,
-              //       children: [
-              //         Text(
-              //           'Demo Usernames:',
-              //           style: TextStyle(
-              //             color: Colors.blue.shade600,
-              //             fontSize: 16,
-              //             fontWeight: FontWeight.w600,
-              //           ),
-              //         ),
-              //         const SizedBox(height: 8),
-              //         Text(
-              //           'customer, chemist, admin, support',
-              //           style: TextStyle(
-              //             color: Colors.blue.shade700,
-              //             fontSize: 14,
-              //           ),
-              //         ),
-              //       ],
-              //     ),
-              //   ),
+              // Info Message
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.blue.shade50,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.blue.shade200),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.info_outline, color: Colors.blue.shade600, size: 24),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        'A password reset token will be sent to your registered mobile number via SMS.',
+                        style: TextStyle(
+                          color: Colors.blue.shade700,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ],
           ),
         ),
@@ -208,7 +210,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
     );
   }
 
-  Future<void> _sendResetCode() async {
+  Future<void> _sendResetToken() async {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() {
@@ -217,36 +219,176 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
     });
 
     try {
-      // TODO: Replace with real API call to send reset code
-      // For now, simulate API call
-      await Future.delayed(const Duration(seconds: 2));
+      final mobileNumber = _mobileNumberController.text.trim();
 
-      final username = _usernameController.text.trim();
+      // Make API call to forgot password endpoint
+      final response = await http.post(
+        Uri.parse('${AppConstants.apiBaseUrl}/Auth/forgot-password'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: jsonEncode({
+          'mobileNumber': mobileNumber,
+        }),
+      );
 
-      // TODO: Make actual API call to verify username and send reset code
-      // This should call your backend API to:
-      // 1. Verify the username exists
-      // 2. Send reset code via SMS/Email
-      // 3. Return user's email/mobile for OTP verification
+      AppLogger.apiResponse(
+        response.statusCode,
+        '/Auth/forgot-password',
+        jsonDecode(response.body),
+      );
 
-      // For now, show a message that this feature needs real API integration
-      AppLogger.info('Password reset requested for: $username');
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final responseData = jsonDecode(response.body);
+
+        if (responseData['success'] == true) {
+          setState(() {
+            _isLoading = false;
+          });
+
+          // Extract the reset token from response
+          final token = responseData['token'] ?? '';
+
+          if (mounted) {
+            // Show success dialog
+            await _showSuccessDialog();
+
+            // Navigate to Reset Password page with mobile number and token
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                builder: (context) => ResetPasswordPage(
+                  mobileNumber: mobileNumber,
+                  token: token,
+                ),
+              ),
+            );
+          }
+          return;
+        }
+      }
+
+      // Handle error responses
       setState(() {
         _isLoading = false;
-        _errorMessage =
-            'Password reset feature requires API integration. Please contact support.';
       });
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final responseData = jsonDecode(response.body);
+        final errors = responseData['errors'] as List<dynamic>?;
+        setState(() {
+          _errorMessage = errors?.isNotEmpty == true
+              ? errors!.first.toString()
+              : 'Failed to send reset token. Please try again.';
+        });
+      } else if (response.statusCode == 404) {
+        setState(() {
+          _errorMessage = 'Mobile number not found. Please check and try again.';
+        });
+      } else if (response.statusCode == 400) {
+        try {
+          final errorData = jsonDecode(response.body);
+          final errors = errorData['errors'] as List<dynamic>?;
+          setState(() {
+            _errorMessage = errors?.isNotEmpty == true
+                ? errors!.first.toString()
+                : 'Invalid mobile number';
+          });
+        } catch (e) {
+          setState(() {
+            _errorMessage = 'Invalid mobile number';
+          });
+        }
+      } else {
+        setState(() {
+          _errorMessage = 'Server error. Please try again later.';
+        });
+      }
     } catch (e) {
       setState(() {
         _isLoading = false;
-        _errorMessage = 'Error sending reset code. Please try again.';
+        _errorMessage = 'Network error. Please check your connection.';
       });
+      AppLogger.error('Forgot password error: $e');
     }
+  }
+
+  Future<void> _showSuccessDialog() async {
+    return showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF2E7D32).withValues(alpha: 0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.check_circle,
+                  color: Color(0xFF2E7D32),
+                  size: 60,
+                ),
+              ),
+              const SizedBox(height: 24),
+              const Text(
+                'Token Sent Successfully!',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF2E7D32),
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'A password reset token has been sent to your mobile number. Please use it to reset your password.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Colors.grey.shade600,
+                  fontSize: 14,
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () {
+                  Navigator.of(context).pop();
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF2E7D32),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child: const Text(
+                  'Continue',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   @override
   void dispose() {
-    _usernameController.dispose();
+    _mobileNumberController.dispose();
     super.dispose();
   }
 }

@@ -17,6 +17,8 @@ class CustomerAddressDto {
   final String? city;
   final String? state;
   final String? postalCode;
+  final double? latitude;
+  final double? longitude;
   final bool isDefault;
   final bool isActive;
   final DateTime createdOn;
@@ -32,6 +34,8 @@ class CustomerAddressDto {
     this.city,
     this.state,
     this.postalCode,
+    this.latitude,
+    this.longitude,
     this.isDefault = false,
     this.isActive = true,
     required this.createdOn,
@@ -49,6 +53,12 @@ class CustomerAddressDto {
       city: json['city'],
       state: json['state'],
       postalCode: json['postalCode'],
+      latitude: json['latitude'] != null
+          ? (json['latitude'] as num).toDouble()
+          : null,
+      longitude: json['longitude'] != null
+          ? (json['longitude'] as num).toDouble()
+          : null,
       isDefault: json['isDefault'] ?? false,
       isActive: json['isActive'] ?? true,
       createdOn:
@@ -69,6 +79,8 @@ class CustomerAddressDto {
       'city': city,
       'state': state,
       'postalCode': postalCode,
+      'latitude': latitude,
+      'longitude': longitude,
       'isDefault': isDefault,
       'isActive': isActive,
       'createdOn': createdOn.toIso8601String(),

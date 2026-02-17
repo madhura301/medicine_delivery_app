@@ -6,12 +6,15 @@ import 'package:pharmaish/core/dashboards/manager_dashboard.dart';
 import 'package:pharmaish/core/dashboards/support_dashboard.dart';
 import 'package:pharmaish/core/screens/orders/accepted_order_bill_screen.dart';
 import 'package:pharmaish/core/screens/orders/create_whatsapp_order_screen.dart';
+import 'package:pharmaish/core/screens/orders/customer_order_details_page.dart';
 import 'package:pharmaish/core/screens/orders/rejected_orders_screen.dart';
+import 'package:pharmaish/core/screens/payment/payment_summary_page.dart';
 import 'package:pharmaish/core/screens/profiles/customer_profile_page.dart';
 import 'package:pharmaish/core/screens/profiles/pharmacist_profile_page.dart';
 import 'package:pharmaish/core/screens/auth/register_customer_page.dart';
 import 'package:pharmaish/core/screens/auth/register_pharmacist_page.dart';
 import 'package:pharmaish/core/theme/app_theme.dart';
+import 'package:pharmaish/shared/models/order_model.dart';
 import 'package:pharmaish/utils/app_logger.dart';
 
 import 'screens/auth/login_page.dart';
@@ -31,6 +34,8 @@ class AppRoutes {
   static const String createWhatsAppOrder = '/createWhatsAppOrder';
   static const String rejectedOrders = '/rejectedOrders';
   static const String acceptedOrderBill = '/acceptedOrderBill';
+  static const String paymentGateway = '/payment-gateway';
+  static const String customerOrderDetails = '/customer-order-details';
 
   static Map<String, WidgetBuilder> routes = {
     login: (context) => const LoginPage(),
@@ -87,6 +92,28 @@ class AppRoutes {
         customerEmail: args['customerEmail'],
         customerPhone: args['customerPhone'],
       );
+    },
+    paymentGateway: (context) {
+      final args =
+          ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>;
+      // return PaymentGatewayPage(
+      //   medicinesTotal: args['medicinesTotal'],
+      //   convenienceFee: args['convenienceFee'],
+      //   orderId: args['orderId'],
+      // );
+      return PaymentSummaryPage(
+        medicinesTotal: args['medicinesTotal'],
+        convenienceFee: args['convenienceFee'],
+        orderNumber: args['orderId'],
+        onPaymentSuccess: () {
+          // Handle success
+          print('Payment completed!');
+        },
+      );
+    },
+    customerOrderDetails: (context) {
+      final order = ModalRoute.of(context)?.settings.arguments as OrderModel;
+      return CustomerOrderDetailsPage(order: order);
     },
   };
 }

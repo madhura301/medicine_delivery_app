@@ -3,9 +3,12 @@
 
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:pharmaish/core/app_routes.dart';
+import 'package:pharmaish/core/screens/payment/payment_summary_page.dart';
 import 'package:pharmaish/shared/models/order_model.dart';
 import 'package:pharmaish/core/screens/orders/accepted_order_bill_screen.dart';
 import 'package:pharmaish/core/screens/delivery/assign_delivery_boy_screen.dart';
+import 'package:pharmaish/shared/widgets/payment_summary_dialog.dart';
 
 class OrderTileWithBill extends StatelessWidget {
   final OrderModel order;
@@ -41,7 +44,8 @@ class OrderTileWithBill extends StatelessWidget {
   bool _hasBill() {
     //return order.billFileUrl != null && order.billFileUrl!.isNotEmpty;
     final statusLower = order.status.toLowerCase();
-    return statusLower.contains('billuploaded') || statusLower == 'billuploaded';
+    return statusLower.contains('billuploaded') ||
+        statusLower == 'billuploaded';
   }
 
   bool _hasAmount() {
@@ -51,6 +55,48 @@ class OrderTileWithBill extends StatelessWidget {
   bool _isBillUploaded() {
     final statusLower = order.status.toLowerCase();
     return statusLower.contains('bill') || statusLower == 'bill uploaded';
+  }
+
+  void navigateToPayNowPage(context) {
+    // Navigator.pushNamed(
+    //   context,
+    //   AppRoutes.paymentGateway,
+    //   arguments: {
+    //     'medicinesTotal': 850.00,
+    //     'convenienceFee': 20.00, // call calculateConvenienceFee() here
+    //     'orderId': 'ORD123456',
+    //   },
+    // );
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => PaymentSummaryPage(
+          medicinesTotal: 850.0,
+          convenienceFee: 20.0,
+          orderNumber: '5IKK4FVR3F',
+          onPaymentSuccess: () {
+            // Handle success
+            print('Payment completed!');
+          },
+        ),
+      ),
+    );
+
+// // Option 2: Show as modal dialog
+// PaymentSummaryDialog.show(
+//   context,
+//   medicinesTotal: 850.0,
+//   convenienceFee: 20.0,
+//   orderNumber: '5IKK4FVR3F',
+//   onPaymentSuccess: () {
+//     print('Payment completed!');
+//   },
+// );
+  }
+
+  double calculateConvenienceFee(double medicinesTotal) {
+    final fee = medicinesTotal * 0.025; // 2.5%
+    return fee < 20 ? 20 : fee;
   }
 
   @override
@@ -131,7 +177,7 @@ class OrderTileWithBill extends StatelessWidget {
                 const SizedBox(height: 12),
                 const Divider(),
                 const SizedBox(height: 8),
-                
+
                 // Bill Status Row
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -150,11 +196,13 @@ class OrderTileWithBill extends StatelessWidget {
                           children: [
                             Text(
                               //hasBill ? 'Bill Uploaded' : 'Bill Pending',
-                              isBillUploaded  ? 'Bill Uploaded' : 'Bill Pending',
+                              isBillUploaded ? 'Bill Uploaded' : 'Bill Pending',
                               style: TextStyle(
                                 fontSize: 12,
                                 fontWeight: FontWeight.w600,
-                                color: isBillUploaded ? Colors.green : Colors.orange, 
+                                color: isBillUploaded
+                                    ? Colors.green
+                                    : Colors.orange,
                                 //color:hasBill ? Colors.green : Colors.orange,
                               ),
                             ),
@@ -173,7 +221,7 @@ class OrderTileWithBill extends StatelessWidget {
 
                     // Upload Bill Button
                     if (!hasAmount)
-                    //if (!hasBill || !hasAmount)
+                      //if (!hasBill || !hasAmount)
                       ElevatedButton.icon(
                         onPressed: () async {
                           final result = await Navigator.push(
@@ -214,13 +262,41 @@ class OrderTileWithBill extends StatelessWidget {
                           ),
                         ),
                       ),
+
+                    // // Pay Now Button
+                    // if (hasAmount)
+                    //   //if (!hasBill || !hasAmount)
+                    //   ElevatedButton.icon(
+                    //     onPressed: () async {
+                    //       navigateToPayNowPage(context);
+                    //     },
+                    //     icon: Icon(
+                    //       hasBill ? Icons.edit : Icons.upload_file,
+                    //       size: 16,
+                    //     ),
+                    //     label: Text(
+                    //       hasAmount ? 'Pay Now' : 'Pay Later',
+                    //       style: const TextStyle(fontSize: 12),
+                    //     ),
+                    //     style: ElevatedButton.styleFrom(
+                    //       backgroundColor: Colors.black,
+                    //       foregroundColor: Colors.white,
+                    //       padding: const EdgeInsets.symmetric(
+                    //         horizontal: 12,
+                    //         vertical: 8,
+                    //       ),
+                    //       shape: RoundedRectangleBorder(
+                    //         borderRadius: BorderRadius.circular(8),
+                    //       ),
+                    //     ),
+                    //   ),
                   ],
                 ),
               ],
 
               // ⭐ ASSIGN DELIVERY BOY BUTTON - FOR BILLUPLOADED ORDERS ⭐
               if (hasAmount && isBillUploaded) ...[
-              //if (isBillUploaded && hasBill && hasAmount) ...[
+                //if (isBillUploaded && hasBill && hasAmount) ...[
                 const SizedBox(height: 12),
                 SizedBox(
                   width: double.infinity,

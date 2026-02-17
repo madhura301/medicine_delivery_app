@@ -4,6 +4,7 @@
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import 'package:intl/intl.dart';
+import 'package:pharmaish/core/app_routes.dart';
 import 'package:pharmaish/utils/app_logger.dart';
 import 'package:pharmaish/utils/constants.dart';
 import 'package:pharmaish/utils/storage.dart';
@@ -674,116 +675,10 @@ class _CustomerAllOrdersState extends State<CustomerAllOrders> {
   }
 
   void _showOrderDetails(OrderModel order) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (context) => DraggableScrollableSheet(
-        initialChildSize: 0.7,
-        minChildSize: 0.5,
-        maxChildSize: 0.95,
-        expand: false,
-        builder: (context, scrollController) => SingleChildScrollView(
-          controller: scrollController,
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Handle bar
-                Center(
-                  child: Container(
-                    width: 40,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: Colors.grey[300],
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 20),
-
-                // Title
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'Order #${order.orderNumber ?? order.orderId}',
-                      style: const TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    _buildStatusChip(order.status),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  DateFormat('MMMM dd, yyyy • hh:mm a')
-                      .format(order.createdOn),
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey[600],
-                  ),
-                ),
-
-                const SizedBox(height: 24),
-                const Divider(),
-                const SizedBox(height: 16),
-
-                // Order Details
-                _buildDetailSection('Order Information', [
-                  _buildDetailRow('Order #', order.orderNumber ?? order.orderId.toString()),
-                  _buildDetailRow('Order Type',
-                      _getOrderTypeLabel(order.orderInputTypeDisplayName)),
-                  _buildDetailRow('Status', order.status),
-                  if (order.totalAmount != null)
-                    _buildDetailRow('Amount',
-                        '₹${order.totalAmount!.toStringAsFixed(2)}'),
-                ]),
-
-                const SizedBox(height: 20),
-
-                // Pharmacy Details
-                _buildDetailSection('Pharmacy Details', [
-                  _buildDetailRow('Name', getChemistName(order)),
-                  if (getChemistPhone(order) != null)
-                    _buildDetailRow('Phone', getChemistPhone(order)!),
-                ]),
-
-                const SizedBox(height: 20),
-
-                // Delivery Address
-                if (order.shippingAddressLine1 != null) ...[
-                  _buildDetailSection('Delivery Address', [
-                    _buildDetailRow('Address', order.shippingAddressLine1! + (order.shippingAddressLine2 != null ? ', ' + order.shippingAddressLine2! : '')),
-                  ]),
-                  const SizedBox(height: 20),
-                ],
-
-                // Close button
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: () => Navigator.pop(context),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppTheme.primaryColor,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                    ),
-                    child: const Text('Close'),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
+    Navigator.pushNamed(
+      context,
+      AppRoutes.customerOrderDetails,
+      arguments: order,
     );
   }
 

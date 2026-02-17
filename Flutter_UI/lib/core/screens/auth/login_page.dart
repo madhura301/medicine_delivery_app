@@ -1,10 +1,14 @@
+import 'package:pharmaish/core/services/consent_service.dart';
 import 'package:pharmaish/core/theme/app_theme.dart';
 import 'package:pharmaish/utils/app_logger.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:pharmaish/core/app_routes.dart';
+import 'package:pharmaish/core/screens/auth/forgot_password_page.dart';
+import 'package:pharmaish/utils/consent_manager.dart';
 import 'package:pharmaish/utils/constants.dart';
+import 'package:flutter/gestures.dart';
 import 'package:pharmaish/utils/storage.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -53,9 +57,10 @@ class _LoginPageState extends State<LoginPage> {
 
   /// Open Privacy Policy PDF
   Future<void> _openPrivacyPolicy() async {
-    const String pdfUrl = '${AppConstants.documentsProdBaseUrl}/Privacy_Policy.pdf';
+    const String pdfUrl =
+        '${AppConstants.documentsProdBaseUrl}/Privacy_Policy.pdf';
     // Alternative test URL: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf'
-    
+
     try {
       final Uri uri = Uri.parse(pdfUrl);
       await launchUrl(uri, mode: LaunchMode.externalApplication);
@@ -74,9 +79,10 @@ class _LoginPageState extends State<LoginPage> {
 
   /// Open Terms and Conditions PDF
   Future<void> _openTermsAndConditions() async {
-    const String pdfUrl = '${AppConstants.documentsProdBaseUrl}/Terms_and_Conditions.pdf';
+    const String pdfUrl =
+        '${AppConstants.documentsProdBaseUrl}/Terms_and_Conditions.pdf';
     // Alternative test URL: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf'
-    
+
     try {
       final Uri uri = Uri.parse(pdfUrl);
       await launchUrl(uri, mode: LaunchMode.externalApplication);
@@ -102,7 +108,8 @@ class _LoginPageState extends State<LoginPage> {
           children: [
             Expanded(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
                 child: Form(
                   key: _formKey,
                   child: Column(
@@ -217,7 +224,8 @@ class _LoginPageState extends State<LoginPage> {
                           }
 
                           // Check for minimum 1 special character
-                          if (!RegExp(r'[!@#$%^&*(),.?":{}|<>]').hasMatch(value)) {
+                          if (!RegExp(r'[!@#$%^&*(),.?":{}|<>]')
+                              .hasMatch(value)) {
                             return 'Password must contain at least 1 special character';
                           }
 
@@ -239,26 +247,59 @@ class _LoginPageState extends State<LoginPage> {
 
                       const SizedBox(height: 16),
 
-                      // Remember Password Checkbox
+                      // Remember Password Checkbox and Forgot Password Link
                       Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Checkbox(
-                            value: _rememberPassword,
-                            onChanged: (value) {
-                              setState(() {
-                                _rememberPassword = value ?? false;
-                              });
-                            },
-                            activeColor: AppTheme.primaryColor,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(4),
-                            ),
+                          // Remember Password Checkbox
+                          Row(
+                            children: [
+                              Checkbox(
+                                value: _rememberPassword,
+                                onChanged: (value) {
+                                  setState(() {
+                                    _rememberPassword = value ?? false;
+                                  });
+                                },
+                                activeColor: AppTheme.primaryColor,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                              ),
+                              const Text(
+                                'Remember Password',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
                           ),
-                          const Text(
-                            'Remember Password',
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w500,
+
+                          // Forgot Password Link
+                          TextButton(
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) =>
+                                      const ForgotPasswordPage(),
+                                ),
+                              );
+                            },
+                            style: TextButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 4),
+                              minimumSize: Size.zero,
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            ),
+                            child: const Text(
+                              'Forgot Password?',
+                              style: TextStyle(
+                                color: AppTheme.primaryColor,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 14,
+                              ),
                             ),
                           ),
                         ],
@@ -314,15 +355,16 @@ class _LoginPageState extends State<LoginPage> {
                                   width: 20,
                                   height: 20,
                                   child: CircularProgressIndicator(
-                                    valueColor:
-                                        AlwaysStoppedAnimation<Color>(Colors.white),
+                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                        Colors.white),
                                     strokeWidth: 2,
                                   ),
                                 )
                               : const Text(
                                   'Login',
                                   style: TextStyle(
-                                      fontSize: 18, fontWeight: FontWeight.w600),
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.w600),
                                 ),
                         ),
                       ),
@@ -352,7 +394,8 @@ class _LoginPageState extends State<LoginPage> {
                                     padding: const EdgeInsets.symmetric(
                                         horizontal: 4, vertical: 0),
                                     minimumSize: Size.zero,
-                                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                    tapTargetSize:
+                                        MaterialTapTargetSize.shrinkWrap,
                                   ),
                                   child: const Text(
                                     'Register as Pharmacy/Pharmacist',
@@ -393,7 +436,8 @@ class _LoginPageState extends State<LoginPage> {
                                     padding: const EdgeInsets.symmetric(
                                         horizontal: 4, vertical: 0),
                                     minimumSize: Size.zero,
-                                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                    tapTargetSize:
+                                        MaterialTapTargetSize.shrinkWrap,
                                   ),
                                   child: const Text(
                                     'Register as Customer',
@@ -410,6 +454,56 @@ class _LoginPageState extends State<LoginPage> {
                       ),
                       const SizedBox(height: 20),
 
+                      const SizedBox(height: 16),
+
+// Platform Terms Text
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                        child: RichText(
+                          textAlign: TextAlign.center,
+                          text: TextSpan(
+                            style: TextStyle(
+                              color: Colors.grey.shade700,
+                              fontSize: 12,
+                              height: 1.4,
+                            ),
+                            children: [
+                              const TextSpan(
+                                text:
+                                    'By continuing, you allow us to contact you and provide assistance in availing our platform services. ',
+                              ),
+                              TextSpan(
+                                text: 'T&C',
+                                style: const TextStyle(
+                                  color: AppTheme.primaryColor,
+                                  fontWeight: FontWeight.w600,
+                                  decoration: TextDecoration.underline,
+                                ),
+                                recognizer: TapGestureRecognizer()
+                                  ..onTap = _openTermsAndConditions,
+                              ),
+                              const TextSpan(
+                                text: ' * apply and ',
+                              ),
+                              TextSpan(
+                                text: 'Privacy Policy',
+                                style: const TextStyle(
+                                  color: AppTheme.primaryColor,
+                                  fontWeight: FontWeight.w600,
+                                  decoration: TextDecoration.underline,
+                                ),
+                                recognizer: TapGestureRecognizer()
+                                  ..onTap = _openPrivacyPolicy,
+                              ),
+                              const TextSpan(
+                                text: ' apply.',
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+
+                      const SizedBox(height: 20),
                       // Security Notice
                       if (_rememberPassword)
                         Container(
@@ -440,7 +534,7 @@ class _LoginPageState extends State<LoginPage> {
                             ],
                           ),
                         ),
-                      
+
                       const SizedBox(height: 20),
                     ],
                   ),
@@ -448,42 +542,42 @@ class _LoginPageState extends State<LoginPage> {
               ),
             ),
 
-            // Privacy Policy and Terms & Conditions Links at Bottom
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  // Privacy Policy - Left
-                  GestureDetector(
-                    onTap: _openPrivacyPolicy,
-                    child: const Text(
-                      'Privacy Policy',
-                      style: TextStyle(
-                        color: AppTheme.primaryColor,
-                        fontSize: 13,
-                        decoration: TextDecoration.underline,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
+            // // Privacy Policy and Terms & Conditions Links at Bottom
+            // Container(
+            //   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            //   child: Row(
+            //     mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            //     children: [
+            //       // Privacy Policy - Left
+            //       GestureDetector(
+            //         onTap: _openPrivacyPolicy,
+            //         child: const Text(
+            //           'Privacy Policy',
+            //           style: TextStyle(
+            //             color: AppTheme.primaryColor,
+            //             fontSize: 13,
+            //             decoration: TextDecoration.underline,
+            //             fontWeight: FontWeight.w500,
+            //           ),
+            //         ),
+            //       ),
 
-                  // Terms and Conditions - Right
-                  GestureDetector(
-                    onTap: _openTermsAndConditions,
-                    child: const Text(
-                      'Terms & Conditions',
-                      style: TextStyle(
-                        color: AppTheme.primaryColor,
-                        fontSize: 13,
-                        decoration: TextDecoration.underline,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
+            //       // Terms and Conditions - Right
+            //       GestureDetector(
+            //         onTap: _openTermsAndConditions,
+            //         child: const Text(
+            //           'Terms & Conditions',
+            //           style: TextStyle(
+            //             color: AppTheme.primaryColor,
+            //             fontSize: 13,
+            //             decoration: TextDecoration.underline,
+            //             fontWeight: FontWeight.w500,
+            //           ),
+            //         ),
+            //       ),
+            //     ],
+            //   ),
+            // ),
           ],
         ),
       ),
@@ -494,7 +588,7 @@ class _LoginPageState extends State<LoginPage> {
     return Column(
       children: [
         // App Icon
-         Image.asset(
+        Image.asset(
           'assets/images/app_icon_animated_blue_tagline.png',
           width: 220,
           height: 100,
@@ -559,66 +653,66 @@ class _LoginPageState extends State<LoginPage> {
         }),
       );
 
-      setState(() {
-        _isLoading = false;
-      });
-      AppLogger.info(
-          'Login API Response: ${response.statusCode} - ${response.body}');
-
       if (response.statusCode == 200 || response.statusCode == 201) {
-        // Parse response
         final responseData = jsonDecode(response.body);
+        AppLogger.apiResponse(response.statusCode, '/Auth/login', responseData);
 
-        // Check if login was successful
         if (responseData['success'] == true) {
-          // Extract data from response
+          // Extract tokens and user data
           final token = responseData['token'];
           final refreshToken = responseData['refreshToken'];
+          final userId = responseData['userId'] ?? '';
 
-          // Store tokens using StorageService
+          // Store authentication tokens
           await StorageService.storeAuthTokens(
             token: token,
             refreshToken: refreshToken,
           );
 
-          AppLogger.info('Login successful!');
-          AppLogger.info('Token: $token');
-          AppLogger.info('Refresh Token: $refreshToken');
-
-          // Decode JWT token to get user information using StorageService
-          final userInfo = StorageService.decodeJwtToken(token);
-          final extractedUserInfo = StorageService.extractUserInfo(userInfo);
-          if (extractedUserInfo.isNotEmpty) {
-            AppLogger.info('Extracted User Info: $extractedUserInfo');
-            StorageService.storeUserInfo(extractedUserInfo);
-          } else {
-            AppLogger.info('No user info extracted from token');
-          }
-          final userId = responseData['UserId'] ??
-              responseData['id'] ??
-              userInfo[
-                  'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier'] ??
-              userInfo['id'] ??
-              '';
-          AppLogger.info('User ID: $userId');
           // Store user ID
-          if (userId != null && userId.isNotEmpty) {
+          if (userId.isNotEmpty) {
             await StorageService.storeUserId(userId);
           }
-          final userRole = StorageService.extractUserRole(userInfo);
 
-          AppLogger.info('User Role: $userRole');
-          // Navigate to appropriate dashboard
-          _navigateToDashboard(userRole);
-        } else {
-          // API returned success: false
-          final errors = responseData['errors'] as List<dynamic>?;
+          // Decode JWT token and extract user info
+          final userInfo = StorageService.decodeJwtToken(token);
+          final extractedUserInfo = StorageService.extractUserInfo(userInfo);
+
+          if (extractedUserInfo.isNotEmpty) {
+            await StorageService.storeUserInfo(extractedUserInfo);
+          }
+
+          // Get user role
+          final role =
+              extractedUserInfo['role'] ?? extractedUserInfo['Role'] ?? '';
+
+          // ===== NEW: CHECK TERMS AFTER LOGIN =====
           setState(() {
-            _errorMessage = errors?.isNotEmpty == true
-                ? errors!.first.toString()
-                : 'Login failed. Please try again.';
+            _isLoading = false;
           });
+
+          if (mounted) {
+            await _checkAndShowTermsAfterLogin(role);
+          }
+
+          return;
         }
+      }
+
+      // Handle different error responses
+      setState(() {
+        _isLoading = false;
+      });
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        // Success=false case
+        final responseData = jsonDecode(response.body);
+        final errors = responseData['errors'] as List<dynamic>?;
+        setState(() {
+          _errorMessage = errors?.isNotEmpty == true
+              ? errors!.first.toString()
+              : 'Login failed. Please try again.';
+        });
       } else if (response.statusCode == 401) {
         // Unauthorized - wrong credentials
         setState(() {
@@ -652,6 +746,72 @@ class _LoginPageState extends State<LoginPage> {
         _errorMessage = 'Network error. Please check your connection.';
       });
       AppLogger.error('Login error: $e');
+    }
+  }
+
+  Future<void> _checkAndShowTermsAfterLogin(String role) async {
+    try {
+      AppLogger.info('Checking terms acceptance status...');
+
+      // Check if user has accepted terms
+      final hasAcceptedTerms = await ConsentService.hasConsent(
+        ConsentType.termsAndConditions,
+      );
+
+      AppLogger.info('Has accepted terms: $hasAcceptedTerms');
+
+      if (!hasAcceptedTerms && mounted) {
+        // Show terms dialog
+        AppLogger.info('Showing terms and conditions dialog...');
+        final accepted =
+            await CustomerConsentManager.showTermsAndConditions(context);
+
+        if (!accepted) {
+          // User declined terms - logout and show message
+          AppLogger.warning('User declined terms, logging out...');
+          await StorageService.clearAuthTokens();
+
+          if (mounted) {
+            setState(() {
+              _errorMessage =
+                  'You must accept the Terms & Conditions to continue';
+            });
+          }
+          return;
+        }
+
+        AppLogger.info('User accepted terms');
+      }
+
+      // Terms accepted (or already accepted), navigate to dashboard
+      if (mounted) {
+        AppLogger.info('Navigating to dashboard...');
+        _navigateToDashboard(role);
+      }
+    } catch (e) {
+      AppLogger.error('Error checking/showing terms: $e');
+
+      // On error, show message but still allow navigation
+      if (mounted) {
+        // Show error dialog
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Notice'),
+            content: const Text(
+                'Unable to verify terms acceptance. You may be prompted again on next login.'),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  _navigateToDashboard(role);
+                },
+                child: const Text('Continue'),
+              ),
+            ],
+          ),
+        );
+      }
     }
   }
 

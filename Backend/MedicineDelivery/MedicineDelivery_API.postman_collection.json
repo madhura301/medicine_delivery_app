@@ -1847,10 +1847,10 @@
 			]
 		},
 		{
-			"name": "Customer Support Regions",
+			"name": "Service Regions",
 			"item": [
 				{
-					"name": "Create Customer Support Region",
+					"name": "Create Service Region",
 					"request": {
 						"method": "POST",
 						"header": [
@@ -1876,7 +1876,7 @@
 					}
 				},
 				{
-					"name": "Get All Customer Support Regions",
+					"name": "Get All Service Regions",
 					"request": {
 						"method": "GET",
 						"header": [
@@ -1890,7 +1890,7 @@
 							"host": ["{{baseUrl}}"],
 							"path": ["api", "customersupportregions"]
 						},
-						"description": "Get all customer support regions with their pin codes."
+						"description": "Get all service regions with their pin codes."
 					}
 				},
 				{
