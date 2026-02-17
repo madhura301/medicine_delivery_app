@@ -94,7 +94,7 @@ namespace MedicineDelivery.Infrastructure.Services
             }
 
             // If this is being set as default, unset other default addresses for this customer
-            if (updateDto.IsDefault && !customerAddress.IsDefault)
+            if (updateDto.IsDefault == true && !customerAddress.IsDefault)
             {
                 var existingDefaultAddresses = await _unitOfWork.CustomerAddresses.FindAsync(ca => 
                     ca.CustomerId == customerAddress.CustomerId && ca.IsDefault && ca.IsActive && ca.Id != id);
@@ -107,17 +107,29 @@ namespace MedicineDelivery.Infrastructure.Services
                 }
             }
 
-            customerAddress.Address = updateDto.Address;
-            customerAddress.AddressLine1 = updateDto.AddressLine1;
-            customerAddress.AddressLine2 = updateDto.AddressLine2;
-            customerAddress.AddressLine3 = updateDto.AddressLine3;
-            customerAddress.City = updateDto.City;
-            customerAddress.State = updateDto.State;
-            customerAddress.PostalCode = updateDto.PostalCode;
-            customerAddress.Latitude = updateDto.Latitude;
-            customerAddress.Longitude = updateDto.Longitude;
-            customerAddress.IsDefault = updateDto.IsDefault;
-            customerAddress.IsActive = updateDto.IsActive;
+            // Only update properties that were explicitly provided (non-null)
+            if (updateDto.Address != null)
+                customerAddress.Address = updateDto.Address;
+            if (updateDto.AddressLine1 != null)
+                customerAddress.AddressLine1 = updateDto.AddressLine1;
+            if (updateDto.AddressLine2 != null)
+                customerAddress.AddressLine2 = updateDto.AddressLine2;
+            if (updateDto.AddressLine3 != null)
+                customerAddress.AddressLine3 = updateDto.AddressLine3;
+            if (updateDto.City != null)
+                customerAddress.City = updateDto.City;
+            if (updateDto.State != null)
+                customerAddress.State = updateDto.State;
+            if (updateDto.PostalCode != null)
+                customerAddress.PostalCode = updateDto.PostalCode;
+            if (updateDto.Latitude != null)
+                customerAddress.Latitude = updateDto.Latitude;
+            if (updateDto.Longitude != null)
+                customerAddress.Longitude = updateDto.Longitude;
+            if (updateDto.IsDefault.HasValue)
+                customerAddress.IsDefault = updateDto.IsDefault.Value;
+            if (updateDto.IsActive.HasValue)
+                customerAddress.IsActive = updateDto.IsActive.Value;
             customerAddress.UpdatedOn = DateTime.UtcNow;
 
             _unitOfWork.CustomerAddresses.Update(customerAddress);

@@ -253,8 +253,74 @@ namespace MedicineDelivery.Infrastructure.Services
             }
             else
             {
-                _logger.LogWarning("AssignOrderToNearestChemist failed: Customer address missing coordinates for Order {OrderId}", orderId);
-                throw new InvalidOperationException("Customer address does not have coordinates (latitude/longitude) required for finding nearest chemist.");
+                // No lat/long available — fall back to postal code based assignment
+                _logger.LogInformation("Order {OrderId}: Address missing coordinates, falling back to postal code based assignment", orderId);
+
+                if (string.IsNullOrWhiteSpace(address.PostalCode))
+                {
+                    _logger.LogWarning("AssignOrderToNearestChemist failed: Customer address missing both coordinates and postal code for Order {OrderId}", orderId);
+                    throw new InvalidOperationException("Customer address does not have coordinates or postal code required for assigning a chemist.");
+                }
+
+                var postalCode = address.PostalCode.Trim();
+
+                // Find all active medical stores in the same postal code
+                var storesInPostalCode = await _unitOfWork.MedicalStores.FindAsync(ms =>
+                    ms.PostalCode == postalCode &&
+                    ms.IsActive &&
+                    !ms.IsDeleted);
+
+                if (storesInPostalCode != null && storesInPostalCode.Any())
+                {
+                    // Case 1: Chemists found — assign to the one with the fewest active (not completed/delivered) orders
+                    var storeOrderCounts = new List<(MedicalStore Store, int ActiveOrderCount)>();
+
+                    foreach (var store in storesInPostalCode)
+                    {
+                        var activeOrderCount = (await _unitOfWork.Orders.FindAsync(
+                            o => o.MedicalStoreId == store.MedicalStoreId &&
+                                 o.OrderStatus != OrderStatus.Completed &&
+                                 o.OrderStatus != OrderStatus.RejectedByChemist)).Count();
+
+                        storeOrderCounts.Add((store, activeOrderCount));
+                    }
+
+                    var selectedStore = storeOrderCounts
+                        .OrderBy(x => x.ActiveOrderCount)
+                        .ThenBy(x => x.Store.CreatedOn) // tie-breaker: oldest store first
+                        .First()
+                        .Store;
+
+                    // Assign order to the selected store
+                    order.MedicalStoreId = selectedStore.MedicalStoreId;
+                    order.AssignTo = AssignTo.Chemist;
+                    order.AssignedByType = AssignedByType.System;
+                    order.OrderStatus = OrderStatus.AssignedToChemist;
+                    order.UpdatedOn = DateTime.UtcNow;
+
+                    var assignmentHistory = new OrderAssignmentHistory
+                    {
+                        OrderId = order.OrderId,
+                        CustomerId = order.CustomerId,
+                        MedicalStoreId = selectedStore.MedicalStoreId,
+                        AssignedByType = AssignedByType.System,
+                        AssignTo = AssignTo.Chemist,
+                        AssignedOn = DateTime.UtcNow,
+                        Status = AssignmentStatus.Assigned
+                    };
+
+                    _unitOfWork.Orders.Update(order);
+                    await _unitOfWork.OrderAssignmentHistories.AddAsync(assignmentHistory);
+                    await _unitOfWork.SaveChangesAsync();
+
+                    _logger.LogInformation("Order {OrderId} assigned to chemist {MedicalStoreId} (postal code match, least active orders)", order.OrderId, selectedStore.MedicalStoreId);
+                }
+                else
+                {
+                    // Case 2: No chemists in this postal code — assign to customer support
+                    _logger.LogInformation("Order {OrderId}: No chemists found in postal code {PostalCode}, assigning to customer support", orderId, postalCode);
+                    await AssignRejectOrderToCustomerSupport(orderId);
+                }
             }
         }
 
