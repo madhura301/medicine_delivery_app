@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:dio/dio.dart';
 import 'package:pharmaish/config/environment_config.dart';
-import 'package:pharmaish/core/screens/admin/admin_customer_support_regions.dart';
+//import 'package:pharmaish/core/screens/admin/admin_customer_support_regions.dart';
 import 'package:pharmaish/core/screens/chemist/chemist_delivery_management.dart';
+import 'package:pharmaish/core/services/consent_service.dart';
 import 'package:pharmaish/shared/widgets/order_tile_with_bill.dart';
 import 'package:pharmaish/utils/app_logger.dart';
+import 'package:pharmaish/utils/consent_manager.dart';
 import 'package:pharmaish/utils/constants.dart';
 import 'package:pharmaish/utils/storage.dart';
 import 'package:pharmaish/shared/models/order_model.dart';
@@ -276,7 +278,27 @@ class _ChemistDashboardState extends State<ChemistDashboard> {
     return statusLower.contains('pending') || statusLower.contains('assigned');
   }
 
-  void _navigateToOrderDetails(OrderModel order) {
+  Future<void> _navigateToOrderDetails(OrderModel order) async {
+    // Check if consent already given
+    final hasConsent = await ConsentService.hasConsent(
+      ConsentType.dataHandlingLiabilityDisclaimer,
+    );
+
+    if (!hasConsent) {
+      final accepted =
+          await PharmacistConsentManager.showDataHandlingLiabilityDisclaimer(
+              context);
+
+      if (!accepted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('You must accept the terms to view orders.'),
+          ),
+        );
+        return;
+      }
+    }
+
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (context) => OrderDetailsPage(
@@ -518,11 +540,11 @@ class _ChemistDashboardState extends State<ChemistDashboard> {
                 ),
                 // ListTile(
                 //   leading: Icon(Icons.location_city),
-                //   title: Text('Customer Support Regions'),
+                //   title: Text('Service Regions'),
                 //   onTap: () => Navigator.push(
                 //     context,
                 //     MaterialPageRoute(
-                //       builder: (context) => AdminCustomerSupportRegionsPage(),
+                //       builder: (context) => AdminServiceRegionsPage(),
                 //     ),
                 //   ),
                 // ),
@@ -762,7 +784,9 @@ class _ChemistDashboardState extends State<ChemistDashboard> {
                   customerEmail: getCustomerEmail(order),
                   customerPhone: getCustomerPhone(order),
                   isPending: isPendingStatus(order.status),
-                  onTap: () => _navigateToOrderDetails(order),
+                  onTap: () {
+                    _navigateToOrderDetails(order);
+                  },
                   onAccept: isPendingStatus(order.status)
                       ? () => _handleAcceptOrder(order)
                       : null,
@@ -1703,6 +1727,89 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
     }
   }
 
+  Future<void> _viewPrescriptionWithConsent() async {
+    // Show Prescription Access Permission dialog
+    final accepted =
+        await PharmacistConsentManager.showPrescriptionAccessPermission(
+      context,
+      orderId: widget.order.orderId,
+      customerId: widget.order.customerId,
+    );
+
+    if (!accepted) {
+      // User declined - don't show prescription
+      return;
+    }
+
+    // User accepted - check if URL exists
+    if (widget.order.prescriptionFileUrl == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No prescription image available')),
+      );
+      return;
+    }
+
+    // Show prescription in full screen
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => Scaffold(
+          backgroundColor: Colors.black,
+          appBar: AppBar(
+            title: const Text('Prescription'),
+            backgroundColor: Colors.black,
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.download),
+                onPressed: () {
+                  // TODO: Implement download
+                },
+              ),
+            ],
+          ),
+          body: Center(
+            child: InteractiveViewer(
+              panEnabled: true,
+              boundaryMargin: const EdgeInsets.all(20),
+              minScale: 0.5,
+              maxScale: 4,
+              child: Image.network(
+                widget.order.prescriptionFileUrl!,
+                fit: BoxFit.contain,
+                loadingBuilder: (context, child, loadingProgress) {
+                  if (loadingProgress == null) return child;
+                  return Center(
+                    child: CircularProgressIndicator(
+                      value: loadingProgress.expectedTotalBytes != null
+                          ? loadingProgress.cumulativeBytesLoaded /
+                              loadingProgress.expectedTotalBytes!
+                          : null,
+                    ),
+                  );
+                },
+                errorBuilder: (context, error, stackTrace) {
+                  return const Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.error, size: 64, color: Colors.red),
+                        SizedBox(height: 16),
+                        Text(
+                          'Failed to load prescription image',
+                          style: TextStyle(color: Colors.white),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildImagePrescription() {
     return Column(
       children: [
@@ -1726,10 +1833,7 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
                 ),
                 const SizedBox(height: 16),
                 ElevatedButton.icon(
-                  onPressed: () {
-                    // TODO: Implement image viewer
-                    // You can use packages like photo_view or cached_network_image
-                  },
+                  onPressed: () => _viewPrescriptionWithConsent(),
                   icon: const Icon(Icons.fullscreen),
                   label: const Text('View Full Image'),
                   style: ElevatedButton.styleFrom(

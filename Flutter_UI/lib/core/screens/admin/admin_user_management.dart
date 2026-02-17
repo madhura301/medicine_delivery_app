@@ -245,19 +245,18 @@ class _AdminUserManagementPageState extends State<AdminUserManagementPage> {
         break;
       case 1: // Active
         filtered = _allCustomers
-            .where((c) =>
-                (c['isActive'] ?? false) && !(c['isDeleted'] ?? false))
+            .where(
+                (c) => (c['isActive'] ?? false) && !(c['isDeleted'] ?? false))
             .toList();
         break;
       case 2: // Inactive
         filtered = _allCustomers
-            .where((c) =>
-                !(c['isActive'] ?? false) && !(c['isDeleted'] ?? false))
+            .where(
+                (c) => !(c['isActive'] ?? false) && !(c['isDeleted'] ?? false))
             .toList();
         break;
       case 3: // Deleted
-        filtered =
-            _allCustomers.where((c) => c['isDeleted'] ?? false).toList();
+        filtered = _allCustomers.where((c) => c['isDeleted'] ?? false).toList();
         break;
       default:
         filtered = List.from(_allCustomers);
@@ -307,20 +306,19 @@ class _AdminUserManagementPageState extends State<AdminUserManagementPage> {
         break;
       case 1: // Active
         filtered = _allCustomerSupports
-            .where((c) =>
-                (c['isActive'] ?? false) && !(c['isDeleted'] ?? false))
+            .where(
+                (c) => (c['isActive'] ?? false) && !(c['isDeleted'] ?? false))
             .toList();
         break;
       case 2: // Inactive
         filtered = _allCustomerSupports
-            .where((c) =>
-                !(c['isActive'] ?? false) && !(c['isDeleted'] ?? false))
+            .where(
+                (c) => !(c['isActive'] ?? false) && !(c['isDeleted'] ?? false))
             .toList();
         break;
       case 3: // Deleted
-        filtered = _allCustomerSupports
-            .where((c) => c['isDeleted'] ?? false)
-            .toList();
+        filtered =
+            _allCustomerSupports.where((c) => c['isDeleted'] ?? false).toList();
         break;
       default:
         filtered = List.from(_allCustomerSupports);
@@ -333,9 +331,8 @@ class _AdminUserManagementPageState extends State<AdminUserManagementPage> {
         final firstName = (support['customerSupportFirstName'] ?? '')
             .toString()
             .toLowerCase();
-        final lastName = (support['customerSupportLastName'] ?? '')
-            .toString()
-            .toLowerCase();
+        final lastName =
+            (support['customerSupportLastName'] ?? '').toString().toLowerCase();
         final email = (support['emailId'] ?? '').toString().toLowerCase();
         final mobile = (support['mobileNumber'] ?? '').toString().toLowerCase();
         final employeeId =
@@ -374,20 +371,19 @@ class _AdminUserManagementPageState extends State<AdminUserManagementPage> {
         break;
       case 1: // Active
         filtered = _allMedicalStores
-            .where((c) =>
-                (c['isActive'] ?? false) && !(c['isDeleted'] ?? false))
+            .where(
+                (c) => (c['isActive'] ?? false) && !(c['isDeleted'] ?? false))
             .toList();
         break;
       case 2: // Inactive
         filtered = _allMedicalStores
-            .where((c) =>
-                !(c['isActive'] ?? false) && !(c['isDeleted'] ?? false))
+            .where(
+                (c) => !(c['isActive'] ?? false) && !(c['isDeleted'] ?? false))
             .toList();
         break;
       case 3: // Deleted
-        filtered = _allMedicalStores
-            .where((c) => c['isDeleted'] ?? false)
-            .toList();
+        filtered =
+            _allMedicalStores.where((c) => c['isDeleted'] ?? false).toList();
         break;
       default:
         filtered = List.from(_allMedicalStores);
@@ -430,13 +426,13 @@ class _AdminUserManagementPageState extends State<AdminUserManagementPage> {
         return _allCustomers.length;
       case 1:
         return _allCustomers
-            .where((c) =>
-                (c['isActive'] ?? false) && !(c['isDeleted'] ?? false))
+            .where(
+                (c) => (c['isActive'] ?? false) && !(c['isDeleted'] ?? false))
             .length;
       case 2:
         return _allCustomers
-            .where((c) =>
-                !(c['isActive'] ?? false) && !(c['isDeleted'] ?? false))
+            .where(
+                (c) => !(c['isActive'] ?? false) && !(c['isDeleted'] ?? false))
             .length;
       case 3:
         return _allCustomers.where((c) => c['isDeleted'] ?? false).length;
@@ -451,13 +447,13 @@ class _AdminUserManagementPageState extends State<AdminUserManagementPage> {
         return _allCustomerSupports.length;
       case 1:
         return _allCustomerSupports
-            .where((c) =>
-                (c['isActive'] ?? false) && !(c['isDeleted'] ?? false))
+            .where(
+                (c) => (c['isActive'] ?? false) && !(c['isDeleted'] ?? false))
             .length;
       case 2:
         return _allCustomerSupports
-            .where((c) =>
-                !(c['isActive'] ?? false) && !(c['isDeleted'] ?? false))
+            .where(
+                (c) => !(c['isActive'] ?? false) && !(c['isDeleted'] ?? false))
             .length;
       case 3:
         return _allCustomerSupports
@@ -474,13 +470,13 @@ class _AdminUserManagementPageState extends State<AdminUserManagementPage> {
         return _allMedicalStores.length;
       case 1:
         return _allMedicalStores
-            .where((c) =>
-                (c['isActive'] ?? false) && !(c['isDeleted'] ?? false))
+            .where(
+                (c) => (c['isActive'] ?? false) && !(c['isDeleted'] ?? false))
             .length;
       case 2:
         return _allMedicalStores
-            .where((c) =>
-                !(c['isActive'] ?? false) && !(c['isDeleted'] ?? false))
+            .where(
+                (c) => !(c['isActive'] ?? false) && !(c['isDeleted'] ?? false))
             .length;
       case 3:
         return _allMedicalStores.where((c) => c['isDeleted'] ?? false).length;
@@ -1070,6 +1066,9 @@ class _AdminUserManagementPageState extends State<AdminUserManagementPage> {
     final mobile = customer['mobileNumber'] ?? '';
     final email = customer['emailId'] ?? '';
 
+    // ✨ NEW: Get customer number
+    final customerNumber = '';//customer['customerNumber']?.toString();
+
     Color statusColor;
     Color statusBgColor;
     String statusText;
@@ -1100,13 +1099,51 @@ class _AdminUserManagementPageState extends State<AdminUserManagementPage> {
             style: const TextStyle(color: Colors.white),
           ),
         ),
-        title: Text(
-          '$firstName $lastName',
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            decoration: isDeleted ? TextDecoration.lineThrough : null,
-            color: isDeleted ? Colors.grey : null,
-          ),
+        title: Row(
+          children: [
+            // ✨ NEW: Customer Number Badge (only show if not null)
+            if (customerNumber != null && customerNumber.isNotEmpty) ...[
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.blue.shade100,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.blue.shade300, width: 1),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.tag,
+                      size: 12,
+                      color: Colors.blue.shade700,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      customerNumber,
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.blue.shade900,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+            ],
+            // Customer Name
+            Expanded(
+              child: Text(
+                '$firstName $lastName',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  decoration: isDeleted ? TextDecoration.lineThrough : null,
+                  color: isDeleted ? Colors.grey : null,
+                ),
+              ),
+            ),
+          ],
         ),
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1163,7 +1200,6 @@ class _AdminUserManagementPageState extends State<AdminUserManagementPage> {
       ),
     );
   }
-
   // =========================================================================
   // CUSTOMER SUPPORTS LIST
   // =========================================================================
@@ -1344,9 +1380,8 @@ class _AdminUserManagementPageState extends State<AdminUserManagementPage> {
       color: isDeleted ? Colors.red.shade50 : null,
       child: ListTile(
         leading: CircleAvatar(
-          backgroundColor: isDeleted
-              ? Colors.red
-              : (isActive ? Colors.purple : Colors.grey),
+          backgroundColor:
+              isDeleted ? Colors.red : (isActive ? Colors.purple : Colors.grey),
           child: const Icon(Icons.local_pharmacy, color: Colors.white),
         ),
         title: Text(

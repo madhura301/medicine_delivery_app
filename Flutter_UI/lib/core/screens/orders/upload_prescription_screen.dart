@@ -8,8 +8,8 @@ import 'package:pharmaish/shared/models/order_model.dart';
 import 'package:pharmaish/utils/app_logger.dart';
 import 'package:pharmaish/shared/widgets/step_progress_indicator.dart';
 import 'package:pharmaish/shared/widgets/address_selector_widget.dart';
+import 'package:pharmaish/utils/consent_manager.dart';
 import 'package:pharmaish/utils/order_exceptions.dart';
-import 'package:pharmaish/utils/storage.dart';
 
 class UploadPrescriptionScreen extends StatefulWidget {
   final String customerId;
@@ -169,6 +169,22 @@ class _UploadPrescriptionScreenState extends State<UploadPrescriptionScreen> {
       return;
     }
 
+// ✨ Show consent dialog before submitting
+    final consentGranted =
+        await CustomerConsentManager.showPrescriptionSharingConsent(context);
+
+    if (!consentGranted) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content:
+                Text('Consent required to share prescription with pharmacy'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      }
+      return;
+    }
     setState(() => _isLoading = true);
 
     try {

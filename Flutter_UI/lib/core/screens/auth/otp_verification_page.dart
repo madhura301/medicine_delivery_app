@@ -288,12 +288,12 @@ class _OTPVerificationPageState extends State<OTPVerificationPage> {
         _isLoading = false;
       });
       if (!mounted) return;
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (context) => ResetPasswordPage(username: widget.username),
-        ),
-      );
+      // Navigator.pushReplacement(
+      //   context,
+      //   MaterialPageRoute(
+      //     builder: (context) => ResetPasswordPage(username: widget.username),
+      //   ),
+      // );
     } else {
       setState(() {
         _isLoading = false;

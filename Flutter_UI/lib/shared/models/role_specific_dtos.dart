@@ -12,6 +12,7 @@ class CustomerDto {
   final String? customerFirstName;
   final String? customerLastName;
   final String? customerMiddleName;
+  final String? customerNumber;
   final String? mobileNumber;
   final String? alternativeMobileNumber;
   final String? emailId;
@@ -29,6 +30,7 @@ class CustomerDto {
     this.customerFirstName,
     this.customerLastName,
     this.customerMiddleName,
+    this.customerNumber,
     this.mobileNumber,
     this.alternativeMobileNumber,
     this.emailId,
@@ -48,6 +50,7 @@ class CustomerDto {
       customerFirstName: json['customerFirstName'],
       customerLastName: json['customerLastName'],
       customerMiddleName: json['customerMiddleName'],
+      //customerNumber: json['customerNumber'],
       mobileNumber: json['mobileNumber'],
       alternativeMobileNumber: json['alternativeMobileNumber'],
       emailId: json['emailId'],

@@ -235,92 +235,37 @@ static Widget buildNewOrderUI(BuildContext context) {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
-                // Membership Code Section - SAME LINE WITH FLEXIBLE LAYOUT
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 12,
+                // Contact to Proceed Section - SIMPLIFIED VERSION
+                GestureDetector(
+                  onTap: () => openWhatsApp(
+                    context,
+                    'Thank you for contacting us! Below are the platform access plans. Which one would you like to proceed with?'
                   ),
-                  decoration: BoxDecoration(
-                    color: Colors.black,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      GestureDetector(
-                        onTap: () => openWhatsApp(context,'Hello, I would like to become a member.'),
-                        child: RichText(
-                          textAlign: TextAlign.center,
-                          text: TextSpan(
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 15,
-                              fontWeight: FontWeight.w300,
-                            ),
-                            children: [
-                              const TextSpan(
-                                text: 'Become a Member to avail ',
-                              ),
-                              const TextSpan(
-                                text: 'EXTRA BENEFITS',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              const TextSpan(
-                                text: '!\n',
-                              ),
-                              const TextSpan(
-                                text: 'Call',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              const TextSpan(
-                                text: ' or ',
-                              ),
-                              const TextSpan(
-                                text: 'DM',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              const TextSpan(
-                                text: '-\'connect\' on ',
-                              ),
-                              const TextSpan(
-                                text: '09226737083',
-                                style: TextStyle(
-                                  color: Colors.lightBlueAccent,
-                                  decoration: TextDecoration.underline,
-                                ),
-                              ),
-                              const TextSpan(
-                                text: '.',
-                              ),
-                            ],
-                          ),
-                        ),
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 16,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.black,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Text(
+                      'Contact to proceed',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
                       ),
-                      const SizedBox(height: 6),
-                      const Text(
-                        'Already a Member, ignore this message.',
-                        style: TextStyle(
-                          color: Colors.white70,
-                          fontSize: 10,
-                          fontStyle: FontStyle.italic,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                    ],
+                      textAlign: TextAlign.center,
+                    ),
                   ),
                 ),
 
                 // PLACE YOUR ORDER Section
                 const Text(
-                  'PLACE YOUR ORDER',
+                  'SUBMIT PRESCRIPTION',
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,

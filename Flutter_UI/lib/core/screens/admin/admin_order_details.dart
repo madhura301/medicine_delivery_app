@@ -4,6 +4,8 @@
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import 'package:intl/intl.dart';
+import 'package:pharmaish/shared/models/order_assignment_history_model.dart';
+import 'package:pharmaish/shared/widgets/order_assignment_history_widget.dart';
 import 'package:pharmaish/utils/app_logger.dart';
 import 'package:pharmaish/utils/constants.dart';
 import 'package:pharmaish/utils/storage.dart';
@@ -26,16 +28,19 @@ class _AdminOrderDetailsPageState extends State<AdminOrderDetailsPage> {
   late Dio _dio;
   bool _isLoading = true;
   String? _errorMessage;
-
+  bool _isLoadingCustomer = true;
+  String? _customerError;
   // Detailed data
   Map<String, dynamic>? _customerData;
   Map<String, dynamic>? _chemistData;
   Map<String, dynamic>? _deliveryData;
-  List<Map<String, dynamic>> _orderHistory = [];
+
+  late OrderModel _currentOrder;
 
   @override
   void initState() {
     super.initState();
+    _currentOrder = widget.order;
     _setupDio();
     _loadOrderDetails();
   }
@@ -66,6 +71,20 @@ class _AdminOrderDetailsPageState extends State<AdminOrderDetailsPage> {
     ));
   }
 
+  Future<void> _refreshOrder() async {
+    try {
+      final response = await _dio.get('/Orders/${widget.order.orderId}');
+      if (response.statusCode == 200) {
+        final updatedOrder = OrderModel.fromJson(response.data);
+        setState(() {
+          _currentOrder = updatedOrder;
+        });
+      }
+    } catch (e) {
+      AppLogger.error('Error refreshing order: $e');
+    }
+  }
+
   Future<void> _loadOrderDetails() async {
     setState(() {
       _isLoading = true;
@@ -73,19 +92,14 @@ class _AdminOrderDetailsPageState extends State<AdminOrderDetailsPage> {
     });
 
     try {
+      await _refreshOrder(); // Load complete order first!
       // Load customer details
       await _loadCustomerDetails();
 
       // Load chemist details if assigned
-      if (widget.order.medicalStoreId != null) {
+      if (_currentOrder.medicalStoreId != null) {
         await _loadChemistDetails();
       }
-
-      // Load delivery details if available
-      await _loadDeliveryDetails();
-
-      // Load order history
-      await _loadOrderHistory();
 
       setState(() {
         _isLoading = false;
@@ -99,23 +113,83 @@ class _AdminOrderDetailsPageState extends State<AdminOrderDetailsPage> {
     }
   }
 
-  Future<void> _loadCustomerDetails() async {
-    try {
-      final response = await _dio.get('/Customers/${widget.order.customerId}');
-      if (response.statusCode == 200) {
-        setState(() {
-          _customerData = response.data;
-        });
-      }
-    } catch (e) {
-      AppLogger.error('Error loading customer details: $e');
-    }
-  }
+ Future<void> _loadCustomerDetails() async {
+  setState(() {
+    _isLoadingCustomer = true;
+    _customerError = null;
+  });
 
+  try {
+    final customerId = _currentOrder.customerId;
+    
+    // ✅ Log customer ID
+    AppLogger.info('=== LOADING CUSTOMER ===');
+    AppLogger.info('Customer ID: $customerId');
+    AppLogger.info('Customer ID type: ${customerId.runtimeType}');
+    AppLogger.info('Customer ID length: ${customerId.length}');
+    
+    // ✅ Log auth token status
+    final token = await StorageService.getAuthToken();
+    if (token != null) {
+      AppLogger.info('Auth token present: ${token.substring(0, 20)}...');
+    } else {
+      AppLogger.error('❌ NO AUTH TOKEN FOUND!');
+    }
+    
+    // ✅ Log full URL
+    final url = '/Customers/$customerId';
+    final fullUrl = '${_dio.options.baseUrl}$url';
+    AppLogger.info('Request URL: $fullUrl');
+    
+    // ✅ Make the request
+    final response = await _dio.get(url);
+    
+    AppLogger.info('✅ Customer response: ${response.statusCode}');
+    AppLogger.info('Response data keys: ${(response.data as Map).keys.toList()}');
+    
+    if (response.statusCode == 200) {
+      setState(() {
+        _customerData = response.data;
+        _isLoadingCustomer = false;
+      });
+      AppLogger.info('✅ Customer loaded successfully');
+    } else {
+      setState(() {
+        _customerError = 'Failed to load customer (Status: ${response.statusCode})';
+        _isLoadingCustomer = false;
+      });
+    }
+  } on DioException catch (e) {
+    AppLogger.error('❌ DioException loading customer');
+    AppLogger.error('Status code: ${e.response?.statusCode}');
+    AppLogger.error('Response data: ${e.response?.data}');
+    AppLogger.error('Error type: ${e.type}');
+    AppLogger.error('Message: ${e.message}');
+    AppLogger.error('Request: ${e.requestOptions.uri}');
+    AppLogger.error('Request headers: ${e.requestOptions.headers}');
+    
+    setState(() {
+      _customerError = e.response?.statusCode == 404
+          ? 'Customer not found'
+          : e.response?.statusCode == 401
+              ? 'Authentication required. Please login again.'
+              : e.response?.statusCode == 403
+                  ? 'Access denied. You don\'t have permission.'
+                  : 'Failed to load customer details (${e.response?.statusCode ?? 'network error'})';
+      _isLoadingCustomer = false;
+    });
+  } catch (e) {
+    AppLogger.error('❌ Unexpected error loading customer details: $e');
+    setState(() {
+      _customerError = 'An error occurred while retrieving the customer';
+      _isLoadingCustomer = false;
+    });
+  }
+}
   Future<void> _loadChemistDetails() async {
     try {
       final response =
-          await _dio.get('/MedicalStores/${widget.order.medicalStoreId}');
+          await _dio.get('/MedicalStores/${_currentOrder.medicalStoreId}');
       if (response.statusCode == 200) {
         setState(() {
           _chemistData = response.data;
@@ -126,40 +200,12 @@ class _AdminOrderDetailsPageState extends State<AdminOrderDetailsPage> {
     }
   }
 
-  Future<void> _loadDeliveryDetails() async {
-    try {
-      // Try to get delivery information
-      final response = await _dio.get('/Deliveries/order/${widget.order.orderId}');
-      if (response.statusCode == 200) {
-        setState(() {
-          _deliveryData = response.data;
-        });
-      }
-    } catch (e) {
-      AppLogger.info('No delivery data available: $e');
-    }
-  }
-
-  Future<void> _loadOrderHistory() async {
-    try {
-      final response = await _dio.get(
-          '/OrderAssignmentHistory/order/${widget.order.orderId}');
-      if (response.statusCode == 200) {
-        setState(() {
-          _orderHistory = List<Map<String, dynamic>>.from(response.data);
-        });
-      }
-    } catch (e) {
-      AppLogger.info('No order history available: $e');
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          'Order #${widget.order.orderNumber ?? (widget.order.orderId.length > 8 ? widget.order.orderId.substring(0, 8) : widget.order.orderId)}',
+          'Order #${_currentOrder.orderNumber ?? (_currentOrder.orderId.length > 8 ? _currentOrder.orderId.substring(0, 8) : _currentOrder.orderId)}',
           style: const TextStyle(color: Colors.white),
         ),
         backgroundColor: Colors.black,
@@ -238,7 +284,7 @@ class _AdminOrderDetailsPageState extends State<AdminOrderDetailsPage> {
           ),
 
           // Chemist Information Section (if assigned)
-          if (widget.order.medicalStoreId != null)
+          if (_currentOrder.medicalStoreId != null)
             _buildSection(
               'Chemist/Pharmacy Details',
               Icons.local_pharmacy,
@@ -247,7 +293,7 @@ class _AdminOrderDetailsPageState extends State<AdminOrderDetailsPage> {
             ),
 
           // Prescription Section
-          if (widget.order.prescriptionFileUrl != null)
+          if (_currentOrder.prescriptionFileUrl != null)
             _buildSection(
               'Prescription',
               Icons.medical_services,
@@ -256,7 +302,7 @@ class _AdminOrderDetailsPageState extends State<AdminOrderDetailsPage> {
             ),
 
           // Bill Section
-          if (widget.order.billFileUrl != null)
+          if (_currentOrder.billFileUrl != null)
             _buildSection(
               'Bill',
               Icons.receipt,
@@ -265,22 +311,16 @@ class _AdminOrderDetailsPageState extends State<AdminOrderDetailsPage> {
             ),
 
           // Delivery Information
-          if (_deliveryData != null)
+          if (_hasDeliveryAssignment())
             _buildSection(
               'Delivery Information',
               Icons.delivery_dining,
               Colors.teal,
-              _buildDeliveryInfo(),
+              _buildDeliveryInfoFromHistory(),
             ),
 
-          // Order History
-          if (_orderHistory.isNotEmpty)
-            _buildSection(
-              'Order History',
-              Icons.history,
-              Colors.indigo,
-              _buildOrderHistory(),
-            ),
+          // ✨ NEW: Assignment History Widget
+          _buildAssignmentHistorySection(),
 
           const SizedBox(height: 24),
         ],
@@ -288,12 +328,122 @@ class _AdminOrderDetailsPageState extends State<AdminOrderDetailsPage> {
     );
   }
 
+  Widget _buildInfoRow(String label, String value, {IconData? icon}) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8.0),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (icon != null) ...[
+            Icon(icon, size: 16, color: Colors.grey[600]),
+            const SizedBox(width: 8),
+          ],
+          Expanded(
+            child: RichText(
+              text: TextSpan(
+                style: TextStyle(fontSize: 14, color: Colors.grey[800]),
+                children: [
+                  TextSpan(
+                    text: '$label: ',
+                    style: const TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                  TextSpan(
+                    text: value,
+                    style: TextStyle(color: Colors.grey[700]),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  bool _hasDeliveryAssignment() {
+    return _currentOrder.assignmentHistory
+        .any((h) => h.assignTo == AssignTo.delivery);
+  }
+
+  Widget _buildDeliveryInfoFromHistory() {
+    // Get the latest delivery assignment
+    final deliveryAssignments = _currentOrder.assignmentHistory
+        .where((h) => h.assignTo == AssignTo.delivery)
+        .toList();
+
+    if (deliveryAssignments.isEmpty) {
+      return const Text('No delivery information available');
+    }
+
+    // Sort by assignedOn descending to get the latest
+    deliveryAssignments.sort((a, b) => b.assignedOn.compareTo(a.assignedOn));
+    final latestDelivery = deliveryAssignments.first;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildInfoRow('Delivery Person', latestDelivery.assigneeName ?? 'N/A'),
+        _buildInfoRow('Status', latestDelivery.status.displayName),
+        _buildInfoRow(
+          'Assigned On',
+          DateFormat('MMM dd, yyyy - hh:mm a')
+              .format(latestDelivery.assignedOn.toLocal()),
+        ),
+        if (latestDelivery.updatedOn != null)
+          _buildInfoRow(
+            'Updated On',
+            DateFormat('MMM dd, yyyy - hh:mm a')
+                .format(latestDelivery.updatedOn!.toLocal()),
+          ),
+        if (latestDelivery.rejectNote != null &&
+            latestDelivery.rejectNote!.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(top: 8.0),
+            child: Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.red.shade50,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.red.shade200),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(Icons.warning, color: Colors.red.shade700, size: 20),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Rejection Reason:',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: Colors.red.shade700,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          latestDelivery.rejectNote!,
+                          style: TextStyle(color: Colors.red.shade900),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
   Widget _buildStatusBanner() {
     Color statusColor;
     IconData statusIcon;
-    String statusText = widget.order.status;
+    String statusText = _currentOrder.status;
 
-    final statusLower = widget.order.status.toLowerCase();
+    final statusLower = _currentOrder.status.toLowerCase();
     if (statusLower.contains('pending') || statusLower.contains('assigned')) {
       statusColor = Colors.orange;
       statusIcon = Icons.pending;
@@ -414,52 +564,99 @@ class _AdminOrderDetailsPageState extends State<AdminOrderDetailsPage> {
   Widget _buildOrderInfo() {
     return Column(
       children: [
-        _buildDetailRow('Order ID', widget.order.orderId),
-        if (widget.order.orderNumber != null)
-          _buildDetailRow('Order Number', widget.order.orderNumber!),
+        _buildDetailRow('Order ID', _currentOrder.orderId),
+        if (_currentOrder.orderNumber != null)
+          _buildDetailRow('Order Number', _currentOrder.orderNumber!),
         _buildDetailRow(
           'Order Date',
-          DateFormat('MMM dd, yyyy - hh:mm a').format(widget.order.createdOn),
+          DateFormat('MMM dd, yyyy - hh:mm a').format(_currentOrder.createdOn),
         ),
         _buildDetailRow(
           'Order Type',
-          widget.order.orderInputTypeDisplayName ?? 'N/A',
+          _currentOrder.orderInputTypeDisplayName ?? 'N/A',
         ),
-        if (widget.order.totalAmount != null)
+        if (_currentOrder.totalAmount != null)
           _buildDetailRow(
             'Total Amount',
-            '₹${widget.order.totalAmount!.toStringAsFixed(2)}',
+            '₹${_currentOrder.totalAmount!.toStringAsFixed(2)}',
             valueStyle: const TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
               color: Colors.green,
             ),
           ),
-        if (widget.order.shippingAddressLine1 != null)
+        if (_currentOrder.shippingAddressLine1 != null)
           _buildDetailRow(
             'Delivery Address',
-            '${widget.order.shippingAddressLine1}\n'
-            '${widget.order.shippingAddressLine2 ?? ''}\n'
-            '${widget.order.shippingCity ?? ''}, ${widget.order.shippingArea ?? ''} - ${widget.order.shippingPincode ?? ''}',
+            '${_currentOrder.shippingAddressLine1}\n'
+                '${_currentOrder.shippingAddressLine2 ?? ''}\n'
+                '${_currentOrder.shippingCity ?? ''}, ${_currentOrder.shippingArea ?? ''} - ${_currentOrder.shippingPincode ?? ''}',
           ),
       ],
     );
   }
 
   Widget _buildCustomerInfo() {
+    // Show loading state
+    if (_isLoadingCustomer) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(16.0),
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
+
+    // Show error state
+    if (_customerError != null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            children: [
+              Icon(Icons.error_outline, size: 48, color: Colors.red.shade300),
+              const SizedBox(height: 12),
+              Text(
+                _customerError!,
+                style: TextStyle(color: Colors.red.shade700),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 12),
+              ElevatedButton.icon(
+                onPressed: _loadCustomerDetails,
+                icon: const Icon(Icons.refresh),
+                label: const Text('Retry'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.blue,
+                  foregroundColor: Colors.white,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // Show data if loaded successfully
     if (_customerData == null) {
-      return const Text('Loading customer details...');
+      return const Center(
+        child: Text('No customer data available'),
+      );
     }
 
     final firstName = _customerData!['customerFirstName'] ?? '';
     final lastName = _customerData!['customerLastName'] ?? '';
     final email = _customerData!['emailId'] ?? '';
     final mobile = _customerData!['mobileNumber'] ?? '';
+    final customerNumber = _customerData!['customerNumber']?.toString();
 
     return Column(
       children: [
+        // ✨ NEW: Customer Number (if available)
+        if (customerNumber != null && customerNumber.isNotEmpty)
+          _buildDetailRow('Customer ID', customerNumber),
         _buildDetailRow('Name', '$firstName $lastName'),
-        _buildDetailRow('Email', email),
+        if (email.isNotEmpty) _buildDetailRow('Email', email),
         _buildDetailRow('Mobile', mobile),
       ],
     );
@@ -492,11 +689,11 @@ class _AdminOrderDetailsPageState extends State<AdminOrderDetailsPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        if (widget.order.prescriptionFileUrl != null) ...[
+        if (_currentOrder.prescriptionFileUrl != null) ...[
           ClipRRect(
             borderRadius: BorderRadius.circular(8),
             child: Image.network(
-              widget.order.prescriptionFileUrl!,
+              _currentOrder.prescriptionFileUrl!,
               fit: BoxFit.cover,
               errorBuilder: (context, error, stackTrace) {
                 return Container(
@@ -521,7 +718,8 @@ class _AdminOrderDetailsPageState extends State<AdminOrderDetailsPage> {
             onPressed: () {
               // TODO: Open image in full screen
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Opening full screen - Coming Soon')),
+                const SnackBar(
+                    content: Text('Opening full screen - Coming Soon')),
               );
             },
             icon: const Icon(Icons.zoom_in),
@@ -532,7 +730,7 @@ class _AdminOrderDetailsPageState extends State<AdminOrderDetailsPage> {
             ),
           ),
         ] else
-          const Text('No prescription uploaded'),
+          const Text('No Requirement forwarded'),
       ],
     );
   }
@@ -541,11 +739,11 @@ class _AdminOrderDetailsPageState extends State<AdminOrderDetailsPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        if (widget.order.billFileUrl != null) ...[
+        if (_currentOrder.billFileUrl != null) ...[
           ClipRRect(
             borderRadius: BorderRadius.circular(8),
             child: Image.network(
-              widget.order.billFileUrl!,
+              _currentOrder.billFileUrl!,
               fit: BoxFit.cover,
               errorBuilder: (context, error, stackTrace) {
                 return Container(
@@ -570,7 +768,8 @@ class _AdminOrderDetailsPageState extends State<AdminOrderDetailsPage> {
             onPressed: () {
               // TODO: Open image in full screen
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Opening full screen - Coming Soon')),
+                const SnackBar(
+                    content: Text('Opening full screen - Coming Soon')),
               );
             },
             icon: const Icon(Icons.zoom_in),
@@ -586,83 +785,17 @@ class _AdminOrderDetailsPageState extends State<AdminOrderDetailsPage> {
     );
   }
 
-  Widget _buildDeliveryInfo() {
-    if (_deliveryData == null) {
-      return const Text('No delivery information available');
-    }
-
-    return Column(
-      children: [
-        if (_deliveryData!['deliveryBoyName'] != null)
-          _buildDetailRow('Delivery Person', _deliveryData!['deliveryBoyName']),
-        if (_deliveryData!['deliveryBoyMobile'] != null)
-          _buildDetailRow('Contact', _deliveryData!['deliveryBoyMobile']),
-        if (_deliveryData!['assignedOn'] != null)
-          _buildDetailRow(
-            'Assigned On',
-            DateFormat('MMM dd, yyyy - hh:mm a')
-                .format(DateTime.parse(_deliveryData!['assignedOn'])),
-          ),
-        if (_deliveryData!['completedOn'] != null)
-          _buildDetailRow(
-            'Completed On',
-            DateFormat('MMM dd, yyyy - hh:mm a')
-                .format(DateTime.parse(_deliveryData!['completedOn'])),
-          ),
-      ],
+  Widget _buildAssignmentHistorySection() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      child: OrderAssignmentHistoryWidget(
+        order: _currentOrder,
+        isAdminView: true, // Admin sees full details
+      ),
     );
   }
 
-  Widget _buildOrderHistory() {
-    return Column(
-      children: _orderHistory.map((history) {
-        return Container(
-          margin: const EdgeInsets.only(bottom: 12),
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: Colors.grey[100],
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Row(
-            children: [
-              Icon(
-                Icons.history,
-                color: Colors.grey[600],
-                size: 20,
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      history['action'] ?? 'Status Change',
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                      ),
-                    ),
-                    if (history['assignedOn'] != null)
-                      Text(
-                        DateFormat('MMM dd, yyyy - hh:mm a')
-                            .format(DateTime.parse(history['assignedOn'])),
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey[600],
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        );
-      }).toList(),
-    );
-  }
-
-  Widget _buildDetailRow(String label, String value,
-      {TextStyle? valueStyle}) {
+  Widget _buildDetailRow(String label, String value, {TextStyle? valueStyle}) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(

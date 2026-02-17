@@ -18,6 +18,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
   String _userEmail = '';
   String _customerId = '';
   bool _isLoading = true;
+  //String _userStatus = 'Active'; // Can be 'Active', 'Inactive', or 'Pause'
 
   @override
   void initState() {
@@ -29,7 +30,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
     try {
       final firstName = await StorageService.getUserName();
       final customerId = await StorageService.getUserId();
-      
+
       if (firstName != null && firstName.isNotEmpty) {
         setState(() {
           _userName = firstName;
@@ -44,7 +45,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
           final extractedFirstName = userInfo['firstName'];
           final extractedEmail = userInfo['email'];
           final customerId = userInfo['id'];
-          
+
           if (extractedFirstName != null && extractedFirstName.isNotEmpty) {
             setState(() {
               _userName = extractedFirstName;
@@ -63,7 +64,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
           });
         }
       }
-      
+
       setState(() => _isLoading = false);
     } catch (e) {
       AppLogger.error('Error loading user details', e);
@@ -74,6 +75,23 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
       });
     }
   }
+
+// // TODO: Fetch user status from API
+//   // For now, it's hardcoded as 'Active'
+//   // You should fetch this from your backend API based on customerId
+//   // Get status color based on status
+//   Color _getStatusColor() {
+//     switch (_userStatus) {
+//       case 'Active':
+//         return Colors.green;
+//       case 'Inactive':
+//         return Colors.red;
+//       case 'Pause':
+//         return Colors.orange;
+//       default:
+//         return Colors.grey;
+//     }
+//   }
 
   void _goToCustomerProfile(BuildContext context) {
     Navigator.pushNamed(context, '/customerProfile').then((_) {
@@ -162,13 +180,18 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
     );
   }
 
+// This fixes:
+// 1. Moves drawer and profile icons up aligned with logo
+// 2. Fixes status badge overlap on profile icon
+// 3. Adds Pharmaish disclaimer text in footer
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      drawer: _buildDrawer(context), // DRAWER ADDED
+      drawer: _buildDrawer(context),
       body: Column(
         children: [
-          // Top section with logo and title - ORIGINAL UI
+          // Top section with logo and title - UPDATED
           Container(
             width: double.infinity,
             decoration: BoxDecoration(
@@ -183,60 +206,84 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
             ),
             child: SafeArea(
               bottom: false,
-              child: Column(
-                children: [
-                  // Logo at the top
-                  Padding(
-                    padding: const EdgeInsets.only(top: 12, bottom: 8),
-                    child: Image.asset(
-                      'assets/images/app_icon_animated_white_tagline.png',
-                      width: 150,
-                      height: 50,
-                      fit: BoxFit.contain,
+              child: Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    // HAMBURGER MENU ICON - Aligned with logo
+                    Builder(
+                      builder: (context) => IconButton(
+                        onPressed: () {
+                          Scaffold.of(context).openDrawer();
+                        },
+                        icon: const Icon(Icons.menu,
+                            color: Colors.white, size: 28),
+                        tooltip: 'Menu',
+                      ),
                     ),
-                  ),
 
-                  // Dashboard title and actions row
-                  Padding(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-                    child: Row(
+                    // Logo in the center
+                    Expanded(
+                      child: Center(
+                        child: Image.asset(
+                          'assets/images/app_icon_animated_white_tagline.png',
+                          width: 150,
+                          height: 50,
+                          fit: BoxFit.contain,
+                        ),
+                      ),
+                    ),
+
+                    // Profile Icon with Status Indicator - Aligned with logo
+                    Stack(
+                      clipBehavior: Clip.none,
                       children: [
-                        // HAMBURGER MENU ICON ADDED
-                        Builder(
-                          builder: (context) => IconButton(
-                            onPressed: () {
-                              Scaffold.of(context).openDrawer();
-                            },
-                            icon: const Icon(Icons.menu, color: Colors.white),
-                            tooltip: 'Menu',
-                          ),
-                        ),
-                        const Expanded(
-                          child: Text(
-                            'Customer Dashboard',
-                            style: TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ),
                         IconButton(
                           onPressed: () => _goToCustomerProfile(context),
-                          icon: const Icon(Icons.person, color: Colors.white),
+                          icon: const Icon(Icons.person,
+                              color: Colors.white, size: 28),
                           tooltip: 'Profile',
                         ),
-                        // LOGOUT MOVED TO DRAWER - Removed from here
-                      ],
+                      //   // Status indicator - FIXED POSITIONING
+                      //   Positioned(
+                      //     bottom: -4,
+                      //     left: 0,
+                      //     right: 0,
+                      //     child: Container(
+                      //       padding: const EdgeInsets.symmetric(
+                      //         horizontal: 4,
+                      //         vertical: 2,
+                      //       ),
+                      //       decoration: BoxDecoration(
+                      //         color: _getStatusColor(),
+                      //         borderRadius: BorderRadius.circular(8),
+                      //         border: Border.all(color: Colors.white, width: 1),
+                      //       ),
+                      //       child: Text(
+                      //         _userStatus,
+                      //         style: const TextStyle(
+                      //           color: Colors.white,
+                      //           fontSize: 7,
+                      //           fontWeight: FontWeight.bold,
+                      //         ),
+                      //         textAlign: TextAlign.center,
+                      //         maxLines: 1,
+                      //       ),
+                      //     ),
+                      //   ),
+                      // ]
+                      ]
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),
 
-          // Welcome Header - ORIGINAL UI
+          // Welcome Header
           Container(
             width: double.infinity,
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
@@ -269,7 +316,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
                   ),
           ),
 
-          // Order Options - ORIGINAL UI (using OrderWidgets)
+          // Order Options
           Expanded(
             child: Padding(
               padding: const EdgeInsets.all(20),
@@ -277,12 +324,48 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
             ),
           ),
 
-          // Black Footer - ORIGINAL UI
+          // Black Footer with Pharmaish Disclaimer - UPDATED
           Container(
             width: double.infinity,
-            height: 50,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: const BoxDecoration(
               color: Colors.black,
+            ),
+            child: Row(
+              children: [
+                // Shield icon
+                Icon(
+                  Icons.verified_user,
+                  color: Colors.grey.shade400,
+                  size: 32,
+                ),
+                const SizedBox(width: 12),
+                // Disclaimer text
+                Expanded(
+                  child: RichText(
+                    text: TextSpan(
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: Colors.grey.shade300,
+                        height: 1.3,
+                      ),
+                      children: const [
+                        TextSpan(
+                          text: 'Pharmaish ',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                        TextSpan(
+                          text: 'is a technology facilitation platform. '
+                              'Medicines are sold, billed, and delivered by licensed retail pharmacies.',
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -298,32 +381,67 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
         child: ListView(
           padding: EdgeInsets.zero,
           children: [
-            // Drawer Header
+            // Drawer Header with Status Indicator
             UserAccountsDrawerHeader(
               decoration: const BoxDecoration(
                 color: AppTheme.primaryColor,
               ),
-              currentAccountPicture: CircleAvatar(
-                backgroundColor: Colors.white,
-                child: Icon(
-                  Icons.person,
-                  size: 40,
-                  color: AppTheme.primaryColor,
-                ),
+              currentAccountPicture: Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  CircleAvatar(
+                    backgroundColor: Colors.white,
+                    child: Icon(
+                      Icons.person,
+                      size: 40,
+                      color: AppTheme.primaryColor,
+                    ),
+                  )
+                  //   // Status indicator positioned below the profile picture
+                  //   Positioned(
+                  //     bottom: -8,
+                  //     left: 0,
+                  //     right: 0,
+                  //     child: Container(
+                  //       padding: const EdgeInsets.symmetric(
+                  //         horizontal: 6,
+                  //         vertical: 3,
+                  //       ),
+                  //       decoration: BoxDecoration(
+                  //         color: _getStatusColor(),
+                  //         borderRadius: BorderRadius.circular(10),
+                  //         border: Border.all(color: Colors.white, width: 1.5),
+                  //       ),
+                  //       child: Text(
+                  //         _userStatus,
+                  //         style: const TextStyle(
+                  //           color: Colors.white,
+                  //           fontSize: 10,
+                  //           fontWeight: FontWeight.bold,
+                  //         ),
+                  //         textAlign: TextAlign.center,
+                  //       ),
+                  //     ),
+                  //   ),
+                  //
+                ],
               ),
-              accountName: Text(
-                _userName,
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
+              accountName: Padding(
+                padding: const EdgeInsets.only(top: 8.0),
+                child: Text(
+                  _userName,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
               accountEmail: Text(_userEmail),
             ),
-
             // Dashboard
             ListTile(
-              leading: const Icon(Icons.dashboard, color: AppTheme.primaryColor),
+              leading:
+                  const Icon(Icons.dashboard, color: AppTheme.primaryColor),
               title: const Text('Dashboard'),
               onTap: () {
                 Navigator.pop(context); // Close drawer

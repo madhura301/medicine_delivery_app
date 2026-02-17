@@ -1,4 +1,5 @@
 // Admin Dashboard with Real Statistics from API
+import 'package:pharmaish/core/screens/admin/admin_consent_logs_page.dart';
 import 'package:pharmaish/core/screens/admin/admin_user_management.dart';
 import 'package:pharmaish/core/screens/admin/admin_all_orders.dart';
 import 'package:pharmaish/utils/app_logger.dart';
@@ -7,7 +8,7 @@ import 'package:pharmaish/utils/storage.dart';
 import 'package:dio/dio.dart';
 import 'package:pharmaish/utils/constants.dart';
 import 'package:pharmaish/config/environment_config.dart';
-import 'package:pharmaish/core/screens/admin/admin_customer_support_regions.dart';
+import 'package:pharmaish/core/screens/admin/admin_service_regions.dart';
 
 class AdminDashboard extends StatefulWidget {
   const AdminDashboard({super.key});
@@ -184,11 +185,11 @@ class _AdminDashboardState extends State<AdminDashboard> {
     );
   }
 
-   void _goToRegionManagementPage(BuildContext context) {
+  void _goToRegionManagementPage(BuildContext context) {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => const AdminCustomerSupportRegionsPage(),
+        builder: (context) => const AdminServiceRegionsPage(),
       ),
     );
   }
@@ -400,10 +401,22 @@ class _AdminDashboardState extends State<AdminDashboard> {
                 ),
                 ListTile(
                   leading: Icon(Icons.location_city),
-                  title: Text('Customer Support Regions'),
+                  title: Text('Service Regions'),
                   onTap: () {
                     Navigator.of(context).pop();
                     _goToRegionManagementPage(context);
+                  },
+                ),
+                ListTile(
+                  leading: Icon(Icons.assignment, color: Colors.blue.shade700),
+                  title: const Text('Consent Logs'),
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (context) => const AdminConsentLogsPage()),
+                    );
                   },
                 ),
                 // ListTile(

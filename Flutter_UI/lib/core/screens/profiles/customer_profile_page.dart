@@ -84,6 +84,8 @@ class CustomerAddressDto {
   final String? city;
   final String? state;
   final String? postalCode;
+   final double? latitude;
+  final double? longitude;
   final bool isDefault;
   final bool isActive;
   final DateTime createdOn;
@@ -99,6 +101,8 @@ class CustomerAddressDto {
     this.city,
     this.state,
     this.postalCode,
+    this.latitude,
+    this.longitude,
     this.isDefault = false,
     this.isActive = true,
     required this.createdOn,
@@ -116,6 +120,12 @@ class CustomerAddressDto {
       city: json['city'],
       state: json['state'],
       postalCode: json['postalCode'],
+      latitude: json['latitude'] != null
+          ? (json['latitude'] as num).toDouble()
+          : null,
+      longitude: json['longitude'] != null
+          ? (json['longitude'] as num).toDouble()
+          : null,
       isDefault: json['isDefault'] ?? false,
       isActive: json['isActive'] ?? true,
       createdOn: DateTime.parse(json['createdOn']),
@@ -135,6 +145,8 @@ class CustomerAddressDto {
       'city': city,
       'state': state,
       'postalCode': postalCode,
+      'latitude': latitude,
+      'longitude': longitude,
       'isDefault': isDefault,
       'isActive': isActive,
       'createdOn': createdOn.toIso8601String(),
@@ -758,7 +770,8 @@ class _CustomerProfilePageState extends State<CustomerProfilePage> {
                 }
               });
               // Debug print to verify the toggle is working
-              AppLogger.info('Address expanded state: $isExpanded -> ${!isExpanded}');
+              AppLogger.info(
+                  'Address expanded state: $isExpanded -> ${!isExpanded}');
               AppLogger.info('Expanded addresses: $_expandedAddresses');
             },
           ),
@@ -1139,6 +1152,8 @@ class _AddAddressDialogState extends State<AddAddressDialog> {
   final _cityController = TextEditingController();
   final _stateController = TextEditingController();
   final _postalCodeController = TextEditingController();
+  double? _latitude;
+  double? _longitude;
   bool _isDefault = false;
   bool _isSaving = false;
   bool _isFetchingLocation = false;
@@ -1167,6 +1182,12 @@ class _AddAddressDialogState extends State<AddAddressDialog> {
       _cityController.text = address.city ?? '';
       _stateController.text = address.state ?? '';
       _postalCodeController.text = address.postalCode ?? '';
+      _latitude = address.latitude;
+      _longitude = address.longitude;
+      if (_latitude != null && _longitude != null) {
+        _locationMessage =
+            'Saved: ${_latitude!.toStringAsFixed(6)}, ${_longitude!.toStringAsFixed(6)}';
+      }
       _isDefault = address.isDefault;
     });
   }
@@ -1207,6 +1228,8 @@ class _AddAddressDialogState extends State<AddAddressDialog> {
         postalCode: _postalCodeController.text.trim().isNotEmpty
             ? _postalCodeController.text.trim()
             : null,
+        latitude: _latitude,
+        longitude: _longitude,
         isDefault: _isDefault,
         isActive: true,
         createdOn: widget.address?.createdOn ?? DateTime.now(),
@@ -1297,7 +1320,11 @@ class _AddAddressDialogState extends State<AddAddressDialog> {
             _postalCodeController.text = result.postalCode!;
           }
 
-          _locationMessage = 'Location fetched successfully!\n'
+           // ✅ Store lat/lng from GPS
+          _latitude = result.latitude;
+          _longitude = result.longitude;
+
+          _locationMessage = '📍 Location captured!\n'
               'Lat: ${result.latitude.toStringAsFixed(6)}, '
               'Long: ${result.longitude.toStringAsFixed(6)}';
 
@@ -1341,14 +1368,16 @@ class _AddAddressDialogState extends State<AddAddressDialog> {
                   child: Column(
                     children: [
                       ElevatedButton.icon(
-                        onPressed: _isFetchingLocation ? null : _getCurrentLocation,
+                        onPressed:
+                            _isFetchingLocation ? null : _getCurrentLocation,
                         icon: _isFetchingLocation
                             ? const SizedBox(
                                 width: 20,
                                 height: 20,
                                 child: CircularProgressIndicator(
                                   strokeWidth: 2,
-                                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                      Colors.white),
                                 ),
                               )
                             : const Icon(Icons.my_location),
@@ -1372,8 +1401,8 @@ class _AddAddressDialogState extends State<AddAddressDialog> {
                             style: TextStyle(
                               color: _locationMessage.contains('successfully')
                                   ? Colors.green
-                                  : _locationMessage.contains('Error') || 
-                                    _locationMessage.contains('Unable')
+                                  : _locationMessage.contains('Error') ||
+                                          _locationMessage.contains('Unable')
                                       ? Colors.red
                                       : Colors.blue,
                               fontSize: 12,

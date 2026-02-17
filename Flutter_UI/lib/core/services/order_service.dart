@@ -403,13 +403,40 @@ class OrderService {
 
   /// Get order by ID
   Future<OrderModel> getOrderById(String orderId) async {
-    try {
-      final response = await _dio.get('/api/Orders/$orderId');
-      return OrderModel.fromJson(response.data);
-    } on DioException catch (e) {
-      throw _handleDioError(e);
+  try {
+    final response = await _dio.get('/Orders/$orderId');
+    
+    if (response.statusCode == 200) {
+      final jsonData = response.data;
+      
+      // 🔍 DEBUG: Check what we received
+      AppLogger.info('📦 Received order data: $jsonData');
+      AppLogger.info('📋 Assignment history field exists: ${jsonData.containsKey("assignmentHistory")}');
+      AppLogger.info('📋 Assignment history value: ${jsonData["assignmentHistory"]}');
+      AppLogger.info('📋 Assignment history type: ${jsonData["assignmentHistory"]?.runtimeType}');
+      
+      if (jsonData['assignmentHistory'] != null) {
+        AppLogger.info('📋 Assignment history length: ${(jsonData["assignmentHistory"] as List).length}');
+      }
+      
+      // Parse the order
+      final order = OrderModel.fromJson(jsonData);
+      
+      // 🔍 DEBUG: Check parsed result
+      AppLogger.info('✅ Parsed order ID: ${order.orderId}');
+      AppLogger.info('✅ Assignment history count: ${order.assignmentHistory.length}');
+      AppLogger.info('✅ Has assignment history: ${order.hasAssignmentHistory}');
+      
+      return order;
     }
+    
+    throw Exception('Failed to load order');
+  } catch (e, stackTrace) {
+    AppLogger.error('Error fetching order: $e');
+    AppLogger.error('Stack trace: $stackTrace');
+    rethrow;
   }
+}
 
   /// Get customer orders
   Future<List<OrderModel>> getCustomerOrders(String customerId) async {

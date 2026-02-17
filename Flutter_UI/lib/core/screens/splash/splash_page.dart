@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:pharmaish/core/app_routes.dart';
+import 'package:pharmaish/core/services/consent_service.dart';
+import 'package:pharmaish/utils/consent_manager.dart';
 import 'package:pharmaish/utils/storage.dart';
 import 'package:pharmaish/utils/app_logger.dart';
 import 'package:http/http.dart' as http;
@@ -18,9 +20,12 @@ class _SplashPageState extends State<SplashPage> {
   @override
   void initState() {
     super.initState();
+    _initializeApp(); // Directly initialize, no terms check here
     //AppHelpers.disableScreenshots();
-    _initializeApp();
   }
+
+  // REMOVED: _checkFirstLaunchAndConsent() method
+  // Terms will now be shown after login
 
   Future<void> _initializeApp() async {
     // Wait for minimum splash duration
@@ -107,7 +112,7 @@ class _SplashPageState extends State<SplashPage> {
             refreshToken: refreshToken,
           );
 
-          // Extract user info from token
+          // Store user info
           final userInfo = StorageService.decodeJwtToken(token);
           final extractedUserInfo = StorageService.extractUserInfo(userInfo);
           
@@ -115,31 +120,62 @@ class _SplashPageState extends State<SplashPage> {
             await StorageService.storeUserInfo(extractedUserInfo);
           }
 
-          // Store user ID
-          final userId = responseData['UserId'] ??
-              responseData['id'] ??
-              userInfo['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier'] ??
-              '';
-          
+          // Store user ID if available
+          final userId = responseData['userId'] ?? '';
           if (userId.isNotEmpty) {
             await StorageService.storeUserId(userId);
           }
 
-          // Determine user role and navigate to appropriate dashboard
-          final userRole = StorageService.extractUserRole(userInfo);
+          // Get role and navigate
+          final role = extractedUserInfo['role'] ?? extractedUserInfo['Role'] ?? '';
           
           if (mounted) {
-            _navigateToDashboard(userRole);
+            // CHECK TERMS AFTER AUTO-LOGIN
+            await _checkAndShowTerms(role);
           }
 
           return true;
         }
       }
-
-      return false;
     } catch (e) {
       AppLogger.error('Auto-login failed: $e');
-      return false;
+    }
+
+    return false;
+  }
+
+  // NEW METHOD: Check and show terms after auto-login
+  Future<void> _checkAndShowTerms(String role) async {
+    try {
+      // Check if user has accepted terms
+      final hasAcceptedTerms = await ConsentService.hasConsent(
+        ConsentType.termsAndConditions,
+      );
+
+      if (!hasAcceptedTerms && mounted) {
+        // Show terms dialog
+        final accepted = await CustomerConsentManager.showTermsAndConditions(context);
+
+        if (!accepted) {
+          // User declined - logout and go back to login
+          await StorageService.clearAuthTokens();
+          if (mounted) {
+            Navigator.pushReplacementNamed(context, AppRoutes.login);
+          }
+          return;
+        }
+      }
+
+      // Terms accepted or already accepted, navigate to dashboard
+      if (mounted) {
+        _navigateToDashboard(role);
+      }
+    } catch (e) {
+      AppLogger.error('Error checking terms: $e');
+      // On error, still navigate to dashboard
+      if (mounted) {
+        _navigateToDashboard(role);
+      }
     }
   }
 

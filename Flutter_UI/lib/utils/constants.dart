@@ -52,4 +52,5 @@ class AppConstants {
   static const List<String> deliveryTypes = ['home', 'pickup'];
   static const List<String> urgencyLevels = ['regular', 'express'];
   
+  static const String appVersion= "1.0.0";
 }

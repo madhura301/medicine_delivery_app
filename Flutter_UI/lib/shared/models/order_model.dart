@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:pharmaish/shared/models/order_assignment_history_model.dart';
 import 'package:pharmaish/utils/app_logger.dart';
 
 import 'order_enums.dart';
@@ -21,6 +22,9 @@ class OrderModel {
   final String? customerRejectionReason;
   final String? customerRejectionPhotoUrl;
   final String? orderNumber;
+
+// ✨ NEW: Assignment History
+  final List<OrderAssignmentHistoryModel> assignmentHistory;
 
   // Shipping Address
   final String? shippingAddressLine1;
@@ -63,6 +67,7 @@ class OrderModel {
     required this.createdOn,
     this.updatedOn,
     this.orderNumber,
+    this.assignmentHistory = const [],
   });
 
   /// Parse OrderType from int value (backend sends: 0, 1, 2)
@@ -127,6 +132,10 @@ class OrderModel {
   }
 
   factory OrderModel.fromJson(Map<String, dynamic> json) {
+    // Debug: Print to see what we're getting
+    AppLogger.info('📦 Parsing OrderModel for order: ${json['orderId']}');
+    AppLogger.info('📋 Raw assignmentHistory: ${json['assignmentHistory']}');
+
     return OrderModel(
       // ✅ FIXED: Use _toString to handle if these come as int
       orderId: _toString(json['orderId'] ?? json['id'], ''),
@@ -151,6 +160,12 @@ class OrderModel {
       // Handle completionOtp as int or string
       completionOtp: _toStringOrNull(json['completionOtp']),
 
+      // ✨ NEW: Parse assignment history
+      assignmentHistory: _parseAssignmentHistory(
+        json['AssignmentHistory'] ??
+        json['assignmentHistory'] // Try both cases
+      ),
+
       completedOn: json['completedOn'] != null
           ? DateTime.parse(json['completedOn'])
           : null,
@@ -160,8 +175,7 @@ class OrderModel {
       customerRejectionPhotoUrl:
           _toStringOrNull(json['customerRejectionPhotoUrl']),
 
-      orderNumber:
-          _toStringOrNull(json['orderNumber']),
+      orderNumber: _toStringOrNull(json['orderNumber']),
 
       // Shipping Address - all using safe string conversion
       shippingAddressLine1: _toStringOrNull(json['shippingAddressLine1']),
@@ -181,6 +195,86 @@ class OrderModel {
       updatedOn:
           json['updatedOn'] != null ? DateTime.parse(json['updatedOn']) : null,
     );
+  }
+
+  /// Parse assignment history from JSON array
+  static List<OrderAssignmentHistoryModel> _parseAssignmentHistory(
+      dynamic value) {
+    AppLogger.info('🔍 Starting to parse assignmentHistory');
+    AppLogger.info('🔍 Value type: ${value?.runtimeType}');
+    AppLogger.info('🔍 Value: $value');
+
+    // Check if null or not a list
+    if (value == null) {
+      AppLogger.warning('⚠️ assignmentHistory is null');
+      return [];
+    }
+
+    if (value is! List) {
+      AppLogger.error(
+          '❌ assignmentHistory is not a List, it is: ${value.runtimeType}');
+      return [];
+    }
+
+    AppLogger.info('✅ assignmentHistory is a List with ${value.length} items');
+
+    try {
+      final results = <OrderAssignmentHistoryModel>[];
+
+      for (var i = 0; i < value.length; i++) {
+        try {
+          AppLogger.info('📝 Parsing item $i: ${value[i]}');
+          final item = OrderAssignmentHistoryModel.fromJson(
+              value[i] as Map<String, dynamic>);
+          results.add(item);
+          AppLogger.info('✅ Successfully parsed item $i');
+        } catch (e, stackTrace) {
+          AppLogger.error('❌ Error parsing assignment history item $i: $e');
+          AppLogger.error('Stack trace: $stackTrace');
+          AppLogger.error('Item data: ${value[i]}');
+        }
+      }
+
+      AppLogger.info(
+          '✅ Total parsed: ${results.length} out of ${value.length}');
+      return results;
+    } catch (e, stackTrace) {
+      AppLogger.error('❌ Error parsing assignment history array: $e');
+      AppLogger.error('Stack trace: $stackTrace');
+      return [];
+    }
+  }
+
+  // Helper getters
+  String get orderTypeDisplayName => orderType.displayName;
+
+  /// ✨ NEW: Assignment history helpers
+  bool get hasAssignmentHistory {
+    final result = assignmentHistory.isNotEmpty;
+    AppLogger.info(
+        '🔍 hasAssignmentHistory: $result (count: ${assignmentHistory.length})');
+    return result;
+  }
+
+  int get assignmentCount {
+    return assignmentHistory.length;
+  }
+
+  /// Get most recent assignment (null-safe)
+  OrderAssignmentHistoryModel? get latestAssignment {
+    if (assignmentHistory.isEmpty) {
+      AppLogger.info('📭 No assignment history available');
+      return null;
+    }
+
+    try {
+      final sorted = List<OrderAssignmentHistoryModel>.from(assignmentHistory)
+        ..sort((a, b) => b.assignedOn.compareTo(a.assignedOn));
+      return sorted.first;
+    } catch (e) {
+      AppLogger.error('Error getting latest assignment: $e');
+      return null;
+    }
   }
 
   /// Parse orderStatus integer to readable string
@@ -229,6 +323,8 @@ class OrderModel {
     return {
       'orderId': orderId,
       'customerId': customerId,
+      // ✨ NEW: Include assignment history
+      'assignmentHistory': assignmentHistory.map((h) => h.toJson()).toList(),
       'medicalStoreId': medicalStoreId,
       'orderType': orderType.value,
       'orderInputType': orderInputType.value,
@@ -255,9 +351,6 @@ class OrderModel {
       'updatedOn': updatedOn?.toIso8601String(),
     };
   }
-
-  // Helper getters for displaying order types in UI
-  String get orderTypeDisplayName => orderType.displayName;
 
   String get orderInputTypeDisplayName {
     switch (orderInputType) {
