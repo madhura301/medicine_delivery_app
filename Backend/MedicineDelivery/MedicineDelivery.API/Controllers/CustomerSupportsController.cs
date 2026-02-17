@@ -13,11 +13,13 @@ namespace MedicineDelivery.API.Controllers
     {
         private readonly ICustomerSupportService _customerSupportService;
         private readonly IPhotoUploadService _photoUploadService;
+        private readonly ILogger<CustomerSupportsController> _logger;
 
-        public CustomerSupportsController(ICustomerSupportService customerSupportService, IPhotoUploadService photoUploadService)
+        public CustomerSupportsController(ICustomerSupportService customerSupportService, IPhotoUploadService photoUploadService, ILogger<CustomerSupportsController> logger)
         {
             _customerSupportService = customerSupportService;
             _photoUploadService = photoUploadService;
+            _logger = logger;
         }
 
         /// <summary>
@@ -29,19 +31,27 @@ namespace MedicineDelivery.API.Controllers
         [Authorize(Policy = "RequireCustomerSupportCreatePermission")]
         public async Task<ActionResult<CustomerSupportResponseDto>> RegisterCustomerSupport([FromBody] CustomerSupportRegistrationDto registrationDto)
         {
-            if (!ModelState.IsValid)
+            try
             {
-                return BadRequest(ModelState);
-            }
+                if (!ModelState.IsValid)
+                {
+                    return BadRequest(ModelState);
+                }
 
-            var result = await _customerSupportService.RegisterCustomerSupportAsync(registrationDto);
+                var result = await _customerSupportService.RegisterCustomerSupportAsync(registrationDto);
             
-            if (!result.Success)
-            {
-                return BadRequest(new { errors = result.Errors });
-            }
+                if (!result.Success)
+                {
+                    return BadRequest(new { errors = result.Errors });
+                }
 
-            return Ok(result.CustomerSupport);
+                return Ok(result.CustomerSupport);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error in RegisterCustomerSupport");
+                return StatusCode(500, new { error = "An error occurred while registering the customer support." });
+            }
         }
 
         /// <summary>
@@ -52,8 +62,16 @@ namespace MedicineDelivery.API.Controllers
         [Authorize(Policy = "RequireCustomerSupportReadPermission")]
         public async Task<ActionResult<List<CustomerSupportDto>>> GetAllCustomerSupports()
         {
-            var customerSupports = await _customerSupportService.GetAllCustomerSupportsAsync();
-            return Ok(customerSupports);
+            try
+            {
+                var customerSupports = await _customerSupportService.GetAllCustomerSupportsAsync();
+                return Ok(customerSupports);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error in GetAllCustomerSupports");
+                return StatusCode(500, new { error = "An error occurred while retrieving customer supports." });
+            }
         }
 
         /// <summary>
@@ -65,14 +83,22 @@ namespace MedicineDelivery.API.Controllers
         [Authorize(Policy = "RequireCustomerSupportReadPermission")]
         public async Task<ActionResult<CustomerSupportDto>> GetCustomerSupportById(Guid id)
         {
-            var customerSupport = await _customerSupportService.GetCustomerSupportByIdAsync(id);
-            
-            if (customerSupport == null)
+            try
             {
-                return NotFound();
-            }
+                var customerSupport = await _customerSupportService.GetCustomerSupportByIdAsync(id);
+            
+                if (customerSupport == null)
+                {
+                    return NotFound();
+                }
 
-            return Ok(customerSupport);
+                return Ok(customerSupport);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error in GetCustomerSupportById for {Id}", id);
+                return StatusCode(500, new { error = "An error occurred while retrieving the customer support." });
+            }
         }
 
         /// <summary>
@@ -84,14 +110,22 @@ namespace MedicineDelivery.API.Controllers
         [Authorize(Policy = "RequireCustomerSupportReadPermission")]
         public async Task<ActionResult<CustomerSupportDto>> GetCustomerSupportByEmail(string email)
         {
-            var customerSupport = await _customerSupportService.GetCustomerSupportByEmailAsync(email);
-            
-            if (customerSupport == null)
+            try
             {
-                return NotFound();
-            }
+                var customerSupport = await _customerSupportService.GetCustomerSupportByEmailAsync(email);
+            
+                if (customerSupport == null)
+                {
+                    return NotFound();
+                }
 
-            return Ok(customerSupport);
+                return Ok(customerSupport);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error in GetCustomerSupportByEmail for {Email}", email);
+                return StatusCode(500, new { error = "An error occurred while retrieving the customer support." });
+            }
         }
 
         /// <summary>
@@ -104,19 +138,27 @@ namespace MedicineDelivery.API.Controllers
         [Authorize(Policy = "RequireCustomerSupportUpdatePermission")]
         public async Task<ActionResult<CustomerSupportDto>> UpdateCustomerSupport(Guid id, [FromBody] CustomerSupportRegistrationDto updateDto)
         {
-            if (!ModelState.IsValid)
+            try
             {
-                return BadRequest(ModelState);
-            }
+                if (!ModelState.IsValid)
+                {
+                    return BadRequest(ModelState);
+                }
 
-            var customerSupport = await _customerSupportService.UpdateCustomerSupportAsync(id, updateDto);
+                var customerSupport = await _customerSupportService.UpdateCustomerSupportAsync(id, updateDto);
             
-            if (customerSupport == null)
-            {
-                return NotFound();
-            }
+                if (customerSupport == null)
+                {
+                    return NotFound();
+                }
 
-            return Ok(customerSupport);
+                return Ok(customerSupport);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error in UpdateCustomerSupport for {Id}", id);
+                return StatusCode(500, new { error = "An error occurred while updating the customer support." });
+            }
         }
 
         /// <summary>
@@ -128,14 +170,22 @@ namespace MedicineDelivery.API.Controllers
         [Authorize(Policy = "RequireCustomerSupportDeletePermission")]
         public async Task<ActionResult> DeleteCustomerSupport(Guid id)
         {
-            var result = await _customerSupportService.DeleteCustomerSupportAsync(id);
-            
-            if (!result)
+            try
             {
-                return NotFound();
-            }
+                var result = await _customerSupportService.DeleteCustomerSupportAsync(id);
+            
+                if (!result)
+                {
+                    return NotFound();
+                }
 
-            return NoContent();
+                return NoContent();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error in DeleteCustomerSupport for {Id}", id);
+                return StatusCode(500, new { error = "An error occurred while deleting the customer support." });
+            }
         }
 
         /// <summary>
@@ -177,6 +227,7 @@ namespace MedicineDelivery.API.Controllers
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Error in UploadPhoto for customer support {Id}", id);
                 return StatusCode(500, $"Error uploading photo: {ex.Message}");
             }
         }

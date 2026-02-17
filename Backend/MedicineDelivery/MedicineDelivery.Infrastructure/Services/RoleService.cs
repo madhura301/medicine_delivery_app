@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.Extensions.Logging;
 using MedicineDelivery.Domain.Entities;
 using MedicineDelivery.Domain.Interfaces;
 using MedicineDelivery.Infrastructure.Data;
@@ -11,19 +12,25 @@ namespace MedicineDelivery.Infrastructure.Services
         private readonly IUnitOfWork _unitOfWork;
         private readonly ApplicationDbContext _context;
         private readonly UserManager<Domain.Entities.ApplicationUser> _userManager;
+        private readonly ILogger<RoleService> _logger;
 
-        public RoleService(IUnitOfWork unitOfWork, ApplicationDbContext context, UserManager<Domain.Entities.ApplicationUser> userManager)
+        public RoleService(IUnitOfWork unitOfWork, ApplicationDbContext context, UserManager<Domain.Entities.ApplicationUser> userManager, ILogger<RoleService> logger)
         {
             _unitOfWork = unitOfWork;
             _context = context;
             _userManager = userManager;
+            _logger = logger;
         }
 
         public async Task<bool> HasPermissionAsync(string userId, string permissionName)
         {
             // Get user's Identity roles
             var user = await _userManager.FindByIdAsync(userId);
-            if (user == null) return false;
+            if (user == null)
+            {
+                _logger.LogWarning("HasPermissionAsync: User {UserId} not found when checking permission {PermissionName}", userId, permissionName);
+                return false;
+            }
 
             // Get user's role names
             var userRoleNames = await _userManager.GetRolesAsync(user);
@@ -47,7 +54,11 @@ namespace MedicineDelivery.Infrastructure.Services
         {
             // Get user's Identity roles
             var user = await _userManager.FindByIdAsync(userId);
-            if (user == null) return new List<Permission>();
+            if (user == null)
+            {
+                _logger.LogWarning("GetUserPermissionsAsync: User {UserId} not found. Returning empty permissions list", userId);
+                return new List<Permission>();
+            }
 
             // Get user's role names
             var userRoleNames = await _userManager.GetRolesAsync(user);
@@ -82,9 +93,17 @@ namespace MedicineDelivery.Infrastructure.Services
         public async Task<bool> AssignRoleToUserAsync(string userId, string roleName, string assignedBy)
         {
             var user = await _userManager.FindByIdAsync(userId);
-            if (user == null) return false;
+            if (user == null)
+            {
+                _logger.LogWarning("AssignRoleToUserAsync: User {UserId} not found when assigning role {RoleName}", userId, roleName);
+                return false;
+            }
 
             var result = await _userManager.AddToRoleAsync(user, roleName);
+            if (!result.Succeeded)
+            {
+                _logger.LogWarning("AssignRoleToUserAsync: Failed to assign role {RoleName} to user {UserId}. Errors: {Errors}", roleName, userId, string.Join(", ", result.Errors.Select(e => e.Description)));
+            }
             return result.Succeeded;
         }
 
@@ -104,12 +123,14 @@ namespace MedicineDelivery.Infrastructure.Services
 
             if (existingRolePermission != null)
             {
+                _logger.LogInformation("Reactivating existing permission {PermissionId} for role {RoleId} by {GrantedBy}", permissionId, roleId, grantedBy);
                 existingRolePermission.IsActive = true;
                 existingRolePermission.GrantedAt = DateTime.UtcNow;
                 existingRolePermission.GrantedBy = grantedBy;
             }
             else
             {
+                _logger.LogInformation("Adding new permission {PermissionId} to role {RoleId} by {GrantedBy}", permissionId, roleId, grantedBy);
                 var rolePermission = new RolePermission
                 {
                     RoleId = roleId,

@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Identity;
+using Microsoft.Extensions.Logging;
 using MedicineDelivery.Application.DTOs;
 using MedicineDelivery.Application.Interfaces;
 using MedicineDelivery.Domain.Entities;
@@ -13,15 +14,18 @@ namespace MedicineDelivery.Infrastructure.Services
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly IUnitOfWork _unitOfWork;
         private readonly IMapper _mapper;
+        private readonly ILogger<MedicalStoreService> _logger;
 
         public MedicalStoreService(
             UserManager<ApplicationUser> userManager,
             IUnitOfWork unitOfWork,
-            IMapper mapper)
+            IMapper mapper,
+            ILogger<MedicalStoreService> logger)
         {
             _userManager = userManager;
             _unitOfWork = unitOfWork;
             _mapper = mapper;
+            _logger = logger;
         }
 
         public async Task<MedicalStoreRegistrationResult> RegisterMedicalStoreAsync(MedicalStoreRegistrationDto registrationDto)
@@ -32,6 +36,7 @@ namespace MedicineDelivery.Infrastructure.Services
                 var existingMedicalStore = await _unitOfWork.MedicalStores.FirstOrDefaultAsync(ms => ms.EmailId == registrationDto.EmailId);
                 if (existingMedicalStore != null)
                 {
+                    _logger.LogWarning("Medical store registration failed: store with email {Email} already exists", registrationDto.EmailId);
                     return new MedicalStoreRegistrationResult
                     {
                         Success = false,
@@ -43,6 +48,7 @@ namespace MedicineDelivery.Infrastructure.Services
                 var existingUser = await _userManager.FindByNameAsync(registrationDto.MobileNumber);
                 if (existingUser != null)
                 {
+                    _logger.LogWarning("Medical store registration failed: user with mobile number {MobileNumber} already exists", registrationDto.MobileNumber);
                     return new MedicalStoreRegistrationResult
                     {
                         Success = false,
@@ -73,6 +79,8 @@ namespace MedicineDelivery.Infrastructure.Services
                     var userResult = await _userManager.CreateAsync(identityUser, password);
                     if (!userResult.Succeeded)
                     {
+                        _logger.LogWarning("Medical store registration failed: identity user creation failed for mobile number {MobileNumber}. Errors: {Errors}",
+                            registrationDto.MobileNumber, string.Join(", ", userResult.Errors.Select(e => e.Description)));
                         await _unitOfWork.RollbackTransactionAsync();
                         return new MedicalStoreRegistrationResult
                         {
@@ -121,6 +129,9 @@ namespace MedicineDelivery.Infrastructure.Services
                     await _unitOfWork.MedicalStores.AddAsync(medicalStore);
                     await _unitOfWork.SaveChangesAsync();
                     await _unitOfWork.CommitTransactionAsync();
+
+                    _logger.LogInformation("Medical store registered successfully with MedicalStoreId {MedicalStoreId} and name {MedicalName}",
+                        medicalStore.MedicalStoreId, medicalStore.MedicalName);
 
                     // Create response
                     var response = new MedicalStoreResponseDto
@@ -179,9 +190,7 @@ namespace MedicineDelivery.Infrastructure.Services
                         }
                         catch (Exception ex)
                         {
-                            // Log the cleanup failure but don't throw - the main transaction is already rolled back
-                            // This could be logged to a proper logging system
-                            Console.WriteLine($"Failed to cleanup Identity user {identityUser.Id}: {ex.Message}");
+                            _logger.LogError(ex, "Failed to cleanup Identity user {UserId} during medical store registration rollback", identityUser.Id);
                         }
                     }
                     
@@ -190,6 +199,7 @@ namespace MedicineDelivery.Infrastructure.Services
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "An error occurred during medical store registration for email {Email}", registrationDto.EmailId);
                 return new MedicalStoreRegistrationResult
                 {
                     Success = false,
@@ -220,7 +230,10 @@ namespace MedicineDelivery.Infrastructure.Services
         {
             var medicalStore = await _unitOfWork.MedicalStores.FirstOrDefaultAsync(ms => ms.MedicalStoreId == id);
             if (medicalStore == null)
+            {
+                _logger.LogWarning("Medical store update failed: store with ID {MedicalStoreId} not found", id);
                 return null;
+            }
 
             medicalStore.MedicalName = updateDto.MedicalName;
             medicalStore.OwnerFirstName = updateDto.OwnerFirstName;
@@ -247,6 +260,8 @@ namespace MedicineDelivery.Infrastructure.Services
             medicalStore.UpdatedOn = DateTime.UtcNow;
 
             await _unitOfWork.SaveChangesAsync();
+
+            _logger.LogInformation("Medical store updated successfully with MedicalStoreId {MedicalStoreId}", id);
             return _mapper.Map<MedicalStoreDto>(medicalStore);
         }
 
@@ -254,13 +269,18 @@ namespace MedicineDelivery.Infrastructure.Services
         {
             var medicalStore = await _unitOfWork.MedicalStores.FirstOrDefaultAsync(ms => ms.MedicalStoreId == id);
             if (medicalStore == null)
+            {
+                _logger.LogWarning("Medical store deletion failed: store with ID {MedicalStoreId} not found", id);
                 return false;
+            }
 
             medicalStore.IsActive = false;
             medicalStore.IsDeleted = true;
             medicalStore.UpdatedOn = DateTime.UtcNow;
 
             await _unitOfWork.SaveChangesAsync();
+
+            _logger.LogInformation("Medical store soft-deleted successfully with MedicalStoreId {MedicalStoreId}", id);
             return true;
         }
 

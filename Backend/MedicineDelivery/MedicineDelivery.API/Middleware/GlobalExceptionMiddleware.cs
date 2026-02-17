@@ -1,4 +1,5 @@
 using System.Net;
+using System.Security.Claims;
 using System.Text.Json;
 using MedicineDelivery.Domain.Exceptions;
 
@@ -23,9 +24,23 @@ namespace MedicineDelivery.API.Middleware
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "An unhandled exception occurred. Request: {Method} {Path}", 
-                    context.Request.Method, context.Request.Path);
-                
+                var userId = context.User?.FindFirstValue(ClaimTypes.NameIdentifier) 
+                    ?? context.User?.FindFirstValue("sub") 
+                    ?? "anonymous";
+                var traceId = context.TraceIdentifier;
+
+                _logger.LogError(ex,
+                    "Unhandled exception. TraceId: {TraceId}, UserId: {UserId}, " +
+                    "Request: {Method} {Path}{QueryString}, ContentType: {ContentType}, " +
+                    "ExceptionType: {ExceptionType}",
+                    traceId,
+                    userId,
+                    context.Request.Method,
+                    context.Request.Path,
+                    context.Request.QueryString,
+                    context.Request.ContentType,
+                    ex.GetType().Name);
+
                 await HandleExceptionAsync(context, ex);
             }
         }
@@ -33,9 +48,10 @@ namespace MedicineDelivery.API.Middleware
         private static async Task HandleExceptionAsync(HttpContext context, Exception exception)
         {
             context.Response.ContentType = "application/json";
+            var traceId = context.TraceIdentifier;
 
             object response;
-            
+
             if (exception is PaymentIncompleteException paymentEx)
             {
                 context.Response.StatusCode = StatusCodes.Status402PaymentRequired;
@@ -47,6 +63,7 @@ namespace MedicineDelivery.API.Middleware
                     totalAmount = paymentEx.TotalAmount,
                     paidAmount = paymentEx.PaidAmount,
                     remainingAmount = paymentEx.RemainingAmount,
+                    traceId,
                     timestamp = DateTime.UtcNow
                 };
             }
@@ -57,6 +74,7 @@ namespace MedicineDelivery.API.Middleware
                 {
                     error = "An internal server error occurred",
                     message = exception.Message,
+                    traceId,
                     timestamp = DateTime.UtcNow
                 };
             }

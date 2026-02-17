@@ -4,6 +4,7 @@ using MedicineDelivery.Application.Interfaces;
 using MedicineDelivery.Domain.Entities;
 using MedicineDelivery.Domain.Enums;
 using MedicineDelivery.Domain.Interfaces;
+using Microsoft.Extensions.Logging;
 
 namespace MedicineDelivery.Infrastructure.Services
 {
@@ -11,29 +12,35 @@ namespace MedicineDelivery.Infrastructure.Services
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly IMapper _mapper;
+        private readonly ILogger<ServiceRegionService> _logger;
 
-        public ServiceRegionService(IUnitOfWork unitOfWork, IMapper mapper)
+        public ServiceRegionService(IUnitOfWork unitOfWork, IMapper mapper, ILogger<ServiceRegionService> logger)
         {
             _unitOfWork = unitOfWork;
             _mapper = mapper;
+            _logger = logger;
         }
 
         public async Task<ServiceRegionDto> CreateServiceRegionAsync(CreateServiceRegionDto createDto)
         {
             ArgumentNullException.ThrowIfNull(createDto);
+            _logger.LogInformation("Creating service region with name {Name}, city {City}, region {RegionName}", createDto.Name, createDto.City, createDto.RegionName);
 
             if (string.IsNullOrWhiteSpace(createDto.Name))
             {
+                _logger.LogWarning("CreateServiceRegionAsync failed: Name is required");
                 throw new ArgumentException("Name is required.", nameof(createDto.Name));
             }
 
             if (string.IsNullOrWhiteSpace(createDto.City))
             {
+                _logger.LogWarning("CreateServiceRegionAsync failed: City is required");
                 throw new ArgumentException("City is required.", nameof(createDto.City));
             }
 
             if (string.IsNullOrWhiteSpace(createDto.RegionName))
             {
+                _logger.LogWarning("CreateServiceRegionAsync failed: RegionName is required");
                 throw new ArgumentException("RegionName is required.", nameof(createDto.RegionName));
             }
 
@@ -66,8 +73,11 @@ namespace MedicineDelivery.Infrastructure.Services
                 await _unitOfWork.SaveChangesAsync();
             }
 
-            return await GetServiceRegionByIdAsync(region.Id) ?? 
+            var result = await GetServiceRegionByIdAsync(region.Id) ?? 
                 throw new InvalidOperationException("Failed to retrieve created region.");
+
+            _logger.LogInformation("Service region created successfully with ID {RegionId}", region.Id);
+            return result;
         }
 
         public async Task<ServiceRegionDto?> GetServiceRegionByIdAsync(int id)
@@ -131,10 +141,12 @@ namespace MedicineDelivery.Infrastructure.Services
         public async Task<ServiceRegionDto> UpdateServiceRegionAsync(int id, UpdateServiceRegionDto updateDto)
         {
             ArgumentNullException.ThrowIfNull(updateDto);
+            _logger.LogInformation("Updating service region {RegionId}", id);
 
             var region = await _unitOfWork.ServiceRegions.GetByIdAsync(id);
             if (region == null)
             {
+                _logger.LogWarning("UpdateServiceRegionAsync failed: Service region {RegionId} not found", id);
                 throw new KeyNotFoundException($"Service region with ID '{id}' not found.");
             }
 
@@ -188,9 +200,12 @@ namespace MedicineDelivery.Infrastructure.Services
 
         public async Task<bool> DeleteServiceRegionAsync(int id)
         {
+            _logger.LogInformation("Deleting service region {RegionId}", id);
+
             var region = await _unitOfWork.ServiceRegions.GetByIdAsync(id);
             if (region == null)
             {
+                _logger.LogWarning("DeleteServiceRegionAsync: Service region {RegionId} not found", id);
                 return false;
             }
 
@@ -206,15 +221,18 @@ namespace MedicineDelivery.Infrastructure.Services
             _unitOfWork.ServiceRegions.Remove(region);
             await _unitOfWork.SaveChangesAsync();
 
+            _logger.LogInformation("Service region {RegionId} deleted successfully along with {PinCodeCount} pin codes", id, pinCodes.Count());
             return true;
         }
 
         public async Task<bool> AddPinCodeToRegionAsync(AddPinCodeToRegionDto addDto)
         {
             ArgumentNullException.ThrowIfNull(addDto);
+            _logger.LogInformation("Adding pin code {PinCode} to service region {RegionId}", addDto.PinCode, addDto.ServiceRegionId);
 
             if (string.IsNullOrWhiteSpace(addDto.PinCode))
             {
+                _logger.LogWarning("AddPinCodeToRegionAsync failed: PinCode is required");
                 throw new ArgumentException("PinCode is required.", nameof(addDto.PinCode));
             }
 
@@ -222,6 +240,7 @@ namespace MedicineDelivery.Infrastructure.Services
             var region = await _unitOfWork.ServiceRegions.GetByIdAsync(addDto.ServiceRegionId);
             if (region == null)
             {
+                _logger.LogWarning("AddPinCodeToRegionAsync failed: Service region {RegionId} not found", addDto.ServiceRegionId);
                 throw new KeyNotFoundException($"Service region with ID '{addDto.ServiceRegionId}' not found.");
             }
 
@@ -232,6 +251,7 @@ namespace MedicineDelivery.Infrastructure.Services
             
             if (existingPinCode != null)
             {
+                _logger.LogWarning("AddPinCodeToRegionAsync failed: Pin code {PinCode} already exists for region {RegionId}", addDto.PinCode, addDto.ServiceRegionId);
                 throw new InvalidOperationException($"Pin code '{addDto.PinCode}' already exists for this region.");
             }
 
@@ -244,6 +264,7 @@ namespace MedicineDelivery.Infrastructure.Services
             await _unitOfWork.ServiceRegionPinCodes.AddAsync(regionPinCode);
             await _unitOfWork.SaveChangesAsync();
 
+            _logger.LogInformation("Pin code {PinCode} added successfully to service region {RegionId}", addDto.PinCode, addDto.ServiceRegionId);
             return true;
         }
 
@@ -300,11 +321,13 @@ namespace MedicineDelivery.Infrastructure.Services
         public async Task<bool> AssignRegionToCustomerSupportAsync(AssignCustomerSupportRegionDto assignDto)
         {
             ArgumentNullException.ThrowIfNull(assignDto);
+            _logger.LogInformation("Assigning service region {RegionId} to customer support {CustomerSupportId}", assignDto.ServiceRegionId, assignDto.CustomerSupportId);
 
             // Validate region exists
             var region = await _unitOfWork.ServiceRegions.GetByIdAsync(assignDto.ServiceRegionId);
             if (region == null)
             {
+                _logger.LogWarning("AssignRegionToCustomerSupportAsync failed: Service region {RegionId} not found", assignDto.ServiceRegionId);
                 throw new KeyNotFoundException($"Service region with ID '{assignDto.ServiceRegionId}' not found.");
             }
 
@@ -312,6 +335,7 @@ namespace MedicineDelivery.Infrastructure.Services
             var customerSupport = await _unitOfWork.CustomerSupports.FirstOrDefaultAsync(cs => cs.CustomerSupportId == assignDto.CustomerSupportId);
             if (customerSupport == null)
             {
+                _logger.LogWarning("AssignRegionToCustomerSupportAsync failed: Customer support {CustomerSupportId} not found", assignDto.CustomerSupportId);
                 throw new KeyNotFoundException($"Customer support with ID '{assignDto.CustomerSupportId}' not found.");
             }
 
@@ -319,6 +343,7 @@ namespace MedicineDelivery.Infrastructure.Services
             _unitOfWork.CustomerSupports.Update(customerSupport);
             await _unitOfWork.SaveChangesAsync();
 
+            _logger.LogInformation("Service region {RegionId} assigned to customer support {CustomerSupportId}", assignDto.ServiceRegionId, assignDto.CustomerSupportId);
             return true;
         }
 
@@ -368,11 +393,13 @@ namespace MedicineDelivery.Infrastructure.Services
         public async Task<bool> AssignRegionToDeliveryAsync(AssignDeliveryRegionDto assignDto)
         {
             ArgumentNullException.ThrowIfNull(assignDto);
+            _logger.LogInformation("Assigning service region {RegionId} to delivery {DeliveryId}", assignDto.ServiceRegionId, assignDto.DeliveryId);
 
             // Validate region exists
             var region = await _unitOfWork.ServiceRegions.GetByIdAsync(assignDto.ServiceRegionId);
             if (region == null)
             {
+                _logger.LogWarning("AssignRegionToDeliveryAsync failed: Service region {RegionId} not found", assignDto.ServiceRegionId);
                 throw new KeyNotFoundException($"Service region with ID '{assignDto.ServiceRegionId}' not found.");
             }
 
@@ -380,6 +407,7 @@ namespace MedicineDelivery.Infrastructure.Services
             var delivery = await _unitOfWork.Deliveries.GetByIdAsync(assignDto.DeliveryId);
             if (delivery == null || delivery.IsDeleted)
             {
+                _logger.LogWarning("AssignRegionToDeliveryAsync failed: Delivery {DeliveryId} not found or deleted", assignDto.DeliveryId);
                 throw new KeyNotFoundException($"Delivery with ID '{assignDto.DeliveryId}' not found.");
             }
 
@@ -387,6 +415,7 @@ namespace MedicineDelivery.Infrastructure.Services
             _unitOfWork.Deliveries.Update(delivery);
             await _unitOfWork.SaveChangesAsync();
 
+            _logger.LogInformation("Service region {RegionId} assigned to delivery {DeliveryId}", assignDto.ServiceRegionId, assignDto.DeliveryId);
             return true;
         }
 

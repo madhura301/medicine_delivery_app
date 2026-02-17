@@ -12,10 +12,12 @@ namespace MedicineDelivery.API.Controllers
     public class DeliveriesController : ControllerBase
     {
         private readonly IDeliveryService _deliveryService;
+        private readonly ILogger<DeliveriesController> _logger;
 
-        public DeliveriesController(IDeliveryService deliveryService)
+        public DeliveriesController(IDeliveryService deliveryService, ILogger<DeliveriesController> logger)
         {
             _deliveryService = deliveryService;
+            _logger = logger;
         }
 
         /// <summary>
@@ -40,14 +42,17 @@ namespace MedicineDelivery.API.Controllers
             }
             catch (KeyNotFoundException ex)
             {
+                _logger.LogWarning("CreateDelivery: {Message}", ex.Message);
                 return NotFound(new { error = ex.Message });
             }
             catch (InvalidOperationException ex)
             {
+                _logger.LogWarning("CreateDelivery: {Message}", ex.Message);
                 return BadRequest(new { error = ex.Message });
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                _logger.LogError(ex, "Error creating delivery for order");
                 return StatusCode(500, new { error = "An error occurred while creating the delivery." });
             }
         }
@@ -65,8 +70,9 @@ namespace MedicineDelivery.API.Controllers
                 var deliveries = await _deliveryService.GetAllDeliveriesAsync();
                 return Ok(deliveries);
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                _logger.LogError(ex, "Error retrieving all deliveries");
                 return StatusCode(500, new { error = "An error occurred while retrieving deliveries." });
             }
         }
@@ -91,8 +97,9 @@ namespace MedicineDelivery.API.Controllers
 
                 return Ok(delivery);
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                _logger.LogError(ex, "Error retrieving delivery {DeliveryId}", id);
                 return StatusCode(500, new { error = "An error occurred while retrieving the delivery." });
             }
         }
@@ -111,8 +118,9 @@ namespace MedicineDelivery.API.Controllers
                 var deliveries = await _deliveryService.GetDeliveriesByMedicalStoreIdAsync(medicalStoreId);
                 return Ok(deliveries);
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                _logger.LogError(ex, "Error retrieving deliveries for medical store {MedicalStoreId}", medicalStoreId);
                 return StatusCode(500, new { error = "An error occurred while retrieving deliveries." });
             }
         }
@@ -131,8 +139,9 @@ namespace MedicineDelivery.API.Controllers
                 var deliveries = await _deliveryService.GetActiveDeliveriesByMedicalStoreIdAsync(medicalStoreId);
                 return Ok(deliveries);
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                _logger.LogError(ex, "Error retrieving active deliveries for medical store {MedicalStoreId}", medicalStoreId);
                 return StatusCode(500, new { error = "An error occurred while retrieving active deliveries." });
             }
         }
@@ -160,14 +169,17 @@ namespace MedicineDelivery.API.Controllers
             }
             catch (KeyNotFoundException ex)
             {
+                _logger.LogWarning("UpdateDelivery: {Message}", ex.Message);
                 return NotFound(new { error = ex.Message });
             }
             catch (InvalidOperationException ex)
             {
+                _logger.LogWarning("UpdateDelivery: {Message}", ex.Message);
                 return BadRequest(new { error = ex.Message });
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                _logger.LogError(ex, "Error updating delivery {DeliveryId}", id);
                 return StatusCode(500, new { error = "An error occurred while updating the delivery." });
             }
         }
@@ -192,8 +204,9 @@ namespace MedicineDelivery.API.Controllers
 
                 return NoContent();
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                _logger.LogError(ex, "Error deleting delivery {DeliveryId}", id);
                 return StatusCode(500, new { error = "An error occurred while deleting the delivery." });
             }
         }

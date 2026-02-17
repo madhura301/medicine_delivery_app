@@ -16,10 +16,12 @@ namespace MedicineDelivery.API.Controllers
     public class RolePermissionsController : ControllerBase
     {
         private readonly IMediator _mediator;
+        private readonly ILogger<RolePermissionsController> _logger;
 
-        public RolePermissionsController(IMediator mediator)
+        public RolePermissionsController(IMediator mediator, ILogger<RolePermissionsController> logger)
         {
             _mediator = mediator;
+            _logger = logger;
         }
 
         [HttpGet("{roleId}")]
@@ -34,10 +36,12 @@ namespace MedicineDelivery.API.Controllers
             }
             catch (InvalidOperationException ex)
             {
+                _logger.LogWarning("GetRolePermissions: {Message}", ex.Message);
                 return BadRequest(new { error = ex.Message });
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Error retrieving permissions for role {RoleId}", roleId);
                 return StatusCode(500, new { error = "An error occurred while retrieving role permissions." });
             }
         }
@@ -68,10 +72,12 @@ namespace MedicineDelivery.API.Controllers
             }
             catch (InvalidOperationException ex)
             {
+                _logger.LogWarning("AddRolePermission: {Message}", ex.Message);
                 return BadRequest(new { error = ex.Message });
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Error adding permission {PermissionId} to role {RoleId}", request.PermissionId, request.RoleId);
                 return StatusCode(500, new { error = "An error occurred while adding role permission." });
             }
         }
@@ -98,10 +104,12 @@ namespace MedicineDelivery.API.Controllers
             }
             catch (InvalidOperationException ex)
             {
+                _logger.LogWarning("RemoveRolePermission: {Message}", ex.Message);
                 return BadRequest(new { error = ex.Message });
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Error removing permission {PermissionId} from role {RoleId}", request.PermissionId, request.RoleId);
                 return StatusCode(500, new { error = "An error occurred while removing role permission." });
             }
         }
@@ -122,6 +130,7 @@ namespace MedicineDelivery.API.Controllers
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Error retrieving roles with permissions");
                 return StatusCode(500, new { error = "An error occurred while retrieving roles with permissions." });
             }
         }

@@ -1,6 +1,7 @@
 using MedicineDelivery.Application.Interfaces;
 using MedicineDelivery.Domain.Interfaces;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.Extensions.Logging;
 using System.Security.Claims;
 
 namespace MedicineDelivery.Infrastructure.Services
@@ -8,10 +9,12 @@ namespace MedicineDelivery.Infrastructure.Services
     public class PermissionCheckerService : IPermissionCheckerService
     {
         private readonly IRoleService _roleService;
+        private readonly ILogger<PermissionCheckerService> _logger;
 
-        public PermissionCheckerService(IRoleService roleService)
+        public PermissionCheckerService(IRoleService roleService, ILogger<PermissionCheckerService> logger)
         {
             _roleService = roleService;
+            _logger = logger;
         }
 
         public async Task<bool> HasPermissionAsync(string userId, string permissionName)
@@ -20,8 +23,9 @@ namespace MedicineDelivery.Infrastructure.Services
             {
                 return await _roleService.HasPermissionAsync(userId, permissionName);
             }
-            catch
+            catch (Exception ex)
             {
+                _logger.LogError(ex, "Error checking permission {PermissionName} for user {UserId}. Returning false", permissionName, userId);
                 return false;
             }
         }
@@ -33,8 +37,9 @@ namespace MedicineDelivery.Infrastructure.Services
                 var permissions = await _roleService.GetUserPermissionsAsync(userId);
                 return permissions.Select(p => p.Name).ToList();
             }
-            catch
+            catch (Exception ex)
             {
+                _logger.LogError(ex, "Error retrieving permissions for user {UserId}. Returning empty list", userId);
                 return new List<string>();
             }
         }
@@ -48,8 +53,9 @@ namespace MedicineDelivery.Infrastructure.Services
 
                 return await HasPermissionAsync(userId, permissionName);
             }
-            catch
+            catch (Exception ex)
             {
+                _logger.LogError(ex, "Error checking permission {PermissionName} for claims principal. Returning false", permissionName);
                 return false;
             }
         }

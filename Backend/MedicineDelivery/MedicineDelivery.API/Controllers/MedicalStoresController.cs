@@ -16,11 +16,13 @@ namespace MedicineDelivery.API.Controllers
     {
         private readonly IMedicalStoreService _medicalStoreService;
         private readonly IPermissionCheckerService _permissionCheckerService;
+        private readonly ILogger<MedicalStoresController> _logger;
 
-        public MedicalStoresController(IMedicalStoreService medicalStoreService, IPermissionCheckerService permissionCheckerService)
+        public MedicalStoresController(IMedicalStoreService medicalStoreService, IPermissionCheckerService permissionCheckerService, ILogger<MedicalStoresController> logger)
         {
             _medicalStoreService = medicalStoreService;
             _permissionCheckerService = permissionCheckerService;
+            _logger = logger;
         }
 
         /// <summary>
@@ -33,19 +35,27 @@ namespace MedicineDelivery.API.Controllers
         [AllowAnonymous]
         public async Task<ActionResult<MedicalStoreResponseDto>> RegisterMedicalStore([FromBody] MedicalStoreRegistrationDto registrationDto)
         {
-            if (!ModelState.IsValid)
+            try
             {
-                return BadRequest(ModelState);
-            }
+                if (!ModelState.IsValid)
+                {
+                    return BadRequest(ModelState);
+                }
 
-            var result = await _medicalStoreService.RegisterMedicalStoreAsync(registrationDto);
+                var result = await _medicalStoreService.RegisterMedicalStoreAsync(registrationDto);
             
-            if (!result.Success)
-            {
-                return BadRequest(new { errors = result.Errors });
-            }
+                if (!result.Success)
+                {
+                    return BadRequest(new { errors = result.Errors });
+                }
 
-            return Ok(result);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error in RegisterMedicalStore");
+                return StatusCode(500, new { error = "An error occurred while registering the medical store." });
+            }
         }
 
         /// <summary>
@@ -56,8 +66,16 @@ namespace MedicineDelivery.API.Controllers
         [Authorize(Policy = "RequireChemistReadPermission")]
         public async Task<ActionResult<List<MedicalStoreDto>>> GetAllMedicalStores()
         {
-            var medicalStores = await _medicalStoreService.GetAllMedicalStoresAsync();
-            return Ok(medicalStores);
+            try
+            {
+                var medicalStores = await _medicalStoreService.GetAllMedicalStoresAsync();
+                return Ok(medicalStores);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error in GetAllMedicalStores");
+                return StatusCode(500, new { error = "An error occurred while retrieving medical stores." });
+            }
         }
 
         /// <summary>
@@ -69,28 +87,36 @@ namespace MedicineDelivery.API.Controllers
         [Authorize(Policy = "RequireChemistReadPermission")]
         public async Task<ActionResult<MedicalStoreDto>> GetMedicalStoreById(Guid id)
         {
-            var medicalStore = await _medicalStoreService.GetMedicalStoreByIdAsync(id);
+            try
+            {
+                var medicalStore = await _medicalStoreService.GetMedicalStoreByIdAsync(id);
             
-            if (medicalStore == null)
-            {
-                return NotFound();
-            }
-
-            // Check if user has AllCustomerRead permission or CustomerRead permission
-            var hasAllChemistRead = await _permissionCheckerService.HasPermissionAsync(User, "AllChemistRead");
-            var hasChemistRead = await _permissionCheckerService.HasPermissionAsync(User, "ChemistRead");
-
-            if (!hasAllChemistRead && hasChemistRead)
-            {
-                // User only has CustomerRead permission, can only access their own record
-                var currentUserId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-                if (medicalStore.UserId != currentUserId)
+                if (medicalStore == null)
                 {
-                    return Forbid("You can only access your own chemist information.");
+                    return NotFound();
                 }
-            }
 
-            return Ok(medicalStore);
+                // Check if user has AllCustomerRead permission or CustomerRead permission
+                var hasAllChemistRead = await _permissionCheckerService.HasPermissionAsync(User, "AllChemistRead");
+                var hasChemistRead = await _permissionCheckerService.HasPermissionAsync(User, "ChemistRead");
+
+                if (!hasAllChemistRead && hasChemistRead)
+                {
+                    // User only has CustomerRead permission, can only access their own record
+                    var currentUserId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                    if (medicalStore.UserId != currentUserId)
+                    {
+                        return Forbid("You can only access your own chemist information.");
+                    }
+                }
+
+                return Ok(medicalStore);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error in GetMedicalStoreById for {Id}", id);
+                return StatusCode(500, new { error = "An error occurred while retrieving the medical store." });
+            }
         }
 
         /// <summary>
@@ -102,14 +128,22 @@ namespace MedicineDelivery.API.Controllers
         [Authorize(Policy = "RequireChemistReadPermission")]
         public async Task<ActionResult<MedicalStoreDto>> GetMedicalStoreByEmail(string email)
         {
-            var medicalStore = await _medicalStoreService.GetMedicalStoreByEmailAsync(email);
-            
-            if (medicalStore == null)
+            try
             {
-                return NotFound();
-            }
+                var medicalStore = await _medicalStoreService.GetMedicalStoreByEmailAsync(email);
+            
+                if (medicalStore == null)
+                {
+                    return NotFound();
+                }
 
-            return Ok(medicalStore);
+                return Ok(medicalStore);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error in GetMedicalStoreByEmail for {Email}", email);
+                return StatusCode(500, new { error = "An error occurred while retrieving the medical store." });
+            }
         }
 
         /// <summary>
@@ -159,8 +193,9 @@ namespace MedicineDelivery.API.Controllers
 
                 return Ok(medicalStore);
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                _logger.LogError(ex, "Error in UpdateMedicalStore for {Id}", id);
                 return StatusCode(500, new { error = "An error occurred while updating the chemist." });
             }
         }
@@ -206,9 +241,9 @@ namespace MedicineDelivery.API.Controllers
 
                 return NoContent();
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-
+                _logger.LogError(ex, "Error in DeleteMedicalStore for {Id}", id);
                 return StatusCode(500, new { error = "An error occurred while deleting the chemist." });
             }
         }

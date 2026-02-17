@@ -2,6 +2,7 @@ using MedicineDelivery.Application.DTOs;
 using MedicineDelivery.Application.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
 using System.Security.Claims;
 
 namespace MedicineDelivery.API.Controllers
@@ -13,11 +14,13 @@ namespace MedicineDelivery.API.Controllers
     {
         private readonly ICustomerAddressService _customerAddressService;
         private readonly IPermissionCheckerService _permissionCheckerService;
+        private readonly ILogger<CustomerAddressesController> _logger;
 
-        public CustomerAddressesController(ICustomerAddressService customerAddressService, IPermissionCheckerService permissionCheckerService)
+        public CustomerAddressesController(ICustomerAddressService customerAddressService, IPermissionCheckerService permissionCheckerService, ILogger<CustomerAddressesController> logger)
         {
             _customerAddressService = customerAddressService;
             _permissionCheckerService = permissionCheckerService;
+            _logger = logger;
         }
 
         [HttpGet("{id}")]
@@ -49,6 +52,7 @@ namespace MedicineDelivery.API.Controllers
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Error in GetCustomerAddress for Address {AddressId}", id);
                 return StatusCode(500, new { error = "An error occurred while retrieving the customer address." });
             }
         }
@@ -64,6 +68,7 @@ namespace MedicineDelivery.API.Controllers
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Error in GetCustomerAddressesByCustomerId for Customer {CustomerId}", customerId);
                 return StatusCode(500, new { error = "An error occurred while retrieving customer addresses." });
             }
         }
@@ -84,6 +89,7 @@ namespace MedicineDelivery.API.Controllers
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Error in GetDefaultCustomerAddress for Customer {CustomerId}", customerId);
                 return StatusCode(500, new { error = "An error occurred while retrieving the default address." });
             }
         }
@@ -104,6 +110,7 @@ namespace MedicineDelivery.API.Controllers
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Error in CreateCustomerAddress");
                 return StatusCode(500, new { error = "An error occurred while creating the customer address." });
             }
         }
@@ -129,6 +136,7 @@ namespace MedicineDelivery.API.Controllers
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Error in UpdateCustomerAddress for Address {AddressId}", id);
                 return StatusCode(500, new { error = "An error occurred while updating the customer address." });
             }
         }
@@ -151,6 +159,7 @@ namespace MedicineDelivery.API.Controllers
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Error in DeleteCustomerAddress for Address {AddressId}", id);
                 return StatusCode(500, new { error = "An error occurred while deleting the customer address." });
             }
         }
@@ -173,6 +182,7 @@ namespace MedicineDelivery.API.Controllers
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Error in SetDefaultAddress for Customer {CustomerId} Address {AddressId}", customerId, addressId);
                 return StatusCode(500, new { error = "An error occurred while setting the default address." });
             }
         }

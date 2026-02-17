@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Identity;
+using Microsoft.Extensions.Logging;
 using MedicineDelivery.Application.DTOs;
 using MedicineDelivery.Application.Interfaces;
 using MedicineDelivery.Domain.Entities;
@@ -14,17 +15,20 @@ namespace MedicineDelivery.Infrastructure.Services
         private readonly IUnitOfWork _unitOfWork;
         private readonly IMapper _mapper;
         private readonly ICustomerAddressService _customerAddressService;
+        private readonly ILogger<CustomerService> _logger;
 
         public CustomerService(
             UserManager<ApplicationUser> userManager,
             IUnitOfWork unitOfWork,
             IMapper mapper,
-            ICustomerAddressService customerAddressService)
+            ICustomerAddressService customerAddressService,
+            ILogger<CustomerService> logger)
         {
             _userManager = userManager;
             _unitOfWork = unitOfWork;
             _mapper = mapper;
             _customerAddressService = customerAddressService;
+            _logger = logger;
         }
 
         public async Task<CustomerRegistrationResult> RegisterCustomerAsync(CustomerRegistrationDto registrationDto)
@@ -35,6 +39,7 @@ namespace MedicineDelivery.Infrastructure.Services
                 var existingCustomer = await _unitOfWork.Customers.FirstOrDefaultAsync(c => c.MobileNumber == registrationDto.MobileNumber);
                 if (existingCustomer != null)
                 {
+                    _logger.LogWarning("Customer registration failed: customer with mobile number {MobileNumber} already exists", registrationDto.MobileNumber);
                     return new CustomerRegistrationResult
                     {
                         Success = false,
@@ -46,6 +51,7 @@ namespace MedicineDelivery.Infrastructure.Services
                 var existingUser = await _userManager.FindByNameAsync(registrationDto.MobileNumber);
                 if (existingUser != null)
                 {
+                    _logger.LogWarning("Customer registration failed: user with mobile number {MobileNumber} already exists", registrationDto.MobileNumber);
                     return new CustomerRegistrationResult
                     {
                         Success = false,
@@ -73,6 +79,8 @@ namespace MedicineDelivery.Infrastructure.Services
                     var userResult = await _userManager.CreateAsync(identityUser, registrationDto.Password);
                     if (!userResult.Succeeded)
                     {
+                        _logger.LogWarning("Customer registration failed: identity user creation failed for mobile number {MobileNumber}. Errors: {Errors}",
+                            registrationDto.MobileNumber, string.Join(", ", userResult.Errors.Select(e => e.Description)));
                         await _unitOfWork.RollbackTransactionAsync();
                         return new CustomerRegistrationResult
                         {
@@ -109,6 +117,8 @@ namespace MedicineDelivery.Infrastructure.Services
                     await _unitOfWork.Customers.AddAsync(customer);
                     await _unitOfWork.SaveChangesAsync();
                     await _unitOfWork.CommitTransactionAsync();
+
+                    _logger.LogInformation("Customer registered successfully with CustomerId {CustomerId} and mobile number {MobileNumber}", customer.CustomerId, customer.MobileNumber);
 
                     // Create addresses if provided
                     if (registrationDto.Addresses != null && registrationDto.Addresses.Any())
@@ -171,9 +181,7 @@ namespace MedicineDelivery.Infrastructure.Services
                         }
                         catch (Exception ex)
                         {
-                            // Log the cleanup failure but don't throw - the main transaction is already rolled back
-                            // This could be logged to a proper logging system
-                            Console.WriteLine($"Failed to cleanup Identity user {identityUser.Id}: {ex.Message}");
+                            _logger.LogError(ex, "Failed to cleanup Identity user {UserId} during customer registration rollback", identityUser.Id);
                         }
                     }
                     
@@ -182,6 +190,7 @@ namespace MedicineDelivery.Infrastructure.Services
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "An error occurred during customer registration for mobile number {MobileNumber}", registrationDto.MobileNumber);
                 return new CustomerRegistrationResult
                 {
                     Success = false,
@@ -238,7 +247,10 @@ namespace MedicineDelivery.Infrastructure.Services
         {
             var customer = await _unitOfWork.Customers.FirstOrDefaultAsync(c => c.CustomerId == id);
             if (customer == null)
+            {
+                _logger.LogWarning("Customer update failed: customer with ID {CustomerId} not found", id);
                 return null;
+            }
 
             customer.CustomerFirstName = updateDto.CustomerFirstName;
             customer.CustomerLastName = updateDto.CustomerLastName;
@@ -281,6 +293,8 @@ namespace MedicineDelivery.Infrastructure.Services
                 }
             }
 
+            _logger.LogInformation("Customer updated successfully with CustomerId {CustomerId}", id);
+
             var customerDto = _mapper.Map<CustomerDto>(customer);
             customerDto.Addresses = await _customerAddressService.GetCustomerAddressesByCustomerIdAsync(id);
             return customerDto;
@@ -290,12 +304,17 @@ namespace MedicineDelivery.Infrastructure.Services
         {
             var customer = await _unitOfWork.Customers.FirstOrDefaultAsync(c => c.CustomerId == id);
             if (customer == null)
+            {
+                _logger.LogWarning("Customer deletion failed: customer with ID {CustomerId} not found", id);
                 return false;
+            }
 
             customer.IsActive = false;
             customer.UpdatedOn = DateTime.UtcNow;
 
             await _unitOfWork.SaveChangesAsync();
+
+            _logger.LogInformation("Customer soft-deleted successfully with CustomerId {CustomerId}", id);
             return true;
         }
 
@@ -320,6 +339,7 @@ namespace MedicineDelivery.Infrastructure.Services
                 }
             }
 
+            _logger.LogWarning("Failed to generate a unique customer number after multiple attempts");
             throw new InvalidOperationException("Failed to generate a unique customer number after multiple attempts.");
         }
     }

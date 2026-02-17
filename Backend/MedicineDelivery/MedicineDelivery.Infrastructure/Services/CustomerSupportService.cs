@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Identity;
+using Microsoft.Extensions.Logging;
 using MedicineDelivery.Application.DTOs;
 using MedicineDelivery.Application.Interfaces;
 using MedicineDelivery.Domain.Entities;
@@ -13,15 +14,18 @@ namespace MedicineDelivery.Infrastructure.Services
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly IUnitOfWork _unitOfWork;
         private readonly IMapper _mapper;
+        private readonly ILogger<CustomerSupportService> _logger;
 
         public CustomerSupportService(
             UserManager<ApplicationUser> userManager,
             IUnitOfWork unitOfWork,
-            IMapper mapper)
+            IMapper mapper,
+            ILogger<CustomerSupportService> logger)
         {
             _userManager = userManager;
             _unitOfWork = unitOfWork;
             _mapper = mapper;
+            _logger = logger;
         }
 
         public async Task<CustomerSupportRegistrationResult> RegisterCustomerSupportAsync(CustomerSupportRegistrationDto registrationDto)
@@ -32,6 +36,7 @@ namespace MedicineDelivery.Infrastructure.Services
                 var existingCustomerSupport = await _unitOfWork.CustomerSupports.FirstOrDefaultAsync(cs => cs.EmailId == registrationDto.EmailId);
                 if (existingCustomerSupport != null)
                 {
+                    _logger.LogWarning("Customer support registration failed: support agent with email {Email} already exists", registrationDto.EmailId);
                     return new CustomerSupportRegistrationResult
                     {
                         Success = false,
@@ -43,6 +48,7 @@ namespace MedicineDelivery.Infrastructure.Services
                 var existingUser = await _userManager.FindByNameAsync(registrationDto.MobileNumber);
                 if (existingUser != null)
                 {
+                    _logger.LogWarning("Customer support registration failed: user with mobile number {MobileNumber} already exists", registrationDto.MobileNumber);
                     return new CustomerSupportRegistrationResult
                     {
                         Success = false,
@@ -56,6 +62,7 @@ namespace MedicineDelivery.Infrastructure.Services
                     var region = await _unitOfWork.ServiceRegions.GetByIdAsync(registrationDto.ServiceRegionId.Value);
                     if (region == null)
                     {
+                        _logger.LogWarning("Customer support registration failed: service region with ID {ServiceRegionId} not found", registrationDto.ServiceRegionId.Value);
                         return new CustomerSupportRegistrationResult
                         {
                             Success = false,
@@ -87,6 +94,8 @@ namespace MedicineDelivery.Infrastructure.Services
                     var userResult = await _userManager.CreateAsync(identityUser, generatedPassword);
                     if (!userResult.Succeeded)
                     {
+                        _logger.LogWarning("Customer support registration failed: identity user creation failed for mobile number {MobileNumber}. Errors: {Errors}",
+                            registrationDto.MobileNumber, string.Join(", ", userResult.Errors.Select(e => e.Description)));
                         await _unitOfWork.RollbackTransactionAsync();
                         return new CustomerSupportRegistrationResult
                         {
@@ -122,6 +131,9 @@ namespace MedicineDelivery.Infrastructure.Services
                     await _unitOfWork.CustomerSupports.AddAsync(customerSupport);
                     await _unitOfWork.SaveChangesAsync();
                     await _unitOfWork.CommitTransactionAsync();
+
+                    _logger.LogInformation("Customer support registered successfully with CustomerSupportId {CustomerSupportId} and email {Email}",
+                        customerSupport.CustomerSupportId, customerSupport.EmailId);
 
                     // Create response
                     var response = new CustomerSupportResponseDto
@@ -168,9 +180,7 @@ namespace MedicineDelivery.Infrastructure.Services
                         }
                         catch (Exception ex)
                         {
-                            // Log the cleanup failure but don't throw - the main transaction is already rolled back
-                            // This could be logged to a proper logging system
-                            Console.WriteLine($"Failed to cleanup Identity user {identityUser.Id}: {ex.Message}");
+                            _logger.LogError(ex, "Failed to cleanup Identity user {UserId} during customer support registration rollback", identityUser.Id);
                         }
                     }
                     
@@ -179,6 +189,7 @@ namespace MedicineDelivery.Infrastructure.Services
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "An error occurred during customer support registration for email {Email}", registrationDto.EmailId);
                 return new CustomerSupportRegistrationResult
                 {
                     Success = false,
@@ -209,7 +220,10 @@ namespace MedicineDelivery.Infrastructure.Services
         {
             var customerSupport = await _unitOfWork.CustomerSupports.FirstOrDefaultAsync(cs => cs.CustomerSupportId == id);
             if (customerSupport == null)
+            {
+                _logger.LogWarning("Customer support update failed: support agent with ID {CustomerSupportId} not found", id);
                 return null;
+            }
 
             // Validate ServiceRegionId if provided
             if (updateDto.ServiceRegionId.HasValue)
@@ -217,6 +231,7 @@ namespace MedicineDelivery.Infrastructure.Services
                 var region = await _unitOfWork.ServiceRegions.GetByIdAsync(updateDto.ServiceRegionId.Value);
                 if (region == null)
                 {
+                    _logger.LogWarning("Customer support update failed: service region with ID {ServiceRegionId} not found", updateDto.ServiceRegionId.Value);
                     throw new KeyNotFoundException($"Service region with ID '{updateDto.ServiceRegionId.Value}' not found.");
                 }
             }
@@ -235,6 +250,8 @@ namespace MedicineDelivery.Infrastructure.Services
 
             _unitOfWork.CustomerSupports.Update(customerSupport);
             await _unitOfWork.SaveChangesAsync();
+
+            _logger.LogInformation("Customer support updated successfully with CustomerSupportId {CustomerSupportId}", id);
             return _mapper.Map<CustomerSupportDto>(customerSupport);
         }
 
@@ -242,13 +259,18 @@ namespace MedicineDelivery.Infrastructure.Services
         {
             var customerSupport = await _unitOfWork.CustomerSupports.FirstOrDefaultAsync(cs => cs.CustomerSupportId == id);
             if (customerSupport == null)
+            {
+                _logger.LogWarning("Customer support deletion failed: support agent with ID {CustomerSupportId} not found", id);
                 return false;
+            }
 
             customerSupport.IsActive = false;
             customerSupport.IsDeleted = true;
             customerSupport.UpdatedOn = DateTime.UtcNow;
 
             await _unitOfWork.SaveChangesAsync();
+
+            _logger.LogInformation("Customer support soft-deleted successfully with CustomerSupportId {CustomerSupportId}", id);
             return true;
         }
 

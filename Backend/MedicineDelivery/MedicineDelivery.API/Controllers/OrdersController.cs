@@ -8,6 +8,7 @@ using MedicineDelivery.Application.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 
 namespace MedicineDelivery.API.Controllers
 {
@@ -18,11 +19,13 @@ namespace MedicineDelivery.API.Controllers
     {
         private readonly IOrderService _orderService;
         private readonly IHostEnvironment _hostEnvironment;
+        private readonly ILogger<OrdersController> _logger;
 
-        public OrdersController(IOrderService orderService, IHostEnvironment hostEnvironment)
+        public OrdersController(IOrderService orderService, IHostEnvironment hostEnvironment, ILogger<OrdersController> logger)
         {
             _orderService = orderService;
             _hostEnvironment = hostEnvironment;
+            _logger = logger;
         }
 
         [HttpGet("{orderId:int}")]
@@ -43,8 +46,9 @@ namespace MedicineDelivery.API.Controllers
             {
                 return StatusCode(499, new { error = "Request was cancelled." });
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                _logger.LogError(ex, "Error in GetOrderById for Order {OrderId}", orderId);
                 return StatusCode(500, new { error = "An error occurred while retrieving the order." });
             }
         }
@@ -60,14 +64,16 @@ namespace MedicineDelivery.API.Controllers
             }
             catch (ArgumentException ex)
             {
+                _logger.LogWarning("GetOrdersByCustomerId: {Message}", ex.Message);
                 return BadRequest(new { error = ex.Message });
             }
             catch (OperationCanceledException)
             {
                 return StatusCode(499, new { error = "Request was cancelled." });
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                _logger.LogError(ex, "Error in GetOrdersByCustomerId for Customer {CustomerId}", customerId);
                 return StatusCode(500, new { error = "An error occurred while retrieving the orders." });
             }
         }
@@ -83,14 +89,16 @@ namespace MedicineDelivery.API.Controllers
             }
             catch (ArgumentException ex)
             {
+                _logger.LogWarning("GetActiveOrdersByCustomerId: {Message}", ex.Message);
                 return BadRequest(new { error = ex.Message });
             }
             catch (OperationCanceledException)
             {
                 return StatusCode(499, new { error = "Request was cancelled." });
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                _logger.LogError(ex, "Error in GetActiveOrdersByCustomerId for Customer {CustomerId}", customerId);
                 return StatusCode(500, new { error = "An error occurred while retrieving the orders." });
             }
         }
@@ -106,14 +114,16 @@ namespace MedicineDelivery.API.Controllers
             }
             catch (ArgumentException ex)
             {
+                _logger.LogWarning("GetActiveOrdersByMedicalStoreId: {Message}", ex.Message);
                 return BadRequest(new { error = ex.Message });
             }
             catch (OperationCanceledException)
             {
                 return StatusCode(499, new { error = "Request was cancelled." });
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                _logger.LogError(ex, "Error in GetActiveOrdersByMedicalStoreId for MedicalStore {MedicalStoreId}", medicalStoreId);
                 return StatusCode(500, new { error = "An error occurred while retrieving the orders." });
             }
         }
@@ -129,14 +139,16 @@ namespace MedicineDelivery.API.Controllers
             }
             catch (ArgumentException ex)
             {
+                _logger.LogWarning("GetAcceptedOrdersByMedicalStoreId: {Message}", ex.Message);
                 return BadRequest(new { error = ex.Message });
             }
             catch (OperationCanceledException)
             {
                 return StatusCode(499, new { error = "Request was cancelled." });
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                _logger.LogError(ex, "Error in GetAcceptedOrdersByMedicalStoreId for MedicalStore {MedicalStoreId}", medicalStoreId);
                 return StatusCode(500, new { error = "An error occurred while retrieving the orders." });
             }
         }
@@ -152,14 +164,16 @@ namespace MedicineDelivery.API.Controllers
             }
             catch (ArgumentException ex)
             {
+                _logger.LogWarning("GetRejectedOrdersByMedicalStoreId: {Message}", ex.Message);
                 return BadRequest(new { error = ex.Message });
             }
             catch (OperationCanceledException)
             {
                 return StatusCode(499, new { error = "Request was cancelled." });
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                _logger.LogError(ex, "Error in GetRejectedOrdersByMedicalStoreId for MedicalStore {MedicalStoreId}", medicalStoreId);
                 return StatusCode(500, new { error = "An error occurred while retrieving the orders." });
             }
         }
@@ -175,14 +189,16 @@ namespace MedicineDelivery.API.Controllers
             }
             catch (ArgumentException ex)
             {
+                _logger.LogWarning("GetAllOrdersByMedicalStoreId: {Message}", ex.Message);
                 return BadRequest(new { error = ex.Message });
             }
             catch (OperationCanceledException)
             {
                 return StatusCode(499, new { error = "Request was cancelled." });
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                _logger.LogError(ex, "Error in GetAllOrdersByMedicalStoreId for MedicalStore {MedicalStoreId}", medicalStoreId);
                 return StatusCode(500, new { error = "An error occurred while retrieving the orders." });
             }
         }
@@ -198,18 +214,21 @@ namespace MedicineDelivery.API.Controllers
             }
             catch (KeyNotFoundException ex)
             {
+                _logger.LogWarning("AcceptOrderByChemist: {Message}", ex.Message);
                 return NotFound(new { error = ex.Message });
             }
             catch (InvalidOperationException ex)
             {
+                _logger.LogWarning("AcceptOrderByChemist: {Message}", ex.Message);
                 return BadRequest(new { error = ex.Message });
             }
             catch (OperationCanceledException)
             {
                 return StatusCode(499, new { error = "Request was cancelled." });
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                _logger.LogError(ex, "Error in AcceptOrderByChemist for Order {OrderId}", orderId);
                 return StatusCode(500, new { error = "An error occurred while accepting the order." });
             }
         }
@@ -236,31 +255,33 @@ namespace MedicineDelivery.API.Controllers
                 }
                 catch (Exception ex)
                 {
-                    // Log the error but don't fail the rejection
-                    // The order is already rejected, assignment to CustomerSupport is secondary
-                    // You might want to log this for monitoring
+                    _logger.LogWarning(ex, "RejectOrderByChemist: Failed to assign rejected Order {OrderId} to CustomerSupport", orderId);
                 }
                 
                 return Ok(order);
             }
             catch (KeyNotFoundException ex)
             {
+                _logger.LogWarning("RejectOrderByChemist: {Message}", ex.Message);
                 return NotFound(new { error = ex.Message });
             }
             catch (ArgumentException ex)
             {
+                _logger.LogWarning("RejectOrderByChemist: {Message}", ex.Message);
                 return BadRequest(new { error = ex.Message });
             }
             catch (InvalidOperationException ex)
             {
+                _logger.LogWarning("RejectOrderByChemist: {Message}", ex.Message);
                 return BadRequest(new { error = ex.Message });
             }
             catch (OperationCanceledException)
             {
                 return StatusCode(499, new { error = "Request was cancelled." });
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                _logger.LogError(ex, "Error in RejectOrderByChemist for Order {OrderId}", orderId);
                 return StatusCode(500, new { error = "An error occurred while rejecting the order." });
             }
         }
@@ -281,22 +302,26 @@ namespace MedicineDelivery.API.Controllers
             }
             catch (KeyNotFoundException ex)
             {
+                _logger.LogWarning("CompleteOrder: {Message}", ex.Message);
                 return NotFound(new { error = ex.Message });
             }
             catch (ArgumentException ex)
             {
+                _logger.LogWarning("CompleteOrder: {Message}", ex.Message);
                 return BadRequest(new { error = ex.Message });
             }
             catch (InvalidOperationException ex)
             {
+                _logger.LogWarning("CompleteOrder: {Message}", ex.Message);
                 return BadRequest(new { error = ex.Message });
             }
             catch (OperationCanceledException)
             {
                 return StatusCode(499, new { error = "Request was cancelled." });
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                _logger.LogError(ex, "Error in CompleteOrder for Order {OrderId}", orderId);
                 return StatusCode(500, new { error = "An error occurred while completing the order." });
             }
         }
@@ -317,22 +342,26 @@ namespace MedicineDelivery.API.Controllers
             }
             catch (KeyNotFoundException ex)
             {
+                _logger.LogWarning("AssignOrderToMedicalStore: {Message}", ex.Message);
                 return NotFound(new { error = ex.Message });
             }
             catch (ArgumentException ex)
             {
+                _logger.LogWarning("AssignOrderToMedicalStore: {Message}", ex.Message);
                 return BadRequest(new { error = ex.Message });
             }
             catch (InvalidOperationException ex)
             {
+                _logger.LogWarning("AssignOrderToMedicalStore: {Message}", ex.Message);
                 return BadRequest(new { error = ex.Message });
             }
             catch (OperationCanceledException)
             {
                 return StatusCode(499, new { error = "Request was cancelled." });
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                _logger.LogError(ex, "Error in AssignOrderToMedicalStore");
                 return StatusCode(500, new { error = "An error occurred while assigning the order." });
             }
         }
@@ -354,18 +383,21 @@ namespace MedicineDelivery.API.Controllers
             }
             catch (ArgumentException ex)
             {
+                _logger.LogWarning("CreateOrder: {Message}", ex.Message);
                 return BadRequest(new { error = ex.Message });
             }
             catch (KeyNotFoundException ex)
             {
+                _logger.LogWarning("CreateOrder: {Message}", ex.Message);
                 return NotFound(new { error = ex.Message });
             }
             catch (OperationCanceledException)
             {
                 return StatusCode(499, new { error = "Request was cancelled." });
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                _logger.LogError(ex, "Error in CreateOrder");
                 return StatusCode(500, new { error = "An error occurred while creating the order." });
             }
         }
@@ -393,18 +425,21 @@ namespace MedicineDelivery.API.Controllers
             }
             catch (KeyNotFoundException ex)
             {
+                _logger.LogWarning("UploadOrderBill: {Message}", ex.Message);
                 return NotFound(new { error = ex.Message });
             }
             catch (ArgumentException ex)
             {
+                _logger.LogWarning("UploadOrderBill: {Message}", ex.Message);
                 return BadRequest(new { error = ex.Message });
             }
             catch (OperationCanceledException)
             {
                 return StatusCode(499, new { error = "Request was cancelled." });
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                _logger.LogError(ex, "Error in UploadOrderBill for Order {OrderId}", orderId);
                 return StatusCode(500, new { error = "An error occurred while uploading the order bill." });
             }
         }
@@ -425,18 +460,21 @@ namespace MedicineDelivery.API.Controllers
             }
             catch (KeyNotFoundException ex)
             {
+                _logger.LogWarning("AssignOrderToDelivery: {Message}", ex.Message);
                 return NotFound(new { error = ex.Message });
             }
             catch (InvalidOperationException ex)
             {
+                _logger.LogWarning("AssignOrderToDelivery: {Message}", ex.Message);
                 return BadRequest(new { error = ex.Message });
             }
             catch (OperationCanceledException)
             {
                 return StatusCode(499, new { error = "Request was cancelled." });
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                _logger.LogError(ex, "Error in AssignOrderToDelivery");
                 return StatusCode(500, new { error = "An error occurred while assigning the order to delivery." });
             }
         }
@@ -454,8 +492,9 @@ namespace MedicineDelivery.API.Controllers
             {
                 return StatusCode(499, new { error = "Request was cancelled." });
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                _logger.LogError(ex, "Error in GetAllOrders");
                 return StatusCode(500, new { error = "An error occurred while retrieving all orders." });
             }
         }
@@ -520,6 +559,7 @@ namespace MedicineDelivery.API.Controllers
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Error in DownloadOrderInputFile for Order {OrderId}", orderId);
                 return StatusCode(500, new { error = $"An error occurred while downloading the order input file: {ex.Message}" });
             }
         }
@@ -571,6 +611,7 @@ namespace MedicineDelivery.API.Controllers
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Error in DownloadOrderBill for Order {OrderId}", orderId);
                 return StatusCode(500, new { error = $"An error occurred while downloading the order bill file: {ex.Message}" });
             }
         }
@@ -591,10 +632,12 @@ namespace MedicineDelivery.API.Controllers
             }
             catch (KeyNotFoundException ex)
             {
+                _logger.LogWarning("GetMedicalStoresByOrderCity: {Message}", ex.Message);
                 return NotFound(new { error = ex.Message });
             }
             catch (InvalidOperationException ex)
             {
+                _logger.LogWarning("GetMedicalStoresByOrderCity: {Message}", ex.Message);
                 return BadRequest(new { error = ex.Message });
             }
             catch (OperationCanceledException)
@@ -603,6 +646,7 @@ namespace MedicineDelivery.API.Controllers
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Error in GetMedicalStoresByOrderCity for Order {OrderId}", orderId);
                 return StatusCode(500, new { error = $"An error occurred while retrieving medical stores: {ex.Message}" });
             }
         }
@@ -623,14 +667,16 @@ namespace MedicineDelivery.API.Controllers
             }
             catch (ArgumentException ex)
             {
+                _logger.LogWarning("AssignedToCustomerSupportByCustomerSupportIdAsync: {Message}", ex.Message);
                 return BadRequest(new { error = ex.Message });
             }
             catch (OperationCanceledException)
             {
                 return StatusCode(499, new { error = "Request was cancelled." });
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                _logger.LogError(ex, "Error in AssignedToCustomerSupportByCustomerSupportIdAsync for CustomerSupport {CustomerSupportId}", customerSupportId);
                 return StatusCode(500, new { error = "An error occurred while retrieving the orders." });
             }
         }
@@ -651,14 +697,16 @@ namespace MedicineDelivery.API.Controllers
             }
             catch (ArgumentException ex)
             {
+                _logger.LogWarning("GetAllOrdersByCustomerSupportId: {Message}", ex.Message);
                 return BadRequest(new { error = ex.Message });
             }
             catch (OperationCanceledException)
             {
                 return StatusCode(499, new { error = "Request was cancelled." });
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                _logger.LogError(ex, "Error in GetAllOrdersByCustomerSupportId for CustomerSupport {CustomerSupportId}", customerSupportId);
                 return StatusCode(500, new { error = "An error occurred while retrieving the orders." });
             }
         }
@@ -679,18 +727,21 @@ namespace MedicineDelivery.API.Controllers
             }
             catch (KeyNotFoundException ex)
             {
+                _logger.LogWarning("GetEligibleDeliveryBoys: {Message}", ex.Message);
                 return NotFound(new { error = ex.Message });
             }
             catch (InvalidOperationException ex)
             {
+                _logger.LogWarning("GetEligibleDeliveryBoys: {Message}", ex.Message);
                 return BadRequest(new { error = ex.Message });
             }
             catch (OperationCanceledException)
             {
                 return StatusCode(499, new { error = "Request was cancelled." });
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                _logger.LogError(ex, "Error in GetEligibleDeliveryBoys for Order {OrderId}", orderId);
                 return StatusCode(500, new { error = "An error occurred while retrieving eligible delivery boys." });
             }
         }
@@ -718,8 +769,9 @@ namespace MedicineDelivery.API.Controllers
             {
                 return StatusCode(499, new { error = "Request was cancelled." });
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                _logger.LogError(ex, "Error in GetMyDeliveryOrders");
                 return StatusCode(500, new { error = "An error occurred while retrieving delivery orders." });
             }
         }
@@ -740,22 +792,23 @@ namespace MedicineDelivery.API.Controllers
             }
             catch (KeyNotFoundException ex)
             {
+                _logger.LogWarning("GetMedicalStoresByPinCode: {Message}", ex.Message);
                 return NotFound(new { error = ex.Message });
             }
             catch (InvalidOperationException ex)
             {
+                _logger.LogWarning("GetMedicalStoresByPinCode: {Message}", ex.Message);
                 return BadRequest(new { error = ex.Message });
             }
             catch (OperationCanceledException)
             {
                 return StatusCode(499, new { error = "Request was cancelled." });
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                _logger.LogError(ex, "Error in GetMedicalStoresByPinCode for Order {OrderId}", orderId);
                 return StatusCode(500, new { error = "An error occurred while retrieving medical stores." });
             }
         }
     }
 }
-
-

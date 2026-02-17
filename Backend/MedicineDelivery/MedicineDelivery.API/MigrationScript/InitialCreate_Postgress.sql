@@ -1123,6 +1123,18 @@ BEGIN
     END IF;
 END $EF$;
 
+-- Fix: Assign unique CustomerNumber to all existing customers that have empty value
+-- This MUST run before the unique index is created, otherwise duplicates on '' will fail
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260210182454_AddDeliveryUserIdAndCustomerNumber') THEN
+        UPDATE "Customers"
+        SET "CustomerNumber" = upper(substr(md5(random()::text || "CustomerId"::text || clock_timestamp()::text), 1, 8)),
+            "UpdatedOn" = now() at time zone 'utc'
+        WHERE "CustomerNumber" IS NULL OR "CustomerNumber" = '';
+    END IF;
+END $EF$;
+
 -- Create index on Deliveries.UserId
 DO $EF$
 BEGIN

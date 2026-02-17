@@ -9,6 +9,7 @@ using MedicineDelivery.Infrastructure.Data;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using NetTopologySuite;
 using NetTopologySuite.Geometries;
 using System;
@@ -29,16 +30,18 @@ namespace MedicineDelivery.Infrastructure.Services
         private readonly IMapper _mapper;
         private readonly IHostEnvironment _hostEnvironment;
         private readonly ApplicationDbContext _context;
+        private readonly ILogger<OrderService> _logger;
         private static readonly string[] AllowedImageExtensions = { ".jpg", ".jpeg", ".png", ".gif", ".bmp" };
         private static readonly string[] AllowedVoiceExtensions = { ".mp3", ".wav", ".m4a", ".aac", ".ogg" };
         private static readonly string[] AllowedPdfExtensions = { ".pdf" };
 
-        public OrderService(IUnitOfWork unitOfWork, IMapper mapper, IHostEnvironment hostEnvironment, ApplicationDbContext context)
+        public OrderService(IUnitOfWork unitOfWork, IMapper mapper, IHostEnvironment hostEnvironment, ApplicationDbContext context, ILogger<OrderService> logger)
         {
             _unitOfWork = unitOfWork;
             _mapper = mapper;
             _hostEnvironment = hostEnvironment;
             _context = context;
+            _logger = logger;
         }
 
         public async Task<OrderDto> CreateOrderAsync(CreateOrderDto createDto, CancellationToken cancellationToken = default)
@@ -49,21 +52,25 @@ namespace MedicineDelivery.Infrastructure.Services
 
             if (createDto.CustomerId == Guid.Empty)
             {
+                _logger.LogWarning("CreateOrderAsync failed: CustomerId is empty");
                 throw new ArgumentException("CustomerId is required.", nameof(createDto.CustomerId));
             }
 
             if (createDto.CustomerAddressId == Guid.Empty)
             {
+                _logger.LogWarning("CreateOrderAsync failed: CustomerAddressId is empty");
                 throw new ArgumentException("CustomerAddressId is required.", nameof(createDto.CustomerAddressId));
             }
 
             if (!Enum.IsDefined(typeof(OrderType), createDto.OrderType))
             {
+                _logger.LogWarning("CreateOrderAsync failed: Invalid OrderType {OrderType} for Customer {CustomerId}", createDto.OrderType, createDto.CustomerId);
                 throw new ArgumentException("Invalid order type provided.", nameof(createDto.OrderType));
             }
 
             if (!Enum.IsDefined(typeof(OrderInputType), createDto.OrderInputType))
             {
+                _logger.LogWarning("CreateOrderAsync failed: Invalid OrderInputType {OrderInputType} for Customer {CustomerId}", createDto.OrderInputType, createDto.CustomerId);
                 throw new ArgumentException("Invalid order input type provided.", nameof(createDto.OrderInputType));
             }
 
@@ -71,6 +78,7 @@ namespace MedicineDelivery.Infrastructure.Services
             var customer = await _unitOfWork.Customers.FirstOrDefaultAsync(c => c.CustomerId == createDto.CustomerId && c.IsActive);
             if (customer == null)
             {
+                _logger.LogWarning("CreateOrderAsync failed: Customer {CustomerId} not found or inactive", createDto.CustomerId);
                 throw new KeyNotFoundException("Customer not found or inactive.");
             }
 
@@ -82,6 +90,7 @@ namespace MedicineDelivery.Infrastructure.Services
 
             if (address == null)
             {
+                _logger.LogWarning("CreateOrderAsync failed: Address {CustomerAddressId} not found or inactive for Customer {CustomerId}", createDto.CustomerAddressId, createDto.CustomerId);
                 throw new KeyNotFoundException("Customer address not found or inactive.");
             }
 
@@ -89,10 +98,13 @@ namespace MedicineDelivery.Infrastructure.Services
             switch (createDto.OrderInputType)
             {
                 case OrderInputType.Text when string.IsNullOrWhiteSpace(createDto.OrderInputText):
+                    _logger.LogWarning("CreateOrderAsync failed: Order input text is empty for Text order, Customer {CustomerId}", createDto.CustomerId);
                     throw new ArgumentException("Order input text is required when order input type is text.", nameof(createDto.OrderInputText));
                 case OrderInputType.Image when createDto.OrderInputFile == null || createDto.OrderInputFile.Length == 0:
+                    _logger.LogWarning("CreateOrderAsync failed: Image file missing for Image order, Customer {CustomerId}", createDto.CustomerId);
                     throw new ArgumentException("An image file is required when order input type is image.", nameof(createDto.OrderInputFile));
                 case OrderInputType.Voice when createDto.OrderInputFile == null || createDto.OrderInputFile.Length == 0:
+                    _logger.LogWarning("CreateOrderAsync failed: Voice file missing for Voice order, Customer {CustomerId}", createDto.CustomerId);
                     throw new ArgumentException("A voice file is required when order input type is voice.", nameof(createDto.OrderInputFile));
             }
 
@@ -118,6 +130,7 @@ namespace MedicineDelivery.Infrastructure.Services
             {
                 if (createDto.OrderInputFile == null || createDto.OrderInputFile.Length == 0)
                 {
+                    _logger.LogWarning("CreateOrderAsync failed: Order input file is required for image or voice orders, Customer {CustomerId}", createDto.CustomerId);
                     throw new ArgumentException("An order input file is required for image or voice orders.", nameof(createDto.OrderInputFile));
                 }
 
@@ -133,6 +146,8 @@ namespace MedicineDelivery.Infrastructure.Services
 
             await _unitOfWork.Orders.AddAsync(order);
             await _unitOfWork.SaveChangesAsync();
+
+            _logger.LogInformation("Order {OrderId} created successfully for Customer {CustomerId} with OrderNumber {OrderNumber}", order.OrderId, order.CustomerId, order.OrderNumber);
 
             // Create initial assignment history entry
             var assignmentHistory = new OrderAssignmentHistory
@@ -160,6 +175,7 @@ namespace MedicineDelivery.Infrastructure.Services
             var order = await _unitOfWork.Orders.FirstOrDefaultAsync(o => o.OrderId == orderId);
             if (order == null)
             {
+                _logger.LogWarning("AssignOrderToNearestChemist failed: Order {OrderId} not found", orderId);
                 throw new KeyNotFoundException($"Order with OrderId '{orderId}' not found.");
             }
 
@@ -171,6 +187,7 @@ namespace MedicineDelivery.Infrastructure.Services
 
             if (address == null)
             {
+                _logger.LogWarning("AssignOrderToNearestChemist failed: Customer address not found or inactive for Order {OrderId}", orderId);
                 throw new KeyNotFoundException("Customer address not found or inactive for this order.");
             }
 
@@ -225,14 +242,18 @@ namespace MedicineDelivery.Infrastructure.Services
                     _unitOfWork.Orders.Update(order);
                     await _unitOfWork.OrderAssignmentHistories.AddAsync(assignmentHistory);
                     await _unitOfWork.SaveChangesAsync();
+
+                    _logger.LogInformation("Order {OrderId} assigned to nearest chemist {MedicalStoreId}", order.OrderId, nearestStore.MedicalStoreId);
                 }
                 else
                 {
+                    _logger.LogWarning("AssignOrderToNearestChemist failed: No active medical store with coordinates found for Order {OrderId}", orderId);
                     throw new InvalidOperationException("No active medical store with coordinates found to assign the order.");
                 }
             }
             else
             {
+                _logger.LogWarning("AssignOrderToNearestChemist failed: Customer address missing coordinates for Order {OrderId}", orderId);
                 throw new InvalidOperationException("Customer address does not have coordinates (latitude/longitude) required for finding nearest chemist.");
             }
         }
@@ -318,6 +339,7 @@ namespace MedicineDelivery.Infrastructure.Services
 
             if (customerId == Guid.Empty)
             {
+                _logger.LogWarning("GetOrdersByCustomerIdAsync failed: CustomerId is empty");
                 throw new ArgumentException("CustomerId is required.", nameof(customerId));
             }
 
@@ -331,6 +353,7 @@ namespace MedicineDelivery.Infrastructure.Services
 
             if (customerId == Guid.Empty)
             {
+                _logger.LogWarning("GetActiveOrdersByCustomerIdAsync failed: CustomerId is empty");
                 throw new ArgumentException("CustomerId is required.", nameof(customerId));
             }
 
@@ -347,6 +370,7 @@ namespace MedicineDelivery.Infrastructure.Services
 
             if (medicalStoreId == Guid.Empty)
             {
+                _logger.LogWarning("GetActiveOrdersByMedicalStoreIdAsync failed: MedicalStoreId is empty");
                 throw new ArgumentException("MedicalStoreId is required.", nameof(medicalStoreId));
             }
 
@@ -363,6 +387,7 @@ namespace MedicineDelivery.Infrastructure.Services
 
             if (medicalStoreId == Guid.Empty)
             {
+                _logger.LogWarning("GetAcceptedOrdersByMedicalStoreIdAsync failed: MedicalStoreId is empty");
                 throw new ArgumentException("MedicalStoreId is required.", nameof(medicalStoreId));
             }
 
@@ -379,6 +404,7 @@ namespace MedicineDelivery.Infrastructure.Services
 
             if (medicalStoreId == Guid.Empty)
             {
+                _logger.LogWarning("GetRejectedOrdersByMedicalStoreIdAsync failed: MedicalStoreId is empty");
                 throw new ArgumentException("MedicalStoreId is required.", nameof(medicalStoreId));
             }
 
@@ -395,6 +421,7 @@ namespace MedicineDelivery.Infrastructure.Services
 
             if (medicalStoreId == Guid.Empty)
             {
+                _logger.LogWarning("GetAllOrdersByMedicalStoreIdAsync failed: MedicalStoreId is empty");
                 throw new ArgumentException("MedicalStoreId is required.", nameof(medicalStoreId));
             }
 
@@ -410,11 +437,13 @@ namespace MedicineDelivery.Infrastructure.Services
             var order = await _unitOfWork.Orders.FirstOrDefaultAsync(o => o.OrderId == orderId);
             if (order == null)
             {
+                _logger.LogWarning("AcceptOrderByChemistAsync failed: Order {OrderId} not found", orderId);
                 throw new KeyNotFoundException("Order not found.");
             }
 
             if (order.OrderStatus != OrderStatus.AssignedToChemist)
             {
+                _logger.LogWarning("AcceptOrderByChemistAsync failed: Order {OrderId} has invalid status {OrderStatus}, expected {ExpectedStatus}", orderId, order.OrderStatus, OrderStatus.AssignedToChemist);
                 throw new InvalidOperationException($"Order can only be accepted when its status is {OrderStatus.AssignedToChemist}. Current status is {order.OrderStatus}.");
             }
 
@@ -423,6 +452,8 @@ namespace MedicineDelivery.Infrastructure.Services
 
             _unitOfWork.Orders.Update(order);
             await _unitOfWork.SaveChangesAsync();
+
+            _logger.LogInformation("Order {OrderId} accepted by chemist {MedicalStoreId}", orderId, order.MedicalStoreId);
 
             return _mapper.Map<OrderDto>(order);
         }
@@ -434,17 +465,20 @@ namespace MedicineDelivery.Infrastructure.Services
 
             if (string.IsNullOrWhiteSpace(rejectDto.RejectNote))
             {
+                _logger.LogWarning("RejectOrderByChemistAsync failed: Reject note is empty for Order {OrderId}", orderId);
                 throw new ArgumentException("Reject note is required.", nameof(rejectDto.RejectNote));
             }
 
             var order = await _unitOfWork.Orders.FirstOrDefaultAsync(o => o.OrderId == orderId);
             if (order == null)
             {
+                _logger.LogWarning("RejectOrderByChemistAsync failed: Order {OrderId} not found", orderId);
                 throw new KeyNotFoundException("Order not found.");
             }
 
             if (order.OrderStatus != OrderStatus.AssignedToChemist)
             {
+                _logger.LogWarning("RejectOrderByChemistAsync failed: Order {OrderId} has invalid status {OrderStatus}, expected {ExpectedStatus}", orderId, order.OrderStatus, OrderStatus.AssignedToChemist);
                 throw new InvalidOperationException($"Order can only be rejected when its status is {OrderStatus.AssignedToChemist}. Current status is {order.OrderStatus}.");
             }
 
@@ -458,6 +492,7 @@ namespace MedicineDelivery.Infrastructure.Services
 
             if (latestAssignment == null)
             {
+                _logger.LogWarning("RejectOrderByChemistAsync failed: No active assignment found for Order {OrderId}", orderId);
                 throw new InvalidOperationException("No active assignment found for this order.");
             }
 
@@ -474,6 +509,8 @@ namespace MedicineDelivery.Infrastructure.Services
             _unitOfWork.Orders.Update(order);
             await _unitOfWork.SaveChangesAsync();
 
+            _logger.LogInformation("Order {OrderId} rejected by chemist {MedicalStoreId}", orderId, order.MedicalStoreId);
+
             return _mapper.Map<OrderDto>(order);
         }
 
@@ -485,6 +522,7 @@ namespace MedicineDelivery.Infrastructure.Services
             var order = await _unitOfWork.Orders.FirstOrDefaultAsync(o => o.OrderId == orderId);
             if (order == null)
             {
+                _logger.LogWarning("AssignRejectOrderToCustomerSupport failed: Order {OrderId} not found", orderId);
                 throw new KeyNotFoundException("Order not found.");
             }
 
@@ -492,11 +530,13 @@ namespace MedicineDelivery.Infrastructure.Services
             var customerAddress = await _unitOfWork.CustomerAddresses.FirstOrDefaultAsync(ca => ca.Id == order.CustomerAddressId);
             if (customerAddress == null)
             {
+                _logger.LogWarning("AssignRejectOrderToCustomerSupport failed: Customer address not found for Order {OrderId}", orderId);
                 throw new KeyNotFoundException("Customer address not found for this order.");
             }
 
             if (string.IsNullOrWhiteSpace(customerAddress.PostalCode))
             {
+                _logger.LogWarning("AssignRejectOrderToCustomerSupport failed: Customer address missing postal code for Order {OrderId}", orderId);
                 throw new InvalidOperationException("Customer address does not have a postal code.");
             }
 
@@ -506,6 +546,7 @@ namespace MedicineDelivery.Infrastructure.Services
             
             if (regionPinCode == null)
             {
+                _logger.LogWarning("AssignRejectOrderToCustomerSupport failed: No service region found for postal code {PostalCode}, Order {OrderId}", customerAddress.PostalCode, orderId);
                 throw new KeyNotFoundException($"No service region found for postal code: {customerAddress.PostalCode}");
             }
 
@@ -513,6 +554,7 @@ namespace MedicineDelivery.Infrastructure.Services
             var region = await _unitOfWork.ServiceRegions.GetByIdAsync(regionPinCode.ServiceRegionId);
             if (region == null || region.RegionType != Domain.Enums.RegionType.CustomerSupport)
             {
+                _logger.LogWarning("AssignRejectOrderToCustomerSupport failed: No customer support region found for postal code {PostalCode}, Order {OrderId}", customerAddress.PostalCode, orderId);
                 throw new KeyNotFoundException($"No customer support region found for postal code: {customerAddress.PostalCode}");
             }
 
@@ -524,6 +566,7 @@ namespace MedicineDelivery.Infrastructure.Services
 
             if (customerSupports == null || !customerSupports.Any())
             {
+                _logger.LogWarning("AssignRejectOrderToCustomerSupport failed: No active customer supports found for region {ServiceRegionId}, Order {OrderId}", regionPinCode.ServiceRegionId, orderId);
                 throw new InvalidOperationException($"No active customer supports found for region ID: {regionPinCode.ServiceRegionId}");
             }
 
@@ -568,6 +611,8 @@ namespace MedicineDelivery.Infrastructure.Services
             _unitOfWork.Orders.Update(order);
             await _unitOfWork.OrderAssignmentHistories.AddAsync(assignmentHistory);
             await _unitOfWork.SaveChangesAsync();
+
+            _logger.LogInformation("Order {OrderId} assigned to customer support {CustomerSupportId}", orderId, selectedCustomerSupport.CustomerSupportId);
         }
 
         public async Task<OrderDto> CompleteOrderAsync(int orderId, CompleteOrderDto completeDto, CancellationToken cancellationToken = default)
@@ -577,17 +622,20 @@ namespace MedicineDelivery.Infrastructure.Services
 
             if (string.IsNullOrWhiteSpace(completeDto.OTP))
             {
+                _logger.LogWarning("CompleteOrderAsync failed: OTP is empty for Order {OrderId}", orderId);
                 throw new ArgumentException("OTP is required.", nameof(completeDto.OTP));
             }
 
             var order = await _unitOfWork.Orders.FirstOrDefaultAsync(o => o.OrderId == orderId);
             if (order == null)
             {
+                _logger.LogWarning("CompleteOrderAsync failed: Order {OrderId} not found", orderId);
                 throw new KeyNotFoundException("Order not found.");
             }
 
             if (order.OrderStatus != OrderStatus.OutForDelivery)
             {
+                _logger.LogWarning("CompleteOrderAsync failed: Order {OrderId} has invalid status {OrderStatus}, expected {ExpectedStatus}", orderId, order.OrderStatus, OrderStatus.OutForDelivery);
                 throw new InvalidOperationException($"Order can only be completed when its status is {OrderStatus.OutForDelivery}. Current status is {order.OrderStatus}.");
             }
 
@@ -597,6 +645,7 @@ namespace MedicineDelivery.Infrastructure.Services
                 var payments = await _unitOfWork.Payments.FindAsync(p => p.OrderId == orderId && p.PaymentStatus == PaymentStatus.Success);
                 var totalPaid = payments.Sum(p => p.Amount);
                 
+                _logger.LogWarning("CompleteOrderAsync failed: Order {OrderId} payment incomplete. TotalAmount={TotalAmount}, TotalPaid={TotalPaid}", orderId, order.TotalAmount ?? 0, totalPaid);
                 throw new PaymentIncompleteException(
                     orderId, 
                     order.TotalAmount ?? 0, 
@@ -605,11 +654,13 @@ namespace MedicineDelivery.Infrastructure.Services
 
             if (string.IsNullOrWhiteSpace(order.OTP))
             {
+                _logger.LogWarning("CompleteOrderAsync failed: Order {OrderId} does not have an OTP set", orderId);
                 throw new InvalidOperationException("Order does not have an OTP set.");
             }
 
             if (order.OTP.Trim() != completeDto.OTP.Trim())
             {
+                _logger.LogWarning("CompleteOrderAsync failed: Invalid OTP provided for Order {OrderId}", orderId);
                 throw new ArgumentException("Invalid OTP. The provided OTP does not match the order's OTP.");
             }
 
@@ -634,6 +685,8 @@ namespace MedicineDelivery.Infrastructure.Services
             await _unitOfWork.OrderAssignmentHistories.AddAsync(assignmentHistory);
             await _unitOfWork.SaveChangesAsync();
 
+            _logger.LogInformation("Order {OrderId} completed successfully for Customer {CustomerId}", orderId, order.CustomerId);
+
             return _mapper.Map<OrderDto>(order);
         }
 
@@ -644,6 +697,7 @@ namespace MedicineDelivery.Infrastructure.Services
 
             if (assignDto.MedicalStoreId == Guid.Empty)
             {
+                _logger.LogWarning("AssignOrderToMedicalStoreAsync failed: MedicalStoreId is empty for Order {OrderId}", assignDto.OrderId);
                 throw new ArgumentException("MedicalStoreId is required.", nameof(assignDto.MedicalStoreId));
             }
 
@@ -651,6 +705,7 @@ namespace MedicineDelivery.Infrastructure.Services
             var order = await _unitOfWork.Orders.FirstOrDefaultAsync(o => o.OrderId == assignDto.OrderId);
             if (order == null)
             {
+                _logger.LogWarning("AssignOrderToMedicalStoreAsync failed: Order {OrderId} not found", assignDto.OrderId);
                 throw new KeyNotFoundException($"Order with OrderNumber '{assignDto.OrderId}' not found.");
             }
 
@@ -662,6 +717,7 @@ namespace MedicineDelivery.Infrastructure.Services
             
             if (medicalStore == null)
             {
+                _logger.LogWarning("AssignOrderToMedicalStoreAsync failed: MedicalStore {MedicalStoreId} not found, inactive, or deleted", assignDto.MedicalStoreId);
                 throw new KeyNotFoundException("Medical store not found, inactive, or deleted.");
             }
 
@@ -688,6 +744,8 @@ namespace MedicineDelivery.Infrastructure.Services
             await _unitOfWork.OrderAssignmentHistories.AddAsync(assignmentHistory);
             await _unitOfWork.SaveChangesAsync();
 
+            _logger.LogInformation("Order {OrderId} assigned to medical store {MedicalStoreId}", order.OrderId, assignDto.MedicalStoreId);
+
             return _mapper.Map<OrderDto>(order);
         }
 
@@ -696,6 +754,7 @@ namespace MedicineDelivery.Infrastructure.Services
             var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
             if (string.IsNullOrEmpty(extension))
             {
+                _logger.LogWarning("ValidateOrderInputFile failed: Uploaded file has no extension");
                 throw new ArgumentException("The uploaded file must have an extension.", nameof(file));
             }
 
@@ -705,6 +764,7 @@ namespace MedicineDelivery.Infrastructure.Services
 
             if (!allowedExtensions.Contains(extension))
             {
+                _logger.LogWarning("ValidateOrderInputFile failed: File type {Extension} not supported for {InputType} orders", extension, inputType);
                 throw new ArgumentException($"File type '{extension}' is not supported for {inputType} orders.", nameof(file));
             }
         }
@@ -760,6 +820,7 @@ namespace MedicineDelivery.Infrastructure.Services
 
             if (uploadDto.BillFile == null || uploadDto.BillFile.Length == 0)
             {
+                _logger.LogWarning("UploadOrderBillAsync failed: Bill file is missing for Order {OrderId}", uploadDto.OrderId);
                 throw new ArgumentException("Bill file is required.", nameof(uploadDto.BillFile));
             }
 
@@ -767,6 +828,7 @@ namespace MedicineDelivery.Infrastructure.Services
             var extension = Path.GetExtension(uploadDto.BillFile.FileName).ToLowerInvariant();
             if (string.IsNullOrEmpty(extension) || !AllowedPdfExtensions.Contains(extension))
             {
+                _logger.LogWarning("UploadOrderBillAsync failed: Non-PDF file uploaded for Order {OrderId}, extension: {Extension}", uploadDto.OrderId, extension);
                 throw new ArgumentException("Only PDF files are allowed for order bills.", nameof(uploadDto.BillFile));
             }
 
@@ -774,6 +836,7 @@ namespace MedicineDelivery.Infrastructure.Services
             var order = await _unitOfWork.Orders.FirstOrDefaultAsync(o => o.OrderId == uploadDto.OrderId);
             if (order == null)
             {
+                _logger.LogWarning("UploadOrderBillAsync failed: Order {OrderId} not found", uploadDto.OrderId);
                 throw new KeyNotFoundException($"Order with OrderId '{uploadDto.OrderId}' not found.");
             }
 
@@ -814,6 +877,8 @@ namespace MedicineDelivery.Infrastructure.Services
             await _unitOfWork.OrderAssignmentHistories.AddAsync(assignmentHistory);
             await _unitOfWork.SaveChangesAsync();
 
+            _logger.LogInformation("Bill uploaded for Order {OrderId}, amount: {OrderAmount}", order.OrderId, uploadDto.OrderAmount);
+
             return _mapper.Map<OrderDto>(order);
         }
 
@@ -826,6 +891,7 @@ namespace MedicineDelivery.Infrastructure.Services
             var order = await _unitOfWork.Orders.FirstOrDefaultAsync(o => o.OrderId == assignDto.OrderId);
             if (order == null)
             {
+                _logger.LogWarning("AssignOrderToDeliveryAsync failed: Order {OrderId} not found", assignDto.OrderId);
                 throw new KeyNotFoundException($"Order with OrderId '{assignDto.OrderId}' not found.");
             }
 
@@ -833,12 +899,14 @@ namespace MedicineDelivery.Infrastructure.Services
             var delivery = await _unitOfWork.Deliveries.GetByIdAsync(assignDto.DeliveryId);
             if (delivery == null || delivery.IsDeleted || !delivery.IsActive)
             {
+                _logger.LogWarning("AssignOrderToDeliveryAsync failed: Active delivery {DeliveryId} not found for Order {OrderId}", assignDto.DeliveryId, assignDto.OrderId);
                 throw new KeyNotFoundException($"Active delivery with ID '{assignDto.DeliveryId}' not found.");
             }
 
             // Validate order is in a state that can be assigned to delivery
             if (order.OrderStatus != OrderStatus.BillUploaded && order.OrderStatus != OrderStatus.Paid)
             {
+                _logger.LogWarning("AssignOrderToDeliveryAsync failed: Order {OrderId} has invalid status {OrderStatus}, expected {ExpectedStatus1} or {ExpectedStatus2}", assignDto.OrderId, order.OrderStatus, OrderStatus.BillUploaded, OrderStatus.Paid);
                 throw new InvalidOperationException($"Order can only be assigned to delivery when status is {OrderStatus.BillUploaded} or {OrderStatus.Paid}. Current status is {order.OrderStatus}.");
             }
 
@@ -865,6 +933,8 @@ namespace MedicineDelivery.Infrastructure.Services
             await _unitOfWork.OrderAssignmentHistories.AddAsync(assignmentHistory);
             await _unitOfWork.SaveChangesAsync();
 
+            _logger.LogInformation("Order {OrderId} assigned to delivery {DeliveryId}", order.OrderId, assignDto.DeliveryId);
+
             return _mapper.Map<OrderDto>(order);
         }
 
@@ -884,6 +954,7 @@ namespace MedicineDelivery.Infrastructure.Services
             var order = await _unitOfWork.Orders.FirstOrDefaultAsync(o => o.OrderId == orderId);
             if (order == null)
             {
+                _logger.LogWarning("GetMedicalStoresByOrderCityAsync failed: Order {OrderId} not found", orderId);
                 throw new KeyNotFoundException("Order not found.");
             }
 
@@ -891,11 +962,13 @@ namespace MedicineDelivery.Infrastructure.Services
             var customerAddress = await _unitOfWork.CustomerAddresses.FirstOrDefaultAsync(ca => ca.Id == order.CustomerAddressId);
             if (customerAddress == null)
             {
+                _logger.LogWarning("GetMedicalStoresByOrderCityAsync failed: Customer address not found for Order {OrderId}", orderId);
                 throw new KeyNotFoundException("Customer address not found for this order.");
             }
 
             if (string.IsNullOrWhiteSpace(customerAddress.City))
             {
+                _logger.LogWarning("GetMedicalStoresByOrderCityAsync failed: Customer address missing city for Order {OrderId}", orderId);
                 throw new InvalidOperationException("Customer address does not have a city.");
             }
 
@@ -919,6 +992,7 @@ namespace MedicineDelivery.Infrastructure.Services
 
             if (customerSupportId == Guid.Empty)
             {
+                _logger.LogWarning("AssignedToCustomerSupportByCustomerSupportIdAsync failed: CustomerSupportId is empty");
                 throw new ArgumentException("CustomerSupportId is required.", nameof(customerSupportId));
             }
 
@@ -935,6 +1009,7 @@ namespace MedicineDelivery.Infrastructure.Services
 
             if (customerSupportId == Guid.Empty)
             {
+                _logger.LogWarning("GetAllOrdersByCustomerSupportIdAsync failed: CustomerSupportId is empty");
                 throw new ArgumentException("CustomerSupportId is required.", nameof(customerSupportId));
             }
 
@@ -951,6 +1026,7 @@ namespace MedicineDelivery.Infrastructure.Services
             var order = await _unitOfWork.Orders.FirstOrDefaultAsync(o => o.OrderId == orderId);
             if (order == null)
             {
+                _logger.LogWarning("GetEligibleDeliveryBoysByOrderIdAsync failed: Order {OrderId} not found", orderId);
                 throw new KeyNotFoundException($"Order with ID '{orderId}' not found.");
             }
 
@@ -958,11 +1034,13 @@ namespace MedicineDelivery.Infrastructure.Services
             var customerAddress = await _unitOfWork.CustomerAddresses.GetByIdAsync(order.CustomerAddressId);
             if (customerAddress == null)
             {
+                _logger.LogWarning("GetEligibleDeliveryBoysByOrderIdAsync failed: Customer address not found for Order {OrderId}", orderId);
                 throw new KeyNotFoundException("Customer address not found for this order.");
             }
 
             if (string.IsNullOrWhiteSpace(customerAddress.PostalCode))
             {
+                _logger.LogWarning("GetEligibleDeliveryBoysByOrderIdAsync failed: Customer address missing postal code for Order {OrderId}", orderId);
                 throw new InvalidOperationException("Customer address does not have a postal code.");
             }
 
@@ -1014,6 +1092,7 @@ namespace MedicineDelivery.Infrastructure.Services
             var order = await _unitOfWork.Orders.FirstOrDefaultAsync(o => o.OrderId == orderId);
             if (order == null)
             {
+                _logger.LogWarning("GetMedicalStoresByOrderPinCodeAsync failed: Order {OrderId} not found", orderId);
                 throw new KeyNotFoundException($"Order with ID '{orderId}' not found.");
             }
 
@@ -1021,11 +1100,13 @@ namespace MedicineDelivery.Infrastructure.Services
             var customerAddress = await _unitOfWork.CustomerAddresses.GetByIdAsync(order.CustomerAddressId);
             if (customerAddress == null)
             {
+                _logger.LogWarning("GetMedicalStoresByOrderPinCodeAsync failed: Customer address not found for Order {OrderId}", orderId);
                 throw new KeyNotFoundException("Customer address not found for this order.");
             }
 
             if (string.IsNullOrWhiteSpace(customerAddress.PostalCode))
             {
+                _logger.LogWarning("GetMedicalStoresByOrderPinCodeAsync failed: Customer address missing postal code for Order {OrderId}", orderId);
                 throw new InvalidOperationException("Customer address does not have a postal code.");
             }
 
@@ -1045,5 +1126,3 @@ namespace MedicineDelivery.Infrastructure.Services
         }
     }
 }
-
-

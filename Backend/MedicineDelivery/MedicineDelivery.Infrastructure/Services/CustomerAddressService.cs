@@ -3,6 +3,7 @@ using MedicineDelivery.Application.Interfaces;
 using MedicineDelivery.Domain.Entities;
 using MedicineDelivery.Domain.Interfaces;
 using AutoMapper;
+using Microsoft.Extensions.Logging;
 
 namespace MedicineDelivery.Infrastructure.Services
 {
@@ -10,11 +11,13 @@ namespace MedicineDelivery.Infrastructure.Services
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly IMapper _mapper;
+        private readonly ILogger<CustomerAddressService> _logger;
 
-        public CustomerAddressService(IUnitOfWork unitOfWork, IMapper mapper)
+        public CustomerAddressService(IUnitOfWork unitOfWork, IMapper mapper, ILogger<CustomerAddressService> logger)
         {
             _unitOfWork = unitOfWork;
             _mapper = mapper;
+            _logger = logger;
         }
 
         public async Task<CustomerAddressDto?> GetCustomerAddressByIdAsync(Guid id)
@@ -38,6 +41,8 @@ namespace MedicineDelivery.Infrastructure.Services
 
         public async Task<CustomerAddressDto> CreateCustomerAddressAsync(CreateCustomerAddressDto createDto)
         {
+            _logger.LogInformation("Creating customer address for customer {CustomerId}, IsDefault: {IsDefault}", createDto.CustomerId, createDto.IsDefault);
+
             // If this is set as default, unset other default addresses for this customer
             if (createDto.IsDefault)
             {
@@ -73,14 +78,20 @@ namespace MedicineDelivery.Infrastructure.Services
             await _unitOfWork.CustomerAddresses.AddAsync(customerAddress);
             await _unitOfWork.SaveChangesAsync();
 
+            _logger.LogInformation("Customer address {AddressId} created successfully for customer {CustomerId}", customerAddress.Id, createDto.CustomerId);
             return _mapper.Map<CustomerAddressDto>(customerAddress);
         }
 
         public async Task<CustomerAddressDto?> UpdateCustomerAddressAsync(Guid id, UpdateCustomerAddressDto updateDto)
         {
+            _logger.LogInformation("Updating customer address {AddressId}", id);
+
             var customerAddress = await _unitOfWork.CustomerAddresses.FirstOrDefaultAsync(ca => ca.Id == id && ca.IsActive);
             if (customerAddress == null)
+            {
+                _logger.LogWarning("UpdateCustomerAddressAsync: Address {AddressId} not found or inactive", id);
                 return null;
+            }
 
             // If this is being set as default, unset other default addresses for this customer
             if (updateDto.IsDefault && !customerAddress.IsDefault)
@@ -112,14 +123,20 @@ namespace MedicineDelivery.Infrastructure.Services
             _unitOfWork.CustomerAddresses.Update(customerAddress);
             await _unitOfWork.SaveChangesAsync();
 
+            _logger.LogInformation("Customer address {AddressId} updated successfully", id);
             return _mapper.Map<CustomerAddressDto>(customerAddress);
         }
 
         public async Task<bool> DeleteCustomerAddressAsync(Guid id)
         {
+            _logger.LogInformation("Deleting customer address {AddressId} (soft delete)", id);
+
             var customerAddress = await _unitOfWork.CustomerAddresses.FirstOrDefaultAsync(ca => ca.Id == id && ca.IsActive);
             if (customerAddress == null)
+            {
+                _logger.LogWarning("DeleteCustomerAddressAsync: Address {AddressId} not found or already inactive", id);
                 return false;
+            }
 
             customerAddress.IsActive = false;
             customerAddress.UpdatedOn = DateTime.UtcNow;
@@ -127,11 +144,14 @@ namespace MedicineDelivery.Infrastructure.Services
             _unitOfWork.CustomerAddresses.Update(customerAddress);
             await _unitOfWork.SaveChangesAsync();
 
+            _logger.LogInformation("Customer address {AddressId} soft-deleted successfully", id);
             return true;
         }
 
         public async Task<bool> SetDefaultAddressAsync(Guid customerId, Guid addressId)
         {
+            _logger.LogInformation("Setting default address {AddressId} for customer {CustomerId}", addressId, customerId);
+
             // First, unset all default addresses for this customer
             var existingDefaultAddresses = await _unitOfWork.CustomerAddresses.FindAsync(ca => 
                 ca.CustomerId == customerId && ca.IsDefault && ca.IsActive);
@@ -148,13 +168,17 @@ namespace MedicineDelivery.Infrastructure.Services
                 ca.Id == addressId && ca.CustomerId == customerId && ca.IsActive);
             
             if (targetAddress == null)
+            {
+                _logger.LogWarning("SetDefaultAddressAsync: Address {AddressId} not found for customer {CustomerId}", addressId, customerId);
                 return false;
+            }
 
             targetAddress.IsDefault = true;
             targetAddress.UpdatedOn = DateTime.UtcNow;
             _unitOfWork.CustomerAddresses.Update(targetAddress);
 
             await _unitOfWork.SaveChangesAsync();
+            _logger.LogInformation("Default address set to {AddressId} for customer {CustomerId}", addressId, customerId);
             return true;
         }
     }

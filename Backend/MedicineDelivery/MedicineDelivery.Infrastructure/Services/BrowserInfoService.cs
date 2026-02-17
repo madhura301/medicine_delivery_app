@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Logging;
 
 namespace MedicineDelivery.Infrastructure.Services
 {
@@ -11,6 +12,13 @@ namespace MedicineDelivery.Infrastructure.Services
 
     public class BrowserInfoService : IBrowserInfoService
     {
+        private readonly ILogger<BrowserInfoService> _logger;
+
+        public BrowserInfoService(ILogger<BrowserInfoService> logger)
+        {
+            _logger = logger;
+        }
+
         public string GetUserAgent(HttpContext httpContext)
         {
             return httpContext.Request.Headers["User-Agent"].ToString() ?? "Unknown";

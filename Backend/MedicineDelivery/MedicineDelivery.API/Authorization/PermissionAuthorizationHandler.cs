@@ -9,10 +9,12 @@ namespace MedicineDelivery.API.Authorization
     public class PermissionAuthorizationHandler : AuthorizationHandler<PermissionRequirement>
     {
         private readonly IRoleService _roleService;
+        private readonly ILogger<PermissionAuthorizationHandler> _logger;
 
-        public PermissionAuthorizationHandler(IRoleService roleService)
+        public PermissionAuthorizationHandler(IRoleService roleService, ILogger<PermissionAuthorizationHandler> logger)
         {
             _roleService = roleService;
+            _logger = logger;
         }
 
         protected override async Task HandleRequirementAsync(
@@ -33,18 +35,29 @@ namespace MedicineDelivery.API.Authorization
             
             if (userId == null)
             {
+                _logger.LogWarning("Authorization failed: no user ID found in claims for permission '{Permission}'", requirement.Permission);
                 context.Fail();
                 return;
             }
 
-            var hasPermission = await _roleService.HasPermissionAsync(userId, requirement.Permission);
-            
-            if (hasPermission)
+            try
             {
-                context.Succeed(requirement);
+                var hasPermission = await _roleService.HasPermissionAsync(userId, requirement.Permission);
+
+                if (hasPermission)
+                {
+                    _logger.LogDebug("Authorization succeeded: UserId {UserId}, Permission '{Permission}'", userId, requirement.Permission);
+                    context.Succeed(requirement);
+                }
+                else
+                {
+                    _logger.LogWarning("Authorization denied: UserId {UserId} lacks permission '{Permission}'", userId, requirement.Permission);
+                    context.Fail();
+                }
             }
-            else
+            catch (Exception ex)
             {
+                _logger.LogError(ex, "Authorization error checking permission '{Permission}' for UserId {UserId}", requirement.Permission, userId);
                 context.Fail();
             }
         }

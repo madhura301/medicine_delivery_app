@@ -15,28 +15,46 @@ namespace MedicineDelivery.API.Controllers
     public class UsersController : ControllerBase
     {
         private readonly IMediator _mediator;
+        private readonly ILogger<UsersController> _logger;
 
-        public UsersController(IMediator mediator)
+        public UsersController(IMediator mediator, ILogger<UsersController> logger)
         {
             _mediator = mediator;
+            _logger = logger;
         }
 
         [HttpGet]
         [Authorize(Policy = "RequireReadUsersPermission")]
         public async Task<IActionResult> GetUsers()
         {
-            var query = new GetUsersQuery();
-            var users = await _mediator.Send(query);
-            return Ok(users);
+            try
+            {
+                var query = new GetUsersQuery();
+                var users = await _mediator.Send(query);
+                return Ok(users);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error in GetUsers");
+                return StatusCode(500, new { error = "An error occurred while retrieving users." });
+            }
         }
 
         [HttpPost]
         [Authorize(Policy = "RequireCreateUsersPermission")]
         public async Task<IActionResult> CreateUser([FromBody] CreateUserDto request)
         {
-            var command = new CreateUserCommand { User = request };
-            var user = await _mediator.Send(command);
-            return CreatedAtAction(nameof(GetUsers), new { id = user.Id }, user);
+            try
+            {
+                var command = new CreateUserCommand { User = request };
+                var user = await _mediator.Send(command);
+                return CreatedAtAction(nameof(GetUsers), new { id = user.Id }, user);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error in CreateUser");
+                return StatusCode(500, new { error = "An error occurred while creating the user." });
+            }
         }
 
         [HttpPost("create-with-role")]
@@ -67,10 +85,12 @@ namespace MedicineDelivery.API.Controllers
             }
             catch (InvalidOperationException ex)
             {
+                _logger.LogWarning(ex, "Invalid operation in CreateUserWithRole for {Email}", request.Email);
                 return BadRequest(new { error = ex.Message });
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Error in CreateUserWithRole for {Email}", request.Email);
                 return StatusCode(500, new { error = "An error occurred while creating the user." });
             }
         }
@@ -100,10 +120,12 @@ namespace MedicineDelivery.API.Controllers
             }
             catch (InvalidOperationException ex)
             {
+                _logger.LogWarning(ex, "Invalid operation in RegisterUser for {Email}", request.Email);
                 return BadRequest(new { error = ex.Message });
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Error in RegisterUser for {Email}", request.Email);
                 return StatusCode(500, new { error = "An error occurred while registering the user." });
             }
         }

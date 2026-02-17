@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Identity;
+using Microsoft.Extensions.Logging;
 using MedicineDelivery.Application.DTOs;
 using MedicineDelivery.Application.Interfaces;
 using MedicineDelivery.Domain.Entities;
@@ -13,15 +14,18 @@ namespace MedicineDelivery.Infrastructure.Services
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly IUnitOfWork _unitOfWork;
         private readonly IMapper _mapper;
+        private readonly ILogger<ManagerService> _logger;
 
         public ManagerService(
             UserManager<ApplicationUser> userManager,
             IUnitOfWork unitOfWork,
-            IMapper mapper)
+            IMapper mapper,
+            ILogger<ManagerService> logger)
         {
             _userManager = userManager;
             _unitOfWork = unitOfWork;
             _mapper = mapper;
+            _logger = logger;
         }
 
         public async Task<ManagerRegistrationResult> RegisterManagerAsync(ManagerRegistrationDto registrationDto)
@@ -32,6 +36,7 @@ namespace MedicineDelivery.Infrastructure.Services
                 var existingManager = await _unitOfWork.Managers.FirstOrDefaultAsync(m => m.EmailId == registrationDto.EmailId);
                 if (existingManager != null)
                 {
+                    _logger.LogWarning("Manager registration failed: manager with email {Email} already exists", registrationDto.EmailId);
                     return new ManagerRegistrationResult
                     {
                         Success = false,
@@ -43,6 +48,7 @@ namespace MedicineDelivery.Infrastructure.Services
                 var existingUser = await _userManager.FindByNameAsync(registrationDto.MobileNumber);
                 if (existingUser != null)
                 {
+                    _logger.LogWarning("Manager registration failed: user with mobile number {MobileNumber} already exists", registrationDto.MobileNumber);
                     return new ManagerRegistrationResult
                     {
                         Success = false,
@@ -73,6 +79,8 @@ namespace MedicineDelivery.Infrastructure.Services
                     var userResult = await _userManager.CreateAsync(identityUser, generatedPassword);
                     if (!userResult.Succeeded)
                     {
+                        _logger.LogWarning("Manager registration failed: identity user creation failed for mobile number {MobileNumber}. Errors: {Errors}",
+                            registrationDto.MobileNumber, string.Join(", ", userResult.Errors.Select(e => e.Description)));
                         await _unitOfWork.RollbackTransactionAsync();
                         return new ManagerRegistrationResult
                         {
@@ -106,6 +114,9 @@ namespace MedicineDelivery.Infrastructure.Services
                     await _unitOfWork.Managers.AddAsync(manager);
                     await _unitOfWork.SaveChangesAsync();
                     await _unitOfWork.CommitTransactionAsync();
+
+                    _logger.LogInformation("Manager registered successfully with ManagerId {ManagerId} and email {Email}",
+                        manager.ManagerId, manager.EmailId);
 
                     // Create response
                     var response = new ManagerResponseDto
@@ -150,9 +161,7 @@ namespace MedicineDelivery.Infrastructure.Services
                         }
                         catch (Exception ex)
                         {
-                            // Log the cleanup failure but don't throw - the main transaction is already rolled back
-                            // This could be logged to a proper logging system
-                            Console.WriteLine($"Failed to cleanup Identity user {identityUser.Id}: {ex.Message}");
+                            _logger.LogError(ex, "Failed to cleanup Identity user {UserId} during manager registration rollback", identityUser.Id);
                         }
                     }
                     
@@ -161,6 +170,7 @@ namespace MedicineDelivery.Infrastructure.Services
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "An error occurred during manager registration for email {Email}", registrationDto.EmailId);
                 return new ManagerRegistrationResult
                 {
                     Success = false,
@@ -191,7 +201,10 @@ namespace MedicineDelivery.Infrastructure.Services
         {
             var manager = await _unitOfWork.Managers.FirstOrDefaultAsync(m => m.ManagerId == id);
             if (manager == null)
+            {
+                _logger.LogWarning("Manager update failed: manager with ID {ManagerId} not found", id);
                 return null;
+            }
 
             manager.ManagerFirstName = updateDto.ManagerFirstName;
             manager.ManagerLastName = updateDto.ManagerLastName;
@@ -204,6 +217,8 @@ namespace MedicineDelivery.Infrastructure.Services
             manager.UpdatedOn = DateTime.UtcNow;
 
             await _unitOfWork.SaveChangesAsync();
+
+            _logger.LogInformation("Manager updated successfully with ManagerId {ManagerId}", id);
             return _mapper.Map<ManagerDto>(manager);
         }
 
@@ -211,13 +226,18 @@ namespace MedicineDelivery.Infrastructure.Services
         {
             var manager = await _unitOfWork.Managers.FirstOrDefaultAsync(m => m.ManagerId == id);
             if (manager == null)
+            {
+                _logger.LogWarning("Manager deletion failed: manager with ID {ManagerId} not found", id);
                 return false;
+            }
 
             manager.IsActive = false;
             manager.IsDeleted = true;
             manager.UpdatedOn = DateTime.UtcNow;
 
             await _unitOfWork.SaveChangesAsync();
+
+            _logger.LogInformation("Manager soft-deleted successfully with ManagerId {ManagerId}", id);
             return true;
         }
 
