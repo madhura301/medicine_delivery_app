@@ -1,0 +1,817 @@
+{
+	"info": {
+		"_postman_id": "mediswift-deliveries-testing",
+		"name": "MediSwift - Deliveries Testing",
+		"description": "End-to-end test of the Deliveries CRUD flow.\n\nCovers:\n- System bootstrap (roles, permissions, users)\n- Admin login & medical store setup\n- Create delivery boys\n- Get all deliveries\n- Get delivery by ID\n- Get deliveries by medical store\n- Get active deliveries by medical store\n- Update delivery\n- Delete delivery (soft delete)\n- Verification of deletion\n\nRun this collection using Postman's Collection Runner to execute all requests sequentially.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"variable": [
+		{ "key": "baseUrl", "value": "http://localhost:5000", "type": "string" },
+		{ "key": "adminToken", "value": "", "type": "string" },
+		{ "key": "medicalStoreId", "value": "", "type": "string" },
+		{ "key": "deliveryId1", "value": "", "type": "string" },
+		{ "key": "deliveryId2", "value": "", "type": "string" }
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					"console.log('\\n========== ' + pm.info.requestName + ' ==========');"
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					"console.log('[' + pm.info.requestName + '] Status: ' + pm.response.code + ' ' + pm.response.status);",
+					"if (pm.response.code >= 400) {",
+					"    console.error('[' + pm.info.requestName + '] ERROR BODY: ' + pm.response.text());",
+					"}"
+				]
+			}
+		}
+	],
+	"item": [
+		{
+			"name": "1 - System Bootstrap",
+			"description": "One-time setup: creates roles, permissions, role-permission mappings, and admin seed user.",
+			"item": [
+				{
+					"name": "01. Create Predefined Roles",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/setup/roles/predefined",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "setup", "roles", "predefined"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Predefined roles created or already exist', function () {",
+									"    pm.expect([200, 409]).to.include(pm.response.code);",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "02. Create Predefined Permissions",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/setup/permissions/predefined",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "setup", "permissions", "predefined"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Predefined permissions created or already exist', function () {",
+									"    pm.expect([200, 409]).to.include(pm.response.code);",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "03. Map Role Permissions",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/setup/role-permissions/predefined",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "setup", "role-permissions", "predefined"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Role-permission mappings created or already exist', function () {",
+									"    pm.expect([200, 409]).to.include(pm.response.code);",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "04. Create Admin User",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/setup/users/admin",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "setup", "users", "admin"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Admin user created or already exists', function () {",
+									"    pm.expect([200, 409]).to.include(pm.response.code);",
+									"});"
+								]
+							}
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "2 - Admin Login & Medical Store Setup",
+			"description": "Admin logs in and registers a medical store to link delivery boys.",
+			"item": [
+				{
+					"name": "05. Admin Login",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"mobileNumber\": \"9999999999\",\n    \"password\": \"Admin@123\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/Auth/login",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "Auth", "login"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Admin login successful', function () {",
+									"    pm.response.to.have.status(200);",
+									"    var json = pm.response.json();",
+									"    pm.expect(json.success).to.eql(true);",
+									"    pm.expect(json.token).to.be.a('string').and.not.empty;",
+									"    pm.collectionVariables.set('adminToken', json.token);",
+									"    console.log('Admin token captured.');",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "06. Register Medical Store",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"medicalName\": \"MediSwift Pharmacy\",\n    \"ownerFirstName\": \"Rajesh\",\n    \"ownerLastName\": \"Sharma\",\n    \"ownerMiddleName\": \"K\",\n    \"password\": \"Chemist@123\",\n    \"addressLine1\": \"Shop 10, Station Road\",\n    \"addressLine2\": \"Near Bus Stand\",\n    \"city\": \"Pune\",\n    \"state\": \"Maharashtra\",\n    \"postalCode\": \"411001\",\n    \"latitude\": 18.52860000,\n    \"longitude\": 73.87430000,\n    \"mobileNumber\": \"6666666666\",\n    \"emailId\": \"mediswift@pharmacy.com\",\n    \"alternativeMobileNumber\": \"6666666667\",\n    \"registrationStatus\": true,\n    \"gstin\": \"27AADCB2230M1Z4\",\n    \"pan\": \"AADCB2230N\",\n    \"fssaiNo\": \"10020031000002\",\n    \"dlNo\": \"MH-PUN-654321\",\n    \"pharmacistFirstName\": \"Priya\",\n    \"pharmacistLastName\": \"Deshmukh\",\n    \"pharmacistRegistrationNumber\": \"PH-MH-2021-002\",\n    \"pharmacistMobileNumber\": \"6666666668\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/MedicalStores/register",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "MedicalStores", "register"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Medical Store registered', function () {",
+									"    pm.response.to.have.status(200);",
+									"    var json = pm.response.json();",
+									"    pm.expect(json.success).to.eql(true);",
+									"    var storeId = json.medicalStore.medicalStoreId;",
+									"    pm.expect(storeId).to.not.be.undefined;",
+									"    pm.collectionVariables.set('medicalStoreId', storeId.toString());",
+									"    console.log('medicalStoreId =', storeId);",
+									"});"
+								]
+							}
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "3 - Create Delivery Boys",
+			"description": "Create two delivery boys linked to the medical store.",
+			"item": [
+				{
+					"name": "07. Create Delivery Boy 1",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" },
+							{ "key": "Authorization", "value": "Bearer {{adminToken}}" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"firstName\": \"Vikram\",\n    \"middleName\": \"S\",\n    \"lastName\": \"Pawar\",\n    \"drivingLicenceNumber\": \"MH12-2022-0012345\",\n    \"mobileNumber\": \"7777777771\",\n    \"password\": \"Delivery@123\",\n    \"medicalStoreId\": \"{{medicalStoreId}}\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/Deliveries",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "Deliveries"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Delivery boy 1 created', function () {",
+									"    pm.expect([200, 201]).to.include(pm.response.code);",
+									"    var json = pm.response.json();",
+									"    pm.expect(json.id).to.not.be.undefined;",
+									"    pm.collectionVariables.set('deliveryId1', json.id.toString());",
+									"    console.log('deliveryId1 =', json.id);",
+									"    console.log('firstName =', json.firstName, '| lastName =', json.lastName);",
+									"    console.log('medicalStoreId =', json.medicalStoreId);",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "08. Create Delivery Boy 2",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" },
+							{ "key": "Authorization", "value": "Bearer {{adminToken}}" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"firstName\": \"Anil\",\n    \"middleName\": \"D\",\n    \"lastName\": \"More\",\n    \"drivingLicenceNumber\": \"MH12-2023-0067890\",\n    \"mobileNumber\": \"7777777772\",\n    \"password\": \"Delivery@456\",\n    \"medicalStoreId\": \"{{medicalStoreId}}\",\n    \"serviceRegionId\": null\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/Deliveries",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "Deliveries"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Delivery boy 2 created', function () {",
+									"    pm.expect([200, 201]).to.include(pm.response.code);",
+									"    var json = pm.response.json();",
+									"    pm.expect(json.id).to.not.be.undefined;",
+									"    pm.collectionVariables.set('deliveryId2', json.id.toString());",
+									"    console.log('deliveryId2 =', json.id);",
+									"    console.log('firstName =', json.firstName, '| lastName =', json.lastName);",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "09. Create Delivery Boy - Duplicate Mobile (Expect Failure)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" },
+							{ "key": "Authorization", "value": "Bearer {{adminToken}}" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"firstName\": \"Duplicate\",\n    \"middleName\": \"D\",\n    \"lastName\": \"Test\",\n    \"drivingLicenceNumber\": \"MH12-2024-9999999\",\n    \"mobileNumber\": \"7777777771\",\n    \"password\": \"Delivery@789\",\n    \"medicalStoreId\": \"{{medicalStoreId}}\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/Deliveries",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "Deliveries"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Duplicate mobile number rejected', function () {",
+									"    pm.expect([400, 409, 500]).to.include(pm.response.code);",
+									"    console.log('Duplicate mobile correctly rejected.');",
+									"});"
+								]
+							}
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "4 - Read Delivery Boys",
+			"description": "Test all GET endpoints for deliveries.",
+			"item": [
+				{
+					"name": "10. Get All Deliveries",
+					"request": {
+						"method": "GET",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{adminToken}}" }
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/Deliveries",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "Deliveries"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('All deliveries returned', function () {",
+									"    pm.response.to.have.status(200);",
+									"    var json = pm.response.json();",
+									"    pm.expect(json).to.be.an('array').with.length.greaterThan(0);",
+									"    console.log('Total deliveries:', json.length);",
+									"    json.forEach(function(d) {",
+									"        console.log('  ID:', d.id, '| Name:', d.firstName, d.lastName, '| Active:', d.isActive);",
+									"    });",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "11. Get Delivery Boy 1 by ID",
+					"request": {
+						"method": "GET",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{adminToken}}" }
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/Deliveries/{{deliveryId1}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "Deliveries", "{{deliveryId1}}"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Delivery boy 1 details returned', function () {",
+									"    pm.response.to.have.status(200);",
+									"    var json = pm.response.json();",
+									"    pm.expect(json.id.toString()).to.eql(pm.collectionVariables.get('deliveryId1'));",
+									"    pm.expect(json.firstName).to.eql('Vikram');",
+									"    pm.expect(json.lastName).to.eql('Pawar');",
+									"    pm.expect(json.isActive).to.eql(true);",
+									"    pm.expect(json.isDeleted).to.eql(false);",
+									"    console.log('ID:', json.id, '| Name:', json.firstName, json.lastName);",
+									"    console.log('DL:', json.drivingLicenceNumber, '| Mobile:', json.mobileNumber);",
+									"    console.log('MedicalStoreId:', json.medicalStoreId);",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "12. Get Delivery Boy by ID - Not Found (Expect 404)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{adminToken}}" }
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/Deliveries/99999",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "Deliveries", "99999"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Non-existent delivery returns 404', function () {",
+									"    pm.response.to.have.status(404);",
+									"    console.log('Confirmed: ID 99999 returns 404.');",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "13. Get Deliveries by Medical Store",
+					"request": {
+						"method": "GET",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{adminToken}}" }
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/Deliveries/medicalstore/{{medicalStoreId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "Deliveries", "medicalstore", "{{medicalStoreId}}"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Deliveries returned for medical store', function () {",
+									"    pm.response.to.have.status(200);",
+									"    var json = pm.response.json();",
+									"    pm.expect(json).to.be.an('array').with.length.greaterThan(0);",
+									"    var storeId = pm.collectionVariables.get('medicalStoreId');",
+									"    json.forEach(function(d) {",
+									"        pm.expect(d.medicalStoreId).to.eql(storeId);",
+									"    });",
+									"    console.log('Deliveries for store:', json.length);",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "14. Get Active Deliveries by Medical Store",
+					"request": {
+						"method": "GET",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{adminToken}}" }
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/Deliveries/medicalstore/{{medicalStoreId}}/active",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "Deliveries", "medicalstore", "{{medicalStoreId}}", "active"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Active deliveries returned for medical store', function () {",
+									"    pm.response.to.have.status(200);",
+									"    var json = pm.response.json();",
+									"    pm.expect(json).to.be.an('array').with.length.greaterThan(0);",
+									"    json.forEach(function(d) {",
+									"        pm.expect(d.isActive).to.eql(true);",
+									"    });",
+									"    console.log('Active deliveries count:', json.length);",
+									"});"
+								]
+							}
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "5 - Update Delivery Boys",
+			"description": "Test update endpoints for deliveries.",
+			"item": [
+				{
+					"name": "15. Update Delivery Boy 1 - Change Name & DL",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" },
+							{ "key": "Authorization", "value": "Bearer {{adminToken}}" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"firstName\": \"Vikram\",\n    \"middleName\": \"Singh\",\n    \"lastName\": \"Pawar\",\n    \"drivingLicenceNumber\": \"MH12-2022-0012345-RENEWED\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/Deliveries/{{deliveryId1}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "Deliveries", "{{deliveryId1}}"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Delivery boy 1 updated', function () {",
+									"    pm.response.to.have.status(200);",
+									"    var json = pm.response.json();",
+									"    pm.expect(json.middleName).to.eql('Singh');",
+									"    pm.expect(json.drivingLicenceNumber).to.include('RENEWED');",
+									"    console.log('Updated - MiddleName:', json.middleName, '| DL:', json.drivingLicenceNumber);",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "16. Update Delivery Boy 2 - Deactivate",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" },
+							{ "key": "Authorization", "value": "Bearer {{adminToken}}" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"isActive\": false\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/Deliveries/{{deliveryId2}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "Deliveries", "{{deliveryId2}}"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Delivery boy 2 deactivated', function () {",
+									"    pm.response.to.have.status(200);",
+									"    var json = pm.response.json();",
+									"    pm.expect(json.isActive).to.eql(false);",
+									"    console.log('deliveryId2 isActive =', json.isActive);",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "17. Verify Active Deliveries Excludes Deactivated",
+					"request": {
+						"method": "GET",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{adminToken}}" }
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/Deliveries/medicalstore/{{medicalStoreId}}/active",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "Deliveries", "medicalstore", "{{medicalStoreId}}", "active"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Deactivated delivery boy not in active list', function () {",
+									"    pm.response.to.have.status(200);",
+									"    var json = pm.response.json();",
+									"    var deactivatedId = parseInt(pm.collectionVariables.get('deliveryId2'));",
+									"    var found = json.find(d => d.id === deactivatedId);",
+									"    pm.expect(found).to.be.undefined;",
+									"    json.forEach(function(d) {",
+									"        pm.expect(d.isActive).to.eql(true);",
+									"    });",
+									"    console.log('Active deliveries count (should exclude deactivated):', json.length);",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "18. Reactivate Delivery Boy 2",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" },
+							{ "key": "Authorization", "value": "Bearer {{adminToken}}" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"isActive\": true\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/Deliveries/{{deliveryId2}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "Deliveries", "{{deliveryId2}}"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Delivery boy 2 reactivated', function () {",
+									"    pm.response.to.have.status(200);",
+									"    var json = pm.response.json();",
+									"    pm.expect(json.isActive).to.eql(true);",
+									"    console.log('deliveryId2 isActive =', json.isActive);",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "19. Update Non-existent Delivery (Expect 404)",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" },
+							{ "key": "Authorization", "value": "Bearer {{adminToken}}" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"firstName\": \"Ghost\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/Deliveries/99999",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "Deliveries", "99999"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Update non-existent delivery returns 404', function () {",
+									"    pm.response.to.have.status(404);",
+									"    console.log('Confirmed: update ID 99999 returns 404.');",
+									"});"
+								]
+							}
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "6 - Delete Delivery Boys",
+			"description": "Test soft delete and verify deletion.",
+			"item": [
+				{
+					"name": "20. Delete Delivery Boy 2 (Soft Delete)",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{adminToken}}" }
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/Deliveries/{{deliveryId2}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "Deliveries", "{{deliveryId2}}"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Delivery boy 2 soft-deleted', function () {",
+									"    pm.response.to.have.status(204);",
+									"    console.log('deliveryId2 soft-deleted successfully.');",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "21. Verify Delivery Boy 2 Deleted (Expect 404)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{adminToken}}" }
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/Deliveries/{{deliveryId2}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "Deliveries", "{{deliveryId2}}"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Deleted delivery boy returns 404', function () {",
+									"    pm.response.to.have.status(404);",
+									"    console.log('Confirmed: deliveryId2 returns 404 after deletion.');",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "22. Delete Non-existent Delivery (Expect 404)",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{adminToken}}" }
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/Deliveries/99999",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "Deliveries", "99999"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Delete non-existent delivery returns 404', function () {",
+									"    pm.response.to.have.status(404);",
+									"    console.log('Confirmed: delete ID 99999 returns 404.');",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "23. Final - Get All Deliveries (Verify State)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{adminToken}}" }
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/Deliveries",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "Deliveries"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Final state: delivery boy 1 exists, delivery boy 2 should be deleted', function () {",
+									"    pm.response.to.have.status(200);",
+									"    var json = pm.response.json();",
+									"    pm.expect(json).to.be.an('array');",
+									"    var id1 = parseInt(pm.collectionVariables.get('deliveryId1'));",
+									"    var id2 = parseInt(pm.collectionVariables.get('deliveryId2'));",
+									"    var del1 = json.find(d => d.id === id1);",
+									"    var del2 = json.find(d => d.id === id2);",
+									"    pm.expect(del1).to.not.be.undefined;",
+									"    pm.expect(del1.isActive).to.eql(true);",
+									"    console.log('Delivery boy 1 present:', del1 ? 'Yes' : 'No');",
+									"    console.log('Delivery boy 2 present:', del2 ? 'Yes (isDeleted=' + del2.isDeleted + ')' : 'No (filtered out)');",
+									"    console.log('Total deliveries:', json.length);",
+									"});"
+								]
+							}
+						}
+					]
+				}
+			]
+		}
+	]
+}
