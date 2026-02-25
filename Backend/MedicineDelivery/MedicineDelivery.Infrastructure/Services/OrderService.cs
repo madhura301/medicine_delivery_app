@@ -8,7 +8,7 @@ using MedicineDelivery.Domain.Interfaces;
 using MedicineDelivery.Infrastructure.Data;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Hosting;
+
 using Microsoft.Extensions.Logging;
 using NetTopologySuite;
 using NetTopologySuite.Geometries;
@@ -28,18 +28,18 @@ namespace MedicineDelivery.Infrastructure.Services
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly IMapper _mapper;
-        private readonly IHostEnvironment _hostEnvironment;
+        private readonly IFileStorageService _fileStorageService;
         private readonly ApplicationDbContext _context;
         private readonly ILogger<OrderService> _logger;
         private static readonly string[] AllowedImageExtensions = { ".jpg", ".jpeg", ".png", ".gif", ".bmp" };
         private static readonly string[] AllowedVoiceExtensions = { ".mp3", ".wav", ".m4a", ".aac", ".ogg" };
         private static readonly string[] AllowedPdfExtensions = { ".pdf" };
 
-        public OrderService(IUnitOfWork unitOfWork, IMapper mapper, IHostEnvironment hostEnvironment, ApplicationDbContext context, ILogger<OrderService> logger)
+        public OrderService(IUnitOfWork unitOfWork, IMapper mapper, IFileStorageService fileStorageService, ApplicationDbContext context, ILogger<OrderService> logger)
         {
             _unitOfWork = unitOfWork;
             _mapper = mapper;
-            _hostEnvironment = hostEnvironment;
+            _fileStorageService = fileStorageService;
             _context = context;
             _logger = logger;
         }
@@ -844,19 +844,14 @@ namespace MedicineDelivery.Infrastructure.Services
                 _ => throw new InvalidOperationException("Unsupported order input type for file upload.")
             };
 
-            var basePath = Path.Combine(_hostEnvironment.ContentRootPath, "Files", "Orders", folderName);
-            Directory.CreateDirectory(basePath);
-
             var fileExtension = Path.GetExtension(file.FileName);
             var uniqueFileName = $"{Guid.NewGuid():N}{fileExtension}";
-            var filePath = Path.Combine(basePath, uniqueFileName);
+            var relativePath = Path.Combine("Files", "Orders", folderName, uniqueFileName).Replace("\\", "/");
 
-            using (var stream = new FileStream(filePath, FileMode.Create))
-            {
-                await file.CopyToAsync(stream, cancellationToken);
-            }
+            using var stream = file.OpenReadStream();
+            await _fileStorageService.UploadAsync(stream, relativePath, cancellationToken);
 
-            return Path.Combine("Files", "Orders", folderName, uniqueFileName).Replace("\\", "/");
+            return relativePath;
         }
 
         /// <summary>
@@ -907,19 +902,14 @@ namespace MedicineDelivery.Infrastructure.Services
             }
 
             // Save the PDF file
-            var basePath = Path.Combine(_hostEnvironment.ContentRootPath, "Files", "Orders", "Bills");
-            Directory.CreateDirectory(basePath);
-
             var fileExtension = Path.GetExtension(uploadDto.BillFile.FileName);
             var uniqueFileName = $"{Guid.NewGuid():N}{fileExtension}";
-            var filePath = Path.Combine(basePath, uniqueFileName);
-
-            using (var stream = new FileStream(filePath, FileMode.Create))
-            {
-                await uploadDto.BillFile.CopyToAsync(stream, cancellationToken);
-            }
-
             var fileLocation = Path.Combine("Files", "Orders", "Bills", uniqueFileName).Replace("\\", "/");
+
+            using (var stream = uploadDto.BillFile.OpenReadStream())
+            {
+                await _fileStorageService.UploadAsync(stream, fileLocation, cancellationToken);
+            }
 
             // Update order with bill file location and amount
             order.OrderBillFileLocation = fileLocation;

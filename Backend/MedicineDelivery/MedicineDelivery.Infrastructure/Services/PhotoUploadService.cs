@@ -1,7 +1,5 @@
 using MedicineDelivery.Application.Interfaces;
 using Microsoft.AspNetCore.Http;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using System.Security.Cryptography;
 
@@ -9,16 +7,14 @@ namespace MedicineDelivery.Infrastructure.Services
 {
     public class PhotoUploadService : IPhotoUploadService
     {
-        private readonly IHostEnvironment _environment;
-        private readonly IConfiguration _configuration;
+        private readonly IFileStorageService _fileStorageService;
         private readonly ILogger<PhotoUploadService> _logger;
         private readonly string[] _allowedExtensions = { ".jpg", ".jpeg", ".png", ".gif", ".bmp" };
         private readonly long _maxFileSizeInBytes = 5 * 1024 * 1024; // 5MB
 
-        public PhotoUploadService(IHostEnvironment environment, IConfiguration configuration, ILogger<PhotoUploadService> logger)
+        public PhotoUploadService(IFileStorageService fileStorageService, ILogger<PhotoUploadService> logger)
         {
-            _environment = environment;
-            _configuration = configuration;
+            _fileStorageService = fileStorageService;
             _logger = logger;
         }
 
@@ -36,22 +32,12 @@ namespace MedicineDelivery.Infrastructure.Services
                 throw new ArgumentException("Invalid photo file format or size");
             }
 
-            // Create upload directory if it doesn't exist
-            var uploadPath = Path.Combine(_environment.ContentRootPath, "wwwroot", "uploads", entityType.ToLower());
-            if (!Directory.Exists(uploadPath))
-                Directory.CreateDirectory(uploadPath);
-
-            // Generate unique filename
             var fileExtension = Path.GetExtension(photo.FileName).ToLowerInvariant();
             var uniqueFileName = GenerateUniqueFileName(entityId, fileExtension);
+            var relativePath = Path.Combine("wwwroot", "uploads", entityType.ToLower(), uniqueFileName).Replace("\\", "/");
 
-            var filePath = Path.Combine(uploadPath, uniqueFileName);
-
-            // Save the file
-            using (var stream = new FileStream(filePath, FileMode.Create))
-            {
-                await photo.CopyToAsync(stream);
-            }
+            using var stream = photo.OpenReadStream();
+            await _fileStorageService.UploadAsync(stream, relativePath);
 
             return uniqueFileName;
         }
@@ -61,23 +47,8 @@ namespace MedicineDelivery.Infrastructure.Services
             if (string.IsNullOrEmpty(fileName))
                 return false;
 
-            var filePath = Path.Combine(_environment.ContentRootPath, "wwwroot", "uploads", entityType.ToLower(), fileName);
-            
-            if (File.Exists(filePath))
-            {
-                try
-                {
-                    File.Delete(filePath);
-                    return true;
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning(ex, "Failed to delete photo file {FileName} for entity type {EntityType}", fileName, entityType);
-                    return false;
-                }
-            }
-
-            return false;
+            var relativePath = Path.Combine("wwwroot", "uploads", entityType.ToLower(), fileName).Replace("\\", "/");
+            return await _fileStorageService.DeleteAsync(relativePath);
         }
 
         public string GetPhotoUrl(string fileName, string entityType)
@@ -85,8 +56,8 @@ namespace MedicineDelivery.Infrastructure.Services
             if (string.IsNullOrEmpty(fileName))
                 return string.Empty;
 
-            var baseUrl = _configuration["BaseUrl"] ?? "http://localhost:5000";
-            return $"{baseUrl}/uploads/{entityType.ToLower()}/{fileName}";
+            var relativePath = Path.Combine("uploads", entityType.ToLower(), fileName).Replace("\\", "/");
+            return _fileStorageService.GetPublicUrl(relativePath);
         }
 
         public bool IsValidPhotoFile(IFormFile file)
@@ -94,11 +65,9 @@ namespace MedicineDelivery.Infrastructure.Services
             if (file == null || file.Length == 0)
                 return false;
 
-            // Check file size
             if (file.Length > _maxFileSizeInBytes)
                 return false;
 
-            // Check file extension
             var fileExtension = Path.GetExtension(file.FileName).ToLowerInvariant();
             return _allowedExtensions.Contains(fileExtension);
         }
@@ -115,7 +84,6 @@ namespace MedicineDelivery.Infrastructure.Services
 
         private string GenerateUniqueFileName(Guid entityId, string fileExtension)
         {
-            // Generate a unique filename using entity ID and timestamp
             var timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
             var randomBytes = new byte[4];
             using (var rng = RandomNumberGenerator.Create())
@@ -123,7 +91,7 @@ namespace MedicineDelivery.Infrastructure.Services
                 rng.GetBytes(randomBytes);
             }
             var randomString = Convert.ToHexString(randomBytes).ToLowerInvariant();
-            
+
             return $"{entityId}_{timestamp}_{randomString}{fileExtension}";
         }
     }
