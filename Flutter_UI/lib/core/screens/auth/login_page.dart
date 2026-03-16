@@ -1,11 +1,13 @@
 import 'package:pharmaish/core/services/consent_service.dart';
 import 'package:pharmaish/core/theme/app_theme.dart';
+import 'package:pharmaish/shared/widgets/transparent_pricing_dialog.dart';
 import 'package:pharmaish/utils/app_logger.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:pharmaish/core/app_routes.dart';
 import 'package:pharmaish/core/screens/auth/forgot_password_page.dart';
+import 'package:pharmaish/core/screens/auth/change_password_page.dart';
 import 'package:pharmaish/utils/consent_manager.dart';
 import 'package:pharmaish/utils/constants.dart';
 import 'package:flutter/gestures.dart';
@@ -55,6 +57,13 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
+  void _showTransparentPricingDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (ctx) => const TransparentPricingDialog(),
+    );
+  }
   /// Open Privacy Policy PDF
   Future<void> _openPrivacyPolicy() async {
     const String pdfUrl =
@@ -387,8 +396,7 @@ class _LoginPageState extends State<LoginPage> {
                                 ),
                                 TextButton(
                                   onPressed: () {
-                                    Navigator.pushNamed(
-                                        context, AppRoutes.registerPharmacist);
+                                    _showTransparentPricingDialog(context);
                                   },
                                   style: TextButton.styleFrom(
                                     padding: const EdgeInsets.symmetric(
@@ -749,6 +757,71 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
+  /// Shows a non-blocking prompt asking the user if they'd like to update
+  /// their password. Tapping "Update Now" opens [ChangePasswordPage].
+  /// Tapping "Skip" or dismissing continues the normal login flow.
+  Future<void> _offerPasswordUpdate() async {
+    if (!mounted) return;
+
+    final shouldUpdate = await showDialog<bool>(
+      context: context,
+      barrierDismissible: true,
+      builder: (ctx) => AlertDialog(
+        shape:
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: AppTheme.primaryColor.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.lock_outline,
+                  color: AppTheme.primaryColor, size: 22),
+            ),
+            const SizedBox(width: 12),
+            const Text('Update Password?',
+                style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
+          ],
+        ),
+        content: Text(
+          'Would you like to update your password for better security?',
+          style: TextStyle(fontSize: 14, color: Colors.grey.shade700),
+        ),
+        actionsPadding:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text('Skip',
+                style: TextStyle(color: Colors.grey.shade600)),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.primaryColor,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8)),
+            ),
+            child: const Text('Update Now'),
+          ),
+        ],
+      ),
+    );
+
+    if (shouldUpdate == true && mounted) {
+      final mobileNumber = _userNameController.text.trim();
+      await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => ChangePasswordPage(mobileNumber: mobileNumber),
+        ),
+      );
+    }
+  }
+
   Future<void> _checkAndShowTermsAfterLogin(String role) async {
     try {
       AppLogger.info('Checking terms acceptance status...');
@@ -833,6 +906,9 @@ class _LoginPageState extends State<LoginPage> {
         break;
       case 'Manager':
         routeName = AppRoutes.managerDashboard;
+        break;
+      case 'DeliveryBoy':
+        routeName = AppRoutes.deliveryDashboard;
         break;
       default:
         routeName = AppRoutes.customerDashboard;

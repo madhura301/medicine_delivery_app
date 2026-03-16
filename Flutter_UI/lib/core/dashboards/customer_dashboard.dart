@@ -473,15 +473,15 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
               },
             ),
 
-            ListTile(
-              leading: const Icon(Icons.history, color: Colors.green),
-              title: const Text('Order History'),
-              subtitle: const Text('Past orders'),
-              onTap: () {
-                Navigator.pop(context);
-                _goToAllOrders(context); // Same as All Orders for now
-              },
-            ),
+            // ListTile(
+            //   leading: const Icon(Icons.history, color: Colors.green),
+            //   title: const Text('Order History'),
+            //   subtitle: const Text('Past orders'),
+            //   onTap: () {
+            //     Navigator.pop(context);
+            //     _goToAllOrders(context); // Same as All Orders for now
+            //   },
+            // ),
 
             const Divider(),
 

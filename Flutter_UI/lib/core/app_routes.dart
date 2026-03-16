@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:pharmaish/core/dashboards/admin_dashboard.dart';
 import 'package:pharmaish/core/dashboards/chemist_dashboard.dart';
 import 'package:pharmaish/core/dashboards/customer_dashboard.dart';
+import 'package:pharmaish/core/dashboards/delivery_dashboard.dart';
 import 'package:pharmaish/core/dashboards/manager_dashboard.dart';
 import 'package:pharmaish/core/dashboards/support_dashboard.dart';
 import 'package:pharmaish/core/screens/orders/accepted_order_bill_screen.dart';
@@ -11,6 +12,8 @@ import 'package:pharmaish/core/screens/orders/rejected_orders_screen.dart';
 import 'package:pharmaish/core/screens/payment/payment_summary_page.dart';
 import 'package:pharmaish/core/screens/profiles/customer_profile_page.dart';
 import 'package:pharmaish/core/screens/profiles/pharmacist_profile_page.dart';
+import 'package:pharmaish/core/screens/profiles/delivery_profile_page.dart';
+import 'package:pharmaish/core/screens/profiles/manager_profile_page.dart';
 import 'package:pharmaish/core/screens/auth/register_customer_page.dart';
 import 'package:pharmaish/core/screens/auth/register_pharmacist_page.dart';
 import 'package:pharmaish/core/theme/app_theme.dart';
@@ -26,10 +29,13 @@ class AppRoutes {
   static const String pharmacistProfile = '/pharmacistProfile';
   static const String chemistProfile = '/chemistProfile';
   static const String customerProfile = '/customerProfile';
+  static const String deliveryProfile = '/deliveryProfile';
+  static const String managerProfile = '/managerProfile';
   static const String customerDashboard = '/customerDashboard';
   static const String adminDashboard = '/adminDashboard';
   static const String chemistDashboard = '/chemistDashboard';
   static const String managerDashboard = '/managerDashboard';
+  static const String deliveryDashboard = '/deliveryDashboard';
   static const String customerSupportDashboard = '/customerSupportDashboard';
   static const String createWhatsAppOrder = '/createWhatsAppOrder';
   static const String rejectedOrders = '/rejectedOrders';
@@ -42,6 +48,8 @@ class AppRoutes {
     registerCustomer: (context) => const CustomerRegisterPage(),
     registerPharmacist: (context) => const PharmacistRegistrationPage(),
     customerProfile: (context) => const CustomerProfilePage(),
+    deliveryProfile: (context) => const DeliveryProfilePage(),
+    managerProfile: (context) => const ManagerProfilePage(),
     pharmacistProfile: (context) {
       final args =
           ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
@@ -79,6 +87,7 @@ class AppRoutes {
     chemistDashboard: (context) => const ChemistDashboard(),
     adminDashboard: (context) => const AdminDashboard(),
     managerDashboard: (context) => const ManagerDashboard(),
+    deliveryDashboard: (context) => const DeliveryDashboard(),
     customerSupportDashboard: (context) => const CustomerSupportDashboard(),
     createWhatsAppOrder: (context) =>
         const CreateWhatsAppOrderScreen(), // Placeholder
@@ -102,6 +111,7 @@ class AppRoutes {
       //   orderId: args['orderId'],
       // );
       return PaymentSummaryPage(
+        orderId: args['orderId'],
         medicinesTotal: args['medicinesTotal'],
         convenienceFee: args['convenienceFee'],
         orderNumber: args['orderId'],

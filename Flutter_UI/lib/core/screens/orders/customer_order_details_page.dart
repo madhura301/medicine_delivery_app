@@ -32,6 +32,8 @@ class _CustomerOrderDetailsPageState extends State<CustomerOrderDetailsPage> {
 
   // Detailed data
   Map<String, dynamic>? _chemistData;
+  Map<String, dynamic>? _addressData;
+  bool _isLoadingAddress = false;
   Map<String, dynamic>? _deliveryData;
 
   late OrderModel _currentOrder;
@@ -39,48 +41,49 @@ class _CustomerOrderDetailsPageState extends State<CustomerOrderDetailsPage> {
   @override
   void initState() {
     super.initState();
-    _currentOrder = widget.order; 
+    _currentOrder = widget.order;
     _setupDio();
-    _checkConsentAndLoadOrderDetails(); 
+    _checkConsentAndLoadOrderDetails();
   }
 
+  Future<void> _checkConsentAndLoadOrderDetails() async {
+    // Check if user is a pharmacist
+    final token = await StorageService.getAuthToken();
+    if (token != null) {
+      final userInfo = StorageService.decodeJwtToken(token);
+      final role = StorageService.extractUserRole(userInfo);
 
-Future<void> _checkConsentAndLoadOrderDetails() async {
-  // Check if user is a pharmacist
-  final token = await StorageService.getAuthToken();
-  if (token != null) {
-    final userInfo = StorageService.decodeJwtToken(token);
-    final role = StorageService.extractUserRole(userInfo);
-    
-    // Only show disclaimer for pharmacists/chemists
-    if (role == 'Chemist') {
-      // Check if already shown for this order
-      final hasAccepted = await PharmacistConsentManager.hasAcceptedOrderDisclaimer(
-        _currentOrder.orderId ?? ''
-      );
-      
-      if (!hasAccepted && mounted) {
-        // Show Data Handling & Liability Disclaimer
-        final accepted = await PharmacistConsentManager.showDataHandlingLiabilityDisclaimer(
-          context,
-          orderId: _currentOrder.orderId,
-          customerId: _currentOrder.customerId,
-        );
-        
-        if (!accepted) {
-          // User declined - go back
-          if (mounted) {
-            Navigator.pop(context);
+      // Only show disclaimer for pharmacists/chemists
+      if (role == 'Chemist') {
+        // Check if already shown for this order
+        final hasAccepted =
+            await PharmacistConsentManager.hasAcceptedOrderDisclaimer(
+                _currentOrder.orderId ?? '');
+
+        if (!hasAccepted && mounted) {
+          // Show Data Handling & Liability Disclaimer
+          final accepted = await PharmacistConsentManager
+              .showDataHandlingLiabilityDisclaimer(
+            context,
+            orderId: _currentOrder.orderId,
+            customerId: _currentOrder.customerId,
+          );
+
+          if (!accepted) {
+            // User declined - go back
+            if (mounted) {
+              Navigator.pop(context);
+            }
+            return;
           }
-          return;
         }
       }
     }
+
+    // Proceed to load order details
+    _loadOrderDetails();
   }
-  
-  // Proceed to load order details
-  _loadOrderDetails();
-}
+
   void _setupDio() {
     _dio = Dio();
     _dio.options.baseUrl = AppConstants.apiBaseUrl;
@@ -107,19 +110,20 @@ Future<void> _checkConsentAndLoadOrderDetails() async {
     ));
   }
 
-Future<void> _refreshOrder() async {
-  try {
-    final response = await _dio.get('/Orders/${widget.order.orderId}');
-    if (response.statusCode == 200) {
-      final updatedOrder = OrderModel.fromJson(response.data);
-      setState(() {
-        _currentOrder = updatedOrder;
-      });
+  Future<void> _refreshOrder() async {
+    try {
+      final response = await _dio.get('/Orders/${widget.order.orderId}');
+      if (response.statusCode == 200) {
+        final updatedOrder = OrderModel.fromJson(response.data);
+        setState(() {
+          _currentOrder = updatedOrder;
+        });
+      }
+    } catch (e) {
+      AppLogger.error('Error refreshing order: $e');
     }
-  } catch (e) {
-    AppLogger.error('Error refreshing order: $e');
   }
-}
+
   Future<void> _loadOrderDetails() async {
     setState(() {
       _isLoading = true;
@@ -127,11 +131,12 @@ Future<void> _refreshOrder() async {
     });
 
     try {
-      await _refreshOrder();  // ✅ Load complete order first!
-      // Load chemist details if assigned
-      if (_currentOrder.medicalStoreId != null) {
-        await _loadChemistDetails();
-      }
+      await _refreshOrder(); // ✅ Load complete order first!
+      // Load chemist and delivery address
+      await Future.wait([
+        if (_currentOrder.medicalStoreId != null) _loadChemistDetails(),
+        _loadDeliveryAddress(),
+      ]);
 
       setState(() {
         _isLoading = false;
@@ -145,18 +150,51 @@ Future<void> _refreshOrder() async {
     }
   }
 
+// REPLACE WITH:
   Future<void> _loadChemistDetails() async {
     try {
       final response =
           await _dio.get('/MedicalStores/${_currentOrder.medicalStoreId}');
       if (response.statusCode == 200) {
         setState(() {
-          _chemistData = response.data;
+          _chemistData =
+              _normaliseCasing(response.data as Map<String, dynamic>);
         });
       }
     } catch (e) {
       AppLogger.error('Error loading chemist details: $e');
     }
+  }
+
+  Future<void> _loadDeliveryAddress() async {
+    try {
+      setState(() => _isLoadingAddress = true);
+      final orderResp = await _dio.get('/Orders/${_currentOrder.orderId}');
+      if (orderResp.statusCode != 200) return;
+      final orderJson = orderResp.data as Map<String, dynamic>;
+      final addressId = orderJson['customerAddressId']?.toString() ??
+          orderJson['CustomerAddressId']?.toString();
+      if (addressId == null || addressId.isEmpty) return;
+
+      final addrResp = await _dio.get('/CustomerAddresses/$addressId');
+      if (addrResp.statusCode == 200) {
+        setState(() {
+          _addressData =
+              _normaliseCasing(addrResp.data as Map<String, dynamic>);
+          _isLoadingAddress = false;
+        });
+      }
+    } catch (e) {
+      AppLogger.error('Error loading delivery address: $e');
+      setState(() => _isLoadingAddress = false);
+    }
+  }
+
+  Map<String, dynamic> _normaliseCasing(Map<String, dynamic> raw) {
+    return raw.map((k, v) {
+      final camel = k[0].toLowerCase() + k.substring(1);
+      return MapEntry(camel, v);
+    });
   }
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -609,42 +647,99 @@ Future<void> _refreshOrder() async {
     );
   }
 
+// REPLACE WITH:
   Widget _buildDeliveryAddress() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        if (_currentOrder.shippingAddressLine1 != null)
-          Text(_currentOrder.shippingAddressLine1!,
-              style: const TextStyle(fontSize: 14)),
-        if (_currentOrder.shippingAddressLine2 != null &&
-            _currentOrder.shippingAddressLine2!.isNotEmpty)
-          Text(_currentOrder.shippingAddressLine2!,
-              style: const TextStyle(fontSize: 14)),
-        if (_currentOrder.shippingArea != null)
-          Text(_currentOrder.shippingArea!,
-              style: const TextStyle(fontSize: 14)),
-        const SizedBox(height: 4),
-        Text(
-          '${_currentOrder.shippingCity ?? ''}, ${_currentOrder.shippingPincode ?? ''}',
-          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-        ),
-      ],
-    );
-  }
+    if (_isLoadingAddress) {
+      return const Row(children: [
+        SizedBox(
+            width: 16,
+            height: 16,
+            child: CircularProgressIndicator(strokeWidth: 2)),
+        SizedBox(width: 8),
+        Text('Loading address...',
+            style: TextStyle(fontSize: 13, color: Colors.grey)),
+      ]);
+    }
 
-  Widget _buildChemistInfo() {
-    if (_chemistData == null) {
-      return const Text('Loading pharmacy details...');
+    if (_addressData == null) {
+      return const Text('Address not available',
+          style: TextStyle(color: Colors.grey));
+    }
+
+    String g(String key) => (_addressData![key] ?? '').toString().trim();
+
+    final parts = <String>[];
+    void add(String key) {
+      final v = g(key);
+      if (v.isNotEmpty) parts.add(v);
+    }
+
+    add('address');
+    add('addressLine1');
+    add('addressLine2');
+    add('addressLine3');
+    final city = g('city');
+    final state = g('state');
+    final pincode = g('pincode').isNotEmpty ? g('pincode') : g('postalCode');
+    final last = [city, state, pincode].where((s) => s.isNotEmpty).join(' - ');
+    if (last.isNotEmpty) parts.add(last);
+
+    if (parts.isEmpty) {
+      return const Text('Address on file',
+          style: TextStyle(color: Colors.grey));
     }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
+      children: parts
+          .map((line) => Padding(
+                padding: const EdgeInsets.only(bottom: 2),
+                child: Text(line, style: const TextStyle(fontSize: 14)),
+              ))
+          .toList(),
+    );
+  }
+
+  // REPLACE WITH:
+  Widget _buildChemistInfo() {
+    if (_chemistData == null) {
+      return const Row(children: [
+        SizedBox(
+            width: 16,
+            height: 16,
+            child: CircularProgressIndicator(strokeWidth: 2)),
+        SizedBox(width: 8),
+        Text('Loading pharmacy details...'),
+      ]);
+    }
+
+    String g(String key) => (_chemistData![key] ?? '').toString();
+
+    final storeName = g('medicalName');
+    final ownerFirst = g('ownerFirstName');
+    final ownerLast = g('ownerLastName');
+    final mobile = g('mobileNumber');
+    final addr1 = g('addressLine1');
+    final addr2 = g('addressLine2');
+    final city = g('city');
+    final state = g('state');
+    final postal = g('postalCode');
+
+    final addressParts = [addr1, addr2, city, state, postal]
+        .where((p) => p.isNotEmpty)
+        .join(', ');
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildDetailRow('Store Name', _chemistData!['storeName'] ?? 'N/A'),
-        if (_chemistData!['mobileNumber'] != null)
-          _buildDetailRow('Contact', _chemistData!['mobileNumber']),
-        if (_chemistData!['addressLine1'] != null)
-          _buildDetailRow('Address', _chemistData!['addressLine1']),
+        _buildDetailRow('Store Name', storeName.isNotEmpty ? storeName : 'N/A'),
+        _buildDetailRow(
+            'Owner',
+            '${ownerFirst} ${ownerLast}'.trim().isNotEmpty
+                ? '${ownerFirst} ${ownerLast}'.trim()
+                : 'N/A'),
+        _buildDetailRow('Mobile', mobile.isNotEmpty ? mobile : 'N/A'),
+        if (addressParts.isNotEmpty) _buildDetailRow('Address', addressParts),
       ],
     );
   }

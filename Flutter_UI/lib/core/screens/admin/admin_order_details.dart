@@ -33,6 +33,8 @@ class _AdminOrderDetailsPageState extends State<AdminOrderDetailsPage> {
   // Detailed data
   Map<String, dynamic>? _customerData;
   Map<String, dynamic>? _chemistData;
+  Map<String, dynamic>? _addressData;
+  bool _isLoadingAddress = false;
   Map<String, dynamic>? _deliveryData;
 
   late OrderModel _currentOrder;
@@ -71,6 +73,25 @@ class _AdminOrderDetailsPageState extends State<AdminOrderDetailsPage> {
     ));
   }
 
+  /// Converts a relative file path from the backend into a full loadable URL.
+  String _resolveFileUrl(String rawUrl) {
+  if (rawUrl.startsWith('http://') || rawUrl.startsWith('https://')) return rawUrl;
+  // Strip leading slash if present
+  final clean = rawUrl.replaceAll(r'\', '/').replaceAll(RegExp(r'^/'), '');
+  // Base URL without /api suffix
+  final base = AppConstants.apiBaseUrl.replaceAll(RegExp(r'/api/?$'), '');
+  return '$base/$clean';
+}
+
+  /// Opens a full-screen image viewer with pinch-to-zoom.
+  void _openFullScreen(String rawUrl, String title) {
+    final url = _resolveFileUrl(rawUrl);
+    Navigator.of(context).push(
+      MaterialPageRoute(
+          builder: (_) => _FullScreenImagePage(imageUrl: url, title: title)),
+    );
+  }
+
   Future<void> _refreshOrder() async {
     try {
       final response = await _dio.get('/Orders/${widget.order.orderId}');
@@ -93,8 +114,11 @@ class _AdminOrderDetailsPageState extends State<AdminOrderDetailsPage> {
 
     try {
       await _refreshOrder(); // Load complete order first!
-      // Load customer details
-      await _loadCustomerDetails();
+      // Load customer and delivery details
+      await Future.wait([
+        _loadCustomerDetails(),
+        _loadDeliveryAddress(),
+      ]);
 
       // Load chemist details if assigned
       if (_currentOrder.medicalStoreId != null) {
@@ -113,91 +137,128 @@ class _AdminOrderDetailsPageState extends State<AdminOrderDetailsPage> {
     }
   }
 
- Future<void> _loadCustomerDetails() async {
-  setState(() {
-    _isLoadingCustomer = true;
-    _customerError = null;
-  });
+  Future<void> _loadCustomerDetails() async {
+    setState(() {
+      _isLoadingCustomer = true;
+      _customerError = null;
+    });
 
-  try {
-    final customerId = _currentOrder.customerId;
-    
-    // ✅ Log customer ID
-    AppLogger.info('=== LOADING CUSTOMER ===');
-    AppLogger.info('Customer ID: $customerId');
-    AppLogger.info('Customer ID type: ${customerId.runtimeType}');
-    AppLogger.info('Customer ID length: ${customerId.length}');
-    
-    // ✅ Log auth token status
-    final token = await StorageService.getAuthToken();
-    if (token != null) {
-      AppLogger.info('Auth token present: ${token.substring(0, 20)}...');
-    } else {
-      AppLogger.error('❌ NO AUTH TOKEN FOUND!');
-    }
-    
-    // ✅ Log full URL
-    final url = '/Customers/$customerId';
-    final fullUrl = '${_dio.options.baseUrl}$url';
-    AppLogger.info('Request URL: $fullUrl');
-    
-    // ✅ Make the request
-    final response = await _dio.get(url);
-    
-    AppLogger.info('✅ Customer response: ${response.statusCode}');
-    AppLogger.info('Response data keys: ${(response.data as Map).keys.toList()}');
-    
-    if (response.statusCode == 200) {
+    try {
+      final customerId = _currentOrder.customerId;
+
+      // ✅ Log customer ID
+      AppLogger.info('=== LOADING CUSTOMER ===');
+      AppLogger.info('Customer ID: $customerId');
+      AppLogger.info('Customer ID type: ${customerId.runtimeType}');
+      AppLogger.info('Customer ID length: ${customerId.length}');
+
+      // ✅ Log auth token status
+      final token = await StorageService.getAuthToken();
+      if (token != null) {
+        AppLogger.info('Auth token present: ${token.substring(0, 20)}...');
+      } else {
+        AppLogger.error('❌ NO AUTH TOKEN FOUND!');
+      }
+
+      // ✅ Log full URL
+      final url = '/Customers/$customerId';
+      final fullUrl = '${_dio.options.baseUrl}$url';
+      AppLogger.info('Request URL: $fullUrl');
+
+      // ✅ Make the request
+      final response = await _dio.get(url);
+
+      AppLogger.info('✅ Customer response: ${response.statusCode}');
+      AppLogger.info(
+          'Response data keys: ${(response.data as Map).keys.toList()}');
+
+      if (response.statusCode == 200) {
+        setState(() {
+          _customerData = response.data;
+          _isLoadingCustomer = false;
+        });
+        AppLogger.info('✅ Customer loaded successfully');
+      } else {
+        setState(() {
+          _customerError =
+              'Failed to load customer (Status: ${response.statusCode})';
+          _isLoadingCustomer = false;
+        });
+      }
+    } on DioException catch (e) {
+      AppLogger.error('❌ DioException loading customer');
+      AppLogger.error('Status code: ${e.response?.statusCode}');
+      AppLogger.error('Response data: ${e.response?.data}');
+      AppLogger.error('Error type: ${e.type}');
+      AppLogger.error('Message: ${e.message}');
+      AppLogger.error('Request: ${e.requestOptions.uri}');
+      AppLogger.error('Request headers: ${e.requestOptions.headers}');
+
       setState(() {
-        _customerData = response.data;
+        _customerError = e.response?.statusCode == 404
+            ? 'Customer not found'
+            : e.response?.statusCode == 401
+                ? 'Authentication required. Please login again.'
+                : e.response?.statusCode == 403
+                    ? 'Access denied. You don\'t have permission.'
+                    : 'Failed to load customer details (${e.response?.statusCode ?? 'network error'})';
         _isLoadingCustomer = false;
       });
-      AppLogger.info('✅ Customer loaded successfully');
-    } else {
+    } catch (e) {
+      AppLogger.error('❌ Unexpected error loading customer details: $e');
       setState(() {
-        _customerError = 'Failed to load customer (Status: ${response.statusCode})';
+        _customerError = 'An error occurred while retrieving the customer';
         _isLoadingCustomer = false;
       });
     }
-  } on DioException catch (e) {
-    AppLogger.error('❌ DioException loading customer');
-    AppLogger.error('Status code: ${e.response?.statusCode}');
-    AppLogger.error('Response data: ${e.response?.data}');
-    AppLogger.error('Error type: ${e.type}');
-    AppLogger.error('Message: ${e.message}');
-    AppLogger.error('Request: ${e.requestOptions.uri}');
-    AppLogger.error('Request headers: ${e.requestOptions.headers}');
-    
-    setState(() {
-      _customerError = e.response?.statusCode == 404
-          ? 'Customer not found'
-          : e.response?.statusCode == 401
-              ? 'Authentication required. Please login again.'
-              : e.response?.statusCode == 403
-                  ? 'Access denied. You don\'t have permission.'
-                  : 'Failed to load customer details (${e.response?.statusCode ?? 'network error'})';
-      _isLoadingCustomer = false;
-    });
-  } catch (e) {
-    AppLogger.error('❌ Unexpected error loading customer details: $e');
-    setState(() {
-      _customerError = 'An error occurred while retrieving the customer';
-      _isLoadingCustomer = false;
-    });
   }
-}
+
+  // REPLACE WITH:
   Future<void> _loadChemistDetails() async {
     try {
       final response =
           await _dio.get('/MedicalStores/${_currentOrder.medicalStoreId}');
       if (response.statusCode == 200) {
         setState(() {
-          _chemistData = response.data;
+          _chemistData =
+              _normaliseCasing(response.data as Map<String, dynamic>);
         });
       }
     } catch (e) {
       AppLogger.error('Error loading chemist details: $e');
     }
+  }
+
+// ADD these two new methods right after:
+  Future<void> _loadDeliveryAddress() async {
+    try {
+      setState(() => _isLoadingAddress = true);
+      final orderResp = await _dio.get('/Orders/${_currentOrder.orderId}');
+      if (orderResp.statusCode != 200) return;
+      final orderJson = orderResp.data as Map<String, dynamic>;
+      final addressId = orderJson['customerAddressId']?.toString() ??
+          orderJson['CustomerAddressId']?.toString();
+      if (addressId == null || addressId.isEmpty) return;
+
+      final addrResp = await _dio.get('/CustomerAddresses/$addressId');
+      if (addrResp.statusCode == 200) {
+        setState(() {
+          _addressData =
+              _normaliseCasing(addrResp.data as Map<String, dynamic>);
+          _isLoadingAddress = false;
+        });
+      }
+    } catch (e) {
+      AppLogger.error('Error loading delivery address: $e');
+      setState(() => _isLoadingAddress = false);
+    }
+  }
+
+  Map<String, dynamic> _normaliseCasing(Map<String, dynamic> raw) {
+    return raw.map((k, v) {
+      final camel = k[0].toLowerCase() + k.substring(1);
+      return MapEntry(camel, v);
+    });
   }
 
   @override
@@ -585,13 +646,24 @@ class _AdminOrderDetailsPageState extends State<AdminOrderDetailsPage> {
               color: Colors.green,
             ),
           ),
-        if (_currentOrder.shippingAddressLine1 != null)
-          _buildDetailRow(
-            'Delivery Address',
-            '${_currentOrder.shippingAddressLine1}\n'
-                '${_currentOrder.shippingAddressLine2 ?? ''}\n'
-                '${_currentOrder.shippingCity ?? ''}, ${_currentOrder.shippingArea ?? ''} - ${_currentOrder.shippingPincode ?? ''}',
-          ),
+        // REPLACE WITH:
+        if (_isLoadingAddress)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 8),
+            child: Row(children: [
+              SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2)),
+              SizedBox(width: 8),
+              Text('Loading delivery address...',
+                  style: TextStyle(fontSize: 13, color: Colors.grey)),
+            ]),
+          )
+        else if (_addressData != null)
+          _buildDetailRow('Delivery Address', _formatAddress(_addressData!))
+        else
+          _buildDetailRow('Delivery Address', 'Not available'),
       ],
     );
   }
@@ -662,125 +734,234 @@ class _AdminOrderDetailsPageState extends State<AdminOrderDetailsPage> {
     );
   }
 
+  // REPLACE WITH:
   Widget _buildChemistInfo() {
     if (_chemistData == null) {
-      return const Text('Loading chemist details...');
+      return const Padding(
+        padding: EdgeInsets.all(8),
+        child: Row(children: [
+          SizedBox(
+              width: 16,
+              height: 16,
+              child: CircularProgressIndicator(strokeWidth: 2)),
+          SizedBox(width: 8),
+          Text('Loading pharmacy details...'),
+        ]),
+      );
     }
 
-    final storeName = _chemistData!['medicalName'] ?? '';
-    final ownerFirst = _chemistData!['ownerFirstName'] ?? '';
-    final ownerLast = _chemistData!['ownerLastName'] ?? '';
-    final mobile = _chemistData!['mobileNumber'] ?? '';
-    final address = _chemistData!['addressLine1'] ?? '';
-    final city = _chemistData!['city'] ?? '';
-    final state = _chemistData!['state'] ?? '';
+    String g(String key) => (_chemistData![key] ?? '').toString();
+
+    final storeName = g('medicalName');
+    final ownerFirst = g('ownerFirstName');
+    final ownerLast = g('ownerLastName');
+    final mobile = g('mobileNumber');
+    final addr1 = g('addressLine1');
+    final addr2 = g('addressLine2');
+    final city = g('city');
+    final state = g('state');
+    final postal = g('postalCode');
+
+    final addressParts = [addr1, addr2, city, state, postal]
+        .where((p) => p.isNotEmpty)
+        .join(', ');
 
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildDetailRow('Store Name', storeName),
-        _buildDetailRow('Owner', '$ownerFirst $ownerLast'),
-        _buildDetailRow('Mobile', mobile),
-        _buildDetailRow('Address', '$address, $city, $state'),
+        _buildDetailRow('Store Name', storeName.isNotEmpty ? storeName : 'N/A'),
+        _buildDetailRow(
+            'Owner',
+            '${ownerFirst} ${ownerLast}'.trim().isNotEmpty
+                ? '${ownerFirst} ${ownerLast}'.trim()
+                : 'N/A'),
+        _buildDetailRow('Mobile', mobile.isNotEmpty ? mobile : 'N/A'),
+        if (addressParts.isNotEmpty) _buildDetailRow('Address', addressParts),
       ],
     );
   }
 
+// ADD this new helper method right after _buildChemistInfo:
+  String _formatAddress(Map<String, dynamic> addr) {
+    final parts = <String>[];
+    void add(String key) {
+      final v = (addr[key] ?? '').toString().trim();
+      if (v.isNotEmpty) parts.add(v);
+    }
+
+    add('address');
+    add('addressLine1');
+    add('addressLine2');
+    add('addressLine3');
+    final city = (addr['city'] ?? '').toString().trim();
+    final state = (addr['state'] ?? '').toString().trim();
+    final pincode =
+        (addr['pincode'] ?? addr['postalCode'] ?? '').toString().trim();
+    final last = [city, state, pincode].where((s) => s.isNotEmpty).join(' - ');
+    if (last.isNotEmpty) parts.add(last);
+    return parts.isEmpty ? 'Address on file' : parts.join('\n');
+  }
+
   Widget _buildPrescriptionSection() {
+    final rawUrl = _currentOrder.prescriptionFileUrl;
+    if (rawUrl == null) {
+      return const Text('No prescription attached');
+    }
+    final imageUrl = _resolveFileUrl(rawUrl);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        if (_currentOrder.prescriptionFileUrl != null) ...[
-          ClipRRect(
+        GestureDetector(
+          onTap: () => _openFullScreen(rawUrl, 'Prescription'),
+          child: ClipRRect(
             borderRadius: BorderRadius.circular(8),
             child: Image.network(
-              _currentOrder.prescriptionFileUrl!,
+              imageUrl,
               fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) {
+              width: double.infinity,
+              loadingBuilder: (ctx, child, progress) {
+                if (progress == null) return child;
                 return Container(
                   height: 200,
-                  color: Colors.grey[200],
-                  child: const Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.broken_image, size: 48, color: Colors.grey),
-                        SizedBox(height: 8),
-                        Text('Failed to load prescription image'),
-                      ],
+                  color: Colors.grey[100],
+                  child: Center(
+                    child: CircularProgressIndicator(
+                      value: progress.expectedTotalBytes != null
+                          ? progress.cumulativeBytesLoaded /
+                              progress.expectedTotalBytes!
+                          : null,
                     ),
+                  ),
+                );
+              },
+              errorBuilder: (ctx, error, stack) {
+                AppLogger.error(
+                    'Prescription image load error: $error | url: $imageUrl');
+                return Container(
+                  height: 200,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[100],
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.grey.shade300),
+                  ),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.broken_image,
+                          size: 48, color: Colors.grey),
+                      const SizedBox(height: 8),
+                      const Text('Failed to load image'),
+                      const SizedBox(height: 4),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: Text(
+                          imageUrl,
+                          style:
+                              const TextStyle(fontSize: 10, color: Colors.grey),
+                          textAlign: TextAlign.center,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
                   ),
                 );
               },
             ),
           ),
-          const SizedBox(height: 8),
-          ElevatedButton.icon(
-            onPressed: () {
-              // TODO: Open image in full screen
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                    content: Text('Opening full screen - Coming Soon')),
-              );
-            },
-            icon: const Icon(Icons.zoom_in),
-            label: const Text('View Full Size'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.black,
-              foregroundColor: Colors.white,
-            ),
+        ),
+        const SizedBox(height: 8),
+        ElevatedButton.icon(
+          onPressed: () => _openFullScreen(rawUrl, 'Prescription'),
+          icon: const Icon(Icons.zoom_in),
+          label: const Text('View Full Size'),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.black,
+            foregroundColor: Colors.white,
           ),
-        ] else
-          const Text('No Requirement forwarded'),
+        ),
       ],
     );
   }
 
   Widget _buildBillSection() {
+    final rawUrl = _currentOrder.billFileUrl;
+    if (rawUrl == null) {
+      return const Text('No bill uploaded yet');
+    }
+    final imageUrl = _resolveFileUrl(rawUrl);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        if (_currentOrder.billFileUrl != null) ...[
-          ClipRRect(
+        GestureDetector(
+          onTap: () => _openFullScreen(rawUrl, 'Bill'),
+          child: ClipRRect(
             borderRadius: BorderRadius.circular(8),
             child: Image.network(
-              _currentOrder.billFileUrl!,
+              imageUrl,
               fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) {
+              width: double.infinity,
+              loadingBuilder: (ctx, child, progress) {
+                if (progress == null) return child;
                 return Container(
                   height: 200,
-                  color: Colors.grey[200],
-                  child: const Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.broken_image, size: 48, color: Colors.grey),
-                        SizedBox(height: 8),
-                        Text('Failed to load bill image'),
-                      ],
+                  color: Colors.grey[100],
+                  child: Center(
+                    child: CircularProgressIndicator(
+                      value: progress.expectedTotalBytes != null
+                          ? progress.cumulativeBytesLoaded /
+                              progress.expectedTotalBytes!
+                          : null,
                     ),
+                  ),
+                );
+              },
+              errorBuilder: (ctx, error, stack) {
+                AppLogger.error(
+                    'Bill image load error: $error | url: $imageUrl');
+                return Container(
+                  height: 200,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[100],
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.grey.shade300),
+                  ),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.broken_image,
+                          size: 48, color: Colors.grey),
+                      const SizedBox(height: 8),
+                      const Text('Failed to load bill image'),
+                      const SizedBox(height: 4),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: Text(
+                          imageUrl,
+                          style:
+                              const TextStyle(fontSize: 10, color: Colors.grey),
+                          textAlign: TextAlign.center,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
                   ),
                 );
               },
             ),
           ),
-          const SizedBox(height: 8),
-          ElevatedButton.icon(
-            onPressed: () {
-              // TODO: Open image in full screen
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                    content: Text('Opening full screen - Coming Soon')),
-              );
-            },
-            icon: const Icon(Icons.zoom_in),
-            label: const Text('View Full Size'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.black,
-              foregroundColor: Colors.white,
-            ),
+        ),
+        const SizedBox(height: 8),
+        ElevatedButton.icon(
+          onPressed: () => _openFullScreen(rawUrl, 'Bill'),
+          icon: const Icon(Icons.zoom_in),
+          label: const Text('View Full Size'),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.black,
+            foregroundColor: Colors.white,
           ),
-        ] else
-          const Text('No bill uploaded yet'),
+        ),
       ],
     );
   }
@@ -823,6 +1004,146 @@ class _AdminOrderDetailsPageState extends State<AdminOrderDetailsPage> {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+// =============================================================================
+// FULL SCREEN IMAGE VIEWER
+// Supports pinch-to-zoom, double-tap zoom, and pan.
+// =============================================================================
+
+class _FullScreenImagePage extends StatefulWidget {
+  final String imageUrl;
+  final String title;
+
+  const _FullScreenImagePage({required this.imageUrl, required this.title});
+
+  @override
+  State<_FullScreenImagePage> createState() => _FullScreenImagePageState();
+}
+
+class _FullScreenImagePageState extends State<_FullScreenImagePage>
+    with SingleTickerProviderStateMixin {
+  late TransformationController _transformCtrl;
+  TapDownDetails? _doubleTapDetails;
+  late AnimationController _animCtrl;
+  Animation<Matrix4>? _animation;
+
+  @override
+  void initState() {
+    super.initState();
+    _transformCtrl = TransformationController();
+    _animCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 250),
+    )..addListener(() {
+        if (_animation != null) {
+          _transformCtrl.value = _animation!.value;
+        }
+      });
+  }
+
+  @override
+  void dispose() {
+    _transformCtrl.dispose();
+    _animCtrl.dispose();
+    super.dispose();
+  }
+
+  void _onDoubleTapDown(TapDownDetails details) {
+    _doubleTapDetails = details;
+  }
+
+  void _onDoubleTap() {
+    final position = _doubleTapDetails!.localPosition;
+    final isZoomedIn = _transformCtrl.value.getMaxScaleOnAxis() > 1.0;
+
+    final Matrix4 end = isZoomedIn
+        ? Matrix4.identity()
+        : (Matrix4.identity()
+          ..translate(-position.dx * 2, -position.dy * 2)
+          ..scale(3.0));
+
+    _animation = Matrix4Tween(
+      begin: _transformCtrl.value,
+      end: end,
+    ).animate(CurveTween(curve: Curves.easeInOut).animate(_animCtrl));
+
+    _animCtrl.forward(from: 0);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      appBar: AppBar(
+        backgroundColor: Colors.black,
+        foregroundColor: Colors.white,
+        title: Text(widget.title, style: const TextStyle(color: Colors.white)),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.zoom_out_map, color: Colors.white),
+            tooltip: 'Reset zoom',
+            onPressed: () {
+              _animation = Matrix4Tween(
+                begin: _transformCtrl.value,
+                end: Matrix4.identity(),
+              ).animate(CurveTween(curve: Curves.easeOut).animate(_animCtrl));
+              _animCtrl.forward(from: 0);
+            },
+          ),
+        ],
+      ),
+      body: Center(
+        child: GestureDetector(
+          onDoubleTapDown: _onDoubleTapDown,
+          onDoubleTap: _onDoubleTap,
+          child: InteractiveViewer(
+            transformationController: _transformCtrl,
+            minScale: 0.5,
+            maxScale: 6.0,
+            child: Image.network(
+              widget.imageUrl,
+              fit: BoxFit.contain,
+              loadingBuilder: (ctx, child, progress) {
+                if (progress == null) return child;
+                return Center(
+                  child: CircularProgressIndicator(
+                    color: Colors.white,
+                    value: progress.expectedTotalBytes != null
+                        ? progress.cumulativeBytesLoaded /
+                            progress.expectedTotalBytes!
+                        : null,
+                  ),
+                );
+              },
+              errorBuilder: (ctx, error, stack) => Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.broken_image,
+                      color: Colors.white54, size: 64),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Failed to load image',
+                    style: TextStyle(color: Colors.white70),
+                  ),
+                  const SizedBox(height: 8),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 32),
+                    child: Text(
+                      widget.imageUrl,
+                      style:
+                          const TextStyle(color: Colors.white38, fontSize: 11),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }

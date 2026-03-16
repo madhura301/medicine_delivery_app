@@ -120,6 +120,7 @@ class _AdminServiceRegionsPageState extends State<AdminServiceRegionsPage> {
 
       if (_hasPermission) {
         await _loadCustomerSupports();
+        await _loadDeliveryBoys();
       }
     } catch (e) {
       AppLogger.error('Error in permission check: $e');

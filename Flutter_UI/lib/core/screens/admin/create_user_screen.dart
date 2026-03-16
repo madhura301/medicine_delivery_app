@@ -220,33 +220,30 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
           break;
 
         case 'Manager':
-          endpoint = '/Managers';
+          endpoint = '/Managers/register';
           userData = {
-            'mobileNumber': _mobileController.text.trim(),
-            'emailId': _emailController.text.trim(),
-            'password': _passwordController.text,
-            'managerFirstName': _firstNameController.text.trim(),
-            'managerLastName': _lastNameController.text.trim(),
-            'gender': _selectedGender,
-            'employeeId': _managerEmployeeIdController.text.trim(),
-            'department': _departmentController.text.trim(),
-            'isActive': true,
+            'managerFirstName':        _firstNameController.text.trim(),
+            'managerLastName':         _lastNameController.text.trim(),
+            'managerMiddleName':       _middleNameController.text.trim(),
+            'mobileNumber':            _mobileController.text.trim(),
+            'emailId':                 _emailController.text.trim(),
+            'alternativeMobileNumber': _alternativeMobileController.text.trim(),
+            'employeeId':              _managerEmployeeIdController.text.trim(),
+            'address':                 _supportAddressController.text.trim(),
+            'city':                    _supportCityController.text.trim(),
+            'state':                   _supportStateController.text.trim(),
           };
           break;
 
         case 'DeliveryBoy':
-          // Using Managers endpoint with different role
-          endpoint = '/Managers';
+          endpoint = '/Deliveries';
           userData = {
-            'mobileNumber': _mobileController.text.trim(),
-            'emailId': _emailController.text.trim(),
-            'password': _passwordController.text,
-            'managerFirstName': _firstNameController.text.trim(),
-            'managerLastName': _lastNameController.text.trim(),
-            'gender': _selectedGender,
-            'employeeId': _deliveryBoyEmployeeIdController.text.trim(),
-            'department': 'Delivery',
-            'isActive': true,
+            'firstName':  _firstNameController.text.trim(),
+            'lastName':   _lastNameController.text.trim(),
+            'middleName': _middleNameController.text.trim(),
+            'mobileNumber':         _mobileController.text.trim(),
+            'password':             _passwordController.text,
+            'drivingLicenceNumber': _deliveryBoyEmployeeIdController.text.trim(),
           };
           break;
 
@@ -268,12 +265,13 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
         AppLogger.info('✅ User created successfully');
         
         // Check if CustomerSupport or MedicalStore and show generated password
-        if ((_selectedRole == 'CustomerSupport' || _selectedRole == 'Chemist') && 
+        if ((_selectedRole == 'CustomerSupport' || _selectedRole == 'Chemist' || _selectedRole == 'Manager') && 
             response.data != null) {
           
-          // Extract password from response
           String? generatedPassword;
           if (_selectedRole == 'CustomerSupport') {
+            generatedPassword = response.data['password'];
+          } else if (_selectedRole == 'Manager') {
             generatedPassword = response.data['password'];
           } else if (_selectedRole == 'Chemist') {
             // MedicalStore response might be nested
@@ -648,7 +646,8 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
   }
 
   Widget _buildCommonFields() {
-    final bool showPassword = _selectedRole != 'CustomerSupport'; // Hide password for CustomerSupport
+    // Manager and CustomerSupport auto-generate passwords on the backend
+    final bool showPassword = _selectedRole != 'CustomerSupport' && _selectedRole != 'Manager';
     
     return Column(
       children: [
@@ -796,7 +795,7 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
         ),
 
         // Gender (for applicable roles - not for CustomerSupport or Chemist)
-        if (_selectedRole != 'Chemist' && _selectedRole != 'CustomerSupport') ...[
+        if (_selectedRole != 'Chemist' && _selectedRole != 'CustomerSupport' && _selectedRole != 'Manager') ...[
           const SizedBox(height: 16),
           DropdownButtonFormField<String>(
             value: _selectedGender,
@@ -1363,76 +1362,172 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
     );
   }
 
+  // ──────────────────────────────────────────────────────────────────────────
+  // Manager fields
+  // DTO: managerFirstName*, managerLastName*, managerMiddleName,
+  //      mobileNumber*, emailId, alternativeMobileNumber,
+  //      employeeId, address, city, state
+  // Note: firstName/lastName/mobile are already collected in _buildCommonFields.
+  //       Here we only show the Manager-specific extras.
+  // ──────────────────────────────────────────────────────────────────────────
   Widget _buildManagerFields() {
     return Column(
       children: [
+        // Middle Name (reuse existing _middleNameController)
+        TextFormField(
+          controller: _middleNameController,
+          decoration: InputDecoration(
+            labelText: 'Middle Name (Optional)',
+            prefixIcon: const Icon(Icons.person_outline),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+            filled: true,
+            fillColor: Colors.grey.shade50,
+          ),
+          textCapitalization: TextCapitalization.words,
+        ),
+        const SizedBox(height: 16),
+
+        // Employee ID
         TextFormField(
           controller: _managerEmployeeIdController,
           decoration: InputDecoration(
-            labelText: 'Employee ID',
+            labelText: 'Employee ID (Optional)',
             prefixIcon: const Icon(Icons.badge),
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
             filled: true,
             fillColor: Colors.grey.shade50,
           ),
+        ),
+        const SizedBox(height: 16),
+
+        // Alternative Mobile (reuse existing _alternativeMobileController)
+        TextFormField(
+          controller: _alternativeMobileController,
+          decoration: InputDecoration(
+            labelText: 'Alternative Mobile (Optional)',
+            prefixIcon: const Icon(Icons.phone_android),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+            filled: true,
+            fillColor: Colors.grey.shade50,
+          ),
+          keyboardType: TextInputType.phone,
           validator: (value) {
-            if (value == null || value.isEmpty) {
-              return 'Employee ID is required';
+            if (value != null && value.isNotEmpty && value.length != 10) {
+              return 'Please enter a valid 10-digit mobile number';
             }
             return null;
           },
         ),
         const SizedBox(height: 16),
+
+        // Address (reuse _supportAddressController)
         TextFormField(
-          controller: _departmentController,
+          controller: _supportAddressController,
           decoration: InputDecoration(
-            labelText: 'Department',
-            prefixIcon: const Icon(Icons.business),
+            labelText: 'Address (Optional)',
+            prefixIcon: const Icon(Icons.location_on),
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
             filled: true,
             fillColor: Colors.grey.shade50,
           ),
-          validator: (value) {
-            if (value == null || value.isEmpty) {
-              return 'Department is required';
-            }
-            return null;
-          },
+          maxLines: 2,
+        ),
+        const SizedBox(height: 16),
+
+        // City & State (reuse _supportCityController / _supportStateController)
+        Row(
+          children: [
+            Expanded(
+              child: TextFormField(
+                controller: _supportCityController,
+                decoration: InputDecoration(
+                  labelText: 'City (Optional)',
+                  prefixIcon: const Icon(Icons.location_city),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                  filled: true,
+                  fillColor: Colors.grey.shade50,
+                ),
+                textCapitalization: TextCapitalization.words,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: TextFormField(
+                controller: _supportStateController,
+                decoration: InputDecoration(
+                  labelText: 'State (Optional)',
+                  prefixIcon: const Icon(Icons.map),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                  filled: true,
+                  fillColor: Colors.grey.shade50,
+                ),
+                textCapitalization: TextCapitalization.words,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+
+        // Auto-password info banner
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: Colors.indigo.shade50,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: Colors.indigo.shade200),
+          ),
+          child: Row(
+            children: [
+              Icon(Icons.info_outline, color: Colors.indigo.shade700, size: 20),
+              const SizedBox(width: 8),
+              const Expanded(
+                child: Text(
+                  'A password will be auto-generated and shown after creation.',
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+                ),
+              ),
+            ],
+          ),
         ),
       ],
     );
   }
 
+  // ──────────────────────────────────────────────────────────────────────────
+  // Delivery Boy fields
+  // DTO: firstName*, lastName*, middleName, mobileNumber*, password*,
+  //      drivingLicenceNumber
+  // Note: firstName/lastName/mobile/password are in _buildCommonFields.
+  //       _deliveryBoyEmployeeIdController is repurposed for driving licence.
+  // ──────────────────────────────────────────────────────────────────────────
   Widget _buildDeliveryBoyFields() {
     return Column(
       children: [
+        // Middle Name
+        TextFormField(
+          controller: _middleNameController,
+          decoration: InputDecoration(
+            labelText: 'Middle Name (Optional)',
+            prefixIcon: const Icon(Icons.person_outline),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+            filled: true,
+            fillColor: Colors.grey.shade50,
+          ),
+          textCapitalization: TextCapitalization.words,
+        ),
+        const SizedBox(height: 16),
+
+        // Driving Licence (stored in _deliveryBoyEmployeeIdController)
         TextFormField(
           controller: _deliveryBoyEmployeeIdController,
           decoration: InputDecoration(
-            labelText: 'Employee ID',
-            prefixIcon: const Icon(Icons.badge),
+            labelText: 'Driving Licence Number (Optional)',
+            prefixIcon: const Icon(Icons.credit_card),
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
             filled: true,
             fillColor: Colors.grey.shade50,
           ),
-          validator: (value) {
-            if (value == null || value.isEmpty) {
-              return 'Employee ID is required';
-            }
-            return null;
-          },
-        ),
-        const SizedBox(height: 16),
-        TextFormField(
-          controller: _vehicleTypeController,
-          decoration: InputDecoration(
-            labelText: 'Vehicle Type (Optional)',
-            prefixIcon: const Icon(Icons.two_wheeler),
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-            filled: true,
-            fillColor: Colors.grey.shade50,
-            hintText: 'e.g., Bike, Scooter, Car',
-          ),
+          textCapitalization: TextCapitalization.characters,
         ),
       ],
     );

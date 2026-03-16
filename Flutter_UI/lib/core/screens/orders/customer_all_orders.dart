@@ -1,10 +1,8 @@
-// Customer All Orders Page
-// Shows all orders for the logged-in customer with filtering
-
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import 'package:intl/intl.dart';
 import 'package:pharmaish/core/app_routes.dart';
+import 'package:pharmaish/core/screens/payment/payment_summary_page.dart';
 import 'package:pharmaish/utils/app_logger.dart';
 import 'package:pharmaish/utils/constants.dart';
 import 'package:pharmaish/utils/storage.dart';
@@ -30,6 +28,9 @@ class _CustomerAllOrdersState extends State<CustomerAllOrders> {
 
   // Chemist info cache
   final Map<String, Map<String, String>> _chemistCache = {};
+
+  // Orders currently being rejected (shows spinner, disables buttons)
+  final Set<String> _rejectingOrders = {};
 
   @override
   void initState() {
@@ -204,38 +205,59 @@ class _CustomerAllOrdersState extends State<CustomerAllOrders> {
       _selectedFilterIndex = index;
 
       switch (index) {
-        case 0: // All
-          _filteredOrders = _allOrders;
+        case 0: // All — Out for Delivery pinned to top, rest sorted by date desc
+          final ofd = _allOrders
+              .where((o) => _isOutForDelivery(o.status))
+              .toList()
+            ..sort((a, b) => b.createdOn.compareTo(a.createdOn));
+          final rest = _allOrders
+              .where((o) => !_isOutForDelivery(o.status))
+              .toList()
+            ..sort((a, b) => b.createdOn.compareTo(a.createdOn));
+          _filteredOrders = [...ofd, ...rest];
           break;
-        case 1: // Active (Pending + Accepted)
+        case 1: // Out for Delivery
+          _filteredOrders = _allOrders
+              .where((o) => _isOutForDelivery(o.status))
+              .toList()
+            ..sort((a, b) => b.createdOn.compareTo(a.createdOn));
+          break;
+        case 2: // Active (Pending + Accepted + Bill + OFD)
           _filteredOrders = _allOrders
               .where((o) =>
                   o.status.toLowerCase().contains('pending') ||
                   o.status.toLowerCase().contains('assigned') ||
                   o.status.toLowerCase().contains('accepted') ||
                   o.status.toLowerCase().contains('bill') ||
-                  o.status.toLowerCase().contains('delivery'))
+                  _isOutForDelivery(o.status))
               .toList();
           break;
-        case 2: // Pending
+        case 3: // Pending
           _filteredOrders = _allOrders
               .where((o) =>
                   o.status.toLowerCase().contains('pending') ||
                   o.status.toLowerCase().contains('assigned'))
               .toList();
           break;
-        case 3: // Completed
+        case 4: // Completed
           _filteredOrders = _allOrders
               .where((o) => o.status.toLowerCase().contains('completed'))
               .toList();
           break;
-        case 4: // Rejected
+        case 5: // Rejected
           _filteredOrders = _allOrders
               .where((o) => o.status.toLowerCase().contains('rejected'))
               .toList();
           break;
       }
     });
+  }
+
+  // Helper — true for OutForDelivery status string from backend
+  bool _isOutForDelivery(String status) {
+    final s = status.toLowerCase();
+    return s.contains('outfordelivery') ||
+        (s.contains('delivery') && !s.contains('completed'));
   }
 
   String getChemistName(OrderModel order) {
@@ -297,13 +319,15 @@ class _CustomerAllOrdersState extends State<CustomerAllOrders> {
           children: [
             _buildFilterChip('All', 0, AppTheme.primaryColor),
             const SizedBox(width: 8),
-            _buildFilterChip('Active', 1, Colors.blue),
+            _buildFilterChip('Out for Delivery', 1, Colors.deepPurple),
             const SizedBox(width: 8),
-            _buildFilterChip('Pending', 2, Colors.orange),
+            _buildFilterChip('Active', 2, Colors.blue),
             const SizedBox(width: 8),
-            _buildFilterChip('Completed', 3, Colors.green),
+            _buildFilterChip('Pending', 3, Colors.orange),
             const SizedBox(width: 8),
-            _buildFilterChip('Rejected', 4, Colors.red),
+            _buildFilterChip('Completed', 4, Colors.green),
+            const SizedBox(width: 8),
+            _buildFilterChip('Rejected', 5, Colors.red),
           ],
         ),
       ),
@@ -335,26 +359,28 @@ class _CustomerAllOrdersState extends State<CustomerAllOrders> {
     switch (index) {
       case 0:
         return _allOrders.length;
-      case 1: // Active
+      case 1: // Out for Delivery
+        return _allOrders.where((o) => _isOutForDelivery(o.status)).length;
+      case 2: // Active
         return _allOrders
             .where((o) =>
                 o.status.toLowerCase().contains('pending') ||
                 o.status.toLowerCase().contains('assigned') ||
                 o.status.toLowerCase().contains('accepted') ||
                 o.status.toLowerCase().contains('bill') ||
-                o.status.toLowerCase().contains('delivery'))
+                _isOutForDelivery(o.status))
             .length;
-      case 2: // Pending
+      case 3: // Pending
         return _allOrders
             .where((o) =>
                 o.status.toLowerCase().contains('pending') ||
                 o.status.toLowerCase().contains('assigned'))
             .length;
-      case 3: // Completed
+      case 4: // Completed
         return _allOrders
             .where((o) => o.status.toLowerCase().contains('completed'))
             .length;
-      case 4: // Rejected
+      case 5: // Rejected
         return _allOrders
             .where((o) => o.status.toLowerCase().contains('rejected'))
             .length;
@@ -468,12 +494,14 @@ class _CustomerAllOrdersState extends State<CustomerAllOrders> {
       case 0:
         return 'All';
       case 1:
-        return 'Active';
+        return 'Out for Delivery';
       case 2:
-        return 'Pending';
+        return 'Active';
       case 3:
-        return 'Completed';
+        return 'Pending';
       case 4:
+        return 'Completed';
+      case 5:
         return 'Rejected';
       default:
         return '';
@@ -566,29 +594,148 @@ class _CustomerAllOrdersState extends State<CustomerAllOrders> {
                 ],
               ),
 
-              // Action button for active orders
+              // ─── Action buttons ──────────────────────────────────────────
               if (!order.status.toLowerCase().contains('completed') &&
                   !order.status.toLowerCase().contains('rejected')) ...[
                 const SizedBox(height: 12),
                 const Divider(),
                 const SizedBox(height: 8),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    TextButton.icon(
-                      onPressed: () => _showOrderDetails(order),
-                      icon: const Icon(Icons.visibility, size: 18),
-                      label: const Text('View Details'),
-                      style: TextButton.styleFrom(
-                        foregroundColor: AppTheme.primaryColor,
-                      ),
-                    ),
-                  ],
-                ),
+                _buildActionButtons(order),
               ],
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  // ─── Smart action buttons based on order status ─────────────────────────────
+
+  Widget _buildActionButtons(OrderModel order) {
+    final statusLower = order.status.toLowerCase();
+    final isOutForDelivery = statusLower.contains('outfordelivery') ||
+        (statusLower.contains('delivery') && !statusLower.contains('completed'));
+    final isBillUploaded = statusLower.contains('bill');
+    final isRejecting = _rejectingOrders.contains(order.orderId);
+
+    // OUT FOR DELIVERY — show Reject + Pay Now
+    if (isOutForDelivery && order.totalAmount != null && order.totalAmount! > 0) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Delivery banner
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: Colors.deepPurple.shade50,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.deepPurple.shade200),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.delivery_dining, color: Colors.deepPurple.shade700, size: 20),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Your order is out for delivery! Please pay to complete.',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.deepPurple.shade800,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              // Reject button
+              Expanded(
+                flex: 2,
+                child: OutlinedButton.icon(
+                  onPressed: isRejecting
+                      ? null
+                      : () => _showRejectDeliveryDialog(order),
+                  icon: isRejecting
+                      ? const SizedBox(
+                          width: 14, height: 14,
+                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.red),
+                        )
+                      : const Icon(Icons.cancel_outlined, size: 16),
+                  label: Text(isRejecting ? 'Rejecting...' : 'Reject'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.red,
+                    side: const BorderSide(color: Colors.red, width: 1.5),
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              // Pay Now button
+              Expanded(
+                flex: 3,
+                child: ElevatedButton.icon(
+                  onPressed: isRejecting ? null : () => _goToPayment(order),
+                  icon: const Icon(Icons.payment, size: 16),
+                  label: Text(
+                    'Pay ₹${order.totalAmount!.toStringAsFixed(0)}',
+                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    elevation: 2,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      );
+    }
+
+    // BILL UPLOADED — show Pay Now
+    if (isBillUploaded && order.totalAmount != null && order.totalAmount! > 0) {
+      return Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          TextButton.icon(
+            onPressed: () => _showOrderDetails(order),
+            icon: const Icon(Icons.visibility, size: 18),
+            label: const Text('View Details'),
+            style: TextButton.styleFrom(foregroundColor: AppTheme.primaryColor),
+          ),
+          ElevatedButton.icon(
+            onPressed: () => _goToPayment(order),
+            icon: const Icon(Icons.payment, size: 16),
+            label: Text(
+              'Pay ₹${order.totalAmount!.toStringAsFixed(0)}',
+              style: const TextStyle(fontSize: 13),
+            ),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.green,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+          ),
+        ],
+      );
+    }
+
+    // DEFAULT — View Details only
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: TextButton.icon(
+        onPressed: () => _showOrderDetails(order),
+        icon: const Icon(Icons.visibility, size: 18),
+        label: const Text('View Details'),
+        style: TextButton.styleFrom(foregroundColor: AppTheme.primaryColor),
       ),
     );
   }
@@ -633,9 +780,14 @@ class _CustomerAllOrdersState extends State<CustomerAllOrders> {
     } else if (statusLower.contains('completed')) {
       chipColor = Colors.green;
       statusText = 'Completed';
-    } else if (statusLower.contains('delivery')) {
-      chipColor = Colors.purple;
+    } else if (statusLower.contains('outfordelivery') ||
+        (statusLower.contains('delivery') && !statusLower.contains('completed'))) {
+      chipColor = Colors.deepPurple;
       statusText = 'Out for Delivery';
+    } else if (statusLower.contains('billuploaded') ||
+        statusLower.contains('bill')) {
+      chipColor = Colors.purple;
+      statusText = 'Bill Uploaded';
     } else {
       chipColor = Colors.grey;
     }
@@ -672,6 +824,163 @@ class _CustomerAllOrdersState extends State<CustomerAllOrders> {
       default:
         return type;
     }
+  }
+
+  // ─── Reject delivery ────────────────────────────────────────────────────────
+
+  Future<void> _showRejectDeliveryDialog(OrderModel order) async {
+    final reasonController = TextEditingController();
+    final confirmed = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            Icon(Icons.warning_amber_rounded, color: Colors.red.shade700, size: 28),
+            const SizedBox(width: 10),
+            const Text('Reject Delivery?'),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Order #${order.orderNumber ?? order.orderId}',
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Please tell us why you are rejecting this delivery.',
+              style: TextStyle(fontSize: 13, color: Colors.grey.shade700),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: reasonController,
+              maxLines: 3,
+              maxLength: 250,
+              decoration: InputDecoration(
+                hintText: 'e.g. Wrong medicines delivered, damaged packaging...',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: const BorderSide(color: Colors.red, width: 2),
+                ),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              if (reasonController.text.trim().isEmpty) {
+                ScaffoldMessenger.of(ctx).showSnackBar(
+                  const SnackBar(content: Text('Please provide a reason')),
+                );
+                return;
+              }
+              Navigator.of(ctx).pop(true);
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+            child: const Text('Confirm Reject'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      await _rejectOrder(order, reasonController.text.trim());
+    }
+    reasonController.dispose();
+  }
+
+  Future<void> _rejectOrder(OrderModel order, String reason) async {
+    setState(() => _rejectingOrders.add(order.orderId));
+
+    try {
+      final response = await _dio.put(
+        '/Orders/${order.orderId}/reject',
+        data: {'rejectNote': reason},
+      );
+
+      if (response.statusCode == 200) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  const Icon(Icons.check_circle, color: Colors.white, size: 20),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Order #${order.orderNumber ?? order.orderId} rejected. Our team will contact you.',
+                      style: const TextStyle(color: Colors.white),
+                    ),
+                  ),
+                ],
+              ),
+              backgroundColor: Colors.green,
+              duration: const Duration(seconds: 4),
+            ),
+          );
+          await _loadAllOrders();
+        }
+      }
+    } on DioException catch (e) {
+      AppLogger.error('Error rejecting order', e);
+      String msg = 'Failed to reject order. Please try again.';
+      if (e.response?.data is Map) {
+        final d = e.response!.data as Map;
+        msg = d['error']?.toString() ?? d['message']?.toString() ?? msg;
+      }
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(msg), backgroundColor: Colors.red),
+        );
+      }
+    } catch (e) {
+      AppLogger.error('Unexpected error rejecting order', e);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('An unexpected error occurred'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _rejectingOrders.remove(order.orderId));
+    }
+  }
+
+  // ─── Navigate to pay ─────────────────────────────────────────────────────────
+
+  void _goToPayment(OrderModel order) {
+    final amount = order.totalAmount!;
+    final fee = (amount * 0.025) < 20 ? 20.0 : amount * 0.025;
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => PaymentSummaryPage(
+          orderId: int.tryParse(order.orderId) ?? 0,
+          medicinesTotal: amount,
+          convenienceFee: fee,
+          orderNumber: order.orderNumber ?? order.orderId,
+          onPaymentSuccess: _loadAllOrders,
+        ),
+      ),
+    );
   }
 
   void _showOrderDetails(OrderModel order) {

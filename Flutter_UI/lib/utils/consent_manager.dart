@@ -55,6 +55,7 @@ class PharmacistConsentManager {
         onCancel: () async {
           // ✅ NEW: Handle cancel
           accepted = false;
+          Navigator.of(context).pop(); 
           if (consentId != null) {
             await ConsentService.rejectConsent(
               // ✅ Call reject API
@@ -123,6 +124,7 @@ class PharmacistConsentManager {
         onCancel: () async {
           // ✅ NEW: Handle cancel
           accepted = false;
+          Navigator.of(context).pop(); 
           if (consentId != null) {
             await ConsentService.rejectConsent(
                 // ✅ Call reject API
@@ -186,6 +188,7 @@ static Future<bool> showDataHandlingLiabilityDisclaimer(
         },
         onCancel: () async {
           accepted = false;
+          Navigator.of(context).pop(); 
           if (consentId != null) {
             await ConsentService.rejectConsent(
               consentId: consentId,
@@ -250,6 +253,7 @@ static Future<bool> showDataHandlingLiabilityDisclaimer(
         },
         onCancel: () async {
           accepted = false;
+          Navigator.of(context).pop(); 
           if (consentId != null) {
             await ConsentService.rejectConsent(
               consentId: consentId,
@@ -358,6 +362,7 @@ class CustomerConsentManager {
         onCancel: () async {
           // ✅ NEW: Handle cancel
           accepted = false;
+          Navigator.of(context).pop(); 
           if (consentId != null) {
             await ConsentService.rejectConsent(
                 // ✅ Call reject API
@@ -424,6 +429,7 @@ class CustomerConsentManager {
         onCancel: () async {
           // ✅ NEW: Handle cancel
           accepted = false;
+          Navigator.of(context).pop(); 
           if (consentId != null) {
             await ConsentService.rejectConsent(
                 // ✅ Call reject API
@@ -497,6 +503,7 @@ class CustomerConsentManager {
         onCancel: () async {
           // ✅ NEW: Handle cancel
           accepted = false;
+          Navigator.of(context).pop(); 
           if (consentId != null) {
             await ConsentService.rejectConsent(
                 // ✅ Call reject API
@@ -585,6 +592,7 @@ class CustomerConsentManager {
         onCancel: () async {
           // ✅ NEW: Handle cancel
           confirmed = false;
+          Navigator.of(context).pop(); 
           if (consentId != null) {
             await ConsentService.rejectConsent(
                 // ✅ Call reject API

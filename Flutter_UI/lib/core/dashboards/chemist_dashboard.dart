@@ -3,7 +3,6 @@ import 'package:intl/intl.dart';
 import 'package:dio/dio.dart';
 import 'package:pharmaish/config/environment_config.dart';
 //import 'package:pharmaish/core/screens/admin/admin_customer_support_regions.dart';
-import 'package:pharmaish/core/screens/chemist/chemist_delivery_management.dart';
 import 'package:pharmaish/core/services/consent_service.dart';
 import 'package:pharmaish/shared/widgets/order_tile_with_bill.dart';
 import 'package:pharmaish/utils/app_logger.dart';
@@ -556,35 +555,35 @@ class _ChemistDashboardState extends State<ChemistDashboard> {
                 // ✅ FIXED: Reduced spacing before Deliveries section
                 const Divider(height: 1), // Changed from default height
 
-                // Deliveries Section Header - removed extra padding
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16,
-                      4), // ✅ Reduced top padding from 8 to 8 and bottom from 8 to 4
-                  child: Text(
-                    'DELIVERIES',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.grey.shade600,
-                    ),
-                  ),
-                ),
+                // // Deliveries Section Header - removed extra padding
+                // Padding(
+                //   padding: const EdgeInsets.fromLTRB(16, 8, 16,
+                //       4), // ✅ Reduced top padding from 8 to 8 and bottom from 8 to 4
+                //   child: Text(
+                //     'DELIVERIES',
+                //     style: TextStyle(
+                //       fontSize: 12,
+                //       fontWeight: FontWeight.bold,
+                //       color: Colors.grey.shade600,
+                //     ),
+                //   ),
+                // ),
 
-                ListTile(
-                  leading:
-                      const Icon(Icons.local_shipping, color: Colors.purple),
-                  title: const Text('Out for Delivery'),
-                  subtitle: const Text('Track & complete deliveries'),
-                  onTap: () {
-                    Navigator.pop(context);
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const ChemistDeliveryManagement(),
-                      ),
-                    );
-                  },
-                ),
+                // ListTile(
+                //   leading:
+                //       const Icon(Icons.local_shipping, color: Colors.purple),
+                //   title: const Text('Out for Delivery'),
+                //   subtitle: const Text('Track & complete deliveries'),
+                //   onTap: () {
+                //     Navigator.pop(context);
+                //     Navigator.push(
+                //       context,
+                //       MaterialPageRoute(
+                //         builder: (context) => const ChemistDeliveryManagement(),
+                //       ),
+                //     );
+                //   },
+                // ),
               ],
             ),
           ),

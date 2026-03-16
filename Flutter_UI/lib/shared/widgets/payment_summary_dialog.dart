@@ -5,6 +5,7 @@ import 'package:pharmaish/core/screens/payment/payment_summary_page.dart';
 class PaymentSummaryDialog {
   static Future<void> show(
     BuildContext context, {
+    required int orderId ,
     required double medicinesTotal,
     double convenienceFee = 20.0,
     String? orderNumber,
@@ -27,6 +28,7 @@ class PaymentSummaryDialog {
             ),
           ),
           child: PaymentSummaryPage(
+            orderId: orderId,
             medicinesTotal: medicinesTotal,
             convenienceFee: convenienceFee,
             orderNumber: orderNumber,

@@ -1,6 +1,3 @@
-// COMPLETE CUSTOMER SUPPORT DASHBOARD
-// Copy this entire file to replace lib/core/dashboards/support_dashboard.dart
-
 import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
@@ -109,6 +106,8 @@ class _CustomerSupportDashboardState extends State<CustomerSupportDashboard> {
         return 'Rejected Orders';
       case 2:
         return 'Create WhatsApp Order';
+      case 3:
+        return 'Assigned Orders';
       default:
         return 'Customer Support';
     }
@@ -163,6 +162,7 @@ class _CustomerSupportDashboardState extends State<CustomerSupportDashboard> {
           _buildDashboardHome(),
           RejectedOrdersPage(dio: _dio),
           WhatsAppOrderCreationPage(dio: _dio),
+          AssignedOrdersPage(dio: _dio),
         ],
       ),
     );
@@ -245,6 +245,16 @@ class _CustomerSupportDashboardState extends State<CustomerSupportDashboard> {
                     Navigator.of(context).pop();
                   },
                 ),
+                ListTile(
+                  leading: const Icon(Icons.assignment_ind, color: Colors.blue),
+                  title: const Text('Assigned Orders'),
+                  selected: _selectedIndex == 3,
+                  selectedTileColor: Colors.black.withOpacity(0.1),
+                  onTap: () {
+                    setState(() => _selectedIndex = 3);
+                    Navigator.of(context).pop();
+                  },
+                ),
                 const Divider(height: 1),
               ],
             ),
@@ -295,6 +305,14 @@ class _CustomerSupportDashboardState extends State<CustomerSupportDashboard> {
               subtitle: 'Create order on behalf of customer',
               color: Colors.green,
               onTap: () => setState(() => _selectedIndex = 2),
+            ),
+            const SizedBox(height: 16),
+            _buildQuickActionCard(
+              icon: Icons.assignment_ind,
+              title: 'Assigned Orders',
+              subtitle: 'View orders assigned to you',
+              color: Colors.blue,
+              onTap: () => setState(() => _selectedIndex = 3),
             ),
           ],
         ),
@@ -2309,6 +2327,326 @@ class ChemistModel {
       city: json['city'] ?? '',
       state: json['state'] ?? '',
       isActive: json['isActive'] ?? false,
+    );
+  }
+}
+
+// ============================================================================
+// ASSIGNED ORDERS PAGE
+// ============================================================================
+
+class AssignedOrdersPage extends StatefulWidget {
+  final Dio dio;
+
+  const AssignedOrdersPage({Key? key, required this.dio}) : super(key: key);
+
+  @override
+  State<AssignedOrdersPage> createState() => _AssignedOrdersPageState();
+}
+
+class _AssignedOrdersPageState extends State<AssignedOrdersPage>
+    with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
+
+  bool _isLoading = true;
+  String? _errorMessage;
+  List<OrderModel> _assignedOrders = [];
+  String _customerSupportId = '';
+  final Map<String, Map<String, String>> _customerCache = {};
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCustomerSupportIdAndOrders();
+  }
+
+  Future<void> _loadCustomerSupportIdAndOrders() async {
+    try {
+      final userId = await StorageService.getUserId();
+      if (userId == null || userId.isEmpty) {
+        setState(() {
+          _errorMessage = 'Customer Support ID not found. Please login again.';
+          _isLoading = false;
+        });
+        return;
+      }
+      setState(() => _customerSupportId = userId);
+      await _loadAssignedOrders();
+    } catch (e) {
+      AppLogger.error('Error loading customer support ID', e);
+      setState(() {
+        _errorMessage = 'Error loading user information';
+        _isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _loadAssignedOrders() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      AppLogger.info('Fetching assigned orders for customer support: $_customerSupportId');
+      final response = await widget.dio.get(
+        '/Orders/customersupport/$_customerSupportId/assignedtocustomersupport',
+      );
+
+      if (response.statusCode == 200) {
+        final data = response.data;
+        List<dynamic> ordersList;
+        if (data is List) {
+          ordersList = data;
+        } else if (data is Map && data.containsKey('data')) {
+          ordersList = data['data'] as List;
+        } else if (data is Map && data.containsKey('orders')) {
+          ordersList = data['orders'] as List;
+        } else {
+          throw Exception('Unexpected response format');
+        }
+
+        final orders = ordersList.map((json) => OrderModel.fromJson(json)).toList();
+        orders.sort((a, b) => b.createdOn.compareTo(a.createdOn));
+
+        await _loadCustomerInfo(orders);
+
+        setState(() {
+          _assignedOrders = orders;
+          _isLoading = false;
+        });
+      }
+    } on DioException catch (e) {
+      AppLogger.error('Error loading assigned orders', e);
+      String errorMsg = 'Failed to load assigned orders';
+      if (e.response?.statusCode == 401) {
+        errorMsg = 'Authentication failed. Please login again.';
+      } else if (e.response?.statusCode == 404) {
+        errorMsg = 'No assigned orders found';
+      }
+      setState(() {
+        _errorMessage = errorMsg;
+        _isLoading = false;
+      });
+    } catch (e) {
+      AppLogger.error('Unexpected error loading assigned orders', e);
+      setState(() {
+        _errorMessage = 'An unexpected error occurred';
+        _isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _loadCustomerInfo(List<OrderModel> orders) async {
+    for (var order in orders) {
+      if (!_customerCache.containsKey(order.customerId)) {
+        try {
+          final response = await widget.dio.get('/Customers/${order.customerId}');
+          if (response.statusCode == 200) {
+            final d = response.data;
+            final firstName = d['customerFirstName'] ?? '';
+            final lastName  = d['customerLastName'] ?? '';
+            final fullName  = '$firstName $lastName'.trim();
+            _customerCache[order.customerId] = {
+              'name':  fullName.isEmpty ? 'Customer' : fullName,
+              'email': d['emailId']?.toString() ?? '',
+              'phone': d['mobileNumber']?.toString() ?? '',
+            };
+          }
+        } catch (_) {
+          _customerCache[order.customerId] = {
+            'name': 'Customer', 'email': '', 'phone': '',
+          };
+        }
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    super.build(context);
+
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator(color: Colors.blue));
+    }
+
+    if (_errorMessage != null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.error_outline, size: 64, color: Colors.red.shade300),
+              const SizedBox(height: 16),
+              Text(_errorMessage!, textAlign: TextAlign.center),
+              const SizedBox(height: 16),
+              ElevatedButton.icon(
+                onPressed: _loadCustomerSupportIdAndOrders,
+                icon: const Icon(Icons.refresh),
+                label: const Text('Retry'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.black,
+                  foregroundColor: Colors.white,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    if (_assignedOrders.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.assignment_ind, size: 80, color: Colors.grey.shade300),
+            const SizedBox(height: 16),
+            const Text(
+              'No Assigned Orders',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Orders assigned to you will appear here',
+              style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return RefreshIndicator(
+      onRefresh: _loadAssignedOrders,
+      child: ListView.builder(
+        padding: const EdgeInsets.all(16),
+        itemCount: _assignedOrders.length,
+        itemBuilder: (context, index) {
+          final order = _assignedOrders[index];
+          final customerName = _customerCache[order.customerId]?['name'] ?? 'Customer';
+          final customerPhone = _customerCache[order.customerId]?['phone'] ?? '';
+          return _buildOrderCard(order, customerName, customerPhone);
+        },
+      ),
+    );
+  }
+
+  Widget _buildOrderCard(OrderModel order, String customerName, String customerPhone) {
+    Color statusColor;
+    String statusText;
+    final statusLower = order.status.toLowerCase();
+
+    if (statusLower.contains('pending') || statusLower.contains('assigned')) {
+      statusColor = Colors.orange;
+      statusText = 'Pending';
+    } else if (statusLower.contains('accepted')) {
+      statusColor = Colors.green;
+      statusText = 'Accepted';
+    } else if (statusLower.contains('rejected')) {
+      statusColor = Colors.red;
+      statusText = 'Rejected';
+    } else if (statusLower.contains('bill')) {
+      statusColor = Colors.purple;
+      statusText = 'Bill Uploaded';
+    } else if (statusLower.contains('delivery')) {
+      statusColor = Colors.teal;
+      statusText = 'Out for Delivery';
+    } else if (statusLower.contains('completed')) {
+      statusColor = Colors.blue;
+      statusText = 'Completed';
+    } else {
+      statusColor = Colors.grey;
+      statusText = order.status;
+    }
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Header row
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: statusColor.withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(4),
+                    border: Border.all(color: statusColor, width: 1),
+                  ),
+                  child: Text(
+                    statusText.toUpperCase(),
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                      color: statusColor,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    customerName,
+                    style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'Order #${order.orderNumber ?? order.orderId}',
+              style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Created: ${order.createdOn.toLocal().toString().substring(0, 16)}',
+              style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+            ),
+
+            // Order type
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Icon(Icons.list_alt, size: 14, color: Colors.grey[600]),
+                const SizedBox(width: 4),
+                Text(
+                  'Type: ${order.orderInputType.value}',
+                  style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                ),
+                if (order.totalAmount != null) ...[ 
+                  const SizedBox(width: 16),
+                  Icon(Icons.currency_rupee, size: 14, color: Colors.grey[600]),
+                  Text(
+                    '${order.totalAmount!.toStringAsFixed(2)}',
+                    style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                  ),
+                ],
+              ],
+            ),
+
+            // Phone if available
+            if (customerPhone.isNotEmpty) ...[
+              const SizedBox(height: 4),
+              Row(
+                children: [
+                  Icon(Icons.phone, size: 14, color: Colors.grey[600]),
+                  const SizedBox(width: 4),
+                  Text(
+                    customerPhone,
+                    style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                  ),
+                ],
+              ),
+            ],
+          ],
+        ),
+      ),
     );
   }
 }

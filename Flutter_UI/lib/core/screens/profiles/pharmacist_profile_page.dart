@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:pharmaish/core/screens/auth/change_password_page.dart';
 import 'package:pharmaish/core/theme/app_theme.dart';
 import 'package:pharmaish/utils/app_logger.dart';
 import 'package:flutter/material.dart';
@@ -717,6 +718,11 @@ class _PharmacistProfilePageState extends State<PharmacistProfilePage> {
                           ),
 
                           if (_isEditMode) const SizedBox(height: 32),
+
+                          // ── Security / Change Password ─────────────────
+                          const SizedBox(height: 8),
+                          _buildSecuritySection(),
+                          const SizedBox(height: 24),
                         ],
                       ),
                     ),
@@ -767,6 +773,141 @@ class _PharmacistProfilePageState extends State<PharmacistProfilePage> {
                   ),
               ],
             ),
+    );
+  }
+
+  // ── Security Section ────────────────────────────────────────────────────
+
+  Widget _buildSecuritySection() {
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: AppTheme.primaryColor.withValues(alpha: 0.1),
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(12),
+                topRight: Radius.circular(12),
+              ),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.security, color: AppTheme.primaryColor, size: 20),
+                const SizedBox(width: 8),
+                const Text(
+                  'Security',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: AppTheme.primaryColor,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: Colors.orange.shade50,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Icon(Icons.lock_outline,
+                          color: Colors.orange.shade700, size: 22),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('Password',
+                              style: TextStyle(
+                                  fontSize: 15, fontWeight: FontWeight.w600)),
+                          const SizedBox(height: 2),
+                          Text('Update your account password anytime',
+                              style: TextStyle(
+                                  fontSize: 12, color: Colors.grey.shade600)),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) =>
+                            ChangePasswordPage(mobileNumber: _userName),
+                      ),
+                    ),
+                    icon: const Icon(Icons.edit_outlined, size: 18),
+                    label: const Text('Change Password',
+                        style: TextStyle(
+                            fontSize: 14, fontWeight: FontWeight.w600)),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppTheme.primaryColor,
+                      side: const BorderSide(
+                          color: AppTheme.primaryColor, width: 1.5),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10)),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.shade50,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.info_outline,
+                          size: 14, color: Colors.blue.shade600),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Use a mix of uppercase, lowercase, numbers and special characters.',
+                          style: TextStyle(
+                              fontSize: 11,
+                              color: Colors.blue.shade700,
+                              height: 1.3),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 

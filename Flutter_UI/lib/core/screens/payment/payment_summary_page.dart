@@ -1,8 +1,13 @@
-
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:dio/dio.dart';
+import 'package:pharmaish/utils/app_logger.dart';
+import 'package:pharmaish/utils/constants.dart';
+import 'package:pharmaish/utils/storage.dart';
+import 'package:pharmaish/config/environment_config.dart';
 
 class PaymentSummaryPage extends StatefulWidget {
+  final int orderId;           // ← NEW: required to record payment
   final double medicinesTotal;
   final double convenienceFee;
   final String? orderNumber;
@@ -10,6 +15,7 @@ class PaymentSummaryPage extends StatefulWidget {
 
   const PaymentSummaryPage({
     Key? key,
+    required this.orderId,     // ← NEW
     required this.medicinesTotal,
     this.convenienceFee = 20.0,
     this.orderNumber,
@@ -23,8 +29,29 @@ class PaymentSummaryPage extends StatefulWidget {
 class _PaymentSummaryPageState extends State<PaymentSummaryPage> {
   PaymentMethod _selectedPaymentMethod = PaymentMethod.upi;
   bool _isProcessing = false;
+  late Dio _dio;
 
   double get totalAmount => widget.medicinesTotal + widget.convenienceFee;
+
+  @override
+  void initState() {
+    super.initState();
+    _setupDio();
+  }
+
+  void _setupDio() {
+    _dio = Dio();
+    _dio.options.baseUrl = AppConstants.apiBaseUrl;
+    _dio.options.connectTimeout = EnvironmentConfig.timeoutDuration;
+    _dio.options.receiveTimeout = EnvironmentConfig.timeoutDuration;
+    _dio.interceptors.add(InterceptorsWrapper(
+      onRequest: (options, handler) async {
+        final token = await StorageService.getAuthToken();
+        if (token != null) options.headers['Authorization'] = 'Bearer \$token';
+        handler.next(options);
+      },
+    ));
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -446,71 +473,112 @@ Widget _buildPaymentMethods() {
   }
 
   Future<void> _handlePayment() async {
-    setState(() {
-      _isProcessing = true;
-    });
+    setState(() => _isProcessing = true);
 
-    // Simulate payment processing
-    await Future.delayed(const Duration(seconds: 2));
+    try {
+      // Build a transaction ID (in real app this comes from payment gateway)
+      final transactionId = 'TXN_${widget.orderId}_${DateTime.now().millisecondsSinceEpoch}';
+      final paymentMode = _paymentModeString(_selectedPaymentMethod);
 
-    setState(() {
-      _isProcessing = false;
-    });
+      AppLogger.info('Recording payment for order ${widget.orderId}: '
+          'amount=\$totalAmount, mode=\$paymentMode, txn=\$transactionId');
 
-    if (mounted) {
-      // Show success dialog
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (context) => AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
+      // POST /api/Payments  — records the payment and marks order FullyPaid
+      await _dio.post(
+        '/Payments',
+        data: {
+          'orderId': widget.orderId,
+          'paymentMode': paymentMode,
+          'transactionId': transactionId,
+          'amount': totalAmount,
+          'paymentStatus': 1, // 1 = Success
+        },
+      );
+
+      if (mounted) {
+        _showSuccessDialog();
+      }
+    } on DioException catch (e) {
+      AppLogger.error('Payment recording failed', e);
+      String msg = 'Payment failed. Please try again.';
+      if (e.response?.data is Map) {
+        final d = e.response!.data as Map;
+        msg = d['error']?.toString() ?? d['message']?.toString() ?? msg;
+      }
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(msg), backgroundColor: Colors.red),
+        );
+      }
+    } catch (e) {
+      AppLogger.error('Unexpected payment error', e);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('An unexpected error occurred. Please try again.'),
+            backgroundColor: Colors.red,
           ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                Icons.check_circle,
-                color: Colors.green,
-                size: 64,
-              ),
-              const SizedBox(height: 16),
-              const Text(
-                'Payment Successful!',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Amount: ₹${totalAmount.toStringAsFixed(2)}',
-                style: TextStyle(
-                  fontSize: 16,
-                  color: Colors.grey.shade700,
-                ),
-              ),
-            ],
-          ),
-          actions: [
-            ElevatedButton(
-              onPressed: () {
-                Navigator.pop(context); // Close dialog
-                Navigator.pop(context); // Close payment page
-                widget.onPaymentSuccess?.call();
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.green,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-              child: const Text('Done'),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isProcessing = false);
+    }
+  }
+
+  String _paymentModeString(PaymentMethod method) {
+    switch (method) {
+      case PaymentMethod.upi:        return 'UPI';
+      case PaymentMethod.card:       return 'Card';
+      case PaymentMethod.netBanking: return 'NetBanking';
+      case PaymentMethod.wallet:     return 'Wallet';
+      case PaymentMethod.cod:        return 'COD';
+    }
+  }
+
+  void _showSuccessDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.check_circle, color: Colors.green, size: 64),
+            const SizedBox(height: 16),
+            const Text(
+              'Payment Successful!',
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Amount: ₹${totalAmount.toStringAsFixed(2)}',
+              style: TextStyle(fontSize: 16, color: Colors.grey.shade700),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Order #${widget.orderNumber ?? widget.orderId}',
+              style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
             ),
           ],
         ),
-      );
-    }
+        actions: [
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context); // close dialog
+              Navigator.pop(context); // close payment page
+              widget.onPaymentSuccess?.call();
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.green,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+            child: const Text('Done'),
+          ),
+        ],
+      ),
+    );
   }
 }
 

@@ -194,6 +194,9 @@ class StorageService {
       return 'CustomerSupport';
     } else if (roleString.contains('manager')) {
       return 'Manager';
+    } else if (roleString.contains('deliveryboy') ||
+        roleString.contains('delivery')) {
+      return 'DeliveryBoy';
     } else if (roleString.contains('customer')) {
       return 'Customer';
     } else {

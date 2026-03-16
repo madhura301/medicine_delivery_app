@@ -9,6 +9,8 @@ import 'package:pharmaish/shared/models/order_model.dart';
 import 'package:pharmaish/core/screens/orders/accepted_order_bill_screen.dart';
 import 'package:pharmaish/core/screens/delivery/assign_delivery_boy_screen.dart';
 import 'package:pharmaish/shared/widgets/payment_summary_dialog.dart';
+import 'package:pharmaish/utils/consent_manager.dart';
+import 'package:pharmaish/utils/constants.dart';
 
 class OrderTileWithBill extends StatelessWidget {
   final OrderModel order;
@@ -57,6 +59,11 @@ class OrderTileWithBill extends StatelessWidget {
     return statusLower.contains('bill') || statusLower == 'bill uploaded';
   }
 
+  bool _hasPrescription() {
+    return order.prescriptionFileUrl != null &&
+        order.prescriptionFileUrl!.isNotEmpty;
+  }
+
   void navigateToPayNowPage(context) {
     // Navigator.pushNamed(
     //   context,
@@ -71,6 +78,7 @@ class OrderTileWithBill extends StatelessWidget {
       context,
       MaterialPageRoute(
         builder: (context) => PaymentSummaryPage(
+          orderId: 45,
           medicinesTotal: 850.0,
           convenienceFee: 20.0,
           orderNumber: '5IKK4FVR3F',
@@ -97,6 +105,85 @@ class OrderTileWithBill extends StatelessWidget {
   double calculateConvenienceFee(double medicinesTotal) {
     final fee = medicinesTotal * 0.025; // 2.5%
     return fee < 20 ? 20 : fee;
+  }
+
+  void _showPrescriptionDialog(BuildContext context) {
+    final rawUrl = order.prescriptionFileUrl ?? '';
+    final base = AppConstants.apiBaseUrl.replaceAll(RegExp(r'/api/?$'), '');
+    final url = rawUrl.startsWith('http')
+        ? rawUrl
+        : '$base/${rawUrl.replaceAll('\\', '/').replaceAll(RegExp(r'^/'), '')}';
+
+    showDialog(
+      context: context,
+      builder: (ctx) => Dialog(
+        backgroundColor: Colors.black,
+        insetPadding: const EdgeInsets.all(12),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Header
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'Prescription',
+                    style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close, color: Colors.white),
+                    onPressed: () => Navigator.pop(ctx),
+                  ),
+                ],
+              ),
+            ),
+            // Image with zoom
+            InteractiveViewer(
+              minScale: 0.5,
+              maxScale: 6.0,
+              child: Image.network(
+                url,
+                fit: BoxFit.contain,
+                loadingBuilder: (context, child, loadingProgress) {
+                  if (loadingProgress == null) return child;
+                  return const SizedBox(
+                    height: 300,
+                    child: Center(
+                      child: CircularProgressIndicator(color: Colors.white),
+                    ),
+                  );
+                },
+                errorBuilder: (context, error, stackTrace) => SizedBox(
+                  height: 300,
+                  child: Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.broken_image,
+                            color: Colors.grey, size: 48),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Could not load image\n$url',
+                          style:
+                              const TextStyle(color: Colors.grey, fontSize: 11),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
   }
 
   @override
@@ -263,6 +350,33 @@ class OrderTileWithBill extends StatelessWidget {
                         ),
                       ),
 
+                    // View Prescription Button - for accepted orders pending bill
+                    if (!isBillUploaded && _hasPrescription())
+                      TextButton.icon(
+                        onPressed: () async {
+                          final accepted = await PharmacistConsentManager
+                              .showPrescriptionAccessPermission(
+                            context,
+                            orderId: order.orderId,
+                            customerId: order.customerId,
+                          );
+                          if (accepted && context.mounted) {
+                            _showPrescriptionDialog(context);
+                          }
+                        },
+                        icon: const Icon(Icons.image_search, size: 16),
+                        label: const Text(
+                          'View Prescription',
+                          style: TextStyle(fontSize: 12),
+                        ),
+                        style: TextButton.styleFrom(
+                          foregroundColor: Colors.blue,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 8,
+                          ),
+                        ),
+                      ),
                     // // Pay Now Button
                     // if (hasAmount)
                     //   //if (!hasBill || !hasAmount)
