@@ -1,0 +1,35 @@
+Test connection string :"PostgresConnection": "Host=188.241.187.172;Database=MedicineDeliveryTest;Username=postgres;Password=dipmala2022;Port=5433;Include Error Detail=true"
+
+
+Step 1: Find PostgreSQL config files
+Since you're using port 5433, your config files are likely at:
+C:\Program Files\PostgreSQL\<version>\data\
+or check your custom data directory.
+Step 2: Edit postgresql.conf
+Open postgresql.conf in a text editor (as Administrator) and change:
+listen_addresses = '*'
+Step 3: Edit pg_hba.conf
+In the same directory, add this line at the end of pg_hba.conf:
+# Allow specific IP (recommended)host    MedicineDeliveryTest    postgres    <your-local-ip>/32    md5# OR allow all IPs (less secure)host    all    all    0.0.0.0/0    md5
+Step 4: Restart PostgreSQL service
+Open PowerShell as Administrator and run:
+# Find the exact service nameGet-Service -Name *postgres*# Restart it (adjust the service name if different)Restart-Service -Name "postgresql-x64-<version>"
+Or use Services (services.msc) — find the PostgreSQL service, right-click, and restart it.
+Step 5: Open port 5433 in Windows Firewall
+Open PowerShell as Administrator:
+New-NetFirewallRule -DisplayName "PostgreSQL Remote Access" -Direction Inbound -Protocol TCP -LocalPort 5433 -Action Allow
+Or do it via Windows Defender Firewall with Advanced Security (wf.msc):
+Click Inbound Rules > New Rule
+Select Port > TCP > Specific port: 5433
+Select Allow the connection
+Apply to Domain, Private, Public
+Name it "PostgreSQL Remote Access"
+Step 6: Check hosting provider firewall
+If your VM is hosted on a cloud provider (Azure, AWS, etc.), make sure port 5433 is also allowed in the Network Security Group or equivalent firewall settings at the cloud level.
+Connection string
+Once all the above is done, use this connection string from your local machine:
+Host=188.241.187.172;Database=MedicineDeliveryTest;Username=postgres;Password=dipmala2022;Port=5433
+Testing the connection
+You can verify connectivity from your local machine using PowerShell:
+Test-NetConnection -ComputerName 188.241.187.172 -Port 5433
+If TcpTestSucceeded shows True, the port is reachable and you should be able to connect with a database client like pgAdmin or DBeaver using the connection details above.

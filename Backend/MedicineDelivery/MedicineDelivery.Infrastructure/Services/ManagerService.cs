@@ -274,7 +274,8 @@ namespace MedicineDelivery.Infrastructure.Services
                 (password[i], password[j]) = (password[j], password[i]);
             }
             
-            return new string(password.ToArray());
+            //return new string(password.ToArray());
+            return "Password@123";
         }
     }
 }

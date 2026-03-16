@@ -1,0 +1,885 @@
+{
+	"info": {
+		"_postman_id": "mediswift-customer-addresses-testing",
+		"name": "MediSwift - Customer Addresses Testing",
+		"description": "End-to-end test of the Customer Addresses CRUD flow.\n\nCovers:\n- System bootstrap (roles, permissions, users)\n- Admin login\n- Register a customer with an initial address\n- Create additional addresses\n- Get address by ID\n- Get all addresses by customer ID\n- Get default address\n- Update address (partial update — only send fields you want to change)\n- Set default address\n- Delete address (soft delete)\n- Verification of all operations\n\nRun this collection using Postman's Collection Runner to execute all requests sequentially.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"variable": [
+		{ "key": "baseUrl", "value": "http://localhost:5000", "type": "string" },
+		{ "key": "adminToken", "value": "", "type": "string" },
+		{ "key": "customerId", "value": "", "type": "string" },
+		{ "key": "addressId1", "value": "", "type": "string" },
+		{ "key": "addressId2", "value": "", "type": "string" },
+		{ "key": "addressId3", "value": "", "type": "string" }
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					"console.log('\\n========== ' + pm.info.requestName + ' ==========');"
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					"console.log('[' + pm.info.requestName + '] Status: ' + pm.response.code + ' ' + pm.response.status);",
+					"if (pm.response.code >= 400) {",
+					"    console.error('[' + pm.info.requestName + '] ERROR BODY: ' + pm.response.text());",
+					"}"
+				]
+			}
+		}
+	],
+	"item": [
+		{
+			"name": "1 - System Bootstrap",
+			"description": "One-time setup: creates roles, permissions, role-permission mappings, and admin seed user.",
+			"item": [
+				{
+					"name": "01. Create Predefined Roles",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/setup/roles/predefined",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "setup", "roles", "predefined"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Predefined roles created or already exist', function () {",
+									"    pm.expect([200, 409]).to.include(pm.response.code);",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "02. Create Predefined Permissions",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/setup/permissions/predefined",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "setup", "permissions", "predefined"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Predefined permissions created or already exist', function () {",
+									"    pm.expect([200, 409]).to.include(pm.response.code);",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "03. Map Role Permissions",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/setup/role-permissions/predefined",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "setup", "role-permissions", "predefined"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Role-permission mappings created or already exist', function () {",
+									"    pm.expect([200, 409]).to.include(pm.response.code);",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "04. Create Admin User",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/setup/users/admin",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "setup", "users", "admin"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Admin user created or already exists', function () {",
+									"    pm.expect([200, 409]).to.include(pm.response.code);",
+									"});"
+								]
+							}
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "2 - Admin Login & Customer Setup",
+			"description": "Admin logs in, then registers a customer to work with addresses.",
+			"item": [
+				{
+					"name": "05. Admin Login",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"mobileNumber\": \"9999999999\",\n    \"password\": \"Admin@123\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/Auth/login",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "Auth", "login"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Admin login successful', function () {",
+									"    pm.response.to.have.status(200);",
+									"    var json = pm.response.json();",
+									"    pm.expect(json.success).to.eql(true);",
+									"    pm.expect(json.token).to.be.a('string').and.not.empty;",
+									"    pm.collectionVariables.set('adminToken', json.token);",
+									"    console.log('Admin token captured.');",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "06. Register Customer (With Initial Address)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"customerFirstName\": \"Amit\",\n    \"customerLastName\": \"Deshmukh\",\n    \"customerMiddleName\": \"R\",\n    \"mobileNumber\": \"8149601599\",\n    \"password\": \"Customer@123\",\n    \"alternativeMobileNumber\": \"8149601598\",\n    \"emailId\": \"amit.deshmukh@test.com\",\n    \"dateOfBirth\": \"1995-06-15T00:00:00Z\",\n    \"gender\": \"Male\",\n    \"addresses\": [\n        {\n            \"address\": \"Home Address\",\n            \"addressLine1\": \"Flat 301, Green Valley Apartments\",\n            \"addressLine2\": \"Near City Mall, MG Road\",\n            \"addressLine3\": \"Koregaon Park\",\n            \"city\": \"Pune\",\n            \"state\": \"Maharashtra\",\n            \"postalCode\": \"411001\",\n            \"latitude\": 18.5362,\n            \"longitude\": 73.8938,\n            \"isDefault\": true\n        }\n    ]\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/Customers/register",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "Customers", "register"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Customer registered with initial address', function () {",
+									"    pm.response.to.have.status(201);",
+									"    var json = pm.response.json();",
+									"    pm.expect(json.success).to.eql(true);",
+									"    var customer = json.customer;",
+									"    pm.expect(customer.customerId).to.not.be.undefined;",
+									"    pm.collectionVariables.set('customerId', customer.customerId.toString());",
+									"    console.log('customerId =', customer.customerId);",
+									"    console.log('Name:', customer.customerFirstName, customer.customerLastName);",
+									"    if (customer.addresses && customer.addresses.length > 0) {",
+									"        pm.collectionVariables.set('addressId1', customer.addresses[0].id.toString());",
+									"        console.log('addressId1 =', customer.addresses[0].id);",
+									"        console.log('Default address:', customer.addresses[0].city, customer.addresses[0].postalCode);",
+									"    }",
+									"});"
+								]
+							}
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "3 - Create Addresses",
+			"description": "Create additional addresses for the customer.",
+			"item": [
+				{
+					"name": "07. Create Address 2 (Office - Full Details)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" },
+							{ "key": "Authorization", "value": "Bearer {{adminToken}}" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"customerId\": \"{{customerId}}\",\n    \"address\": \"Office Address\",\n    \"addressLine1\": \"Tower B, 5th Floor, IT Park\",\n    \"addressLine2\": \"Hinjewadi Phase 1\",\n    \"addressLine3\": \"Near Rajiv Gandhi Infotech Park\",\n    \"city\": \"Pune\",\n    \"state\": \"Maharashtra\",\n    \"postalCode\": \"411057\",\n    \"latitude\": 18.5912,\n    \"longitude\": 73.7390,\n    \"isDefault\": false\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/CustomerAddresses",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "CustomerAddresses"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Address 2 created', function () {",
+									"    pm.expect([200, 201]).to.include(pm.response.code);",
+									"    var json = pm.response.json();",
+									"    pm.expect(json.id).to.not.be.undefined;",
+									"    pm.expect(json.isDefault).to.eql(false);",
+									"    pm.collectionVariables.set('addressId2', json.id.toString());",
+									"    console.log('addressId2 =', json.id);",
+									"    console.log('Address:', json.address, '|', json.addressLine1);",
+									"    console.log('City:', json.city, '| PostalCode:', json.postalCode);",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "08. Create Address 3 (Minimal - No Lat/Long)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" },
+							{ "key": "Authorization", "value": "Bearer {{adminToken}}" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"customerId\": \"{{customerId}}\",\n    \"address\": \"Parents House\",\n    \"addressLine1\": \"House No 45, Samarth Colony\",\n    \"city\": \"Nashik\",\n    \"state\": \"Maharashtra\",\n    \"postalCode\": \"422002\",\n    \"isDefault\": false\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/CustomerAddresses",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "CustomerAddresses"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Address 3 created (minimal, no lat/long)', function () {",
+									"    pm.expect([200, 201]).to.include(pm.response.code);",
+									"    var json = pm.response.json();",
+									"    pm.expect(json.id).to.not.be.undefined;",
+									"    pm.expect(json.latitude).to.be.null;",
+									"    pm.expect(json.longitude).to.be.null;",
+									"    pm.collectionVariables.set('addressId3', json.id.toString());",
+									"    console.log('addressId3 =', json.id);",
+									"    console.log('City:', json.city, '| PostalCode:', json.postalCode);",
+									"    console.log('Lat/Long: null (not provided)');",
+									"});"
+								]
+							}
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "4 - Read Addresses",
+			"description": "Test all GET endpoints for customer addresses.",
+			"item": [
+				{
+					"name": "09. Get Address by ID",
+					"request": {
+						"method": "GET",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{adminToken}}" }
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/CustomerAddresses/{{addressId1}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "CustomerAddresses", "{{addressId1}}"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Address 1 details returned', function () {",
+									"    pm.response.to.have.status(200);",
+									"    var json = pm.response.json();",
+									"    pm.expect(json.id).to.eql(pm.collectionVariables.get('addressId1'));",
+									"    pm.expect(json.isDefault).to.eql(true);",
+									"    pm.expect(json.isActive).to.eql(true);",
+									"    console.log('ID:', json.id);",
+									"    console.log('Address:', json.address, '|', json.addressLine1);",
+									"    console.log('City:', json.city, '| PostalCode:', json.postalCode);",
+									"    console.log('IsDefault:', json.isDefault, '| IsActive:', json.isActive);",
+									"    console.log('Lat:', json.latitude, '| Long:', json.longitude);",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "10. Get Address by ID - Not Found (Expect 404)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{adminToken}}" }
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/CustomerAddresses/00000000-0000-0000-0000-000000000000",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "CustomerAddresses", "00000000-0000-0000-0000-000000000000"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Non-existent address returns 404', function () {",
+									"    pm.response.to.have.status(404);",
+									"    console.log('Confirmed: empty GUID returns 404.');",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "11. Get All Addresses by Customer ID",
+					"request": {
+						"method": "GET",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{adminToken}}" }
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/CustomerAddresses/customer/{{customerId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "CustomerAddresses", "customer", "{{customerId}}"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('All customer addresses returned (should be 3)', function () {",
+									"    pm.response.to.have.status(200);",
+									"    var json = pm.response.json();",
+									"    pm.expect(json).to.be.an('array').with.length(3);",
+									"    console.log('Total addresses:', json.length);",
+									"    json.forEach(function(a) {",
+									"        console.log('  ID:', a.id, '| Address:', a.address, '| City:', a.city, '| Default:', a.isDefault);",
+									"    });",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "12. Get Default Address",
+					"request": {
+						"method": "GET",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{adminToken}}" }
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/CustomerAddresses/customer/{{customerId}}/default",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "CustomerAddresses", "customer", "{{customerId}}", "default"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Default address is address 1', function () {",
+									"    pm.response.to.have.status(200);",
+									"    var json = pm.response.json();",
+									"    pm.expect(json.id).to.eql(pm.collectionVariables.get('addressId1'));",
+									"    pm.expect(json.isDefault).to.eql(true);",
+									"    console.log('Default address:', json.address, '|', json.city);",
+									"});"
+								]
+							}
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "5 - Update Addresses (Partial Update)",
+			"description": "Test partial updates — only send the fields you want to change.",
+			"item": [
+				{
+					"name": "13. Update Address 2 - Only City (Partial)",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" },
+							{ "key": "Authorization", "value": "Bearer {{adminToken}}" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"city\": \"Mumbai\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/CustomerAddresses/{{addressId2}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "CustomerAddresses", "{{addressId2}}"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Address 2 city updated, other fields unchanged', function () {",
+									"    pm.response.to.have.status(200);",
+									"    var json = pm.response.json();",
+									"    pm.expect(json.city).to.eql('Mumbai');",
+									"    // Other fields should remain unchanged",
+									"    pm.expect(json.addressLine1).to.eql('Tower B, 5th Floor, IT Park');",
+									"    pm.expect(json.postalCode).to.eql('411057');",
+									"    pm.expect(json.state).to.eql('Maharashtra');",
+									"    console.log('City updated to:', json.city);",
+									"    console.log('AddressLine1 unchanged:', json.addressLine1);",
+									"    console.log('PostalCode unchanged:', json.postalCode);",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "14. Update Address 3 - Add Lat/Long Only (Partial)",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" },
+							{ "key": "Authorization", "value": "Bearer {{adminToken}}" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"latitude\": 20.0063,\n    \"longitude\": 73.7904\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/CustomerAddresses/{{addressId3}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "CustomerAddresses", "{{addressId3}}"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Address 3 lat/long added, other fields unchanged', function () {",
+									"    pm.response.to.have.status(200);",
+									"    var json = pm.response.json();",
+									"    pm.expect(json.latitude).to.not.be.null;",
+									"    pm.expect(json.longitude).to.not.be.null;",
+									"    // Other fields should remain unchanged",
+									"    pm.expect(json.address).to.eql('Parents House');",
+									"    pm.expect(json.city).to.eql('Nashik');",
+									"    pm.expect(json.postalCode).to.eql('422002');",
+									"    console.log('Lat:', json.latitude, '| Long:', json.longitude);",
+									"    console.log('Address unchanged:', json.address);",
+									"    console.log('City unchanged:', json.city);",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "15. Update Address 1 - Multiple Fields (Partial)",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" },
+							{ "key": "Authorization", "value": "Bearer {{adminToken}}" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"addressLine1\": \"Flat 501, Green Valley Apartments\",\n    \"addressLine2\": \"Near New City Mall, FC Road\",\n    \"postalCode\": \"411004\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/CustomerAddresses/{{addressId1}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "CustomerAddresses", "{{addressId1}}"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Address 1 multiple fields updated, rest unchanged', function () {",
+									"    pm.response.to.have.status(200);",
+									"    var json = pm.response.json();",
+									"    pm.expect(json.addressLine1).to.eql('Flat 501, Green Valley Apartments');",
+									"    pm.expect(json.addressLine2).to.include('FC Road');",
+									"    pm.expect(json.postalCode).to.eql('411004');",
+									"    // These should remain unchanged",
+									"    pm.expect(json.address).to.eql('Home Address');",
+									"    pm.expect(json.city).to.eql('Pune');",
+									"    pm.expect(json.state).to.eql('Maharashtra');",
+									"    pm.expect(json.isDefault).to.eql(true);",
+									"    console.log('Updated - AddressLine1:', json.addressLine1);",
+									"    console.log('Updated - PostalCode:', json.postalCode);",
+									"    console.log('Unchanged - City:', json.city, '| IsDefault:', json.isDefault);",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "16. Update Non-existent Address (Expect 404)",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" },
+							{ "key": "Authorization", "value": "Bearer {{adminToken}}" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"city\": \"Ghost City\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/CustomerAddresses/00000000-0000-0000-0000-000000000000",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "CustomerAddresses", "00000000-0000-0000-0000-000000000000"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Update non-existent address returns 404', function () {",
+									"    pm.response.to.have.status(404);",
+									"    console.log('Confirmed: update empty GUID returns 404.');",
+									"});"
+								]
+							}
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "6 - Set Default Address",
+			"description": "Test changing the default address.",
+			"item": [
+				{
+					"name": "17. Set Address 2 as Default",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{adminToken}}" }
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/CustomerAddresses/customer/{{customerId}}/set-default/{{addressId2}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "CustomerAddresses", "customer", "{{customerId}}", "set-default", "{{addressId2}}"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Address 2 set as default', function () {",
+									"    pm.response.to.have.status(200);",
+									"    var json = pm.response.json();",
+									"    pm.expect(json.message).to.include('Default address updated');",
+									"    console.log('Default address changed to addressId2.');",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "18. Verify New Default Address",
+					"request": {
+						"method": "GET",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{adminToken}}" }
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/CustomerAddresses/customer/{{customerId}}/default",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "CustomerAddresses", "customer", "{{customerId}}", "default"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Default address is now address 2', function () {",
+									"    pm.response.to.have.status(200);",
+									"    var json = pm.response.json();",
+									"    pm.expect(json.id).to.eql(pm.collectionVariables.get('addressId2'));",
+									"    pm.expect(json.isDefault).to.eql(true);",
+									"    console.log('New default address:', json.address, '|', json.city);",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "19. Verify Address 1 No Longer Default",
+					"request": {
+						"method": "GET",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{adminToken}}" }
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/CustomerAddresses/{{addressId1}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "CustomerAddresses", "{{addressId1}}"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Address 1 is no longer default', function () {",
+									"    pm.response.to.have.status(200);",
+									"    var json = pm.response.json();",
+									"    pm.expect(json.isDefault).to.eql(false);",
+									"    console.log('Address 1 isDefault:', json.isDefault, '(correctly unset)');",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "20. Set Default via Partial Update (IsDefault Only)",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" },
+							{ "key": "Authorization", "value": "Bearer {{adminToken}}" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"isDefault\": true\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/CustomerAddresses/{{addressId3}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "CustomerAddresses", "{{addressId3}}"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Address 3 set as default via partial update', function () {",
+									"    pm.response.to.have.status(200);",
+									"    var json = pm.response.json();",
+									"    pm.expect(json.isDefault).to.eql(true);",
+									"    // Other fields should remain unchanged",
+									"    pm.expect(json.address).to.eql('Parents House');",
+									"    pm.expect(json.city).to.eql('Nashik');",
+									"    console.log('Address 3 isDefault:', json.isDefault);",
+									"    console.log('Unchanged - Address:', json.address, '| City:', json.city);",
+									"});"
+								]
+							}
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "7 - Delete Addresses",
+			"description": "Test soft delete and verify deletion.",
+			"item": [
+				{
+					"name": "21. Delete Address 3 (Soft Delete)",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{adminToken}}" }
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/CustomerAddresses/{{addressId3}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "CustomerAddresses", "{{addressId3}}"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Address 3 soft-deleted', function () {",
+									"    pm.response.to.have.status(204);",
+									"    console.log('addressId3 soft-deleted successfully.');",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "22. Verify Address 3 Deleted (Expect 404)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{adminToken}}" }
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/CustomerAddresses/{{addressId3}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "CustomerAddresses", "{{addressId3}}"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Deleted address returns 404', function () {",
+									"    pm.response.to.have.status(404);",
+									"    console.log('Confirmed: addressId3 returns 404 after deletion.');",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "23. Delete Non-existent Address (Expect 404)",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{adminToken}}" }
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/CustomerAddresses/00000000-0000-0000-0000-000000000000",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "CustomerAddresses", "00000000-0000-0000-0000-000000000000"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Delete non-existent address returns 404', function () {",
+									"    pm.response.to.have.status(404);",
+									"    console.log('Confirmed: delete empty GUID returns 404.');",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "24. Final - Get All Addresses (Verify State)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{adminToken}}" }
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/CustomerAddresses/customer/{{customerId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "CustomerAddresses", "customer", "{{customerId}}"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Final state: 2 active addresses remain, address 3 deleted', function () {",
+									"    pm.response.to.have.status(200);",
+									"    var json = pm.response.json();",
+									"    pm.expect(json).to.be.an('array').with.length(2);",
+									"    var id1 = pm.collectionVariables.get('addressId1');",
+									"    var id2 = pm.collectionVariables.get('addressId2');",
+									"    var id3 = pm.collectionVariables.get('addressId3');",
+									"    var addr1 = json.find(a => a.id === id1);",
+									"    var addr2 = json.find(a => a.id === id2);",
+									"    var addr3 = json.find(a => a.id === id3);",
+									"    pm.expect(addr1).to.not.be.undefined;",
+									"    pm.expect(addr2).to.not.be.undefined;",
+									"    pm.expect(addr3).to.be.undefined;",
+									"    console.log('Address 1 present:', addr1 ? 'Yes' : 'No', '| Default:', addr1 ? addr1.isDefault : '-');",
+									"    console.log('Address 2 present:', addr2 ? 'Yes' : 'No', '| Default:', addr2 ? addr2.isDefault : '-');",
+									"    console.log('Address 3 present:', addr3 ? 'No (deleted)' : 'No (deleted)');",
+									"    console.log('Total active addresses:', json.length);",
+									"});"
+								]
+							}
+						}
+					]
+				}
+			]
+		}
+	]
+}

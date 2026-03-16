@@ -62,6 +62,7 @@ namespace MedicineDelivery.Infrastructure.Services
                 {
                     if (!string.IsNullOrWhiteSpace(pinCode))
                     {
+                        await EnsurePinCodeUniquePerRegionTypeAsync(pinCode.Trim(), createDto.RegionType, region.Id);
                         var regionPinCode = new ServiceRegionPinCode
                         {
                             ServiceRegionId = region.Id,
@@ -182,6 +183,7 @@ namespace MedicineDelivery.Infrastructure.Services
                 {
                     if (!string.IsNullOrWhiteSpace(pinCode))
                     {
+                        await EnsurePinCodeUniquePerRegionTypeAsync(pinCode.Trim(), region.RegionType, id);
                         var regionPinCode = new ServiceRegionPinCode
                         {
                             ServiceRegionId = id,
@@ -254,6 +256,8 @@ namespace MedicineDelivery.Infrastructure.Services
                 _logger.LogWarning("AddPinCodeToRegionAsync failed: Pin code {PinCode} already exists for region {RegionId}", addDto.PinCode, addDto.ServiceRegionId);
                 throw new InvalidOperationException($"Pin code '{addDto.PinCode}' already exists for this region.");
             }
+
+            await EnsurePinCodeUniquePerRegionTypeAsync(addDto.PinCode.Trim(), region.RegionType, addDto.ServiceRegionId);
 
             var regionPinCode = new ServiceRegionPinCode
             {
@@ -460,6 +464,34 @@ namespace MedicineDelivery.Infrastructure.Services
             await _unitOfWork.SaveChangesAsync();
 
             return true;
+        }
+
+        /// <summary>
+        /// Ensures the pin code is not already assigned to another region of the same type.
+        /// Throws <see cref="InvalidOperationException"/> if it is.
+        /// </summary>
+        private async Task EnsurePinCodeUniquePerRegionTypeAsync(string pinCode, RegionType regionType, int? excludeRegionId)
+        {
+            var trimmed = pinCode.Trim();
+            var existingRows = await _unitOfWork.ServiceRegionPinCodes.FindAsync(p => p.PinCode == trimmed);
+            var regionIds = existingRows.Select(p => p.ServiceRegionId).Distinct().ToList();
+            if (regionIds.Count == 0)
+                return;
+
+            var otherRegionIds = excludeRegionId.HasValue
+                ? regionIds.Where(id => id != excludeRegionId.Value).ToList()
+                : regionIds;
+            if (otherRegionIds.Count == 0)
+                return;
+
+            var regionsOfSameType = await _unitOfWork.ServiceRegions.FindAsync(sr =>
+                otherRegionIds.Contains(sr.Id) && sr.RegionType == regionType);
+            if (regionsOfSameType.Any())
+            {
+                var regionTypeName = regionType == RegionType.DeliveryBoy ? "Delivery" : "CustomerSupport";
+                _logger.LogWarning("EnsurePinCodeUniquePerRegionTypeAsync: Pin code {PinCode} already assigned to another {RegionType} region", trimmed, regionTypeName);
+                throw new InvalidOperationException($"Pin code '{trimmed}' is already assigned to another {regionTypeName} region.");
+            }
         }
     }
 }

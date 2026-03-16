@@ -7,7 +7,6 @@ using MedicineDelivery.Application.DTOs;
 using MedicineDelivery.Application.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
 namespace MedicineDelivery.API.Controllers
@@ -18,13 +17,13 @@ namespace MedicineDelivery.API.Controllers
     public class OrdersController : ControllerBase
     {
         private readonly IOrderService _orderService;
-        private readonly IHostEnvironment _hostEnvironment;
+        private readonly IFileStorageService _fileStorage;
         private readonly ILogger<OrdersController> _logger;
 
-        public OrdersController(IOrderService orderService, IHostEnvironment hostEnvironment, ILogger<OrdersController> logger)
+        public OrdersController(IOrderService orderService, IFileStorageService fileStorage, ILogger<OrdersController> logger)
         {
             _orderService = orderService;
-            _hostEnvironment = hostEnvironment;
+            _fileStorage = fileStorage;
             _logger = logger;
         }
 
@@ -521,21 +520,14 @@ namespace MedicineDelivery.API.Controllers
                     return NotFound(new { error = "Order input file not found for this order." });
                 }
 
-                // Construct the full file path
-                // Normalize the path by replacing forward slashes with the platform-specific directory separator
-                var normalizedPath = order.OrderInputFileLocation.Replace('/', Path.DirectorySeparatorChar);
-                var filePath = Path.Combine(_hostEnvironment.ContentRootPath, normalizedPath);
-
-                if (!System.IO.File.Exists(filePath))
+                var stream = await _fileStorage.OpenReadAsync(order.OrderInputFileLocation, cancellationToken);
+                if (stream == null)
                 {
                     return NotFound(new { error = "Order input file does not exist on the server." });
                 }
 
-                // Get file name from path
-                var fileName = Path.GetFileName(filePath);
-                
-                // Determine content type based on file extension
-                var fileExtension = Path.GetExtension(filePath).ToLowerInvariant();
+                var fileName = Path.GetFileName(order.OrderInputFileLocation);
+                var fileExtension = Path.GetExtension(order.OrderInputFileLocation).ToLowerInvariant();
                 var contentType = fileExtension switch
                 {
                     ".jpg" or ".jpeg" => "image/jpeg",
@@ -550,8 +542,7 @@ namespace MedicineDelivery.API.Controllers
                     _ => "application/octet-stream"
                 };
 
-                var fileBytes = await System.IO.File.ReadAllBytesAsync(filePath, cancellationToken);
-                return File(fileBytes, contentType, fileName);
+                return File(stream, contentType, fileName);
             }
             catch (OperationCanceledException)
             {
@@ -586,24 +577,16 @@ namespace MedicineDelivery.API.Controllers
                     return NotFound(new { error = "Order bill file not found for this order." });
                 }
 
-                // Construct the full file path
-                // Normalize the path by replacing forward slashes with the platform-specific directory separator
-                var normalizedPath = order.OrderBillFileLocation.Replace('/', Path.DirectorySeparatorChar);
-                var filePath = Path.Combine(_hostEnvironment.ContentRootPath, normalizedPath);
-
-                if (!System.IO.File.Exists(filePath))
+                var stream = await _fileStorage.OpenReadAsync(order.OrderBillFileLocation, cancellationToken);
+                if (stream == null)
                 {
                     return NotFound(new { error = "Order bill file does not exist on the server." });
                 }
 
-                // Get file name from path
-                var fileName = Path.GetFileName(filePath);
-                
-                // Bill files are PDFs
+                var fileName = Path.GetFileName(order.OrderBillFileLocation);
                 var contentType = "application/pdf";
 
-                var fileBytes = await System.IO.File.ReadAllBytesAsync(filePath, cancellationToken);
-                return File(fileBytes, contentType, fileName);
+                return File(stream, contentType, fileName);
             }
             catch (OperationCanceledException)
             {

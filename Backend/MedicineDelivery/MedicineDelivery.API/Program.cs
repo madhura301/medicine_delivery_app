@@ -38,7 +38,11 @@ try
     builder.Host.UseSerilog();
 
 // Add services to the container.
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.AllowTrailingCommas = true;
+    });
 
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
@@ -356,6 +360,8 @@ builder.Services.AddScoped<MedicineDelivery.Application.Interfaces.ICustomerAddr
 builder.Services.AddScoped<MedicineDelivery.Application.Interfaces.IDeliveryService, MedicineDelivery.Infrastructure.Services.DeliveryService>();
 builder.Services.AddScoped<MedicineDelivery.Application.Interfaces.IServiceRegionService, MedicineDelivery.Infrastructure.Services.ServiceRegionService>();
 builder.Services.AddScoped<MedicineDelivery.Application.Interfaces.IPhotoUploadService, MedicineDelivery.Infrastructure.Services.PhotoUploadService>();
+// File storage: swap LocalFileStorageService with AzureBlobStorageService to switch to Azure Blob Storage
+builder.Services.AddScoped<MedicineDelivery.Application.Interfaces.IFileStorageService, MedicineDelivery.Infrastructure.Services.LocalFileStorageService>();
 builder.Services.AddScoped<MedicineDelivery.Application.Interfaces.IPermissionCheckerService, MedicineDelivery.Infrastructure.Services.PermissionCheckerService>();
 builder.Services.AddScoped<MedicineDelivery.Application.Interfaces.IOrderService, MedicineDelivery.Infrastructure.Services.OrderService>();
 builder.Services.AddScoped<MedicineDelivery.Application.Interfaces.IConsentService, MedicineDelivery.Infrastructure.Services.ConsentService>();

@@ -8,7 +8,7 @@ using MedicineDelivery.Domain.Interfaces;
 using MedicineDelivery.Infrastructure.Data;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Hosting;
+
 using Microsoft.Extensions.Logging;
 using NetTopologySuite;
 using NetTopologySuite.Geometries;
@@ -28,18 +28,18 @@ namespace MedicineDelivery.Infrastructure.Services
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly IMapper _mapper;
-        private readonly IHostEnvironment _hostEnvironment;
+        private readonly IFileStorageService _fileStorageService;
         private readonly ApplicationDbContext _context;
         private readonly ILogger<OrderService> _logger;
         private static readonly string[] AllowedImageExtensions = { ".jpg", ".jpeg", ".png", ".gif", ".bmp" };
         private static readonly string[] AllowedVoiceExtensions = { ".mp3", ".wav", ".m4a", ".aac", ".ogg" };
         private static readonly string[] AllowedPdfExtensions = { ".pdf" };
 
-        public OrderService(IUnitOfWork unitOfWork, IMapper mapper, IHostEnvironment hostEnvironment, ApplicationDbContext context, ILogger<OrderService> logger)
+        public OrderService(IUnitOfWork unitOfWork, IMapper mapper, IFileStorageService fileStorageService, ApplicationDbContext context, ILogger<OrderService> logger)
         {
             _unitOfWork = unitOfWork;
             _mapper = mapper;
-            _hostEnvironment = hostEnvironment;
+            _fileStorageService = fileStorageService;
             _context = context;
             _logger = logger;
         }
@@ -253,8 +253,74 @@ namespace MedicineDelivery.Infrastructure.Services
             }
             else
             {
-                _logger.LogWarning("AssignOrderToNearestChemist failed: Customer address missing coordinates for Order {OrderId}", orderId);
-                throw new InvalidOperationException("Customer address does not have coordinates (latitude/longitude) required for finding nearest chemist.");
+                // No lat/long available — fall back to postal code based assignment
+                _logger.LogInformation("Order {OrderId}: Address missing coordinates, falling back to postal code based assignment", orderId);
+
+                if (string.IsNullOrWhiteSpace(address.PostalCode))
+                {
+                    _logger.LogWarning("AssignOrderToNearestChemist failed: Customer address missing both coordinates and postal code for Order {OrderId}", orderId);
+                    throw new InvalidOperationException("Customer address does not have coordinates or postal code required for assigning a chemist.");
+                }
+
+                var postalCode = address.PostalCode.Trim();
+
+                // Find all active medical stores in the same postal code
+                var storesInPostalCode = await _unitOfWork.MedicalStores.FindAsync(ms =>
+                    ms.PostalCode == postalCode &&
+                    ms.IsActive &&
+                    !ms.IsDeleted);
+
+                if (storesInPostalCode != null && storesInPostalCode.Any())
+                {
+                    // Case 1: Chemists found — assign to the one with the fewest active (not completed/delivered) orders
+                    var storeOrderCounts = new List<(MedicalStore Store, int ActiveOrderCount)>();
+
+                    foreach (var store in storesInPostalCode)
+                    {
+                        var activeOrderCount = (await _unitOfWork.Orders.FindAsync(
+                            o => o.MedicalStoreId == store.MedicalStoreId &&
+                                 o.OrderStatus != OrderStatus.Completed &&
+                                 o.OrderStatus != OrderStatus.RejectedByChemist)).Count();
+
+                        storeOrderCounts.Add((store, activeOrderCount));
+                    }
+
+                    var selectedStore = storeOrderCounts
+                        .OrderBy(x => x.ActiveOrderCount)
+                        .ThenBy(x => x.Store.CreatedOn) // tie-breaker: oldest store first
+                        .First()
+                        .Store;
+
+                    // Assign order to the selected store
+                    order.MedicalStoreId = selectedStore.MedicalStoreId;
+                    order.AssignTo = AssignTo.Chemist;
+                    order.AssignedByType = AssignedByType.System;
+                    order.OrderStatus = OrderStatus.AssignedToChemist;
+                    order.UpdatedOn = DateTime.UtcNow;
+
+                    var assignmentHistory = new OrderAssignmentHistory
+                    {
+                        OrderId = order.OrderId,
+                        CustomerId = order.CustomerId,
+                        MedicalStoreId = selectedStore.MedicalStoreId,
+                        AssignedByType = AssignedByType.System,
+                        AssignTo = AssignTo.Chemist,
+                        AssignedOn = DateTime.UtcNow,
+                        Status = AssignmentStatus.Assigned
+                    };
+
+                    _unitOfWork.Orders.Update(order);
+                    await _unitOfWork.OrderAssignmentHistories.AddAsync(assignmentHistory);
+                    await _unitOfWork.SaveChangesAsync();
+
+                    _logger.LogInformation("Order {OrderId} assigned to chemist {MedicalStoreId} (postal code match, least active orders)", order.OrderId, selectedStore.MedicalStoreId);
+                }
+                else
+                {
+                    // Case 2: No chemists in this postal code — assign to customer support
+                    _logger.LogInformation("Order {OrderId}: No chemists found in postal code {PostalCode}, assigning to customer support", orderId, postalCode);
+                    await AssignRejectOrderToCustomerSupport(orderId);
+                }
             }
         }
 
@@ -778,19 +844,14 @@ namespace MedicineDelivery.Infrastructure.Services
                 _ => throw new InvalidOperationException("Unsupported order input type for file upload.")
             };
 
-            var basePath = Path.Combine(_hostEnvironment.ContentRootPath, "Files", "Orders", folderName);
-            Directory.CreateDirectory(basePath);
-
             var fileExtension = Path.GetExtension(file.FileName);
             var uniqueFileName = $"{Guid.NewGuid():N}{fileExtension}";
-            var filePath = Path.Combine(basePath, uniqueFileName);
+            var relativePath = Path.Combine("Files", "Orders", folderName, uniqueFileName).Replace("\\", "/");
 
-            using (var stream = new FileStream(filePath, FileMode.Create))
-            {
-                await file.CopyToAsync(stream, cancellationToken);
-            }
+            using var stream = file.OpenReadStream();
+            await _fileStorageService.UploadAsync(stream, relativePath, cancellationToken);
 
-            return Path.Combine("Files", "Orders", folderName, uniqueFileName).Replace("\\", "/");
+            return relativePath;
         }
 
         /// <summary>
@@ -841,19 +902,14 @@ namespace MedicineDelivery.Infrastructure.Services
             }
 
             // Save the PDF file
-            var basePath = Path.Combine(_hostEnvironment.ContentRootPath, "Files", "Orders", "Bills");
-            Directory.CreateDirectory(basePath);
-
             var fileExtension = Path.GetExtension(uploadDto.BillFile.FileName);
             var uniqueFileName = $"{Guid.NewGuid():N}{fileExtension}";
-            var filePath = Path.Combine(basePath, uniqueFileName);
-
-            using (var stream = new FileStream(filePath, FileMode.Create))
-            {
-                await uploadDto.BillFile.CopyToAsync(stream, cancellationToken);
-            }
-
             var fileLocation = Path.Combine("Files", "Orders", "Bills", uniqueFileName).Replace("\\", "/");
+
+            using (var stream = uploadDto.BillFile.OpenReadStream())
+            {
+                await _fileStorageService.UploadAsync(stream, fileLocation, cancellationToken);
+            }
 
             // Update order with bill file location and amount
             order.OrderBillFileLocation = fileLocation;
