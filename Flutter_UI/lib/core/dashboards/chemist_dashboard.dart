@@ -4,6 +4,7 @@ import 'package:dio/dio.dart';
 import 'package:pharmaish/config/environment_config.dart';
 //import 'package:pharmaish/core/screens/admin/admin_customer_support_regions.dart';
 import 'package:pharmaish/core/services/consent_service.dart';
+import 'package:pharmaish/shared/widgets/order_assignment_history_widget.dart';
 import 'package:pharmaish/shared/widgets/order_tile_with_bill.dart';
 import 'package:pharmaish/utils/app_logger.dart';
 import 'package:pharmaish/utils/consent_manager.dart';
@@ -1475,13 +1476,55 @@ class OrderDetailsPage extends StatefulWidget {
 
 class _OrderDetailsPageState extends State<OrderDetailsPage> {
   bool _isPlaying = false;
+late OrderModel _currentOrder;
+  bool _isLoadingHistory = true;
+  late Dio _dio;
+
+   @override
+  void initState() {
+    super.initState();
+    _currentOrder = widget.order;
+    _setupDio();
+    _fetchFullOrder();
+  }
+
+  void _setupDio() {
+    _dio = Dio();
+    _dio.options.baseUrl = AppConstants.apiBaseUrl;
+    _dio.options.connectTimeout = EnvironmentConfig.timeoutDuration;
+    _dio.options.receiveTimeout = EnvironmentConfig.timeoutDuration;
+    _dio.interceptors.add(InterceptorsWrapper(
+      onRequest: (options, handler) async {
+        final token = await StorageService.getAuthToken();
+        if (token != null) {
+          options.headers['Authorization'] = 'Bearer $token';
+        }
+        handler.next(options);
+      },
+    ));
+  }
+
+  Future<void> _fetchFullOrder() async {
+    try {
+      final response = await _dio.get('/Orders/${_currentOrder.orderId}');
+      if (response.statusCode == 200) {
+        setState(() {
+          _currentOrder = OrderModel.fromJson(response.data);
+          _isLoadingHistory = false;
+        });
+      }
+    } catch (e) {
+      AppLogger.error('Error fetching full order: $e');
+      setState(() => _isLoadingHistory = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-            'Order #${widget.order.orderNumber ?? widget.order.orderId}',
+            'Order #${_currentOrder.orderNumber ?? _currentOrder.orderId}',
             style: const TextStyle(color: Colors.white)),
         backgroundColor: Colors.black,
         foregroundColor: Colors.white, // ✅ White back button
@@ -1496,15 +1539,19 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
             _buildOrderInfoCard(),
             _buildPrescriptionSection(),
             _buildDeliveryAddressCard(),
-            if (widget.order.rejectionReason != null &&
-                widget.order.rejectionReason!.isNotEmpty)
+            if (_currentOrder.rejectionReason != null &&
+                _currentOrder.rejectionReason!.isNotEmpty)
               _buildRejectionReasonCard(),
-            if (widget.order.totalAmount != null) _buildTotalAmountCard(),
+            if (_currentOrder.totalAmount != null) _buildTotalAmountCard(),
+            OrderAssignmentHistoryWidget(
+              order: _currentOrder,
+              isAdminView: false,
+            ),
             const SizedBox(height: 100),
           ],
         ),
       ),
-      bottomNavigationBar: _isPendingStatus(widget.order.status)
+      bottomNavigationBar: _isPendingStatus(_currentOrder.status)
           ? _buildBottomActionBar()
           : null,
     );
@@ -1520,7 +1567,7 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
     Color textColor;
     IconData icon;
 
-    final statusLower = widget.order.status.toLowerCase();
+    final statusLower = _currentOrder.status.toLowerCase();
 
     if (statusLower.contains('pending') || statusLower.contains('assigned')) {
       backgroundColor = Colors.orange.shade100;
@@ -1555,7 +1602,7 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
           Icon(icon, color: textColor, size: 24),
           const SizedBox(width: 8),
           Text(
-            widget.order.status.toUpperCase(),
+            _currentOrder.status.toUpperCase(),
             style: TextStyle(
               color: textColor,
               fontSize: 16,
@@ -1600,7 +1647,7 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
               Icons.calendar_today,
               'Order Date',
               DateFormat('MMM dd, yyyy - hh:mm a')
-                  .format(widget.order.createdOn),
+                  .format(_currentOrder.createdOn),
             ),
           ],
         ),
@@ -1657,7 +1704,7 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
                   ),
                 ),
                 const Spacer(),
-                _buildInputTypeChip(widget.order.orderInputType),
+                _buildInputTypeChip(_currentOrder.orderInputType),
               ],
             ),
             const SizedBox(height: 16),
@@ -1716,7 +1763,7 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
   }
 
   Widget _buildPrescriptionContent() {
-    switch (widget.order.orderInputType) {
+    switch (_currentOrder.orderInputType) {
       case OrderInputType.image:
         return _buildImagePrescription();
       case OrderInputType.voice:
@@ -1731,8 +1778,8 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
     final accepted =
         await PharmacistConsentManager.showPrescriptionAccessPermission(
       context,
-      orderId: widget.order.orderId,
-      customerId: widget.order.customerId,
+      orderId: _currentOrder.orderId,
+      customerId: _currentOrder.customerId,
     );
 
     if (!accepted) {
@@ -1741,7 +1788,7 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
     }
 
     // User accepted - check if URL exists
-    if (widget.order.prescriptionFileUrl == null) {
+    if (_currentOrder.prescriptionFileUrl == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('No prescription image available')),
       );
@@ -1773,7 +1820,7 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
               minScale: 0.5,
               maxScale: 4,
               child: Image.network(
-                widget.order.prescriptionFileUrl!,
+                _currentOrder.prescriptionFileUrl!,
                 fit: BoxFit.contain,
                 loadingBuilder: (context, child, loadingProgress) {
                   if (loadingProgress == null) return child;
@@ -1826,7 +1873,7 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
                 Icon(Icons.image, size: 80, color: Colors.grey[400]),
                 const SizedBox(height: 12),
                 Text(
-                  widget.order.prescriptionFileUrl ?? 'Image Prescription',
+                  _currentOrder.prescriptionFileUrl ?? 'Image Prescription',
                   style: TextStyle(color: Colors.grey[600]),
                   textAlign: TextAlign.center,
                 ),
@@ -1891,7 +1938,7 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
           ),
           const SizedBox(height: 12),
           Text(
-            widget.order.voiceNoteUrl ?? 'Voice Recording',
+            _currentOrder.voiceNoteUrl ?? 'Voice Recording',
             style: const TextStyle(
               fontSize: 15,
               fontWeight: FontWeight.w500,
@@ -1977,7 +2024,7 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
           ),
           const SizedBox(height: 12),
           Text(
-            widget.order.prescriptionText ?? 'No prescription text available',
+            _currentOrder.prescriptionText ?? 'No prescription text available',
             style: const TextStyle(
               fontSize: 15,
               height: 1.5,
@@ -2002,11 +2049,11 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
 
   Widget _buildDeliveryAddressCard() {
     final address = [
-      widget.order.shippingAddressLine1,
-      widget.order.shippingAddressLine2,
-      widget.order.shippingArea,
-      widget.order.shippingCity,
-      widget.order.shippingPincode,
+      _currentOrder.shippingAddressLine1,
+      _currentOrder.shippingAddressLine2,
+      _currentOrder.shippingArea,
+      _currentOrder.shippingCity,
+     _currentOrder.shippingPincode,
     ].where((e) => e != null && e.isNotEmpty).join(', ');
 
     if (address.isEmpty) {
@@ -2080,7 +2127,7 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
                 border: Border.all(color: Colors.red.shade200),
               ),
               child: Text(
-                widget.order.rejectionReason!,
+                _currentOrder.rejectionReason!,
                 style: const TextStyle(
                   fontSize: 15,
                   height: 1.5,
@@ -2110,7 +2157,7 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
               ),
             ),
             Text(
-              '₹${widget.order.totalAmount!.toStringAsFixed(2)}',
+              '₹${_currentOrder.totalAmount!.toStringAsFixed(2)}',
               style: const TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,

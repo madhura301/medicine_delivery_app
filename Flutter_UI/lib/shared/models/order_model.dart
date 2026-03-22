@@ -161,10 +161,9 @@ class OrderModel {
       completionOtp: _toStringOrNull(json['completionOtp']),
 
       // ✨ NEW: Parse assignment history
-      assignmentHistory: _parseAssignmentHistory(
-        json['AssignmentHistory'] ??
-        json['assignmentHistory'] // Try both cases
-      ),
+      assignmentHistory: _parseAssignmentHistory(json['AssignmentHistory'] ??
+              json['assignmentHistory'] // Try both cases
+          ),
 
       completedOn: json['completedOn'] != null
           ? DateTime.parse(json['completedOn'])
@@ -309,6 +308,9 @@ class OrderModel {
           return 'Out for Delivery';
         case 7:
           return 'Completed';
+        case 8:
+          return 'Assigned to Customer Support'; // ← add this
+
         default:
           AppLogger.warning('Unknown order status code: $statusCode');
           return 'Unknown Status ($statusCode)';

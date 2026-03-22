@@ -1207,200 +1207,214 @@ class _WhatsAppOrderCreationPageState extends State<WhatsAppOrderCreationPage>
 // DIAGNOSTIC VERSION - Matches customer app EXACTLY
 // Replace _submitOrder() with this version
 
-Future<void> _submitOrder() async {
-  // Validation
-  if (_addressLine1Controller.text.trim().isEmpty) {
-    _showError('Please enter Address Line 1');
-    return;
-  }
-
-  if (_cityController.text.trim().isEmpty) {
-    _showError('Please enter city');
-    return;
-  }
-
-  if (_selectedState == null || _selectedState!.isEmpty) {
-    _showError('Please select state');
-    return;
-  }
-
-  final pincode = _pincodeController.text.trim();
-  if (pincode.isEmpty || pincode.length != 6 || !RegExp(r'^[0-9]+$').hasMatch(pincode)) {
-    _showError('Please enter valid 6-digit pincode');
-    return;
-  }
-
-  setState(() => _isSubmitting = true);
-
-  try {
-    String? customerIdToUse = _customerId;
-    String? addressIdToUse;
-
-    // Step 1: Ensure customer exists
-    if (customerIdToUse == null) {
-      AppLogger.info('[STEP 1] Creating new customer');
-      
-      final customerResponse = await widget.dio.post('/Customers/register', data: {
-        'mobileNumber': _mobileController.text.trim(),
-        'emailId': '',
-        'customerFirstName': _customerData?['customerFirstName'] ?? 'Customer',
-        'customerLastName': _customerData?['customerLastName'] ?? '',
-        'password': 'Temp@123',
-      });
-
-      if (customerResponse.statusCode == 200 || customerResponse.statusCode == 201) {
-        customerIdToUse = customerResponse.data['customerId'] ?? customerResponse.data['id'];
-        AppLogger.info('[STEP 1] Customer created: $customerIdToUse');
-      } else {
-        throw Exception('Failed to create customer');
-      }
-    } else {
-      AppLogger.info('[STEP 1] Using existing customer: $customerIdToUse');
-    }
-
-    // Step 2: Create address
-    AppLogger.info('[STEP 2] Creating address');
-    final addressResponse = await widget.dio.post('/CustomerAddresses', data: {
-      'customerId': customerIdToUse,
-      'addressLine1': _addressLine1Controller.text.trim(),
-      'addressLine2': _addressLine2Controller.text.trim(),
-      'addressLine3': '',
-      'city': _cityController.text.trim(),
-      'state': _selectedState,
-      'postalCode': pincode,
-      'latitude': _latitude,
-      'longitude': _longitude,
-      'isDefault': true,
-      'isActive': true,
-    });
-
-    if (addressResponse.statusCode == 200 || addressResponse.statusCode == 201) {
-      addressIdToUse = addressResponse.data['id'];
-      AppLogger.info('[STEP 2] Address created: $addressIdToUse');
-    } else {
-      throw Exception('Failed to create address');
-    }
-
-    // Step 3: Create order - EXACTLY like customer app
-    AppLogger.info('[STEP 3] Creating order');
-    
-    final formData = FormData();
-
-    // Add fields in same order as customer app
-    formData.fields.add(MapEntry('CustomerId', customerIdToUse!));
-    formData.fields.add(MapEntry('CustomerAddressId', addressIdToUse!));
-    formData.fields.add(MapEntry('OrderType', '2'));  // PrescriptionDrugs
-    formData.fields.add(MapEntry('OrderInputType', '0'));  // Image
-
-    // Add file if present - customer app ALWAYS uses OrderInputType=0 for files
-    if (_prescriptionFile != null) {
-      formData.files.add(
-        MapEntry(
-          'OrderInputFile',
-          await MultipartFile.fromFile(
-            _prescriptionFile!.path,
-            filename: _prescriptionFileName ?? 'prescription.jpg',
-          ),
-        ),
-      );
-      AppLogger.info('[STEP 3] File added: $_prescriptionFileName');
-    } else if (_prescriptionNotesController.text.trim().isNotEmpty) {
-      // Text only
-      formData.fields[2] = MapEntry('OrderInputType', '2');  // Change to Text
-      formData.fields.add(MapEntry('OrderInputText', _prescriptionNotesController.text.trim()));
-      AppLogger.info('[STEP 3] Text-only order');
-    } else {
-      _showError('Please provide prescription');
-      setState(() => _isSubmitting = false);
+  Future<void> _submitOrder() async {
+    // Validation
+    if (_addressLine1Controller.text.trim().isEmpty) {
+      _showError('Please enter Address Line 1');
       return;
     }
 
-    // Log everything for debugging
-    AppLogger.info('=== FINAL REQUEST ===');
-    AppLogger.info('CustomerId: $customerIdToUse (${customerIdToUse.runtimeType})');
-    AppLogger.info('AddressId: $addressIdToUse (${addressIdToUse.runtimeType})');
-    AppLogger.info('Fields:');
-    for (var field in formData.fields) {
-      AppLogger.info('  ${field.key}: ${field.value} (${field.value.runtimeType})');
+    if (_cityController.text.trim().isEmpty) {
+      _showError('Please enter city');
+      return;
     }
-    AppLogger.info('Files: ${formData.files.length}');
-    for (var file in formData.files) {
-      AppLogger.info('  ${file.key}: ${file.value.filename}');
+
+    if (_selectedState == null || _selectedState!.isEmpty) {
+      _showError('Please select state');
+      return;
     }
-    AppLogger.info('====================');
 
-    // Submit
-    final response = await widget.dio.post(
-      '/Orders',
-      data: formData,
-      options: Options(
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      ),
-    );
+    final pincode = _pincodeController.text.trim();
+    if (pincode.isEmpty ||
+        pincode.length != 6 ||
+        !RegExp(r'^[0-9]+$').hasMatch(pincode)) {
+      _showError('Please enter valid 6-digit pincode');
+      return;
+    }
 
-    if (response.statusCode == 200 || response.statusCode == 201) {
-      AppLogger.info('[SUCCESS] Order created!');
-      AppLogger.info('Response: ${response.data}');
-      
-      if (mounted) {
-        final orderId = response.data['orderId'] ?? response.data['id'] ?? 'N/A';
-        
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Order Created! ID: $orderId'),
-            backgroundColor: Colors.green,
-            duration: const Duration(seconds: 3),
+    setState(() => _isSubmitting = true);
+
+    try {
+      String? customerIdToUse = _customerId;
+      String? addressIdToUse;
+
+      // Step 1: Ensure customer exists
+      if (customerIdToUse == null) {
+        AppLogger.info('[STEP 1] Creating new customer');
+
+        final customerResponse =
+            await widget.dio.post('/Customers/register', data: {
+          'mobileNumber': _mobileController.text.trim(),
+          'emailId': '',
+          'customerFirstName':
+              _customerData?['customerFirstName'] ?? 'Customer',
+          'customerLastName': _customerData?['customerLastName'] ?? '',
+          'password': 'Temp@123',
+        });
+
+        if (customerResponse.statusCode == 200 ||
+            customerResponse.statusCode == 201) {
+          customerIdToUse = customerResponse.data['customerId'] ??
+              customerResponse.data['id'];
+          AppLogger.info('[STEP 1] Customer created: $customerIdToUse');
+        } else {
+          throw Exception('Failed to create customer');
+        }
+      } else {
+        AppLogger.info('[STEP 1] Using existing customer: $customerIdToUse');
+      }
+
+      // Step 2: Create address
+      AppLogger.info('[STEP 2] Creating address');
+      final addressResponse =
+          await widget.dio.post('/CustomerAddresses', data: {
+        'customerId': customerIdToUse,
+        'addressLine1': _addressLine1Controller.text.trim(),
+        'addressLine2': _addressLine2Controller.text.trim(),
+        'addressLine3': '',
+        'city': _cityController.text.trim(),
+        'state': _selectedState,
+        'postalCode': pincode,
+        'latitude': _latitude,
+        'longitude': _longitude,
+        'isDefault': true,
+        'isActive': true,
+      });
+
+      if (addressResponse.statusCode == 200 ||
+          addressResponse.statusCode == 201) {
+        addressIdToUse = addressResponse.data['id'];
+        AppLogger.info('[STEP 2] Address created: $addressIdToUse');
+      } else {
+        throw Exception('Failed to create address');
+      }
+
+      // Step 3: Create order - EXACTLY like customer app
+      AppLogger.info('[STEP 3] Creating order');
+
+      final formData = FormData();
+
+      // Add fields in same order as customer app
+      formData.fields.add(MapEntry('CustomerId', customerIdToUse!));
+      formData.fields.add(MapEntry('CustomerAddressId', addressIdToUse!));
+      formData.fields.add(MapEntry('OrderType', '2')); // PrescriptionDrugs
+      formData.fields.add(MapEntry('OrderInputType', '0')); // Image
+
+      // Add file if present - customer app ALWAYS uses OrderInputType=0 for files
+      if (_prescriptionFile != null) {
+        formData.files.add(
+          MapEntry(
+            'OrderInputFile',
+            await MultipartFile.fromFile(
+              _prescriptionFile!.path,
+              filename: _prescriptionFileName ?? 'prescription.jpg',
+            ),
           ),
         );
-        
-        Future.delayed(const Duration(seconds: 2), () {
-          if (mounted) _clearForm();
-        });
+        AppLogger.info('[STEP 3] File added: $_prescriptionFileName');
+      } else if (_prescriptionNotesController.text.trim().isNotEmpty) {
+        // Text only
+        formData.fields[2] = MapEntry('OrderInputType', '2'); // Change to Text
+        formData.fields.add(MapEntry(
+            'OrderInputText', _prescriptionNotesController.text.trim()));
+        AppLogger.info('[STEP 3] Text-only order');
+      } else {
+        _showError('Please provide prescription');
+        setState(() => _isSubmitting = false);
+        return;
       }
-    }
-  } on DioException catch (e) {
-    AppLogger.error('[ERROR] DioException');
-    AppLogger.error('Status: ${e.response?.statusCode}');
-    AppLogger.error('Message: ${e.message}');
-    AppLogger.error('Response: ${e.response?.data}');
-    
-    // Check for specific backend errors
-    String errorMessage = 'Failed to create order';
-    
-    if (e.response?.data != null) {
-      final data = e.response!.data;
-      if (data is Map) {
-        errorMessage = data['error'] ?? data['message'] ?? data['title'] ?? errorMessage;
-        
-        // Check for validation errors
-        if (data['errors'] != null) {
-          AppLogger.error('Validation Errors: ${data['errors']}');
-          if (data['errors'] is Map) {
-            final errors = data['errors'] as Map;
-            errorMessage = errors.values.first.toString();
+
+      // Log everything for debugging
+      AppLogger.info('=== FINAL REQUEST ===');
+      AppLogger.info(
+          'CustomerId: $customerIdToUse (${customerIdToUse.runtimeType})');
+      AppLogger.info(
+          'AddressId: $addressIdToUse (${addressIdToUse.runtimeType})');
+      AppLogger.info('Fields:');
+      for (var field in formData.fields) {
+        AppLogger.info(
+            '  ${field.key}: ${field.value} (${field.value.runtimeType})');
+      }
+      AppLogger.info('Files: ${formData.files.length}');
+      for (var file in formData.files) {
+        AppLogger.info('  ${file.key}: ${file.value.filename}');
+      }
+      AppLogger.info('====================');
+
+      // Submit
+      final response = await widget.dio.post(
+        '/Orders',
+        data: formData,
+        options: Options(
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        ),
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        AppLogger.info('[SUCCESS] Order created!');
+        AppLogger.info('Response: ${response.data}');
+
+        if (mounted) {
+          final orderId =
+              response.data['orderId'] ?? response.data['id'] ?? 'N/A';
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Order Created! ID: $orderId'),
+              backgroundColor: Colors.green,
+              duration: const Duration(seconds: 3),
+            ),
+          );
+
+          Future.delayed(const Duration(seconds: 2), () {
+            if (mounted) _clearForm();
+          });
+        }
+      }
+    } on DioException catch (e) {
+      AppLogger.error('[ERROR] DioException');
+      AppLogger.error('Status: ${e.response?.statusCode}');
+      AppLogger.error('Message: ${e.message}');
+      AppLogger.error('Response: ${e.response?.data}');
+
+      // Check for specific backend errors
+      String errorMessage = 'Failed to create order';
+
+      if (e.response?.data != null) {
+        final data = e.response!.data;
+        if (data is Map) {
+          errorMessage =
+              data['error'] ?? data['message'] ?? data['title'] ?? errorMessage;
+
+          // Check for validation errors
+          if (data['errors'] != null) {
+            AppLogger.error('Validation Errors: ${data['errors']}');
+            if (data['errors'] is Map) {
+              final errors = data['errors'] as Map;
+              errorMessage = errors.values.first.toString();
+            }
           }
         }
       }
-    }
-    
-    if (mounted) {
-      _showError(errorMessage);
-    }
-  } catch (e, stack) {
-    AppLogger.error('[ERROR] Unexpected: $e');
-    AppLogger.error('Stack: $stack');
-    
-    if (mounted) {
-      _showError('Unexpected error occurred');
-    }
-  } finally {
-    if (mounted) {
-      setState(() => _isSubmitting = false);
+
+      if (mounted) {
+        _showError(errorMessage);
+      }
+    } catch (e, stack) {
+      AppLogger.error('[ERROR] Unexpected: $e');
+      AppLogger.error('Stack: $stack');
+
+      if (mounted) {
+        _showError('Unexpected error occurred');
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isSubmitting = false);
+      }
     }
   }
-}
 
 // ALSO ADD THIS HELPER METHOD to show address selection dialog if customer has multiple addresses:
 
@@ -2326,7 +2340,7 @@ class ChemistModel {
       medicalName: json['medicalName'] ?? 'Unknown',
       city: json['city'] ?? '',
       state: json['state'] ?? '',
-      isActive: json['isActive'] ?? false,
+      isActive: json['isActive'] ?? true,
     );
   }
 }
@@ -2355,11 +2369,16 @@ class _AssignedOrdersPageState extends State<AssignedOrdersPage>
   String _customerSupportId = '';
   final Map<String, Map<String, String>> _customerCache = {};
 
+  // Track which orders are currently being reassigned (loading state per card)
+  final Set<String> _reassigningOrders = {};
+
   @override
   void initState() {
     super.initState();
     _loadCustomerSupportIdAndOrders();
   }
+
+  // ─────────────────────────────── DATA LOADING ────────────────────────────
 
   Future<void> _loadCustomerSupportIdAndOrders() async {
     try {
@@ -2389,7 +2408,8 @@ class _AssignedOrdersPageState extends State<AssignedOrdersPage>
     });
 
     try {
-      AppLogger.info('Fetching assigned orders for customer support: $_customerSupportId');
+      AppLogger.info(
+          'Fetching assigned orders for customer support: $_customerSupportId');
       final response = await widget.dio.get(
         '/Orders/customersupport/$_customerSupportId/assignedtocustomersupport',
       );
@@ -2407,7 +2427,8 @@ class _AssignedOrdersPageState extends State<AssignedOrdersPage>
           throw Exception('Unexpected response format');
         }
 
-        final orders = ordersList.map((json) => OrderModel.fromJson(json)).toList();
+        final orders =
+            ordersList.map((json) => OrderModel.fromJson(json)).toList();
         orders.sort((a, b) => b.createdOn.compareTo(a.createdOn));
 
         await _loadCustomerInfo(orders);
@@ -2442,33 +2463,299 @@ class _AssignedOrdersPageState extends State<AssignedOrdersPage>
     for (var order in orders) {
       if (!_customerCache.containsKey(order.customerId)) {
         try {
-          final response = await widget.dio.get('/Customers/${order.customerId}');
+          final response =
+              await widget.dio.get('/Customers/${order.customerId}');
           if (response.statusCode == 200) {
             final d = response.data;
             final firstName = d['customerFirstName'] ?? '';
-            final lastName  = d['customerLastName'] ?? '';
-            final fullName  = '$firstName $lastName'.trim();
+            final lastName = d['customerLastName'] ?? '';
+            final fullName = '$firstName $lastName'.trim();
             _customerCache[order.customerId] = {
-              'name':  fullName.isEmpty ? 'Customer' : fullName,
+              'name': fullName.isEmpty ? 'Customer' : fullName,
               'email': d['emailId']?.toString() ?? '',
               'phone': d['mobileNumber']?.toString() ?? '',
             };
           }
         } catch (_) {
           _customerCache[order.customerId] = {
-            'name': 'Customer', 'email': '', 'phone': '',
+            'name': 'Customer',
+            'email': '',
+            'phone': '',
           };
         }
       }
     }
   }
 
+  // ──────────────────────────── REASSIGN LOGIC ─────────────────────────────
+
+  /// Fetches chemists near the order's delivery pincode via the dedicated endpoint.
+  Future<List<ChemistModel>> _fetchNearbyChemists(int orderId) async {
+    final response =
+        await widget.dio.get('/Orders/$orderId/medical-stores-by-pincode');
+
+    if (response.statusCode == 200) {
+      final List<dynamic> data = response.data is List
+          ? response.data
+          : (response.data['data'] ?? response.data['stores'] ?? []);
+      return data.map((json) => ChemistModel.fromJson(json)).toList();
+    }
+    return [];
+  }
+
+  Future<void> _showReassignDialog(
+      OrderModel order, String customerName) async {
+    final int? parsedId = int.tryParse(order.orderId);
+    if (parsedId == null) {
+      _showSnackBar('Invalid order ID', isError: true);
+      return;
+    }
+
+    List<ChemistModel> chemists = [];
+    bool isLoadingChemists = true;
+    String? fetchError;
+
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) {
+        return StatefulBuilder(builder: (ctx, setDialogState) {
+          // Kick off the fetch once
+          if (isLoadingChemists && fetchError == null) {
+            _fetchNearbyChemists(parsedId).then((result) {
+              setDialogState(() {
+                chemists = result;
+                isLoadingChemists = false;
+              });
+            }).catchError((e) {
+              setDialogState(() {
+                fetchError =
+                    'Could not load nearby chemists.\nPlease try again.';
+                isLoadingChemists = false;
+              });
+            });
+          }
+
+          return Dialog(
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            clipBehavior: Clip.antiAlias,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // ── Dialog header ──
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
+                  decoration: const BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [Color(0xFF1565C0), Color(0xFF1976D2)],
+                    ),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(Icons.store_outlined,
+                              color: Colors.white, size: 22),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'Reassign Order',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 17,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                          IconButton(
+                            onPressed: () => Navigator.pop(ctx),
+                            icon: const Icon(Icons.close,
+                                color: Colors.white70, size: 20),
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Order #${order.orderNumber ?? order.orderId} • $customerName',
+                        style: TextStyle(
+                            color: Colors.white.withOpacity(0.85),
+                            fontSize: 12),
+                      ),
+                      const SizedBox(height: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.18),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.location_pin,
+                                color: Colors.white70, size: 12),
+                            const SizedBox(width: 4),
+                            Text(
+                              'Showing stores near delivery pincode',
+                              style: const TextStyle(
+                                  color: Colors.white70, fontSize: 11),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                // ── Content ──
+                ConstrainedBox(
+                  constraints: const BoxConstraints(maxHeight: 360),
+                  child: isLoadingChemists
+                      ? const SizedBox(
+                          height: 120,
+                          child: Center(child: CircularProgressIndicator()),
+                        )
+                      : fetchError != null
+                          ? Padding(
+                              padding: const EdgeInsets.all(24),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.error_outline,
+                                      color: Colors.red.shade300, size: 44),
+                                  const SizedBox(height: 12),
+                                  Text(fetchError!,
+                                      textAlign: TextAlign.center,
+                                      style: TextStyle(
+                                          color: Colors.grey.shade700,
+                                          fontSize: 13)),
+                                ],
+                              ),
+                            )
+                          : chemists.isEmpty
+                              ? Padding(
+                                  padding: const EdgeInsets.all(24),
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(Icons.store_mall_directory_outlined,
+                                          color: Colors.grey.shade300,
+                                          size: 52),
+                                      const SizedBox(height: 12),
+                                      Text(
+                                        'No active chemists found\nnear this delivery pincode.',
+                                        textAlign: TextAlign.center,
+                                        style: TextStyle(
+                                            color: Colors.grey.shade600,
+                                            fontSize: 13),
+                                      ),
+                                    ],
+                                  ),
+                                )
+                              : ListView.separated(
+                                  shrinkWrap: true,
+                                  padding:
+                                      const EdgeInsets.symmetric(vertical: 8),
+                                  itemCount: chemists.length,
+                                  separatorBuilder: (_, __) =>
+                                      const Divider(height: 1, indent: 56),
+                                  itemBuilder: (ctx, index) {
+                                    final chemist = chemists[index];
+                                    return ListTile(
+                                      leading: CircleAvatar(
+                                        backgroundColor:
+                                            const Color(0xFFE3F2FD),
+                                        radius: 20,
+                                        child: const Icon(Icons.store,
+                                            color: Color(0xFF1565C0), size: 20),
+                                      ),
+                                      title: Text(
+                                        chemist.medicalName,
+                                        style: const TextStyle(
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w600),
+                                      ),
+                                      subtitle: Text(
+                                        '${chemist.city}, ${chemist.state}',
+                                        style: TextStyle(
+                                            fontSize: 12,
+                                            color: Colors.grey.shade600),
+                                      ),
+                                      trailing: const Icon(Icons.chevron_right,
+                                          color: Colors.grey),
+                                      onTap: () {
+                                        Navigator.pop(ctx);
+                                        _reassignOrder(order, chemist);
+                                      },
+                                    );
+                                  },
+                                ),
+                ),
+
+                // ── Footer ──
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(ctx),
+                        child: const Text('Cancel'),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          );
+        });
+      },
+    );
+  }
+
+  Future<void> _reassignOrder(OrderModel order, ChemistModel chemist) async {
+    setState(() => _reassigningOrders.add(order.orderId));
+    try {
+      await widget.dio.put('/Orders/assign', data: {
+        'orderId': int.parse(order.orderId),
+        'medicalStoreId': chemist.medicalStoreId,
+      });
+
+      _showSnackBar('Order reassigned to ${chemist.medicalName}');
+      await _loadAssignedOrders();
+    } catch (e) {
+      _showSnackBar('Failed to reassign order', isError: true);
+    } finally {
+      setState(() => _reassigningOrders.remove(order.orderId));
+    }
+  }
+
+  void _showSnackBar(String message, {bool isError = false}) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: isError ? Colors.red.shade700 : Colors.green.shade700,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      ),
+    );
+  }
+
+  // ──────────────────────────── BUILD ──────────────────────────────────────
+
   @override
   Widget build(BuildContext context) {
     super.build(context);
 
     if (_isLoading) {
-      return const Center(child: CircularProgressIndicator(color: Colors.blue));
+      return const Center(
+          child: CircularProgressIndicator(color: Color(0xFF1565C0)));
     }
 
     if (_errorMessage != null) {
@@ -2520,132 +2807,450 @@ class _AssignedOrdersPageState extends State<AssignedOrdersPage>
 
     return RefreshIndicator(
       onRefresh: _loadAssignedOrders,
+      color: const Color(0xFF1565C0),
       child: ListView.builder(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
         itemCount: _assignedOrders.length,
         itemBuilder: (context, index) {
           final order = _assignedOrders[index];
-          final customerName = _customerCache[order.customerId]?['name'] ?? 'Customer';
-          final customerPhone = _customerCache[order.customerId]?['phone'] ?? '';
-          return _buildOrderCard(order, customerName, customerPhone);
+          final customerInfo = _customerCache[order.customerId];
+          final customerName = customerInfo?['name'] ?? 'Customer';
+          final customerPhone = customerInfo?['phone'] ?? '';
+          return _AssignedOrderCard(
+            key: ValueKey(order.orderId),
+            order: order,
+            customerName: customerName,
+            customerPhone: customerPhone,
+            isReassigning: _reassigningOrders.contains(order.orderId),
+            onReassign: () => _showReassignDialog(order, customerName),
+          );
         },
       ),
     );
   }
+}
 
-  Widget _buildOrderCard(OrderModel order, String customerName, String customerPhone) {
-    Color statusColor;
-    String statusText;
-    final statusLower = order.status.toLowerCase();
+// ─────────────────────────── ORDER CARD WIDGET ───────────────────────────────
 
-    if (statusLower.contains('pending') || statusLower.contains('assigned')) {
-      statusColor = Colors.orange;
-      statusText = 'Pending';
-    } else if (statusLower.contains('accepted')) {
-      statusColor = Colors.green;
-      statusText = 'Accepted';
-    } else if (statusLower.contains('rejected')) {
-      statusColor = Colors.red;
-      statusText = 'Rejected';
-    } else if (statusLower.contains('bill')) {
-      statusColor = Colors.purple;
-      statusText = 'Bill Uploaded';
-    } else if (statusLower.contains('delivery')) {
-      statusColor = Colors.teal;
-      statusText = 'Out for Delivery';
-    } else if (statusLower.contains('completed')) {
-      statusColor = Colors.blue;
-      statusText = 'Completed';
-    } else {
-      statusColor = Colors.grey;
-      statusText = order.status;
+class _AssignedOrderCard extends StatelessWidget {
+  final OrderModel order;
+  final String customerName;
+  final String customerPhone;
+  final bool isReassigning;
+  final VoidCallback onReassign;
+
+  const _AssignedOrderCard({
+    Key? key,
+    required this.order,
+    required this.customerName,
+    required this.customerPhone,
+    required this.isReassigning,
+    required this.onReassign,
+  }) : super(key: key);
+
+  // ── Status helpers ──────────────────────────────────────────────────────
+
+  // NOTE: 'assigned to customer support' MUST come before 'assigned' in this
+  // map because _resolveStatus uses contains(), and the longer key would
+  // otherwise be shadowed by the shorter one.
+  static const Map<String, _StatusStyle> _statusMap = {
+    'pending': _StatusStyle(
+        label: 'Pending',
+        bg: Color(0xFFFFF3E0),
+        fg: Color(0xFFE65100),
+        dot: Color(0xFFFF6F00)),
+    'assigned to customer support': _StatusStyle(
+        label: 'Needs Reassignment',
+        bg: Color(0xFFE3F2FD),
+        fg: Color(0xFF0D47A1),
+        dot: Color(0xFF1565C0)),
+    'assigned': _StatusStyle(
+        label: 'Assigned',
+        bg: Color(0xFFFFF3E0),
+        fg: Color(0xFFE65100),
+        dot: Color(0xFFFF6F00)),
+    'accepted': _StatusStyle(
+        label: 'Accepted',
+        bg: Color(0xFFE8F5E9),
+        fg: Color(0xFF1B5E20),
+        dot: Color(0xFF2E7D32)),
+    'rejected': _StatusStyle(
+        label: 'Rejected',
+        bg: Color(0xFFFFEBEE),
+        fg: Color(0xFFB71C1C),
+        dot: Color(0xFFC62828)),
+    'bill': _StatusStyle(
+        label: 'Bill Uploaded',
+        bg: Color(0xFFF3E5F5),
+        fg: Color(0xFF4A148C),
+        dot: Color(0xFF6A1B9A)),
+    'delivery': _StatusStyle(
+        label: 'Out for Delivery',
+        bg: Color(0xFFE0F2F1),
+        fg: Color(0xFF004D40),
+        dot: Color(0xFF00695C)),
+    'completed': _StatusStyle(
+        label: 'Completed',
+        bg: Color(0xFFE8F5E9),
+        fg: Color(0xFF1B5E20),
+        dot: Color(0xFF2E7D32)),
+  };
+
+  _StatusStyle _resolveStatus() {
+    final s = order.status.toLowerCase();
+    for (final key in _statusMap.keys) {
+      if (s.contains(key)) return _statusMap[key]!;
     }
+    return _StatusStyle(
+        label: order.status,
+        bg: const Color(0xFFF5F5F5),
+        fg: Colors.grey.shade700,
+        dot: Colors.grey.shade500);
+  }
 
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Header row
-            Row(
+  // Reassign button shown for:
+  //  - status 8  → "Assigned to Customer Support" (parsed correctly)
+  //  - legacy fallback if parsing ever fails
+  bool get _needsReassign =>
+      order.status.toLowerCase().contains('assigned to customer support') ||
+      order.status.toLowerCase().contains('unknown status (8)');
+
+  String _formatDate(DateTime dt) {
+    final local = dt.toLocal();
+    final day = local.day.toString().padLeft(2, '0');
+    final months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec'
+    ];
+    final hour = local.hour % 12 == 0 ? 12 : local.hour % 12;
+    final minute = local.minute.toString().padLeft(2, '0');
+    final ampm = local.hour < 12 ? 'AM' : 'PM';
+    return '${months[local.month - 1]} $day  •  $hour:$minute $ampm';
+  }
+
+  // ── Build ────────────────────────────────────────────────────────────────
+
+  @override
+  Widget build(BuildContext context) {
+    final style = _resolveStatus();
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: _needsReassign
+            ? Border.all(color: const Color(0xFFBBDEFB), width: 1.5)
+            : Border.all(color: const Color(0xFFEEEEEE)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          // ── Colour-coded top stripe ───────────────────────────────────────
+          Container(
+            height: 4,
+            decoration: BoxDecoration(
+              color: style.dot,
+              borderRadius:
+                  const BorderRadius.vertical(top: Radius.circular(16)),
+            ),
+          ),
+
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: statusColor.withOpacity(0.15),
-                    borderRadius: BorderRadius.circular(4),
-                    border: Border.all(color: statusColor, width: 1),
+                // ── Row 1: avatar  +  customer name  +  status badge ─────
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    CircleAvatar(
+                      radius: 20,
+                      backgroundColor: const Color(0xFFE3F2FD),
+                      child: Text(
+                        customerName.isNotEmpty
+                            ? customerName[0].toUpperCase()
+                            : 'C',
+                        style: const TextStyle(
+                          color: Color(0xFF1565C0),
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            customerName,
+                            style: const TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFF1A1A1A),
+                            ),
+                          ),
+                          if (customerPhone.isNotEmpty) ...[
+                            const SizedBox(height: 2),
+                            Row(
+                              children: [
+                                Icon(Icons.phone,
+                                    size: 11, color: Colors.grey.shade500),
+                                const SizedBox(width: 3),
+                                Text(
+                                  customerPhone,
+                                  style: TextStyle(
+                                      fontSize: 11,
+                                      color: Colors.grey.shade600),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                    // Status badge
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: style.bg,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            width: 6,
+                            height: 6,
+                            decoration: BoxDecoration(
+                              color: style.dot,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                          const SizedBox(width: 5),
+                          Text(
+                            style.label.toUpperCase(),
+                            style: TextStyle(
+                              color: style.fg,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 12),
+                const Divider(height: 1, color: Color(0xFFF0F0F0)),
+                const SizedBox(height: 12),
+
+                // ── Row 2: order meta chips ───────────────────────────────
+                Row(
+                  children: [
+                    _MetaChip(
+                      icon: Icons.tag,
+                      label: '#${order.orderNumber ?? order.orderId}',
+                    ),
+                    const SizedBox(width: 8),
+                    _MetaChip(
+                      icon: Icons.category_outlined,
+                      label: order.orderInputType.name,
+                    ),
+                    if (order.totalAmount != null) ...[
+                      const SizedBox(width: 8),
+                      _MetaChip(
+                        icon: Icons.currency_rupee,
+                        label: order.totalAmount!.toStringAsFixed(2),
+                        highlight: true,
+                      ),
+                    ],
+                  ],
+                ),
+
+                const SizedBox(height: 8),
+
+                // ── Row 3: date ───────────────────────────────────────────
+                Row(
+                  children: [
+                    Icon(Icons.schedule, size: 13, color: Colors.grey.shade400),
+                    const SizedBox(width: 4),
+                    Text(
+                      _formatDate(order.createdOn),
+                      style:
+                          TextStyle(fontSize: 12, color: Colors.grey.shade500),
+                    ),
+                  ],
+                ),
+
+                // ── Delivery city + pincode ───────────────────────────────
+                if (order.shippingPincode != null &&
+                    order.shippingPincode!.isNotEmpty) ...[
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      Icon(Icons.location_on_outlined,
+                          size: 13, color: Colors.grey.shade400),
+                      const SizedBox(width: 4),
+                      Text(
+                        [order.shippingCity, order.shippingPincode]
+                            .where((s) => s != null && s.isNotEmpty)
+                            .join(' – '),
+                        style: TextStyle(
+                            fontSize: 12, color: Colors.grey.shade500),
+                      ),
+                    ],
                   ),
-                  child: Text(
-                    statusText.toUpperCase(),
-                    style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
-                      color: statusColor,
+                ],
+
+                // ── Rejection reason (shown whenever present, any status) ─
+                if (order.rejectionReason != null &&
+                    order.rejectionReason!.isNotEmpty) ...[
+                  const SizedBox(height: 10),
+                  Container(
+                    padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFFF8F8),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: const Color(0xFFFFCDD2)),
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Icon(Icons.info_outline,
+                            size: 14, color: Color(0xFFB71C1C)),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            'Rejection reason: ${order.rejectionReason}',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: Color(0xFFB71C1C),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    customerName,
-                    style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 6),
-            Text(
-              'Order #${order.orderNumber ?? order.orderId}',
-              style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              'Created: ${order.createdOn.toLocal().toString().substring(0, 16)}',
-              style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-            ),
+                ],
 
-            // Order type
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Icon(Icons.list_alt, size: 14, color: Colors.grey[600]),
-                const SizedBox(width: 4),
-                Text(
-                  'Type: ${order.orderInputType.value}',
-                  style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                ),
-                if (order.totalAmount != null) ...[ 
-                  const SizedBox(width: 16),
-                  Icon(Icons.currency_rupee, size: 14, color: Colors.grey[600]),
-                  Text(
-                    '${order.totalAmount!.toStringAsFixed(2)}',
-                    style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                // ── Reassign button (status 8 = AssignedToCustomerSupport) ─
+                if (_needsReassign) ...[
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: isReassigning ? null : onReassign,
+                      icon: isReassigning
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                          : const Icon(Icons.autorenew, size: 16),
+                      label: Text(
+                        isReassigning
+                            ? 'Reassigning…'
+                            : 'Reassign to Nearby Chemist',
+                        style: const TextStyle(
+                            fontSize: 13, fontWeight: FontWeight.w600),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF1565C0),
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        padding: const EdgeInsets.symmetric(vertical: 11),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                    ),
                   ),
                 ],
               ],
             ),
+          ),
+        ],
+      ),
+    );
+  }
+}
 
-            // Phone if available
-            if (customerPhone.isNotEmpty) ...[
-              const SizedBox(height: 4),
-              Row(
-                children: [
-                  Icon(Icons.phone, size: 14, color: Colors.grey[600]),
-                  const SizedBox(width: 4),
-                  Text(
-                    customerPhone,
-                    style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                  ),
-                ],
-              ),
-            ],
-          ],
-        ),
+// ── Small helpers ─────────────────────────────────────────────────────────────
+
+class _StatusStyle {
+  final String label;
+  final Color bg;
+  final Color fg;
+  final Color dot;
+  const _StatusStyle(
+      {required this.label,
+      required this.bg,
+      required this.fg,
+      required this.dot});
+}
+
+class _MetaChip extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final bool highlight;
+
+  const _MetaChip({
+    required this.icon,
+    required this.label,
+    this.highlight = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: highlight ? const Color(0xFFE8F5E9) : const Color(0xFFF5F5F5),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            icon,
+            size: 12,
+            color: highlight ? const Color(0xFF2E7D32) : Colors.grey.shade600,
+          ),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w500,
+              color: highlight ? const Color(0xFF1B5E20) : Colors.grey.shade700,
+            ),
+          ),
+        ],
       ),
     );
   }

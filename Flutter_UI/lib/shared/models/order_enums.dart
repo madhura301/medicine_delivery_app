@@ -2,9 +2,9 @@
 
 /// Matches backend OrderInputType enum
 enum OrderInputType {
-  image(0),    // For both File Upload and Camera
-  voice(1),    // For Voice Recording
-  text(2);     // For Text and WhatsApp
+  image(0), // For both File Upload and Camera
+  voice(1), // For Voice Recording
+  text(2); // For Text and WhatsApp
 
   final int value;
   const OrderInputType(this.value);
@@ -20,8 +20,8 @@ enum OrderInputType {
 /// Matches backend OrderType enum
 enum OrderType {
   notSet(0),
-  otc(1),                    // Over-the-Counter
-  prescriptionDrugs(2);      // Requires prescription
+  otc(1), // Over-the-Counter
+  prescriptionDrugs(2); // Requires prescription
 
   final int value;
   const OrderType(this.value);
@@ -54,7 +54,8 @@ enum OrderStatus {
   billUploaded(4),
   paid(5),
   outForDelivery(6),
-  completed(7);
+  completed(7),
+  assignedToCustomerSupport(8);
 
   final int value;
   const OrderStatus(this.value);
@@ -77,6 +78,8 @@ enum OrderStatus {
         return 'Out for Delivery';
       case OrderStatus.completed:
         return 'Completed';
+      case OrderStatus.assignedToCustomerSupport:
+        return 'Assigned to Customer Support';
     }
   }
 
@@ -89,11 +92,11 @@ enum OrderStatus {
 }
 
 enum DeliveryType {
-  homeDelivery,  // 0
-  storePickup,   // 1
+  homeDelivery, // 0
+  storePickup, // 1
 }
 
 enum OrderUrgency {
-  regular,  // 0
-  urgent,   // 1
+  regular, // 0
+  urgent, // 1
 }
