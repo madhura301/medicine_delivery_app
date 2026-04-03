@@ -360,8 +360,16 @@ builder.Services.AddScoped<MedicineDelivery.Application.Interfaces.ICustomerAddr
 builder.Services.AddScoped<MedicineDelivery.Application.Interfaces.IDeliveryService, MedicineDelivery.Infrastructure.Services.DeliveryService>();
 builder.Services.AddScoped<MedicineDelivery.Application.Interfaces.IServiceRegionService, MedicineDelivery.Infrastructure.Services.ServiceRegionService>();
 builder.Services.AddScoped<MedicineDelivery.Application.Interfaces.IPhotoUploadService, MedicineDelivery.Infrastructure.Services.PhotoUploadService>();
-// File storage: swap LocalFileStorageService with AzureBlobStorageService to switch to Azure Blob Storage
-builder.Services.AddScoped<MedicineDelivery.Application.Interfaces.IFileStorageService, MedicineDelivery.Infrastructure.Services.LocalFileStorageService>();
+// File storage: driven by FileStorage:Provider in appsettings.json ("Local" or "Azure")
+var fileStorageProvider = builder.Configuration["FileStorage:Provider"] ?? "Local";
+if (fileStorageProvider.Equals("Azure", StringComparison.OrdinalIgnoreCase))
+{
+    builder.Services.AddScoped<MedicineDelivery.Application.Interfaces.IFileStorageService, MedicineDelivery.Infrastructure.Services.AzureBlobStorageService>();
+}
+else
+{
+    builder.Services.AddScoped<MedicineDelivery.Application.Interfaces.IFileStorageService, MedicineDelivery.Infrastructure.Services.LocalFileStorageService>();
+}
 builder.Services.AddScoped<MedicineDelivery.Application.Interfaces.IPermissionCheckerService, MedicineDelivery.Infrastructure.Services.PermissionCheckerService>();
 builder.Services.AddScoped<MedicineDelivery.Application.Interfaces.IOrderService, MedicineDelivery.Infrastructure.Services.OrderService>();
 builder.Services.AddScoped<MedicineDelivery.Application.Interfaces.IConsentService, MedicineDelivery.Infrastructure.Services.ConsentService>();

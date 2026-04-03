@@ -15,10 +15,10 @@ namespace MedicineDelivery.Infrastructure.Services
         {
             _logger = logger;
 
-            var connectionString = configuration["AzureBlobStorage:ConnectionString"]
-                ?? throw new InvalidOperationException("AzureBlobStorage:ConnectionString is not configured.");
-            var containerName = configuration["AzureBlobStorage:ContainerName"]
-                ?? throw new InvalidOperationException("AzureBlobStorage:ContainerName is not configured.");
+            var connectionString = configuration["FileStorage:Azure:ConnectionString"]
+                ?? throw new InvalidOperationException("FileStorage:Azure:ConnectionString is not configured.");
+            var containerName = configuration["FileStorage:Azure:ContainerName"]
+                ?? throw new InvalidOperationException("FileStorage:Azure:ContainerName is not configured.");
 
             var serviceClient = new BlobServiceClient(connectionString);
             _containerClient = serviceClient.GetBlobContainerClient(containerName);
