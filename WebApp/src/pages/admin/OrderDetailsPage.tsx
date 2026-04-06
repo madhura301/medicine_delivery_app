@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { Box, Typography, Paper, Grid, Divider, Button, Alert } from '@mui/material';
-import { ArrowBack as BackIcon } from '@mui/icons-material';
+import { ArrowBack as BackIcon, Download as DownloadIcon } from '@mui/icons-material';
 import { useParams, useNavigate } from 'react-router-dom';
 import { observer } from 'mobx-react-lite';
 import { useStore } from '../../stores/StoreContext';
@@ -9,7 +9,8 @@ import LoadingSpinner from '../../components/common/LoadingSpinner';
 import AssignmentHistoryTimeline from '../../components/orders/AssignmentHistoryTimeline';
 import { formatDateTime, formatCurrency } from '../../utils/formatters';
 import { OrderInputTypeLabel, OrderTypeLabel } from '../../models/OrderEnums';
-import { resolveDocUrl } from '../../utils/docUrl';
+import { getOrderInputFileApiPath, getOrderBillApiPath, downloadPrescriptionImage, downloadBillFile } from '../../utils/docUrl';
+import AuthImage from '../../components/common/AuthImage';
 
 const OrderDetailsPage = observer(() => {
   const { id } = useParams<{ id: string }>();
@@ -25,8 +26,10 @@ const OrderDetailsPage = observer(() => {
   if (orderStore.isLoading) return <LoadingSpinner message="Loading order details..." />;
   if (!order) return <Alert severity="error">Order not found</Alert>;
 
-  const prescriptionUrl = resolveDocUrl(order.prescriptionFileUrl || order.orderInputFileLocation);
-  const billUrl = resolveDocUrl(order.billFileUrl);
+  const hasPrescription = !!(order.prescriptionFileUrl || order.orderInputFileLocation);
+  const prescriptionApiPath = getOrderInputFileApiPath(order.orderId);
+  const hasBill = !!order.billFileUrl;
+  const billApiPath = getOrderBillApiPath(order.orderId);
 
   return (
     <Box>
@@ -108,33 +111,41 @@ const OrderDetailsPage = observer(() => {
         )}
 
         {/* Prescription */}
-        {prescriptionUrl && (
+        {hasPrescription && (
           <Grid size={{ xs: 12, md: 6 }}>
             <Paper sx={{ p: 3 }}>
               <Typography variant="h6" sx={{ fontWeight: 600, mb: 2 }}>Prescription</Typography>
-              <Box
-                component="img"
-                src={prescriptionUrl}
+              <AuthImage
+                src={prescriptionApiPath}
                 alt="Prescription"
-                sx={{ maxWidth: '100%', maxHeight: 300, borderRadius: 2, cursor: 'pointer' }}
-                onClick={() => window.open(prescriptionUrl, '_blank')}
+                sx={{ maxWidth: '100%', maxHeight: 300, borderRadius: 2 }}
               />
+              <Box sx={{ textAlign: 'center', mt: 1 }}>
+                <Button startIcon={<DownloadIcon />} size="small"
+                  onClick={() => downloadPrescriptionImage(order.orderId, order.prescriptionFileUrl || order.orderInputFileLocation)}>
+                  Download
+                </Button>
+              </Box>
             </Paper>
           </Grid>
         )}
 
         {/* Bill */}
-        {billUrl && (
+        {hasBill && (
           <Grid size={{ xs: 12, md: 6 }}>
             <Paper sx={{ p: 3 }}>
               <Typography variant="h6" sx={{ fontWeight: 600, mb: 2 }}>Bill</Typography>
-              <Box
-                component="img"
-                src={billUrl}
+              <AuthImage
+                src={billApiPath}
                 alt="Bill"
-                sx={{ maxWidth: '100%', maxHeight: 300, borderRadius: 2, cursor: 'pointer' }}
-                onClick={() => window.open(billUrl, '_blank')}
+                sx={{ maxWidth: '100%', maxHeight: 300, borderRadius: 2 }}
               />
+              <Box sx={{ textAlign: 'center', mt: 1 }}>
+                <Button startIcon={<DownloadIcon />} size="small"
+                  onClick={() => downloadBillFile(order.orderId, order.billFileUrl)}>
+                  Download
+                </Button>
+              </Box>
             </Paper>
           </Grid>
         )}

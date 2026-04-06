@@ -9,6 +9,7 @@ import 'package:pharmaish/shared/models/order_model.dart';
 import 'package:pharmaish/core/screens/orders/accepted_order_bill_screen.dart';
 import 'package:pharmaish/core/screens/delivery/assign_delivery_boy_screen.dart';
 import 'package:pharmaish/shared/widgets/payment_summary_dialog.dart';
+import 'package:pharmaish/shared/widgets/authenticated_image.dart';
 import 'package:pharmaish/utils/consent_manager.dart';
 import 'package:pharmaish/utils/constants.dart';
 
@@ -108,11 +109,8 @@ class OrderTileWithBill extends StatelessWidget {
   }
 
   void _showPrescriptionDialog(BuildContext context) {
-    final rawUrl = order.prescriptionFileUrl ?? '';
-    final base = AppConstants.apiBaseUrl.replaceAll(RegExp(r'/api/?$'), '');
-    final url = rawUrl.startsWith('http')
-        ? rawUrl
-        : '$base/${rawUrl.replaceAll('\\', '/').replaceAll(RegExp(r'^/'), '')}';
+    final url = getOrderInputFileUrl(order.orderId);
+    final fileName = extractFileName(order.prescriptionFileUrl);
 
     showDialog(
       context: context,
@@ -135,9 +133,22 @@ class OrderTileWithBill extends StatelessWidget {
                         fontSize: 16,
                         fontWeight: FontWeight.bold),
                   ),
-                  IconButton(
-                    icon: const Icon(Icons.close, color: Colors.white),
-                    onPressed: () => Navigator.pop(ctx),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.download, color: Colors.white),
+                        onPressed: () => downloadPrescriptionImage(
+                          ctx,
+                          orderId: order.orderId,
+                          prescriptionFileUrl: order.prescriptionFileUrl,
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close, color: Colors.white),
+                        onPressed: () => Navigator.pop(ctx),
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -146,8 +157,8 @@ class OrderTileWithBill extends StatelessWidget {
             InteractiveViewer(
               minScale: 0.5,
               maxScale: 6.0,
-              child: Image.network(
-                url,
+              child: AuthNetworkImage(
+                url: url,
                 fit: BoxFit.contain,
                 loadingBuilder: (context, child, loadingProgress) {
                   if (loadingProgress == null) return child;
