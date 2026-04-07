@@ -764,6 +764,36 @@ namespace MedicineDelivery.API.Controllers
         /// </summary>
         /// <param name="orderId">Order ID</param>
         /// <returns>List of medical stores in the same pincode</returns>
+        /// <summary>
+        /// Find nearby chemists for an order — first by 5KM radius, then by postal code if fewer than 3 found
+        /// </summary>
+        /// <param name="orderNumber">Order Number</param>
+        /// <returns>List of nearby chemists with match type and distance</returns>
+        [HttpGet("nearby-chemists/{orderNumber}")]
+        [Authorize(Policy = "RequireOrderReadPermission")]
+        public async Task<IActionResult> GetNearbyChemists(string orderNumber, CancellationToken cancellationToken)
+        {
+            try
+            {
+                var result = await _orderService.GetNearbyChemistsByOrderNumberAsync(orderNumber, cancellationToken);
+                return Ok(result);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                _logger.LogWarning("GetNearbyChemists: {Message}", ex.Message);
+                return NotFound(new { error = ex.Message });
+            }
+            catch (OperationCanceledException)
+            {
+                return StatusCode(499, new { error = "Request was cancelled." });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error in GetNearbyChemists for Order {OrderNumber}", orderNumber);
+                return StatusCode(500, new { error = "An error occurred while retrieving nearby chemists." });
+            }
+        }
+
         [HttpGet("{orderId:int}/medical-stores-by-pincode")]
         [Authorize(Policy = "RequireOrderReadPermission")]
         public async Task<IActionResult> GetMedicalStoresByPinCode(int orderId, CancellationToken cancellationToken)

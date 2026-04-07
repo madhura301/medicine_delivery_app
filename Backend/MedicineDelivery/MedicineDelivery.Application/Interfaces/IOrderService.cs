@@ -29,6 +29,7 @@ namespace MedicineDelivery.Application.Interfaces
         Task<IEnumerable<DeliveryDto>> GetEligibleDeliveryBoysByOrderIdAsync(int orderId, CancellationToken cancellationToken = default);
         Task<IEnumerable<OrderDto>> GetOrdersByDeliveryIdAsync(int deliveryId, CancellationToken cancellationToken = default);
         Task<IEnumerable<MedicalStoreBasicDto>> GetMedicalStoresByOrderPinCodeAsync(int orderId, CancellationToken cancellationToken = default);
+        Task<NearbyChemistResponseDto> GetNearbyChemistsByOrderNumberAsync(string orderNumber, CancellationToken cancellationToken = default);
     }
 }
 

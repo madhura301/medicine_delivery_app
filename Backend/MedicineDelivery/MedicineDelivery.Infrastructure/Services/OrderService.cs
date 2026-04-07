@@ -1180,5 +1180,131 @@ namespace MedicineDelivery.Infrastructure.Services
                 MedicalName = ms.MedicalName
             }).ToList();
         }
+
+        public async Task<NearbyChemistResponseDto> GetNearbyChemistsByOrderNumberAsync(string orderNumber, CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            var order = await _unitOfWork.Orders.FirstOrDefaultAsync(o => o.OrderNumber == orderNumber);
+            if (order == null)
+            {
+                _logger.LogWarning("GetNearbyChemistsByOrderNumberAsync failed: Order with number '{OrderNumber}' not found", orderNumber);
+                throw new KeyNotFoundException($"Order with number '{orderNumber}' not found.");
+            }
+
+            var customerAddress = await _unitOfWork.CustomerAddresses.GetByIdAsync(order.CustomerAddressId);
+            if (customerAddress == null)
+            {
+                _logger.LogWarning("GetNearbyChemistsByOrderNumberAsync failed: Customer address not found for Order {OrderNumber}", orderNumber);
+                throw new KeyNotFoundException("Customer address not found for this order.");
+            }
+
+            var allActiveStores = await _unitOfWork.MedicalStores.FindAsync(
+                ms => ms.IsActive && !ms.IsDeleted);
+
+            var result = new List<NearbyChemistDto>();
+
+            // Step 1: Find chemists within 5KM radius using Haversine formula
+            if (customerAddress.Latitude.HasValue && customerAddress.Longitude.HasValue)
+            {
+                foreach (var store in allActiveStores)
+                {
+                    if (!store.Latitude.HasValue || !store.Longitude.HasValue)
+                        continue;
+
+                    var distance = CalculateHaversineDistance(
+                        (double)customerAddress.Latitude.Value,
+                        (double)customerAddress.Longitude.Value,
+                        (double)store.Latitude.Value,
+                        (double)store.Longitude.Value);
+
+                    if (distance <= 5.0)
+                    {
+                        result.Add(MapToNearbyChemistDto(store, ChemistMatchType.Distance, Math.Round(distance, 2)));
+                    }
+                }
+            }
+
+            // Step 2: If fewer than 3 chemists found by distance, also search by postal code
+            if (result.Count < 3 && !string.IsNullOrWhiteSpace(customerAddress.PostalCode))
+            {
+                var postalCode = customerAddress.PostalCode.Trim();
+                var existingStoreIds = result.Select(c => c.MedicalStoreId).ToHashSet();
+
+                foreach (var store in allActiveStores)
+                {
+                    if (existingStoreIds.Contains(store.MedicalStoreId))
+                        continue;
+
+                    if (store.PostalCode.Trim() == postalCode)
+                    {
+                        double? distance = null;
+                        if (customerAddress.Latitude.HasValue && customerAddress.Longitude.HasValue
+                            && store.Latitude.HasValue && store.Longitude.HasValue)
+                        {
+                            distance = Math.Round(CalculateHaversineDistance(
+                                (double)customerAddress.Latitude.Value,
+                                (double)customerAddress.Longitude.Value,
+                                (double)store.Latitude.Value,
+                                (double)store.Longitude.Value), 2);
+                        }
+
+                        result.Add(MapToNearbyChemistDto(store, ChemistMatchType.PostalCode, distance));
+                    }
+                }
+            }
+
+            // Sort: distance-matched first (low to high), then postal code matched
+            result = result
+                .OrderBy(c => c.MatchType)
+                .ThenBy(c => c.DistanceInKm ?? double.MaxValue)
+                .ToList();
+
+            return new NearbyChemistResponseDto
+            {
+                OrderNumber = orderNumber,
+                TotalChemists = result.Count,
+                Chemists = result
+            };
+        }
+
+        private static double CalculateHaversineDistance(double lat1, double lon1, double lat2, double lon2)
+        {
+            const double earthRadiusKm = 6371.0;
+
+            var dLat = DegreesToRadians(lat2 - lat1);
+            var dLon = DegreesToRadians(lon2 - lon1);
+
+            var a = Math.Sin(dLat / 2) * Math.Sin(dLat / 2) +
+                    Math.Cos(DegreesToRadians(lat1)) * Math.Cos(DegreesToRadians(lat2)) *
+                    Math.Sin(dLon / 2) * Math.Sin(dLon / 2);
+
+            var c = 2 * Math.Atan2(Math.Sqrt(a), Math.Sqrt(1 - a));
+            return earthRadiusKm * c;
+        }
+
+        private static double DegreesToRadians(double degrees)
+        {
+            return degrees * Math.PI / 180.0;
+        }
+
+        private static NearbyChemistDto MapToNearbyChemistDto(MedicalStore store, ChemistMatchType matchType, double? distanceInKm)
+        {
+            return new NearbyChemistDto
+            {
+                MedicalStoreId = store.MedicalStoreId,
+                MedicalName = store.MedicalName,
+                AddressLine1 = store.AddressLine1,
+                AddressLine2 = store.AddressLine2,
+                City = store.City,
+                State = store.State,
+                PostalCode = store.PostalCode,
+                Latitude = store.Latitude,
+                Longitude = store.Longitude,
+                MobileNumber = store.MobileNumber,
+                MatchType = matchType,
+                DistanceInKm = distanceInKm
+            };
+        }
     }
 }
