@@ -284,6 +284,59 @@ namespace MedicineDelivery.Infrastructure.Services
             return true;
         }
 
+        public async Task<bool> CheckChemistAvailabilityAsync(Guid customerId, CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            var defaultAddress = await _unitOfWork.CustomerAddresses.FirstOrDefaultAsync(
+                ca => ca.CustomerId == customerId && ca.IsDefault && ca.IsActive);
+
+            if (defaultAddress == null)
+            {
+                _logger.LogWarning("CheckChemistAvailabilityAsync failed: No default address found for Customer {CustomerId}", customerId);
+                throw new KeyNotFoundException($"No default address found for customer '{customerId}'.");
+            }
+
+            if (!defaultAddress.Latitude.HasValue || !defaultAddress.Longitude.HasValue)
+            {
+                _logger.LogWarning("CheckChemistAvailabilityAsync failed: Default address missing coordinates for Customer {CustomerId}", customerId);
+                throw new InvalidOperationException("Customer's default address does not have location coordinates.");
+            }
+
+            var allActiveStores = await _unitOfWork.MedicalStores.FindAsync(
+                ms => ms.IsActive && !ms.IsDeleted && ms.Latitude.HasValue && ms.Longitude.HasValue);
+
+            var customerLat = (double)defaultAddress.Latitude.Value;
+            var customerLon = (double)defaultAddress.Longitude.Value;
+
+            foreach (var store in allActiveStores)
+            {
+                var distance = CalculateHaversineDistance(
+                    customerLat, customerLon,
+                    (double)store.Latitude!.Value, (double)store.Longitude!.Value);
+
+                if (distance <= 5.0)
+                    return true;
+            }
+
+            return false;
+        }
+
+        private static double CalculateHaversineDistance(double lat1, double lon1, double lat2, double lon2)
+        {
+            const double earthRadiusKm = 6371.0;
+
+            var dLat = (lat2 - lat1) * Math.PI / 180.0;
+            var dLon = (lon2 - lon1) * Math.PI / 180.0;
+
+            var a = Math.Sin(dLat / 2) * Math.Sin(dLat / 2) +
+                    Math.Cos(lat1 * Math.PI / 180.0) * Math.Cos(lat2 * Math.PI / 180.0) *
+                    Math.Sin(dLon / 2) * Math.Sin(dLon / 2);
+
+            var c = 2 * Math.Atan2(Math.Sqrt(a), Math.Sqrt(1 - a));
+            return earthRadiusKm * c;
+        }
+
         private string GenerateRandomPassword()
         {
             const string capitalLetters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";

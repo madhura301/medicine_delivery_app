@@ -201,6 +201,40 @@ namespace MedicineDelivery.API.Controllers
         }
 
         /// <summary>
+        /// Check if any chemist is available within 5KM of a customer's default address
+        /// </summary>
+        /// <param name="customerId">Customer ID</param>
+        /// <returns>True if at least one chemist is within 5KM, false otherwise</returns>
+        [HttpGet("check-availability/{customerId:guid}")]
+        public async Task<IActionResult> CheckChemistAvailability(Guid customerId, CancellationToken cancellationToken)
+        {
+            try
+            {
+                var isAvailable = await _medicalStoreService.CheckChemistAvailabilityAsync(customerId, cancellationToken);
+                return Ok(new { customerId, isChemistAvailable = isAvailable });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                _logger.LogWarning("CheckChemistAvailability: {Message}", ex.Message);
+                return NotFound(new { error = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogWarning("CheckChemistAvailability: {Message}", ex.Message);
+                return BadRequest(new { error = ex.Message });
+            }
+            catch (OperationCanceledException)
+            {
+                return StatusCode(499, new { error = "Request was cancelled." });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error in CheckChemistAvailability for Customer {CustomerId}", customerId);
+                return StatusCode(500, new { error = "An error occurred while checking chemist availability." });
+            }
+        }
+
+        /// <summary>
         /// Delete medical store (soft delete)
         /// </summary>
         /// <param name="id">Medical store ID</param>

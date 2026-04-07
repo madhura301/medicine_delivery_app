@@ -10,6 +10,7 @@ namespace MedicineDelivery.Application.Interfaces
         Task<List<MedicalStoreDto>> GetAllMedicalStoresAsync();
         Task<MedicalStoreDto?> UpdateMedicalStoreAsync(Guid id, MedicalStoreRegistrationDto updateDto);
         Task<bool> DeleteMedicalStoreAsync(Guid id);
+        Task<bool> CheckChemistAvailabilityAsync(Guid customerId, CancellationToken cancellationToken = default);
     }
 
     public class MedicalStoreRegistrationResult
