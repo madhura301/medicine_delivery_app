@@ -12,6 +12,7 @@ import 'package:pharmaish/utils/constants.dart';
 import 'package:pharmaish/utils/storage.dart';
 import 'package:pharmaish/shared/models/order_model.dart';
 import 'package:pharmaish/shared/models/order_enums.dart';
+import 'package:pharmaish/shared/widgets/authenticated_image.dart';
 
 // ============================================================================
 // CHEMIST DASHBOARD - WITH BILL UPLOAD SUPPORT
@@ -1819,8 +1820,8 @@ late OrderModel _currentOrder;
               boundaryMargin: const EdgeInsets.all(20),
               minScale: 0.5,
               maxScale: 4,
-              child: Image.network(
-                _currentOrder.prescriptionFileUrl!,
+              child: AuthNetworkImage(
+                url: getOrderInputFileUrl(_currentOrder.orderId),
                 fit: BoxFit.contain,
                 loadingBuilder: (context, child, loadingProgress) {
                   if (loadingProgress == null) return child;
@@ -1856,66 +1857,78 @@ late OrderModel _currentOrder;
     );
   }
 
+  Future<void> _downloadPrescriptionImage() async {
+    await downloadPrescriptionImage(
+      context,
+      orderId: _currentOrder.orderId,
+      prescriptionFileUrl: _currentOrder.prescriptionFileUrl,
+    );
+  }
+
   Widget _buildImagePrescription() {
     return Column(
       children: [
-        Container(
-          height: 250,
-          decoration: BoxDecoration(
-            color: Colors.grey[200],
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.grey[300]!),
-          ),
-          child: Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.image, size: 80, color: Colors.grey[400]),
-                const SizedBox(height: 12),
-                Text(
-                  _currentOrder.prescriptionFileUrl ?? 'Image Prescription',
-                  style: TextStyle(color: Colors.grey[600]),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 16),
-                ElevatedButton.icon(
-                  onPressed: () => _viewPrescriptionWithConsent(),
-                  icon: const Icon(Icons.fullscreen),
-                  label: const Text('View Full Image'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.black,
-                  ),
-                ),
-              ],
+        GestureDetector(
+          onTap: () => _viewPrescriptionWithConsent(),
+          child: Container(
+            constraints: const BoxConstraints(minHeight: 250),
+            decoration: BoxDecoration(
+              color: Colors.grey[200],
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.grey[300]!),
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: AuthNetworkImage(
+                url: getOrderInputFileUrl(_currentOrder.orderId),
+                fit: BoxFit.contain,
+                width: double.infinity,
+                loadingBuilder: (context, child, loadingProgress) {
+                  if (loadingProgress == null) return child;
+                  return SizedBox(
+                    height: 250,
+                    child: Center(
+                      child: CircularProgressIndicator(
+                        value: loadingProgress.expectedTotalBytes != null
+                            ? loadingProgress.cumulativeBytesLoaded /
+                                loadingProgress.expectedTotalBytes!
+                            : null,
+                      ),
+                    ),
+                  );
+                },
+                errorBuilder: (context, error, stackTrace) {
+                  return SizedBox(
+                    height: 250,
+                    child: Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.broken_image, size: 64, color: Colors.grey[400]),
+                          const SizedBox(height: 12),
+                          Text(
+                            extractFileName(_currentOrder.prescriptionFileUrl).isNotEmpty
+                                ? extractFileName(_currentOrder.prescriptionFileUrl)
+                                : 'Failed to load prescription',
+                            style: TextStyle(color: Colors.grey[600]),
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
             ),
           ),
         ),
         const SizedBox(height: 12),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          children: [
-            TextButton.icon(
-              onPressed: () {
-                // TODO: Implement download
-              },
-              icon: const Icon(Icons.download),
-              label: const Text('Download'),
-            ),
-            TextButton.icon(
-              onPressed: () {
-                // TODO: Implement share
-              },
-              icon: const Icon(Icons.share),
-              label: const Text('Share'),
-            ),
-            TextButton.icon(
-              onPressed: () {
-                // TODO: Implement zoom
-              },
-              icon: const Icon(Icons.zoom_in),
-              label: const Text('Zoom'),
-            ),
-          ],
+        Center(
+          child: TextButton.icon(
+            onPressed: () => _downloadPrescriptionImage(),
+            icon: const Icon(Icons.download),
+            label: const Text('Download'),
+          ),
         ),
       ],
     );

@@ -10,6 +10,7 @@ import 'package:pharmaish/utils/constants.dart';
 import 'package:pharmaish/utils/storage.dart';
 import 'package:pharmaish/config/environment_config.dart';
 import 'package:pharmaish/shared/models/order_model.dart';
+import 'package:pharmaish/shared/widgets/authenticated_image.dart';
 import 'package:pharmaish/shared/widgets/order_assignment_history_widget.dart';
 
 class CustomerOrderDetailsPage extends StatefulWidget {
@@ -751,8 +752,8 @@ class _CustomerOrderDetailsPageState extends State<CustomerOrderDetailsPage> {
         if (_currentOrder.prescriptionFileUrl != null) ...[
           ClipRRect(
             borderRadius: BorderRadius.circular(8),
-            child: Image.network(
-              _currentOrder.prescriptionFileUrl!,
+            child: AuthNetworkImage(
+              url: getOrderInputFileUrl(_currentOrder.orderId),
               fit: BoxFit.cover,
               errorBuilder: (context, error, stackTrace) {
                 return Container(
@@ -772,6 +773,18 @@ class _CustomerOrderDetailsPageState extends State<CustomerOrderDetailsPage> {
               },
             ),
           ),
+          const SizedBox(height: 8),
+          Center(
+            child: TextButton.icon(
+              onPressed: () => downloadPrescriptionImage(
+                context,
+                orderId: _currentOrder.orderId,
+                prescriptionFileUrl: _currentOrder.prescriptionFileUrl,
+              ),
+              icon: const Icon(Icons.download),
+              label: const Text('Download'),
+            ),
+          ),
         ] else
           const Text('No prescription uploaded'),
       ],
@@ -785,8 +798,8 @@ class _CustomerOrderDetailsPageState extends State<CustomerOrderDetailsPage> {
         if (_currentOrder.billFileUrl != null) ...[
           ClipRRect(
             borderRadius: BorderRadius.circular(8),
-            child: Image.network(
-              _currentOrder.billFileUrl!,
+            child: AuthNetworkImage(
+              url: getOrderBillFileUrl(_currentOrder.orderId),
               fit: BoxFit.cover,
               errorBuilder: (context, error, stackTrace) {
                 return Container(
@@ -804,6 +817,18 @@ class _CustomerOrderDetailsPageState extends State<CustomerOrderDetailsPage> {
                   ),
                 );
               },
+            ),
+          ),
+          const SizedBox(height: 8),
+          Center(
+            child: TextButton.icon(
+              onPressed: () => downloadBillFile(
+                context,
+                orderId: _currentOrder.orderId,
+                billFileUrl: _currentOrder.billFileUrl,
+              ),
+              icon: const Icon(Icons.download),
+              label: const Text('Download'),
             ),
           ),
         ] else

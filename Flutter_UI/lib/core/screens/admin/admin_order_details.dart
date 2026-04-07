@@ -11,6 +11,7 @@ import 'package:pharmaish/utils/constants.dart';
 import 'package:pharmaish/utils/storage.dart';
 import 'package:pharmaish/config/environment_config.dart';
 import 'package:pharmaish/shared/models/order_model.dart';
+import 'package:pharmaish/shared/widgets/authenticated_image.dart';
 
 class AdminOrderDetailsPage extends StatefulWidget {
   final OrderModel order;
@@ -73,19 +74,8 @@ class _AdminOrderDetailsPageState extends State<AdminOrderDetailsPage> {
     ));
   }
 
-  /// Converts a relative file path from the backend into a full loadable URL.
-  String _resolveFileUrl(String rawUrl) {
-  if (rawUrl.startsWith('http://') || rawUrl.startsWith('https://')) return rawUrl;
-  // Strip leading slash if present
-  final clean = rawUrl.replaceAll(r'\', '/').replaceAll(RegExp(r'^/'), '');
-  // Base URL without /api suffix
-  final base = AppConstants.apiBaseUrl.replaceAll(RegExp(r'/api/?$'), '');
-  return '$base/$clean';
-}
-
   /// Opens a full-screen image viewer with pinch-to-zoom.
-  void _openFullScreen(String rawUrl, String title) {
-    final url = _resolveFileUrl(rawUrl);
+  void _openFullScreen(String url, String title) {
     Navigator.of(context).push(
       MaterialPageRoute(
           builder: (_) => _FullScreenImagePage(imageUrl: url, title: title)),
@@ -807,16 +797,16 @@ class _AdminOrderDetailsPageState extends State<AdminOrderDetailsPage> {
     if (rawUrl == null) {
       return const Text('No prescription attached');
     }
-    final imageUrl = _resolveFileUrl(rawUrl);
+    final imageUrl = getOrderInputFileUrl(_currentOrder.orderId);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         GestureDetector(
-          onTap: () => _openFullScreen(rawUrl, 'Prescription'),
+          onTap: () => _openFullScreen(imageUrl, 'Prescription'),
           child: ClipRRect(
             borderRadius: BorderRadius.circular(8),
-            child: Image.network(
-              imageUrl,
+            child: AuthNetworkImage(
+              url: imageUrl,
               fit: BoxFit.cover,
               width: double.infinity,
               loadingBuilder: (ctx, child, progress) {
@@ -871,13 +861,15 @@ class _AdminOrderDetailsPageState extends State<AdminOrderDetailsPage> {
           ),
         ),
         const SizedBox(height: 8),
-        ElevatedButton.icon(
-          onPressed: () => _openFullScreen(rawUrl, 'Prescription'),
-          icon: const Icon(Icons.zoom_in),
-          label: const Text('View Full Size'),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.black,
-            foregroundColor: Colors.white,
+        Center(
+          child: TextButton.icon(
+            onPressed: () => downloadPrescriptionImage(
+              context,
+              orderId: _currentOrder.orderId,
+              prescriptionFileUrl: _currentOrder.prescriptionFileUrl,
+            ),
+            icon: const Icon(Icons.download),
+            label: const Text('Download'),
           ),
         ),
       ],
@@ -889,16 +881,16 @@ class _AdminOrderDetailsPageState extends State<AdminOrderDetailsPage> {
     if (rawUrl == null) {
       return const Text('No bill uploaded yet');
     }
-    final imageUrl = _resolveFileUrl(rawUrl);
+    final imageUrl = getOrderBillFileUrl(_currentOrder.orderId);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         GestureDetector(
-          onTap: () => _openFullScreen(rawUrl, 'Bill'),
+          onTap: () => _openFullScreen(imageUrl, 'Bill'),
           child: ClipRRect(
             borderRadius: BorderRadius.circular(8),
-            child: Image.network(
-              imageUrl,
+            child: AuthNetworkImage(
+              url: imageUrl,
               fit: BoxFit.cover,
               width: double.infinity,
               loadingBuilder: (ctx, child, progress) {
@@ -933,18 +925,6 @@ class _AdminOrderDetailsPageState extends State<AdminOrderDetailsPage> {
                           size: 48, color: Colors.grey),
                       const SizedBox(height: 8),
                       const Text('Failed to load bill image'),
-                      const SizedBox(height: 4),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        child: Text(
-                          imageUrl,
-                          style:
-                              const TextStyle(fontSize: 10, color: Colors.grey),
-                          textAlign: TextAlign.center,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
                     ],
                   ),
                 );
@@ -953,13 +933,15 @@ class _AdminOrderDetailsPageState extends State<AdminOrderDetailsPage> {
           ),
         ),
         const SizedBox(height: 8),
-        ElevatedButton.icon(
-          onPressed: () => _openFullScreen(rawUrl, 'Bill'),
-          icon: const Icon(Icons.zoom_in),
-          label: const Text('View Full Size'),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.black,
-            foregroundColor: Colors.white,
+        Center(
+          child: TextButton.icon(
+            onPressed: () => downloadBillFile(
+              context,
+              orderId: _currentOrder.orderId,
+              billFileUrl: _currentOrder.billFileUrl,
+            ),
+            icon: const Icon(Icons.download),
+            label: const Text('Download'),
           ),
         ),
       ],
@@ -1104,8 +1086,8 @@ class _FullScreenImagePageState extends State<_FullScreenImagePage>
             transformationController: _transformCtrl,
             minScale: 0.5,
             maxScale: 6.0,
-            child: Image.network(
-              widget.imageUrl,
+            child: AuthNetworkImage(
+              url: widget.imageUrl,
               fit: BoxFit.contain,
               loadingBuilder: (ctx, child, progress) {
                 if (progress == null) return child;
