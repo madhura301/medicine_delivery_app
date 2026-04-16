@@ -1,7 +1,12 @@
 // Customer Dashboard - with Drawer Navigation and All Orders Feature
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import 'package:pharmaish/core/screens/location/choose_location_page.dart';
 import 'package:pharmaish/core/screens/orders/customer_all_orders.dart';
 import 'package:pharmaish/core/theme/app_theme.dart';
+import 'package:pharmaish/shared/widgets/address_selector_widget.dart';
 import 'package:pharmaish/utils/app_logger.dart';
+import 'package:pharmaish/utils/constants.dart';
 import 'package:pharmaish/utils/storage.dart';
 import 'package:flutter/material.dart';
 import 'package:pharmaish/shared/widgets/order_widgets.dart';
@@ -18,7 +23,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
   String _userEmail = '';
   String _customerId = '';
   bool _isLoading = true;
-  //String _userStatus = 'Active'; // Can be 'Active', 'Inactive', or 'Pause'
+  CustomerAddressDto? _defaultAddress;
 
   @override
   void initState() {
@@ -66,12 +71,76 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
       }
 
       setState(() => _isLoading = false);
+
+      // Load default address
+      if (_customerId.isNotEmpty) {
+        _loadDefaultAddress();
+      }
     } catch (e) {
       AppLogger.error('Error loading user details', e);
       setState(() {
         _userName = 'Customer';
         _customerId = '';
         _isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _loadDefaultAddress() async {
+    try {
+      final token = await StorageService.getAuthToken();
+      if (token == null || _customerId.isEmpty) return;
+
+      final response = await http.get(
+        Uri.parse(
+            '${AppConstants.apiBaseUrl}/CustomerAddresses/customer/$_customerId/default'),
+        headers: {
+          'Accept': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final json = jsonDecode(response.body);
+        if (mounted) {
+          setState(() {
+            _defaultAddress = CustomerAddressDto.fromJson(json);
+          });
+        }
+      } else if (response.statusCode == 404) {
+        // No default address - try fetching all addresses and pick the first
+        final allResponse = await http.get(
+          Uri.parse(
+              '${AppConstants.apiBaseUrl}/CustomerAddresses/customer/$_customerId'),
+          headers: {
+            'Accept': 'application/json',
+            'Authorization': 'Bearer $token',
+          },
+        );
+        if (allResponse.statusCode == 200) {
+          final List<dynamic> jsonList = jsonDecode(allResponse.body);
+          if (jsonList.isNotEmpty && mounted) {
+            setState(() {
+              _defaultAddress = CustomerAddressDto.fromJson(jsonList.first);
+            });
+          }
+        }
+      }
+    } catch (e) {
+      AppLogger.error('Error loading default address', e);
+    }
+  }
+
+  Future<void> _openChooseLocation(BuildContext context) async {
+    final result = await Navigator.push<CustomerAddressDto>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ChooseLocationPage(customerId: _customerId),
+      ),
+    );
+    if (result != null && mounted) {
+      setState(() {
+        _defaultAddress = result;
       });
     }
   }
@@ -191,14 +260,14 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
       drawer: _buildDrawer(context),
       body: Column(
         children: [
-          // Top section with logo and title - UPDATED
+          // Black header with logo
           Container(
             width: double.infinity,
             decoration: BoxDecoration(
               color: AppTheme.primaryColor,
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.2),
+                  color: Colors.black.withValues(alpha: 0.2),
                   blurRadius: 4,
                   offset: const Offset(0, 2),
                 ),
@@ -208,12 +277,11 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
               bottom: false,
               child: Padding(
                 padding:
-                    const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+                    const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
                 child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    // HAMBURGER MENU ICON - Aligned with logo
+                    // Hamburger menu
                     Builder(
                       builder: (context) => IconButton(
                         onPressed: () {
@@ -237,45 +305,89 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
                       ),
                     ),
 
-                    // Profile Icon with Status Indicator - Aligned with logo
-                    Stack(
-                      clipBehavior: Clip.none,
-                      children: [
-                        IconButton(
-                          onPressed: () => _goToCustomerProfile(context),
-                          icon: const Icon(Icons.person,
-                              color: Colors.white, size: 28),
-                          tooltip: 'Profile',
-                        ),
-                      //   // Status indicator - FIXED POSITIONING
-                      //   Positioned(
-                      //     bottom: -4,
-                      //     left: 0,
-                      //     right: 0,
-                      //     child: Container(
-                      //       padding: const EdgeInsets.symmetric(
-                      //         horizontal: 4,
-                      //         vertical: 2,
-                      //       ),
-                      //       decoration: BoxDecoration(
-                      //         color: _getStatusColor(),
-                      //         borderRadius: BorderRadius.circular(8),
-                      //         border: Border.all(color: Colors.white, width: 1),
-                      //       ),
-                      //       child: Text(
-                      //         _userStatus,
-                      //         style: const TextStyle(
-                      //           color: Colors.white,
-                      //           fontSize: 7,
-                      //           fontWeight: FontWeight.bold,
-                      //         ),
-                      //         textAlign: TextAlign.center,
-                      //         maxLines: 1,
-                      //       ),
-                      //     ),
-                      //   ),
-                      // ]
-                      ]
+                    // Address + Profile on the right
+                    GestureDetector(
+                      onTap: () => _openChooseLocation(context),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          // Address info
+                          _defaultAddress != null
+                              ? Column(
+                                  crossAxisAlignment: CrossAxisAlignment.end,
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Text(
+                                          (_defaultAddress!.address
+                                                      ?.isNotEmpty ==
+                                                  true)
+                                              ? _defaultAddress!.address!
+                                              : 'Address',
+                                          style: const TextStyle(
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.white,
+                                          ),
+                                        ),
+                                        const Icon(
+                                            Icons.keyboard_arrow_down,
+                                            size: 16,
+                                            color: Colors.white70),
+                                      ],
+                                    ),
+                                    Text(
+                                      '${_defaultAddress!.city ?? ''} ${_defaultAddress!.postalCode ?? ''}'
+                                          .trim(),
+                                      style: const TextStyle(
+                                        fontSize: 10,
+                                        color: Colors.white60,
+                                      ),
+                                    ),
+                                  ],
+                                )
+                              : const Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      'Set location',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.white70,
+                                      ),
+                                    ),
+                                    Icon(Icons.keyboard_arrow_down,
+                                        size: 16, color: Colors.white70),
+                                  ],
+                                ),
+                          const SizedBox(width: 4),
+                          // Green location icon
+                          Container(
+                            width: 30,
+                            height: 30,
+                            decoration: BoxDecoration(
+                              color: AppTheme.medicalGreenColor
+                                  .withValues(alpha: 0.2),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.location_on,
+                              color: AppTheme.medicalGreenColor,
+                              size: 18,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    // Profile Icon
+                    IconButton(
+                      onPressed: () => _goToCustomerProfile(context),
+                      icon: const Icon(Icons.person,
+                          color: Colors.white, size: 28),
+                      tooltip: 'Profile',
                     ),
                   ],
                 ),
@@ -290,7 +402,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
             decoration: BoxDecoration(
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.1),
+                  color: Colors.black.withValues(alpha: 0.1),
                   blurRadius: 4,
                   offset: const Offset(0, 2),
                 ),

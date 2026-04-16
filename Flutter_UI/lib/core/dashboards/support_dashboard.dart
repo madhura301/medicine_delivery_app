@@ -2319,12 +2319,22 @@ class _WhatsAppOrderCreationPageState extends State<WhatsAppOrderCreationPage>
 // CHEMIST MODEL
 // ============================================================================
 
+/// Match type returned by /Orders/nearby-chemists/{orderNumber}.
+/// 0 = within radius (distanceInKm populated), 1 = postal code fallback.
+enum ChemistMatchType { distance, postalCode }
+
 class ChemistModel {
   final String medicalStoreId;
   final String medicalName;
   final String city;
   final String state;
   final bool isActive;
+  final String addressLine1;
+  final String addressLine2;
+  final String postalCode;
+  final String mobileNumber;
+  final ChemistMatchType matchType;
+  final double? distanceInKm;
 
   ChemistModel({
     required this.medicalStoreId,
@@ -2332,16 +2342,50 @@ class ChemistModel {
     required this.city,
     required this.state,
     required this.isActive,
+    this.addressLine1 = '',
+    this.addressLine2 = '',
+    this.postalCode = '',
+    this.mobileNumber = '',
+    this.matchType = ChemistMatchType.distance,
+    this.distanceInKm,
   });
 
   factory ChemistModel.fromJson(Map<String, dynamic> json) {
+    final rawMatch = json['matchType'];
+    ChemistMatchType match = ChemistMatchType.distance;
+    if (rawMatch is int) {
+      match = rawMatch == 1
+          ? ChemistMatchType.postalCode
+          : ChemistMatchType.distance;
+    } else if (rawMatch is String) {
+      match = rawMatch.toLowerCase().contains('postal')
+          ? ChemistMatchType.postalCode
+          : ChemistMatchType.distance;
+    }
+
+    final rawDistance = json['distanceInKm'];
+    double? distance;
+    if (rawDistance is num) distance = rawDistance.toDouble();
+
     return ChemistModel(
       medicalStoreId: json['medicalStoreId'] ?? '',
       medicalName: json['medicalName'] ?? 'Unknown',
       city: json['city'] ?? '',
       state: json['state'] ?? '',
       isActive: json['isActive'] ?? true,
+      addressLine1: json['addressLine1'] ?? '',
+      addressLine2: json['addressLine2'] ?? '',
+      postalCode: json['postalCode'] ?? '',
+      mobileNumber: json['mobileNumber'] ?? '',
+      matchType: match,
+      distanceInKm: distance,
     );
+  }
+
+  String get distanceLabel {
+    if (distanceInKm != null) return '${distanceInKm!.toStringAsFixed(2)} km';
+    if (matchType == ChemistMatchType.postalCode) return 'Same postal code';
+    return '—';
   }
 }
 
@@ -2489,42 +2533,68 @@ class _AssignedOrdersPageState extends State<AssignedOrdersPage>
 
   // ──────────────────────────── REASSIGN LOGIC ─────────────────────────────
 
-  /// Fetches chemists near the order's delivery pincode via the dedicated endpoint.
-  Future<List<ChemistModel>> _fetchNearbyChemists(int orderId) async {
+  /// Fetches nearby chemists via /Orders/nearby-chemists/{orderNumber}.
+  /// Returns chemists with distance (5KM radius) or postal-code fallback.
+  Future<List<ChemistModel>> _fetchNearbyChemists(String orderNumber) async {
     final response =
-        await widget.dio.get('/Orders/$orderId/medical-stores-by-pincode');
+        await widget.dio.get('/Orders/nearby-chemists/$orderNumber');
 
     if (response.statusCode == 200) {
-      final List<dynamic> data = response.data is List
-          ? response.data
-          : (response.data['data'] ?? response.data['stores'] ?? []);
+      final body = response.data;
+      final List<dynamic> data = body is Map
+          ? (body['chemists'] ?? body['Chemists'] ?? [])
+          : (body is List ? body : []);
       return data.map((json) => ChemistModel.fromJson(json)).toList();
     }
     return [];
   }
 
+  /// Checks whether at least one chemist is within 5KM of the customer address.
+  Future<bool?> _checkChemistAvailability(String customerId) async {
+    try {
+      final response =
+          await widget.dio.get('/MedicalStores/check-availability/$customerId');
+      if (response.statusCode == 200) {
+        final data = response.data;
+        if (data is Map) {
+          final v = data['isChemistAvailable'] ?? data['IsChemistAvailable'];
+          if (v is bool) return v;
+        }
+      }
+    } catch (_) {
+      // Swallow — banner just won't show.
+    }
+    return null;
+  }
+
   Future<void> _showReassignDialog(
       OrderModel order, String customerName) async {
-    final int? parsedId = int.tryParse(order.orderId);
-    if (parsedId == null) {
-      _showSnackBar('Invalid order ID', isError: true);
+    final orderNumber = order.orderNumber;
+    if (orderNumber == null || orderNumber.isEmpty) {
+      _showSnackBar('Order number missing — cannot fetch nearby chemists',
+          isError: true);
       return;
     }
 
     List<ChemistModel> chemists = [];
     bool isLoadingChemists = true;
     String? fetchError;
+    bool? chemistAvailable;
 
     await showDialog(
       context: context,
       barrierDismissible: false,
       builder: (ctx) {
         return StatefulBuilder(builder: (ctx, setDialogState) {
-          // Kick off the fetch once
-          if (isLoadingChemists && fetchError == null) {
-            _fetchNearbyChemists(parsedId).then((result) {
+          // Kick off the fetches once (nearby chemists + availability check in parallel)
+          if (isLoadingChemists && fetchError == null && chemists.isEmpty) {
+            Future.wait([
+              _fetchNearbyChemists(orderNumber),
+              _checkChemistAvailability(order.customerId),
+            ]).then((results) {
               setDialogState(() {
-                chemists = result;
+                chemists = results[0] as List<ChemistModel>;
+                chemistAvailable = results[1] as bool?;
                 isLoadingChemists = false;
               });
             }).catchError((e) {
@@ -2601,7 +2671,7 @@ class _AssignedOrdersPageState extends State<AssignedOrdersPage>
                                 color: Colors.white70, size: 12),
                             const SizedBox(width: 4),
                             Text(
-                              'Showing stores near delivery pincode',
+                              'Showing chemists within 5 KM (or same pincode)',
                               style: const TextStyle(
                                   color: Colors.white70, fontSize: 11),
                             ),
@@ -2611,6 +2681,44 @@ class _AssignedOrdersPageState extends State<AssignedOrdersPage>
                     ],
                   ),
                 ),
+
+                // ── Availability banner ──
+                if (!isLoadingChemists && chemistAvailable != null)
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 10),
+                    color: chemistAvailable!
+                        ? const Color(0xFFE8F5E9)
+                        : const Color(0xFFFFF3E0),
+                    child: Row(
+                      children: [
+                        Icon(
+                          chemistAvailable!
+                              ? Icons.check_circle_outline
+                              : Icons.warning_amber_outlined,
+                          size: 18,
+                          color: chemistAvailable!
+                              ? const Color(0xFF2E7D32)
+                              : const Color(0xFFEF6C00),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            chemistAvailable!
+                                ? 'A chemist is available within 5 KM of the customer address.'
+                                : 'No chemist within 5 KM of the customer address.',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: chemistAvailable!
+                                  ? const Color(0xFF1B5E20)
+                                  : const Color(0xFFE65100),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
 
                 // ── Content ──
                 ConstrainedBox(
@@ -2666,6 +2774,8 @@ class _AssignedOrdersPageState extends State<AssignedOrdersPage>
                                       const Divider(height: 1, indent: 56),
                                   itemBuilder: (ctx, index) {
                                     final chemist = chemists[index];
+                                    final isPostalMatch = chemist.matchType ==
+                                        ChemistMatchType.postalCode;
                                     return ListTile(
                                       leading: CircleAvatar(
                                         backgroundColor:
@@ -2680,14 +2790,66 @@ class _AssignedOrdersPageState extends State<AssignedOrdersPage>
                                             fontSize: 14,
                                             fontWeight: FontWeight.w600),
                                       ),
-                                      subtitle: Text(
-                                        '${chemist.city}, ${chemist.state}',
-                                        style: TextStyle(
-                                            fontSize: 12,
-                                            color: Colors.grey.shade600),
+                                      subtitle: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            [
+                                              chemist.addressLine1,
+                                              chemist.city,
+                                              chemist.state,
+                                              chemist.postalCode,
+                                            ]
+                                                .where((s) => s.isNotEmpty)
+                                                .join(', '),
+                                            style: TextStyle(
+                                                fontSize: 12,
+                                                color: Colors.grey.shade600),
+                                          ),
+                                          if (chemist.mobileNumber.isNotEmpty)
+                                            Text(
+                                              chemist.mobileNumber,
+                                              style: TextStyle(
+                                                  fontSize: 11,
+                                                  color: Colors.grey.shade500),
+                                            ),
+                                        ],
                                       ),
-                                      trailing: const Icon(Icons.chevron_right,
-                                          color: Colors.grey),
+                                      trailing: Column(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.end,
+                                        children: [
+                                          Container(
+                                            padding:
+                                                const EdgeInsets.symmetric(
+                                                    horizontal: 8,
+                                                    vertical: 4),
+                                            decoration: BoxDecoration(
+                                              color: isPostalMatch
+                                                  ? const Color(0xFFFFF8E1)
+                                                  : const Color(0xFFE3F2FD),
+                                              borderRadius:
+                                                  BorderRadius.circular(12),
+                                            ),
+                                            child: Text(
+                                              chemist.distanceLabel,
+                                              style: TextStyle(
+                                                fontSize: 11,
+                                                fontWeight: FontWeight.w600,
+                                                color: isPostalMatch
+                                                    ? const Color(0xFFF57F17)
+                                                    : const Color(0xFF1565C0),
+                                              ),
+                                            ),
+                                          ),
+                                          const SizedBox(height: 4),
+                                          const Icon(Icons.chevron_right,
+                                              color: Colors.grey, size: 18),
+                                        ],
+                                      ),
                                       onTap: () {
                                         Navigator.pop(ctx);
                                         _reassignOrder(order, chemist);
