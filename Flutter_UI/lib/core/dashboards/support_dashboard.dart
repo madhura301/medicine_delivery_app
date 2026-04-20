@@ -259,6 +259,14 @@ class _CustomerSupportDashboardState extends State<CustomerSupportDashboard> {
               ],
             ),
           ),
+          ListTile(
+            leading: const Icon(Icons.contact_support, color: Colors.black),
+            title: const Text('Contact Us'),
+            onTap: () {
+              Navigator.of(context).pop();
+              Navigator.pushNamed(context, '/contact-us');
+            },
+          ),
           const Divider(height: 1),
           ListTile(
             leading: const Icon(Icons.logout, color: Colors.red),

@@ -442,6 +442,15 @@ class _AdminDashboardState extends State<AdminDashboard> {
             ),
           ),
 
+          ListTile(
+            leading: const Icon(Icons.contact_support, color: Colors.black),
+            title: const Text('Contact Us'),
+            onTap: () {
+              Navigator.of(context).pop();
+              Navigator.pushNamed(context, '/contact-us');
+            },
+          ),
+
           // Logout at bottom
           const Divider(),
           ListTile(

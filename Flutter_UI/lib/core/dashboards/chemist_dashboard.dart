@@ -590,6 +590,15 @@ class _ChemistDashboardState extends State<ChemistDashboard> {
             ),
           ),
 
+          ListTile(
+            leading: const Icon(Icons.contact_support, color: Colors.black),
+            title: const Text('Contact Us'),
+            onTap: () {
+              Navigator.of(context).pop();
+              Navigator.pushNamed(context, '/contact-us');
+            },
+          ),
+
           // ✅ Logout at bottom with proper spacing
           const Divider(height: 1),
           ListTile(

@@ -17,6 +17,7 @@ import 'package:pharmaish/core/screens/profiles/manager_profile_page.dart';
 import 'package:pharmaish/core/screens/auth/register_customer_page.dart';
 import 'package:pharmaish/core/screens/auth/register_pharmacist_page.dart';
 import 'package:pharmaish/core/screens/location/choose_location_page.dart';
+import 'package:pharmaish/core/screens/contact_us_page.dart';
 import 'package:pharmaish/core/theme/app_theme.dart';
 import 'package:pharmaish/shared/models/order_model.dart';
 import 'package:pharmaish/utils/app_logger.dart';
@@ -44,6 +45,7 @@ class AppRoutes {
   static const String paymentGateway = '/payment-gateway';
   static const String customerOrderDetails = '/customer-order-details';
   static const String chooseLocation = '/choose-location';
+  static const String contactUs = '/contact-us';
 
   static Map<String, WidgetBuilder> routes = {
     login: (context) => const LoginPage(),
@@ -127,6 +129,7 @@ class AppRoutes {
       final order = ModalRoute.of(context)?.settings.arguments as OrderModel;
       return CustomerOrderDetailsPage(order: order);
     },
+    contactUs: (context) => const ContactUsPage(),
     chooseLocation: (context) {
       final args =
           ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;

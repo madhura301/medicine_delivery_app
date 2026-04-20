@@ -620,6 +620,16 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
               },
             ),
 
+            ListTile(
+              leading: const Icon(Icons.contact_support, color: AppTheme.primaryColor),
+              title: const Text('Contact Us'),
+              subtitle: const Text('Get help and support'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.pushNamed(context, '/contact-us');
+              },
+            ),
+
             const Divider(),
 
             // Logout

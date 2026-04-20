@@ -257,6 +257,14 @@ class _DeliveryDashboardState extends State<DeliveryDashboard> {
             },
           ),
           ListTile(
+            leading: const Icon(Icons.contact_support, color: Colors.black),
+            title: const Text('Contact Us'),
+            onTap: () {
+              Navigator.of(context).pop();
+              Navigator.pushNamed(context, '/contact-us');
+            },
+          ),
+          ListTile(
             leading: const Icon(Icons.logout, color: Colors.red),
             title: const Text('Logout'),
             onTap: _handleLogout,
