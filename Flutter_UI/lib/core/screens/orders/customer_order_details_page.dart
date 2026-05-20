@@ -6,20 +6,21 @@ import 'package:intl/intl.dart';
 import 'package:pharmaish/shared/models/order_assignment_history_model.dart';
 import 'package:pharmaish/utils/app_logger.dart';
 import 'package:pharmaish/utils/consent_manager.dart';
-import 'package:pharmaish/utils/constants.dart';
 import 'package:pharmaish/utils/storage.dart';
-import 'package:pharmaish/config/environment_config.dart';
 import 'package:pharmaish/shared/models/order_model.dart';
+import 'package:pharmaish/shared/widgets/app_button.dart';
 import 'package:pharmaish/shared/widgets/authenticated_image.dart';
 import 'package:pharmaish/shared/widgets/order_assignment_history_widget.dart';
+import 'package:pharmaish/core/services/dio_client.dart';
+import 'package:pharmaish/core/services/order_service.dart';
 
 class CustomerOrderDetailsPage extends StatefulWidget {
   final OrderModel order;
 
   const CustomerOrderDetailsPage({
-    Key? key,
+    super.key,
     required this.order,
-  }) : super(key: key);
+  });
 
   @override
   State<CustomerOrderDetailsPage> createState() =>
@@ -27,7 +28,7 @@ class CustomerOrderDetailsPage extends StatefulWidget {
 }
 
 class _CustomerOrderDetailsPageState extends State<CustomerOrderDetailsPage> {
-  late Dio _dio;
+  final Dio _dio = DioClient.instance;
   bool _isLoading = true;
   String? _errorMessage;
 
@@ -43,7 +44,6 @@ class _CustomerOrderDetailsPageState extends State<CustomerOrderDetailsPage> {
   void initState() {
     super.initState();
     _currentOrder = widget.order;
-    _setupDio();
     _checkConsentAndLoadOrderDetails();
   }
 
@@ -85,41 +85,13 @@ class _CustomerOrderDetailsPageState extends State<CustomerOrderDetailsPage> {
     _loadOrderDetails();
   }
 
-  void _setupDio() {
-    _dio = Dio();
-    _dio.options.baseUrl = AppConstants.apiBaseUrl;
-    _dio.options.connectTimeout = EnvironmentConfig.timeoutDuration;
-    _dio.options.receiveTimeout = EnvironmentConfig.timeoutDuration;
-
-    if (EnvironmentConfig.shouldLog) {
-      _dio.interceptors.add(LogInterceptor(
-        requestBody: true,
-        responseBody: true,
-        requestHeader: true,
-        logPrint: (object) => AppLogger.info('API: $object'),
-      ));
-    }
-
-    _dio.interceptors.add(InterceptorsWrapper(
-      onRequest: (options, handler) async {
-        final token = await StorageService.getAuthToken();
-        if (token != null) {
-          options.headers['Authorization'] = 'Bearer $token';
-        }
-        handler.next(options);
-      },
-    ));
-  }
-
   Future<void> _refreshOrder() async {
     try {
-      final response = await _dio.get('/Orders/${widget.order.orderId}');
-      if (response.statusCode == 200) {
-        final updatedOrder = OrderModel.fromJson(response.data);
-        setState(() {
-          _currentOrder = updatedOrder;
-        });
-      }
+      final json = await OrderService.getOrderById(widget.order.orderId);
+      final updatedOrder = OrderModel.fromJson(json);
+      setState(() {
+        _currentOrder = updatedOrder;
+      });
     } catch (e) {
       AppLogger.error('Error refreshing order: $e');
     }
@@ -170,9 +142,8 @@ class _CustomerOrderDetailsPageState extends State<CustomerOrderDetailsPage> {
   Future<void> _loadDeliveryAddress() async {
     try {
       setState(() => _isLoadingAddress = true);
-      final orderResp = await _dio.get('/Orders/${_currentOrder.orderId}');
-      if (orderResp.statusCode != 200) return;
-      final orderJson = orderResp.data as Map<String, dynamic>;
+      final orderJson =
+          await OrderService.getOrderById(_currentOrder.orderId);
       final addressId = orderJson['customerAddressId']?.toString() ??
           orderJson['CustomerAddressId']?.toString();
       if (addressId == null || addressId.isEmpty) return;
@@ -401,10 +372,7 @@ class _CustomerOrderDetailsPageState extends State<CustomerOrderDetailsPage> {
             const SizedBox(height: 24),
             ElevatedButton(
               onPressed: _loadOrderDetails,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.black,
-                foregroundColor: Colors.white,
-              ),
+              style: AppButton.primary(),
               child: const Text('Retry'),
             ),
           ],
@@ -736,8 +704,8 @@ class _CustomerOrderDetailsPageState extends State<CustomerOrderDetailsPage> {
         _buildDetailRow('Store Name', storeName.isNotEmpty ? storeName : 'N/A'),
         _buildDetailRow(
             'Owner',
-            '${ownerFirst} ${ownerLast}'.trim().isNotEmpty
-                ? '${ownerFirst} ${ownerLast}'.trim()
+            '$ownerFirst $ownerLast'.trim().isNotEmpty
+                ? '$ownerFirst $ownerLast'.trim()
                 : 'N/A'),
         _buildDetailRow('Mobile', mobile.isNotEmpty ? mobile : 'N/A'),
         if (addressParts.isNotEmpty) _buildDetailRow('Address', addressParts),

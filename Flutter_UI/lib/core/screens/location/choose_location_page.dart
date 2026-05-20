@@ -7,6 +7,7 @@ import 'package:pharmaish/core/services/location_service.dart';
 import 'package:pharmaish/core/theme/app_theme.dart';
 import 'package:pharmaish/core/screens/profiles/customer_profile_page.dart' show AddAddressDialog;
 import 'package:pharmaish/shared/widgets/address_selector_widget.dart';
+import 'package:pharmaish/shared/widgets/app_snackbar.dart';
 import 'package:pharmaish/utils/storage.dart';
 import 'package:pharmaish/utils/constants.dart';
 import 'package:pharmaish/utils/app_logger.dart';
@@ -243,12 +244,7 @@ class _ChooseLocationPageState extends State<ChooseLocationPage> {
           customerId: _customerId!,
           onAddressAdded: () {
             _loadAddresses();
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Address added successfully!'),
-                backgroundColor: Colors.green,
-              ),
-            );
+            AppSnackBar.success(context, 'Address added successfully!');
           },
         );
       },

@@ -5,14 +5,17 @@ import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import 'package:intl/intl.dart';
 import 'package:pharmaish/core/screens/admin/admin_order_details.dart' show AdminOrderDetailsPage;
+import 'package:pharmaish/shared/widgets/app_button.dart';
 import 'package:pharmaish/utils/app_logger.dart';
-import 'package:pharmaish/utils/constants.dart';
 import 'package:pharmaish/utils/storage.dart';
-import 'package:pharmaish/config/environment_config.dart';
 import 'package:pharmaish/shared/models/order_model.dart';
+import 'package:pharmaish/core/services/dio_client.dart';
+import 'package:pharmaish/core/services/customer_service.dart';
+import 'package:pharmaish/core/services/order_service.dart';
+import 'package:pharmaish/shared/widgets/order_status_chip.dart';
 
 class AdminAllOrders extends StatefulWidget {
-  const AdminAllOrders({Key? key}) : super(key: key);
+  const AdminAllOrders({super.key});
 
   @override
   State<AdminAllOrders> createState() => _AdminAllOrdersState();
@@ -23,7 +26,7 @@ class _AdminAllOrdersState extends State<AdminAllOrders> {
   List<OrderModel> _filteredOrders = [];
   bool _isLoading = true;
   String? _errorMessage;
-  late Dio _dio;
+  final Dio _dio = DioClient.instance;
   int _selectedFilterIndex = 0;
 
   // Customer info cache
@@ -37,7 +40,6 @@ class _AdminAllOrdersState extends State<AdminAllOrders> {
   @override
   void initState() {
     super.initState();
-    _setupDio();
     _loadAllOrders();
   }
 
@@ -45,40 +47,6 @@ class _AdminAllOrdersState extends State<AdminAllOrders> {
   void dispose() {
     _searchController.dispose();
     super.dispose();
-  }
-
-  void _setupDio() {
-    _dio = Dio();
-    _dio.options.baseUrl = AppConstants.apiBaseUrl;
-    _dio.options.connectTimeout = EnvironmentConfig.timeoutDuration;
-    _dio.options.receiveTimeout = EnvironmentConfig.timeoutDuration;
-
-    if (EnvironmentConfig.shouldLog) {
-      _dio.interceptors.add(LogInterceptor(
-        requestBody: true,
-        responseBody: true,
-        requestHeader: true,
-        logPrint: (object) => AppLogger.info('API: $object'),
-      ));
-    }
-
-    _dio.interceptors.add(InterceptorsWrapper(
-      onRequest: (options, handler) async {
-        final token = await StorageService.getAuthToken();
-        if (token != null) {
-          options.headers['Authorization'] = 'Bearer $token';
-        }
-        handler.next(options);
-      },
-      onError: (error, handler) {
-        if (EnvironmentConfig.shouldLog) {
-          AppLogger.error('API Error: ${error.message}');
-          AppLogger.error('Status Code: ${error.response?.statusCode}');
-          AppLogger.error('Response Data: ${error.response?.data}');
-        }
-        handler.next(error);
-      },
-    ));
   }
 
   Future<void> _loadAllOrders() async {
@@ -90,41 +58,25 @@ class _AdminAllOrdersState extends State<AdminAllOrders> {
     try {
       AppLogger.info('Fetching all orders for admin');
 
-      final response = await _dio.get('/Orders');
+      final ordersList = await OrderService.getAllOrders();
 
-      if (response.statusCode == 200) {
-        final data = response.data;
+      AppLogger.info('Received ${ordersList.length} orders');
 
-        List<dynamic> ordersList;
-        if (data is List) {
-          ordersList = data;
-        } else if (data is Map && data.containsKey('data')) {
-          ordersList = data['data'] as List;
-        } else if (data is Map && data.containsKey('orders')) {
-          ordersList = data['orders'] as List;
-        } else {
-          throw Exception('Unexpected response format');
-        }
+      final allOrders =
+          ordersList.map((json) => OrderModel.fromJson(json)).toList();
 
-        AppLogger.info('Received ${ordersList.length} orders');
+      // Sort by date (most recent first)
+      allOrders.sort((a, b) => b.createdOn.compareTo(a.createdOn));
 
-        final allOrders = ordersList.map((json) {
-          return OrderModel.fromJson(json);
-        }).toList();
+      // Load customer and chemist info
+      await _loadAdditionalInfo(allOrders);
 
-        // Sort by date (most recent first)
-        allOrders.sort((a, b) => b.createdOn.compareTo(a.createdOn));
+      setState(() {
+        _allOrders = allOrders;
+        _isLoading = false;
+      });
 
-        // Load customer and chemist info
-        await _loadAdditionalInfo(allOrders);
-
-        setState(() {
-          _allOrders = allOrders;
-          _isLoading = false;
-        });
-
-        _filterOrders();
-      }
+      _filterOrders();
     } on DioException catch (e) {
       AppLogger.error('Error loading orders', e);
 
@@ -160,17 +112,15 @@ class _AdminAllOrdersState extends State<AdminAllOrders> {
       // Load customer info
       if (!_customerCache.containsKey(order.customerId)) {
         try {
-          final response = await _dio.get('/Customers/${order.customerId}');
-          if (response.statusCode == 200) {
-            final customerData = response.data;
-            _customerCache[order.customerId] = {
-              'name':
-                  '${customerData['customerFirstName'] ?? ''} ${customerData['customerLastName'] ?? ''}'
-                      .trim(),
-              'email': customerData['emailId']?.toString() ?? '',
-              'phone': customerData['mobileNumber']?.toString() ?? '',
-            };
-          }
+          final customerData =
+              await CustomerService.getCustomer(order.customerId);
+          _customerCache[order.customerId] = {
+            'name':
+                '${customerData['customerFirstName'] ?? ''} ${customerData['customerLastName'] ?? ''}'
+                    .trim(),
+            'email': customerData['emailId']?.toString() ?? '',
+            'phone': customerData['mobileNumber']?.toString() ?? '',
+          };
         } catch (e) {
           _customerCache[order.customerId] = {
             'name': 'Customer',
@@ -269,34 +219,43 @@ class _AdminAllOrdersState extends State<AdminAllOrders> {
       filtered = filtered.where((order) {
         // Basic order fields (always available)
         if (order.orderId.toLowerCase().contains(query)) return true;
-        if ((order.orderNumber ?? '').toLowerCase().contains(query))
+        if ((order.orderNumber ?? '').toLowerCase().contains(query)) {
           return true;
-        if ((order.shippingAddressLine1 ?? '').toLowerCase().contains(query))
+        }
+        if ((order.shippingAddressLine1 ?? '').toLowerCase().contains(query)) {
           return true;
-        if ((order.shippingCity ?? '').toLowerCase().contains(query))
+        }
+        if ((order.shippingCity ?? '').toLowerCase().contains(query)) {
           return true;
-        if ((order.shippingArea ?? '').toLowerCase().contains(query))
+        }
+        if ((order.shippingArea ?? '').toLowerCase().contains(query)) {
           return true;
+        }
 
         // Customer info (if cached)
         if (_customerCache.containsKey(order.customerId)) {
           final customerData = _customerCache[order.customerId]!;
-          if ((customerData['name'] ?? '').toLowerCase().contains(query))
+          if ((customerData['name'] ?? '').toLowerCase().contains(query)) {
             return true;
-          if ((customerData['email'] ?? '').toLowerCase().contains(query))
+          }
+          if ((customerData['email'] ?? '').toLowerCase().contains(query)) {
             return true;
-          if ((customerData['phone'] ?? '').toLowerCase().contains(query))
+          }
+          if ((customerData['phone'] ?? '').toLowerCase().contains(query)) {
             return true;
+          }
         }
 
         // Chemist info (if cached)
         if (order.medicalStoreId != null &&
             _chemistCache.containsKey(order.medicalStoreId)) {
           final chemistData = _chemistCache[order.medicalStoreId]!;
-          if ((chemistData['name'] ?? '').toLowerCase().contains(query))
+          if ((chemistData['name'] ?? '').toLowerCase().contains(query)) {
             return true;
-          if ((chemistData['phone'] ?? '').toLowerCase().contains(query))
+          }
+          if ((chemistData['phone'] ?? '').toLowerCase().contains(query)) {
             return true;
+          }
         }
 
         return false;
@@ -621,10 +580,7 @@ class _AdminAllOrdersState extends State<AdminAllOrders> {
                 onPressed: _clearSearch,
                 icon: const Icon(Icons.clear),
                 label: const Text('Clear Search'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.black,
-                  foregroundColor: Colors.white,
-                ),
+                style: AppButton.primary(),
               ),
             ],
           ],
@@ -824,42 +780,5 @@ class _AdminAllOrdersState extends State<AdminAllOrders> {
     );
   }
 
-  Widget _buildStatusChip(String status) {
-    Color chipColor;
-    String statusText = status;
-
-    final statusLower = status.toLowerCase();
-    if (statusLower.contains('pending') || statusLower.contains('assigned')) {
-      chipColor = Colors.orange;
-      statusText = 'Pending';
-    } else if (statusLower.contains('accepted')) {
-      chipColor = Colors.green;
-      statusText = 'Accepted';
-    } else if (statusLower.contains('rejected')) {
-      chipColor = Colors.red;
-      statusText = 'Rejected';
-    } else if (statusLower.contains('completed')) {
-      chipColor = Colors.blue;
-      statusText = 'Completed';
-    } else {
-      chipColor = Colors.grey;
-    }
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: chipColor.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: chipColor, width: 1),
-      ),
-      child: Text(
-        statusText,
-        style: TextStyle(
-          color: chipColor,
-          fontSize: 12,
-          fontWeight: FontWeight.bold,
-        ),
-      ),
-    );
-  }
+  Widget _buildStatusChip(String status) => OrderStatusChip(status);
 }

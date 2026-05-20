@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import 'package:intl/intl.dart';
-import 'package:pharmaish/config/environment_config.dart';
 import 'package:pharmaish/core/theme/app_theme.dart';
 import 'package:pharmaish/utils/app_logger.dart';
-import 'package:pharmaish/utils/constants.dart';
 import 'package:pharmaish/utils/storage.dart';
 import 'package:pharmaish/core/screens/profiles/manager_profile_page.dart';
 import 'package:pharmaish/shared/models/order_model.dart';
+import 'package:pharmaish/core/services/dio_client.dart';
+import 'package:pharmaish/shared/widgets/app_button.dart';
+import 'package:pharmaish/shared/widgets/confirm_dialog.dart';
 
 class ManagerDashboard extends StatefulWidget {
   const ManagerDashboard({super.key});
@@ -18,43 +19,13 @@ class ManagerDashboard extends StatefulWidget {
 
 class _ManagerDashboardState extends State<ManagerDashboard> {
   int _selectedIndex = 0;
-  late Dio _dio;
+  final Dio _dio = DioClient.instance;
   String _userName = 'Manager';
 
   @override
   void initState() {
     super.initState();
-    _setupDio();
     _loadUserName();
-  }
-
-  void _setupDio() {
-    _dio = Dio();
-    _dio.options.baseUrl = AppConstants.apiBaseUrl;
-    _dio.options.connectTimeout = EnvironmentConfig.timeoutDuration;
-    _dio.options.receiveTimeout = EnvironmentConfig.timeoutDuration;
-
-    if (EnvironmentConfig.shouldLog) {
-      _dio.interceptors.add(LogInterceptor(
-        requestBody: true,
-        responseBody: true,
-        logPrint: (o) => AppLogger.info('API: $o'),
-      ));
-    }
-
-    _dio.interceptors.add(InterceptorsWrapper(
-      onRequest: (options, handler) async {
-        final token = await StorageService.getAuthToken();
-        if (token != null) {
-          options.headers['Authorization'] = 'Bearer $token';
-        }
-        handler.next(options);
-      },
-      onError: (error, handler) {
-        AppLogger.error('API Error: ${error.message}');
-        handler.next(error);
-      },
-    ));
   }
 
   Future<void> _loadUserName() async {
@@ -78,27 +49,8 @@ class _ManagerDashboardState extends State<ManagerDashboard> {
   }
 
   Future<void> _handleLogout() async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Logout'),
-        content: const Text('Are you sure you want to logout?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red, foregroundColor: Colors.white),
-            child: const Text('Logout'),
-          ),
-        ],
-      ),
-    );
-
-    if (confirm == true) {
+    final confirm = await confirmLogout(context);
+    if (confirm) {
       await StorageService.clearAuthTokens();
       await StorageService.clearSavedCredentials();
       if (mounted) {
@@ -703,9 +655,7 @@ class _ManagerAllOrdersPageState extends State<_ManagerAllOrdersPage>
               onPressed: _loadOrders,
               icon: const Icon(Icons.refresh),
               label: const Text('Retry'),
-              style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.primaryColor,
-                  foregroundColor: Colors.white),
+              style: AppButton.primary(),
             ),
           ],
         ),
@@ -830,7 +780,7 @@ class _ManagerAllOrdersPageState extends State<_ManagerAllOrdersPage>
                   const SizedBox(width: 12),
                   Icon(Icons.currency_rupee,
                       size: 13, color: Colors.grey[500]),
-                  Text('${order.totalAmount!.toStringAsFixed(0)}',
+                  Text(order.totalAmount!.toStringAsFixed(0),
                       style: TextStyle(
                           fontSize: 12, color: Colors.grey[500])),
                 ],
@@ -934,9 +884,7 @@ class _ManagerDeliveryBoysPageState extends State<_ManagerDeliveryBoysPage>
               onPressed: _loadDeliveryBoys,
               icon: const Icon(Icons.refresh),
               label: const Text('Retry'),
-              style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.primaryColor,
-                  foregroundColor: Colors.white),
+              style: AppButton.primary(),
             ),
           ],
         ),

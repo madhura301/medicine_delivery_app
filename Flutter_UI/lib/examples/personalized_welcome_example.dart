@@ -2,7 +2,6 @@
 
 import 'package:pharmaish/utils/app_logger.dart';
 import 'package:flutter/material.dart';
-import 'package:pharmaish/utils/helpers.dart';
 import '../utils/storage.dart';
 
 class PersonalizedWelcomeExample extends StatefulWidget {

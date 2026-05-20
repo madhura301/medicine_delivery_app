@@ -10,9 +10,9 @@ import 'package:image_picker/image_picker.dart';
 import 'package:file_picker/file_picker.dart';
 import 'dart:io';
 import 'package:pharmaish/utils/app_logger.dart';
-import 'package:pharmaish/utils/constants.dart';
-import 'package:pharmaish/utils/storage.dart';
 import 'package:pharmaish/shared/models/order_model.dart';
+import 'package:pharmaish/shared/widgets/app_snackbar.dart';
+import 'package:pharmaish/core/services/order_service.dart';
 
 class AcceptedOrderBillScreen extends StatefulWidget {
   final OrderModel order;
@@ -22,13 +22,13 @@ class AcceptedOrderBillScreen extends StatefulWidget {
   final VoidCallback? onComplete;
 
   const AcceptedOrderBillScreen({
-    Key? key,
+    super.key,
     required this.order,
     required this.customerName,
     this.customerEmail,
     this.customerPhone,
     this.onComplete,
-  }) : super(key: key);
+  });
 
   @override
   State<AcceptedOrderBillScreen> createState() =>
@@ -44,35 +44,15 @@ class _AcceptedOrderBillScreenState extends State<AcceptedOrderBillScreen> {
   String? _billFileName;
   String? _billFileType; // 'image' or 'pdf'
   bool _isUploading = false;
-  
-  late Dio _dio;
 
   @override
   void initState() {
     super.initState();
-    _setupDio();
-    
+
     // Pre-fill amount if available
     if (widget.order.totalAmount != null) {
       _amountController.text = widget.order.totalAmount.toString();
     }
-  }
-
-  void _setupDio() {
-    _dio = Dio();
-    _dio.options.baseUrl = AppConstants.apiBaseUrl;
-    _dio.options.connectTimeout = const Duration(seconds: 60);
-    _dio.options.receiveTimeout = const Duration(seconds: 60);
-
-    _dio.interceptors.add(InterceptorsWrapper(
-      onRequest: (options, handler) async {
-        final token = await StorageService.getAuthToken();
-        if (token != null) {
-          options.headers['Authorization'] = 'Bearer $token';
-        }
-        handler.next(options);
-      },
-    ));
   }
 
   Future<void> _pickImage(ImageSource source) async {
@@ -96,13 +76,8 @@ class _AcceptedOrderBillScreenState extends State<AcceptedOrderBillScreen> {
     } catch (e) {
       AppLogger.error('Error picking image: $e');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to pick image: ${e.toString()}'),
-            backgroundColor: Colors.red,
-            duration: const Duration(seconds: 3),
-          ),
-        );
+        AppSnackBar.error(context, 'Failed to pick image: ${e.toString()}',
+            duration: const Duration(seconds: 3));
       }
     }
   }
@@ -121,13 +96,9 @@ class _AcceptedOrderBillScreenState extends State<AcceptedOrderBillScreen> {
         // Check file size (max 10MB)
         if (file.size > 10 * 1024 * 1024) {
           if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('PDF file is too large. Maximum size is 10MB.'),
-                backgroundColor: Colors.orange,
-                duration: Duration(seconds: 3),
-              ),
-            );
+            AppSnackBar.warning(
+                context, 'PDF file is too large. Maximum size is 10MB.',
+                duration: const Duration(seconds: 3));
           }
           return;
         }
@@ -143,13 +114,8 @@ class _AcceptedOrderBillScreenState extends State<AcceptedOrderBillScreen> {
     } catch (e) {
       AppLogger.error('Error picking PDF: $e');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to pick PDF: ${e.toString()}'),
-            backgroundColor: Colors.red,
-            duration: const Duration(seconds: 3),
-          ),
-        );
+        AppSnackBar.error(context, 'Failed to pick PDF: ${e.toString()}',
+            duration: const Duration(seconds: 3));
       }
     }
   }
@@ -346,45 +312,35 @@ class _AcceptedOrderBillScreenState extends State<AcceptedOrderBillScreen> {
       AppLogger.info(
           'Uploading bill for order ${widget.order.orderId} - Type: $_billFileType, Amount: ₹$amount');
 
-      // POST request to /api/Orders/{orderId}/upload-bill
-      final response = await _dio.post(
-        '/Orders/${widget.order.orderId}/upload-bill',
-        data: formData,
-        options: Options(
-          headers: {
-            'Content-Type': 'multipart/form-data',
-          },
-        ),
+      await OrderService.uploadBill(
+        orderId: widget.order.orderId,
+        formData: formData,
       );
 
-      if (response.statusCode == 200) {
-        AppLogger.info(
-            'Bill uploaded successfully for order ${widget.order.orderId}');
+      AppLogger.info(
+          'Bill uploaded successfully for order ${widget.order.orderId}');
 
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Row(
-                children: [
-                  Icon(Icons.check_circle, color: Colors.white),
-                  SizedBox(width: 12),
-                  Expanded(child: Text('Bill uploaded successfully!')),
-                ],
-              ),
-              backgroundColor: Colors.green,
-              behavior: SnackBarBehavior.floating,
-              duration: Duration(seconds: 2),
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Row(
+              children: [
+                Icon(Icons.check_circle, color: Colors.white),
+                SizedBox(width: 12),
+                Expanded(child: Text('Bill uploaded successfully!')),
+              ],
             ),
-          );
+            backgroundColor: Colors.green,
+            behavior: SnackBarBehavior.floating,
+            duration: Duration(seconds: 2),
+          ),
+        );
 
-          // Call onComplete callback if provided
-          if (widget.onComplete != null) {
-            widget.onComplete!();
-          }
-
-          // Go back with success result
-          Navigator.pop(context, true);
+        if (widget.onComplete != null) {
+          widget.onComplete!();
         }
+
+        Navigator.pop(context, true);
       }
     } on DioException catch (e) {
       AppLogger.error('DioException uploading bill: ${e.message}');

@@ -1,4 +1,3 @@
-import 'dart:ui';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 
@@ -7,7 +6,7 @@ class PincodeLookupDialog extends StatefulWidget {
   final TextEditingController pincodeController;
   final List<Map<String, dynamic>> allRegions;
 
-  const PincodeLookupDialog({
+  const PincodeLookupDialog({super.key, 
     required this.dio,
     required this.pincodeController,
     required this.allRegions,
@@ -137,11 +136,11 @@ class PincodeLookupDialogState extends State<PincodeLookupDialog> {
                 Expanded(
                   child: TextField(
                     controller: widget.pincodeController,
-                    decoration: InputDecoration(
+                    decoration: const InputDecoration(
                       labelText: 'Enter Pincode',
                       hintText: '411001',
-                      border: const OutlineInputBorder(),
-                      prefixIcon: const Icon(Icons.location_on),
+                      border: OutlineInputBorder(),
+                      prefixIcon: Icon(Icons.location_on),
                       counterText: '',
                       helperText: '6-digit pincode',
                     ),

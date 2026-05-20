@@ -473,7 +473,7 @@ Widget _buildProgressIndicator() {
 
           // Gender Field - Optional
           DropdownButtonFormField<String>(
-            value: _selectedGender,
+            initialValue: _selectedGender,
             decoration: InputDecoration(
               labelText: 'Gender (Optional)',
               prefixIcon: const Icon(Icons.person),
@@ -520,7 +520,7 @@ Widget _buildProgressIndicator() {
 
           // Address Type - Required
           DropdownButtonFormField<String>(
-            value: _selectedAddressType,
+            initialValue: _selectedAddressType,
             decoration: InputDecoration(
               labelText: 'Address Type *',
               prefixIcon: const Icon(Icons.label),
@@ -590,7 +590,7 @@ Widget _buildProgressIndicator() {
 
           // State Field - Required
           DropdownButtonFormField<String>(
-            value: _selectedState,
+            initialValue: _selectedState,
             isExpanded: true,
             decoration: InputDecoration(
               labelText: 'State *',

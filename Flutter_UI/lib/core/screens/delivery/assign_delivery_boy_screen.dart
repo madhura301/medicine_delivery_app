@@ -6,9 +6,12 @@
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import 'package:pharmaish/utils/app_logger.dart';
-import 'package:pharmaish/utils/constants.dart';
 import 'package:pharmaish/utils/storage.dart';
 import 'package:pharmaish/shared/models/order_model.dart';
+import 'package:pharmaish/shared/widgets/app_button.dart';
+import 'package:pharmaish/shared/widgets/app_snackbar.dart';
+import 'package:pharmaish/core/services/dio_client.dart';
+import 'package:pharmaish/core/services/order_service.dart';
 
 class AssignDeliveryBoyScreen extends StatefulWidget {
   final OrderModel order;
@@ -16,11 +19,11 @@ class AssignDeliveryBoyScreen extends StatefulWidget {
   final VoidCallback? onComplete;
 
   const AssignDeliveryBoyScreen({
-    Key? key,
+    super.key,
     required this.order,
     required this.customerName,
     this.onComplete,
-  }) : super(key: key);
+  });
 
   @override
   State<AssignDeliveryBoyScreen> createState() =>
@@ -28,7 +31,7 @@ class AssignDeliveryBoyScreen extends StatefulWidget {
 }
 
 class _AssignDeliveryBoyScreenState extends State<AssignDeliveryBoyScreen> {
-  late Dio _dio;
+  final Dio _dio = DioClient.instance;
   List<DeliveryBoy> _deliveryBoys = [];
   DeliveryBoy? _selectedDeliveryBoy;
   bool _isLoading = true;
@@ -39,25 +42,7 @@ class _AssignDeliveryBoyScreenState extends State<AssignDeliveryBoyScreen> {
   @override
   void initState() {
     super.initState();
-    _setupDio();
     _loadMedicalStoreId();
-  }
-
-  void _setupDio() {
-    _dio = Dio();
-    _dio.options.baseUrl = AppConstants.apiBaseUrl;
-    _dio.options.connectTimeout = const Duration(seconds: 30);
-    _dio.options.receiveTimeout = const Duration(seconds: 30);
-
-    _dio.interceptors.add(InterceptorsWrapper(
-      onRequest: (options, handler) async {
-        final token = await StorageService.getAuthToken();
-        if (token != null) {
-          options.headers['Authorization'] = 'Bearer $token';
-        }
-        handler.next(options);
-      },
-    ));
   }
 
   Future<void> _loadMedicalStoreId() async {
@@ -146,12 +131,7 @@ class _AssignDeliveryBoyScreenState extends State<AssignDeliveryBoyScreen> {
 
   Future<void> _assignDeliveryBoy() async {
     if (_selectedDeliveryBoy == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please select a delivery boy'),
-          backgroundColor: Colors.orange,
-        ),
-      );
+      AppSnackBar.warning(context, 'Please select a delivery boy');
       return;
     }
 
@@ -163,42 +143,36 @@ class _AssignDeliveryBoyScreenState extends State<AssignDeliveryBoyScreen> {
       AppLogger.info(
           'Assigning order ${widget.order.orderId} to delivery boy ${_selectedDeliveryBoy!.id}');
 
-      // POST /api/Orders/assign-to-delivery
-      final response = await _dio.post(
-        '/Orders/assign-to-delivery',
-        data: {
-          'OrderId': widget.order.orderId,
-          'DeliveryId': _selectedDeliveryBoy!.id,
-        },
+      await OrderService.assignToDelivery(
+        orderId: widget.order.orderId,
+        deliveryId: _selectedDeliveryBoy!.id,
       );
 
-      if (response.statusCode == 200) {
-        AppLogger.info('Order assigned to delivery boy successfully');
+      AppLogger.info('Order assigned to delivery boy successfully');
 
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Row(
-                children: [
-                  const Icon(Icons.check_circle, color: Colors.white),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                        'Order assigned to ${_selectedDeliveryBoy!.fullName}'),
-                  ),
-                ],
-              ),
-              backgroundColor: Colors.green,
-              duration: const Duration(seconds: 2),
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.check_circle, color: Colors.white),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                      'Order assigned to ${_selectedDeliveryBoy!.fullName}'),
+                ),
+              ],
             ),
-          );
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 2),
+          ),
+        );
 
-          if (widget.onComplete != null) {
-            widget.onComplete!();
-          }
-
-          Navigator.pop(context, true);
+        if (widget.onComplete != null) {
+          widget.onComplete!();
         }
+
+        Navigator.pop(context, true);
       }
     } on DioException catch (e) {
       AppLogger.error('Error assigning delivery boy: ${e.message}');
@@ -216,23 +190,12 @@ class _AssignDeliveryBoyScreenState extends State<AssignDeliveryBoyScreen> {
       }
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(errorMsg),
-            backgroundColor: Colors.red,
-            duration: const Duration(seconds: 4),
-          ),
-        );
+        AppSnackBar.error(context, errorMsg);
       }
     } catch (e) {
       AppLogger.error('Unexpected error: $e');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('An unexpected error occurred'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        AppSnackBar.error(context, 'An unexpected error occurred');
       }
     } finally {
       if (mounted) {
@@ -393,10 +356,7 @@ class _AssignDeliveryBoyScreenState extends State<AssignDeliveryBoyScreen> {
                 onPressed: _loadDeliveryBoys,
                 icon: const Icon(Icons.refresh),
                 label: const Text('Retry'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.black,
-                  foregroundColor: Colors.white,
-                ),
+                style: AppButton.primary(),
               ),
             ],
           ),

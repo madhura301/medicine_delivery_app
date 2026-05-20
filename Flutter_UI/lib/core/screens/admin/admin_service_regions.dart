@@ -12,11 +12,14 @@
 
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
+import 'package:pharmaish/core/screens/admin/manage_pincodes_dialog.dart';
+import 'package:pharmaish/core/screens/admin/quick_pincode_lookup_dialog.dart';
 import 'package:pharmaish/core/screens/admin/view_all_pincodes.dart';
+import 'package:pharmaish/core/services/region_service.dart';
+import 'package:pharmaish/shared/widgets/app_button.dart';
+import 'package:pharmaish/shared/widgets/app_snackbar.dart';
+import 'package:pharmaish/shared/widgets/confirm_dialog.dart';
 import 'package:pharmaish/utils/app_logger.dart';
-import 'package:pharmaish/utils/constants.dart';
-import 'package:pharmaish/utils/storage.dart';
-import 'package:pharmaish/config/environment_config.dart';
 
 enum RegionType {
   customerSupport(0, 'Customer Support'),
@@ -36,7 +39,7 @@ enum RegionType {
 }
 
 class AdminServiceRegionsPage extends StatefulWidget {
-  const AdminServiceRegionsPage({Key? key}) : super(key: key);
+  const AdminServiceRegionsPage({super.key});
 
   @override
   State<AdminServiceRegionsPage> createState() =>
@@ -44,7 +47,6 @@ class AdminServiceRegionsPage extends StatefulWidget {
 }
 
 class _AdminServiceRegionsPageState extends State<AdminServiceRegionsPage> {
-  late Dio _dio;
 
   List<Map<String, dynamic>> _regions = [];
   List<Map<String, dynamic>> _customerSupports = <Map<String, dynamic>>[];
@@ -66,7 +68,6 @@ class _AdminServiceRegionsPageState extends State<AdminServiceRegionsPage> {
   @override
   void initState() {
     super.initState();
-    _setupDio();
     _checkPermissionAndLoad();
   }
 
@@ -74,38 +75,6 @@ class _AdminServiceRegionsPageState extends State<AdminServiceRegionsPage> {
   void dispose() {
     _regionSearchController.dispose();
     super.dispose();
-  }
-
-  void _setupDio() {
-    _dio = Dio();
-    _dio.options.baseUrl = AppConstants.apiBaseUrl;
-    _dio.options.connectTimeout = EnvironmentConfig.timeoutDuration;
-    _dio.options.receiveTimeout = EnvironmentConfig.timeoutDuration;
-
-    if (EnvironmentConfig.shouldLog) {
-      _dio.interceptors.add(LogInterceptor(
-        requestBody: true,
-        responseBody: true,
-        requestHeader: true,
-        logPrint: (object) => AppLogger.info('API: $object'),
-      ));
-    }
-
-    _dio.interceptors.add(InterceptorsWrapper(
-      onRequest: (options, handler) async {
-        final token = await StorageService.getAuthToken();
-        if (token != null) {
-          options.headers['Authorization'] = 'Bearer $token';
-        }
-        handler.next(options);
-      },
-      onError: (error, handler) {
-        AppLogger.error('API Error: ${error.message}');
-        AppLogger.error('Status Code: ${error.response?.statusCode}');
-        AppLogger.error('Response Data: ${error.response?.data}');
-        handler.next(error);
-      },
-    ));
   }
 
   Future<void> _checkPermissionAndLoad() async {
@@ -134,31 +103,23 @@ class _AdminServiceRegionsPageState extends State<AdminServiceRegionsPage> {
   Future<void> _loadRegions() async {
     try {
       AppLogger.info('Loading regions...');
-      final response = await _dio.get('/ServiceRegions');
+      final loadedRegions = await RegionService.getRegions();
 
-      if (response.statusCode == 200) {
-        final loadedRegions = response.data is List
-            ? (response.data as List)
-                .map((e) => Map<String, dynamic>.from(e as Map))
-                .toList()
-            : <Map<String, dynamic>>[];
+      // Extract unique cities
+      final cities = loadedRegions
+          .map((r) => r['city']?.toString() ?? '')
+          .where((c) => c.isNotEmpty)
+          .toSet()
+          .toList();
+      cities.sort();
 
-        // Extract unique cities
-        final cities = loadedRegions
-            .map((r) => r['city']?.toString() ?? '')
-            .where((c) => c.isNotEmpty)
-            .toSet()
-            .toList();
-        cities.sort();
+      setState(() {
+        _regions = loadedRegions;
+        _availableCities = ['All Cities', ...cities];
+        _hasPermission = true;
+      });
 
-        setState(() {
-          _regions = loadedRegions;
-          _availableCities = ['All Cities', ...cities];
-          _hasPermission = true;
-        });
-
-        AppLogger.info('Loaded ${_regions.length} regions');
-      }
+      AppLogger.info('Loaded ${_regions.length} regions');
     } on DioException catch (e) {
       if (e.response?.statusCode == 403) {
         setState(() {
@@ -185,22 +146,11 @@ class _AdminServiceRegionsPageState extends State<AdminServiceRegionsPage> {
   Future<void> _loadCustomerSupports() async {
     try {
       AppLogger.info('Loading customer supports...');
-      final response = await _dio.get('/CustomerSupports');
-
-      if (response.statusCode == 200) {
-        setState(() {
-          if (response.data is List) {
-            _customerSupports = (response.data as List)
-                .map((e) => Map<String, dynamic>.from(e as Map))
-                .where((cs) =>
-                    (cs['isActive'] ?? false) && !(cs['isDeleted'] ?? false))
-                .toList();
-          } else {
-            _customerSupports = [];
-          }
-        });
-        AppLogger.info('Loaded ${_customerSupports.length} customer supports');
-      }
+      final supports = await RegionService.getActiveCustomerSupports();
+      setState(() {
+        _customerSupports = supports;
+      });
+      AppLogger.info('Loaded ${_customerSupports.length} customer supports');
     } on DioException catch (e) {
       if (e.response?.statusCode == 403) {
         AppLogger.error('403 Forbidden - Cannot load customer supports list');
@@ -216,21 +166,11 @@ class _AdminServiceRegionsPageState extends State<AdminServiceRegionsPage> {
   Future<void> _loadDeliveryBoys() async {
     try {
       AppLogger.info('Loading delivery boys...');
-      final response = await _dio.get('/Deliveries');
-
-      if (response.statusCode == 200) {
-        final deliveryBoys = response.data is List
-            ? (response.data as List)
-                .map((e) => Map<String, dynamic>.from(e as Map))
-                .toList()
-            : <Map<String, dynamic>>[];
-
-        setState(() {
-          _deliveryBoys = deliveryBoys;
-        });
-
-        AppLogger.info('Loaded ${_deliveryBoys.length} delivery boys');
-      }
+      final deliveryBoys = await RegionService.getDeliveryBoys();
+      setState(() {
+        _deliveryBoys = deliveryBoys;
+      });
+      AppLogger.info('Loaded ${_deliveryBoys.length} delivery boys');
     } catch (e) {
       AppLogger.error('Error loading delivery boys: $e');
     }
@@ -333,10 +273,10 @@ class _AdminServiceRegionsPageState extends State<AdminServiceRegionsPage> {
 
                 // ✨ NEW: Region Type Dropdown
                 DropdownButtonFormField<RegionType>(
-                  value: selectedRegionType,
+                  initialValue: selectedRegionType,
                   decoration: InputDecoration(
                     labelText: 'Region Type',
-                    border: OutlineInputBorder(),
+                    border: const OutlineInputBorder(),
                     prefixIcon: Icon(
                       selectedRegionType == RegionType.customerSupport
                           ? Icons.support_agent
@@ -354,7 +294,7 @@ class _AdminServiceRegionsPageState extends State<AdminServiceRegionsPage> {
                                 : Icons.delivery_dining,
                             size: 20,
                           ),
-                          SizedBox(width: 8),
+                          const SizedBox(width: 8),
                           Text(type.displayName),
                         ],
                       ),
@@ -390,12 +330,7 @@ class _AdminServiceRegionsPageState extends State<AdminServiceRegionsPage> {
                 if (nameController.text.isEmpty ||
                     cityController.text.isEmpty ||
                     regionNameController.text.isEmpty) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Please fill all required fields'),
-                      backgroundColor: Colors.red,
-                    ),
-                  );
+                  AppSnackBar.error(context, 'Please fill all required fields');
                   return;
                 }
 
@@ -433,37 +368,23 @@ class _AdminServiceRegionsPageState extends State<AdminServiceRegionsPage> {
               .where((p) => p.isNotEmpty)
               .toList();
 
-      final response = await _dio.post(
-        '/ServiceRegions', // ✨ CHANGED FROM /CustomerSupportRegions
-        data: {
-          'name': name,
-          'city': city,
-          'regionName': regionName,
-          'regionType': regionType.value, // ✨ ADD THIS
-          'pinCodes': pinCodes,
-        },
+      await RegionService.createRegion(
+        name: name,
+        city: city,
+        regionName: regionName,
+        regionType: regionType.value,
+        pinCodes: pinCodes,
       );
 
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Service region "$name" created successfully'),
-              backgroundColor: Colors.green,
-            ),
-          );
-        }
-        await _loadRegions();
+      if (mounted) {
+        AppSnackBar.success(
+            context, 'Service region "$name" created successfully');
       }
+      await _loadRegions();
     } catch (e) {
       AppLogger.error('Error creating region: $e');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Failed to create service region'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        AppSnackBar.error(context, 'Failed to create service region');
       }
     }
   }
@@ -482,10 +403,7 @@ class _AdminServiceRegionsPageState extends State<AdminServiceRegionsPage> {
     List<String> pincodes = [];
 
     try {
-      final response = await _dio.get('/ServiceRegions/$regionId/pincodes');
-      if (response.statusCode == 200) {
-        pincodes = (response.data as List).map((e) => e.toString()).toList();
-      }
+      pincodes = await RegionService.getRegionPincodes((regionId as num).toInt());
     } catch (e) {
       AppLogger.error('Error loading pincodes: $e');
     }
@@ -494,8 +412,7 @@ class _AdminServiceRegionsPageState extends State<AdminServiceRegionsPage> {
 
     await showDialog(
       context: context,
-      builder: (context) => _ManagePincodesDialog(
-        dio: _dio,
+      builder: (context) => ManagePincodesDialog(
         region: region,
         initialPincodes: pincodes,
         onSaved: () => _loadRegions(),
@@ -536,7 +453,7 @@ class _AdminServiceRegionsPageState extends State<AdminServiceRegionsPage> {
                 const Text('Select Customer Support to assign:'),
                 const SizedBox(height: 16),
                 DropdownButtonFormField<String>(
-                  value: selectedCustomerSupportId,
+                  initialValue: selectedCustomerSupportId,
                   isExpanded: true,
                   decoration: const InputDecoration(
                     labelText: 'Customer Support',
@@ -610,10 +527,7 @@ class _AdminServiceRegionsPageState extends State<AdminServiceRegionsPage> {
               onPressed: selectedCustomerSupportId == null
                   ? null
                   : () => Navigator.pop(context, selectedCustomerSupportId),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.black,
-                foregroundColor: Colors.white,
-              ),
+              style: AppButton.primary(),
               child: const Text('Assign'),
             ),
           ],
@@ -629,16 +543,13 @@ class _AdminServiceRegionsPageState extends State<AdminServiceRegionsPage> {
   Future<void> _assignCustomerSupport(
       int regionId, String customerSupportId) async {
     try {
-      final response = await _dio.post('/ServiceRegions/assign', data: {
-        'ServiceRegionId': regionId,
-        'CustomerSupportId': customerSupportId
-      });
-
-      if (response.statusCode == 200) {
-        if (mounted) {
-          _showSuccess('Customer support assigned successfully');
-          await _checkPermissionAndLoad();
-        }
+      await RegionService.assignCustomerSupportToRegion(
+        regionId: regionId,
+        customerSupportId: customerSupportId,
+      );
+      if (mounted) {
+        _showSuccess('Customer support assigned successfully');
+        await _checkPermissionAndLoad();
       }
     } on DioException catch (e) {
       if (mounted) {
@@ -663,40 +574,22 @@ class _AdminServiceRegionsPageState extends State<AdminServiceRegionsPage> {
       return;
     }
 
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Confirm Deletion'),
-        content: Text(
-            'Are you sure you want to delete "${region['name']}"?\n\nThis will unassign all customer support staff from this region.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
-              foregroundColor: Colors.white,
-            ),
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
+    final confirm = await confirmAction(
+      context,
+      title: 'Confirm Deletion',
+      message:
+          'Are you sure you want to delete "${region['name']}"?\n\nThis will unassign all customer support staff from this region.',
+      confirmLabel: 'Delete',
     );
 
-    if (confirm != true) return;
+    if (!confirm) return;
 
     try {
-      final response = await _dio
-          .delete('/CustomerSupportRegions/${region['id'] ?? region['Id']}');
-
-      if (response.statusCode == 204 || response.statusCode == 200) {
-        if (mounted) {
-          _showSuccess('Region deleted successfully');
-          await _checkPermissionAndLoad();
-        }
+      final regionId = region['id'] ?? region['Id'];
+      await RegionService.deleteRegion((regionId as num).toInt());
+      if (mounted) {
+        _showSuccess('Region deleted successfully');
+        await _checkPermissionAndLoad();
       }
     } on DioException catch (e) {
       if (mounted) {
@@ -718,7 +611,7 @@ class _AdminServiceRegionsPageState extends State<AdminServiceRegionsPage> {
   Future<void> _showQuickPincodeLookup() async {
     await showDialog(
       context: context,
-      builder: (context) => _QuickPincodeLookupDialog(dio: _dio),
+      builder: (context) => const QuickPincodeLookupDialog(),
     );
   }
 
@@ -746,7 +639,6 @@ class _AdminServiceRegionsPageState extends State<AdminServiceRegionsPage> {
                 context,
                 MaterialPageRoute(
                   builder: (context) => ViewAllPincodesPage(
-                    dio: _dio,
                     regions: _regions,
                   ),
                 ),
@@ -1058,7 +950,7 @@ class _AdminServiceRegionsPageState extends State<AdminServiceRegionsPage> {
                                 : Colors.grey.shade700,
                           ),
                           const SizedBox(width: 4),
-                          Text('All'),
+                          const Text('All'),
                         ],
                       ),
                       selected: _selectedRegionTypeFilter == null,
@@ -1098,7 +990,7 @@ class _AdminServiceRegionsPageState extends State<AdminServiceRegionsPage> {
                                 : Colors.blue.shade700,
                           ),
                           const SizedBox(width: 4),
-                          Text('Support'),
+                          const Text('Support'),
                         ],
                       ),
                       selected: _selectedRegionTypeFilter ==
@@ -1142,7 +1034,7 @@ class _AdminServiceRegionsPageState extends State<AdminServiceRegionsPage> {
                                 : Colors.orange.shade700,
                           ),
                           const SizedBox(width: 4),
-                          Text('Delivery'),
+                          const Text('Delivery'),
                         ],
                       ),
                       selected:
@@ -1259,10 +1151,7 @@ class _AdminServiceRegionsPageState extends State<AdminServiceRegionsPage> {
               onPressed: _clearRegionSearch,
               icon: const Icon(Icons.clear),
               label: const Text('Clear Filters'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.black,
-                foregroundColor: Colors.white,
-              ),
+              style: AppButton.primary(),
             ),
           ],
         ),
@@ -1628,12 +1517,7 @@ class _AdminServiceRegionsPageState extends State<AdminServiceRegionsPage> {
             onPressed: () async {
               final pin = controller.text.trim();
               if (pin.length != 6) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('PIN code must be exactly 6 digits'),
-                    backgroundColor: Colors.red,
-                  ),
-                );
+                AppSnackBar.error(context, 'PIN code must be exactly 6 digits');
                 return;
               }
               Navigator.pop(context);
@@ -1655,25 +1539,19 @@ class _AdminServiceRegionsPageState extends State<AdminServiceRegionsPage> {
       Map<String, dynamic> region, String pinCode) async {
     final regionId = region['id'] ?? region['Id'];
     try {
-      await _dio.post('/ServiceRegions/add-pincode', data: {
-        'ServiceRegionId': (regionId as num).toInt(),
-        'PinCode': pinCode,
-      });
+      await RegionService.addPincodeToRegion(
+        regionId: (regionId as num).toInt(),
+        pinCode: pinCode,
+      );
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text('PIN $pinCode added successfully'),
-          backgroundColor: Colors.green,
-        ));
+        AppSnackBar.success(context, 'PIN $pinCode added successfully');
         await _loadRegions();
       }
     } on DioException catch (e) {
       if (mounted) {
         final msg =
             e.response?.data?['error'] ?? 'Failed to add PIN code';
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(msg),
-          backgroundColor: Colors.red,
-        ));
+        AppSnackBar.error(context, msg);
       }
     }
   }
@@ -1704,10 +1582,7 @@ class _AdminServiceRegionsPageState extends State<AdminServiceRegionsPage> {
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
-              foregroundColor: Colors.white,
-            ),
+            style: AppButton.danger(),
             child: const Text('Remove'),
           ),
         ],
@@ -1720,25 +1595,19 @@ class _AdminServiceRegionsPageState extends State<AdminServiceRegionsPage> {
       Map<String, dynamic> region, String pinCode) async {
     final regionId = region['id'] ?? region['Id'];
     try {
-      await _dio.post('/ServiceRegions/remove-pincode', data: {
-        'ServiceRegionId': (regionId as num).toInt(),
-        'PinCode': pinCode,
-      });
+      await RegionService.removePincodeFromRegion(
+        regionId: (regionId as num).toInt(),
+        pinCode: pinCode,
+      );
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text('PIN $pinCode removed successfully'),
-          backgroundColor: Colors.green,
-        ));
+        AppSnackBar.success(context, 'PIN $pinCode removed successfully');
         await _loadRegions();
       }
     } on DioException catch (e) {
       if (mounted) {
         final msg =
             e.response?.data?['error'] ?? 'Failed to remove PIN code';
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(msg),
-          backgroundColor: Colors.red,
-        ));
+        AppSnackBar.error(context, msg);
       }
     }
   }
@@ -1793,12 +1662,7 @@ class _AdminServiceRegionsPageState extends State<AdminServiceRegionsPage> {
               if (nameController.text.isEmpty ||
                   cityController.text.isEmpty ||
                   regionNameController.text.isEmpty) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Please fill all fields'),
-                    backgroundColor: Colors.red,
-                  ),
-                );
+                AppSnackBar.error(context, 'Please fill all fields');
                 return;
               }
 
@@ -1824,66 +1688,35 @@ class _AdminServiceRegionsPageState extends State<AdminServiceRegionsPage> {
     String regionName,
   ) async {
     try {
-      final response = await _dio.put(
-        '/ServiceRegions/$regionId',
-        data: {
-          'name': name,
-          'city': city,
-          'regionName': regionName,
-        },
+      await RegionService.updateRegion(
+        regionId: regionId,
+        name: name,
+        city: city,
+        regionName: regionName,
       );
 
-      if (response.statusCode == 200) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Region updated successfully'),
-              backgroundColor: Colors.green,
-            ),
-          );
-        }
-        await _checkPermissionAndLoad();
+      if (mounted) {
+        AppSnackBar.success(context, 'Region updated successfully');
       }
+      await _checkPermissionAndLoad();
     } catch (e) {
       AppLogger.error('Error updating region: $e');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Failed to update region'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        AppSnackBar.error(context, 'Failed to update region');
       }
     }
   }
 
   Future<void> _confirmDeleteRegion(Map<String, dynamic> region) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Delete Region'),
-        content: Text(
-          'Are you sure you want to delete "${region['name']}"?\n\n'
+    final confirmed = await confirmAction(
+      context,
+      title: 'Delete Region',
+      message: 'Are you sure you want to delete "${region['name']}"?\n\n'
           'This action cannot be undone.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
-              foregroundColor: Colors.white,
-            ),
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
+      confirmLabel: 'Delete',
     );
 
-    if (confirmed == true) {
+    if (confirmed) {
       await _deleteRegion(region['id'] ?? region['Id']);
     }
   }
@@ -1960,15 +1793,11 @@ class _AdminServiceRegionsPageState extends State<AdminServiceRegionsPage> {
 
     if (availablePersons.isEmpty) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              regionType == RegionType.customerSupport
-                  ? 'All customer supports are already assigned'
-                  : 'All delivery boys are already assigned',
-            ),
-            backgroundColor: Colors.orange,
-          ),
+        AppSnackBar.warning(
+          context,
+          regionType == RegionType.customerSupport
+              ? 'All customer supports are already assigned'
+              : 'All delivery boys are already assigned',
         );
       }
       return;
@@ -2056,34 +1885,23 @@ class _AdminServiceRegionsPageState extends State<AdminServiceRegionsPage> {
       final int id = (regionId as num).toInt(); // ✅ Safe cast with type check
       AppLogger.info('Assigning region $id to $personId (type: $regionType)');
       if (regionType == RegionType.customerSupport) {
-        // Assign to customer support (existing logic)
-        await _dio.post(
-          '/ServiceRegions/assign',
-          data: {
-            'ServiceRegionId': id, // ✅ PascalCase, int
-            'CustomerSupportId': personId, // ✅ PascalCase
-          },
+        await RegionService.assignCustomerSupportToRegion(
+          regionId: id,
+          customerSupportId: personId,
         );
       } else {
-        // Assign to delivery boy (new logic)
-        await _dio.put(
-          '/Deliveries/$personId',
-          data: {
-            'serviceRegionId': id, // Check what delivery endpoint expects
-          },
+        await RegionService.setDeliveryBoyServiceRegion(
+          personId: personId,
+          serviceRegionId: id,
         );
       }
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              regionType == RegionType.customerSupport
-                  ? 'Customer support assigned successfully'
-                  : 'Delivery boy assigned successfully',
-            ),
-            backgroundColor: Colors.green,
-          ),
+        AppSnackBar.success(
+          context,
+          regionType == RegionType.customerSupport
+              ? 'Customer support assigned successfully'
+              : 'Delivery boy assigned successfully',
         );
       }
 
@@ -2091,12 +1909,7 @@ class _AdminServiceRegionsPageState extends State<AdminServiceRegionsPage> {
     } catch (e) {
       AppLogger.error('Error assigning person: $e');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Failed to assign'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        AppSnackBar.error(context, 'Failed to assign');
       }
     }
   }
@@ -2108,31 +1921,23 @@ class _AdminServiceRegionsPageState extends State<AdminServiceRegionsPage> {
   ) async {
     try {
       if (regionType == RegionType.customerSupport) {
-        // Unassign customer support
-        await _dio.post(
-          '/ServiceRegions/assign',
-          data: {'ServiceRegionId': null, 'CustomerSupportId': personId},
+        await RegionService.assignCustomerSupportToRegion(
+          regionId: null,
+          customerSupportId: personId,
         );
       } else {
-        // Unassign delivery boy
-        await _dio.put(
-          '/Deliveries/$personId',
-          data: {
-            'serviceRegionId': null,
-          },
+        await RegionService.setDeliveryBoyServiceRegion(
+          personId: personId,
+          serviceRegionId: null,
         );
       }
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              regionType == RegionType.customerSupport
-                  ? 'Customer support unassigned'
-                  : 'Delivery boy unassigned',
-            ),
-            backgroundColor: Colors.green,
-          ),
+        AppSnackBar.success(
+          context,
+          regionType == RegionType.customerSupport
+              ? 'Customer support unassigned'
+              : 'Delivery boy unassigned',
         );
       }
 
@@ -2170,45 +1975,24 @@ class _AdminServiceRegionsPageState extends State<AdminServiceRegionsPage> {
     final firstName = cs['customerSupportFirstName'] ?? '';
     final lastName = cs['customerSupportLastName'] ?? '';
 
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Confirm Unassignment'),
-        content: Text(
-            'Are you sure you want to unassign $firstName $lastName from ${region['name']}?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
-              foregroundColor: Colors.white,
-            ),
-            child: const Text('Unassign'),
-          ),
-        ],
-      ),
+    final confirm = await confirmAction(
+      context,
+      title: 'Confirm Unassignment',
+      message:
+          'Are you sure you want to unassign $firstName $lastName from ${region['name']}?',
+      confirmLabel: 'Unassign',
     );
 
-    if (confirm != true) return;
+    if (!confirm) return;
 
     try {
-      final response = await _dio.post(
-        '/ServiceRegions/assign',
-        data: {
-          'ServiceRegionId': null,
-          'CustomerSupportId': cs['customerSupportId']
-        },
+      await RegionService.assignCustomerSupportToRegion(
+        regionId: null,
+        customerSupportId: cs['customerSupportId'],
       );
-
-      if (response.statusCode == 200) {
-        if (mounted) {
-          _showSuccess('Customer support unassigned successfully');
-          await _checkPermissionAndLoad();
-        }
+      if (mounted) {
+        _showSuccess('Customer support unassigned successfully');
+        await _checkPermissionAndLoad();
       }
     } on DioException catch (e) {
       if (mounted) {
@@ -2240,759 +2024,5 @@ class _AdminServiceRegionsPageState extends State<AdminServiceRegionsPage> {
         ),
       );
     }
-  }
-}
-
-// ============================================================================
-// MANAGE PINCODES DIALOG - WITH SEARCH AND SCROLLING
-// ============================================================================
-
-class _ManagePincodesDialog extends StatefulWidget {
-  final Dio dio;
-  final Map<String, dynamic> region;
-  final List<String> initialPincodes;
-  final VoidCallback onSaved;
-
-  const _ManagePincodesDialog({
-    required this.dio,
-    required this.region,
-    required this.initialPincodes,
-    required this.onSaved,
-  });
-
-  @override
-  State<_ManagePincodesDialog> createState() => _ManagePincodesDialogState();
-}
-
-class _ManagePincodesDialogState extends State<_ManagePincodesDialog> {
-  late List<String> _allPincodes;
-  List<String> _filteredPincodes = [];
-  final _pincodeController = TextEditingController();
-  final _searchController = TextEditingController();
-  bool _isLoading = false;
-  String _searchQuery = '';
-
-  @override
-  void initState() {
-    super.initState();
-    _allPincodes = List.from(widget.initialPincodes);
-    _filteredPincodes = List.from(_allPincodes);
-  }
-
-  @override
-  void dispose() {
-    _pincodeController.dispose();
-    _searchController.dispose();
-    super.dispose();
-  }
-
-  void _filterPincodes(String query) {
-    setState(() {
-      _searchQuery = query;
-      if (query.isEmpty) {
-        _filteredPincodes = List.from(_allPincodes);
-      } else {
-        _filteredPincodes =
-            _allPincodes.where((pincode) => pincode.contains(query)).toList();
-      }
-    });
-  }
-
-  void _clearSearch() {
-    _searchController.clear();
-    _filterPincodes('');
-  }
-
-  Future<void> _addPincode() async {
-    final pincode = _pincodeController.text.trim();
-
-    if (pincode.isEmpty) {
-      _showError('Please enter a pincode');
-      return;
-    }
-
-    if (pincode.length != 6) {
-      _showError('Pincode must be 6 digits');
-      return;
-    }
-
-    if (!RegExp(r'^[0-9]+$').hasMatch(pincode)) {
-      _showError('Pincode must contain only numbers');
-      return;
-    }
-
-    if (_allPincodes.contains(pincode)) {
-      _showError('Pincode already added');
-      return;
-    }
-
-    setState(() => _isLoading = true);
-
-    try {
-      final response = await widget.dio.post(
-        '/ServiceRegions/add-pincode',
-        data: {
-          'serviceRegionId': widget.region['id'] ?? widget.region['Id'],
-          'pinCode': pincode,
-        },
-      );
-
-      if (response.statusCode == 200) {
-        setState(() {
-          _allPincodes.add(pincode);
-          _pincodeController.clear();
-          _filterPincodes(_searchQuery);
-        });
-        _showSuccess('Pincode added');
-      }
-    } catch (e) {
-      _showError('Failed to add pincode: $e');
-    } finally {
-      setState(() => _isLoading = false);
-    }
-  }
-
-  Future<void> _removePincode(String pincode) async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Confirm Deletion'),
-        content: Text('Are you sure you want to remove pincode $pincode?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
-              foregroundColor: Colors.white,
-            ),
-            child: const Text('Remove'),
-          ),
-        ],
-      ),
-    );
-
-    if (confirm != true) return;
-
-    setState(() => _isLoading = true);
-
-    try {
-      final response = await widget.dio.post(
-        '/ServiceRegions/remove-pincode',
-        data: {
-          'serviceRegionId': widget.region['id'] ?? widget.region['Id'],
-          'pinCode': pincode,
-        },
-      );
-
-      if (response.statusCode == 200) {
-        setState(() {
-          _allPincodes.remove(pincode);
-          _filterPincodes(_searchQuery);
-        });
-        _showSuccess('Pincode removed');
-      }
-    } catch (e) {
-      _showError('Failed to remove pincode: $e');
-    } finally {
-      setState(() => _isLoading = false);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Dialog(
-      child: Container(
-        width: 550,
-        constraints: BoxConstraints(
-          maxHeight: MediaQuery.of(context).size.height * 0.85,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Header
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: Colors.blue.shade50,
-                borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(4),
-                  topRight: Radius.circular(4),
-                ),
-              ),
-              child: Row(
-                children: [
-                  const Icon(Icons.pin_drop, color: Colors.blue, size: 28),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Manage Pincodes',
-                          style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          widget.region['name'] ?? '',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.grey[700],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.close),
-                    onPressed: () {
-                      widget.onSaved();
-                      Navigator.pop(context);
-                    },
-                  ),
-                ],
-              ),
-            ),
-
-            // Content
-            Flexible(
-              child: SingleChildScrollView(
-                child: Padding(
-                  padding: const EdgeInsets.all(20),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Add pincode section
-                      const Text(
-                        'Add New Pincode',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: TextField(
-                              controller: _pincodeController,
-                              decoration: const InputDecoration(
-                                labelText: 'Pincode',
-                                hintText: '411001',
-                                border: OutlineInputBorder(),
-                                prefixIcon: Icon(Icons.add_location),
-                                counterText: '',
-                                helperText: '6-digit pincode',
-                              ),
-                              keyboardType: TextInputType.number,
-                              maxLength: 6,
-                              onSubmitted: (_) => _addPincode(),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          ElevatedButton.icon(
-                            onPressed: _isLoading ? null : _addPincode,
-                            icon: _isLoading
-                                ? const SizedBox(
-                                    width: 16,
-                                    height: 16,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      color: Colors.white,
-                                    ),
-                                  )
-                                : const Icon(Icons.add),
-                            label: const Text('Add'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.black,
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 20,
-                                vertical: 18,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-
-                      const SizedBox(height: 24),
-                      const Divider(),
-                      const SizedBox(height: 16),
-
-                      // Pincodes list header with search
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            'Pincodes (${_allPincodes.length})',
-                            style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          if (_searchQuery.isNotEmpty)
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 4,
-                              ),
-                              decoration: BoxDecoration(
-                                color: Colors.blue.shade50,
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Text(
-                                '${_filteredPincodes.length} found',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                                  color: Colors.blue.shade700,
-                                ),
-                              ),
-                            ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-
-                      // Search bar
-                      if (_allPincodes.length > 5)
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 12),
-                          child: TextField(
-                            controller: _searchController,
-                            onChanged: _filterPincodes,
-                            decoration: InputDecoration(
-                              hintText: 'Search pincodes...',
-                              hintStyle: TextStyle(
-                                fontSize: 14,
-                                color: Colors.grey.shade500,
-                              ),
-                              prefixIcon: const Icon(Icons.search, size: 20),
-                              suffixIcon: _searchQuery.isNotEmpty
-                                  ? IconButton(
-                                      icon: const Icon(Icons.clear, size: 20),
-                                      onPressed: _clearSearch,
-                                    )
-                                  : null,
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(25),
-                                borderSide: BorderSide(
-                                  color: Colors.grey.shade300,
-                                ),
-                              ),
-                              enabledBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(25),
-                                borderSide: BorderSide(
-                                  color: Colors.grey.shade300,
-                                ),
-                              ),
-                              focusedBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(25),
-                                borderSide: const BorderSide(
-                                  color: Colors.blue,
-                                  width: 2,
-                                ),
-                              ),
-                              filled: true,
-                              fillColor: Colors.grey.shade50,
-                              contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 10,
-                              ),
-                              isDense: true,
-                            ),
-                          ),
-                        ),
-
-                      // Pincodes list with scrolling
-                      if (_allPincodes.isEmpty)
-                        Container(
-                          padding: const EdgeInsets.all(32),
-                          child: Center(
-                            child: Column(
-                              children: [
-                                Icon(
-                                  Icons.location_off,
-                                  size: 48,
-                                  color: Colors.grey[400],
-                                ),
-                                const SizedBox(height: 12),
-                                const Text(
-                                  'No pincodes added yet',
-                                  style: TextStyle(
-                                    color: Colors.grey,
-                                    fontStyle: FontStyle.italic,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        )
-                      else if (_filteredPincodes.isEmpty)
-                        Container(
-                          padding: const EdgeInsets.all(32),
-                          child: Center(
-                            child: Column(
-                              children: [
-                                Icon(
-                                  Icons.search_off,
-                                  size: 48,
-                                  color: Colors.grey[400],
-                                ),
-                                const SizedBox(height: 12),
-                                Text(
-                                  'No pincodes found matching "$_searchQuery"',
-                                  style: const TextStyle(
-                                    color: Colors.grey,
-                                    fontStyle: FontStyle.italic,
-                                  ),
-                                  textAlign: TextAlign.center,
-                                ),
-                                const SizedBox(height: 12),
-                                TextButton.icon(
-                                  onPressed: _clearSearch,
-                                  icon: const Icon(Icons.clear),
-                                  label: const Text('Clear Search'),
-                                ),
-                              ],
-                            ),
-                          ),
-                        )
-                      else
-                        Container(
-                          constraints: const BoxConstraints(
-                            maxHeight: 350,
-                          ),
-                          decoration: BoxDecoration(
-                            border: Border.all(color: Colors.grey.shade300),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Scrollbar(
-                            thumbVisibility: true,
-                            child: ListView.separated(
-                              shrinkWrap: true,
-                              itemCount: _filteredPincodes.length,
-                              separatorBuilder: (context, index) =>
-                                  const Divider(height: 1),
-                              itemBuilder: (context, index) {
-                                final pincode = _filteredPincodes[index];
-                                return ListTile(
-                                  leading: CircleAvatar(
-                                    backgroundColor: Colors.blue,
-                                    radius: 20,
-                                    child: const Icon(
-                                      Icons.location_on,
-                                      color: Colors.white,
-                                      size: 20,
-                                    ),
-                                  ),
-                                  title: Text(
-                                    pincode,
-                                    style: const TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                  trailing: IconButton(
-                                    icon: const Icon(
-                                      Icons.delete_outline,
-                                      color: Colors.red,
-                                    ),
-                                    onPressed: _isLoading
-                                        ? null
-                                        : () => _removePincode(pincode),
-                                    tooltip: 'Remove pincode',
-                                  ),
-                                  tileColor: index.isEven
-                                      ? Colors.transparent
-                                      : Colors.grey.shade50,
-                                );
-                              },
-                            ),
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-
-            // Footer
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.grey.shade50,
-                border: Border(
-                  top: BorderSide(color: Colors.grey.shade300),
-                ),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    '${_allPincodes.length} pincode${_allPincodes.length == 1 ? '' : 's'} in region',
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: Colors.grey[700],
-                    ),
-                  ),
-                  ElevatedButton(
-                    onPressed: () {
-                      widget.onSaved();
-                      Navigator.pop(context);
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.black,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 32,
-                        vertical: 12,
-                      ),
-                    ),
-                    child: const Text('Done'),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _showSuccess(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.green,
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
-  }
-
-  void _showError(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.red,
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
-  }
-}
-
-// ============================================================================
-// QUICK PINCODE LOOKUP DIALOG
-// ============================================================================
-
-class _QuickPincodeLookupDialog extends StatefulWidget {
-  final Dio dio;
-
-  const _QuickPincodeLookupDialog({required this.dio});
-
-  @override
-  State<_QuickPincodeLookupDialog> createState() =>
-      _QuickPincodeLookupDialogState();
-}
-
-class _QuickPincodeLookupDialogState extends State<_QuickPincodeLookupDialog> {
-  final _controller = TextEditingController();
-  bool _isSearching = false;
-  Map<String, dynamic>? _result;
-  String? _error;
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  Future<void> _search() async {
-    final pincode = _controller.text.trim();
-
-    if (pincode.isEmpty || pincode.length != 6) {
-      setState(() {
-        _error = 'Enter a valid 6-digit pincode';
-        _result = null;
-      });
-      return;
-    }
-
-    setState(() {
-      _isSearching = true;
-      _error = null;
-      _result = null;
-    });
-
-    try {
-      final response = await widget.dio.get(
-        '/ServiceRegions/by-pincode/$pincode',
-      );
-
-      if (response.statusCode == 200) {
-        setState(() {
-          _result = response.data;
-          _isSearching = false;
-        });
-      }
-    } on DioException catch (e) {
-      setState(() {
-        _error = e.response?.statusCode == 404
-            ? 'No region found for this pincode'
-            : 'Error: ${e.message}';
-        _isSearching = false;
-      });
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Dialog(
-      child: Container(
-        width: 400,
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Row(
-              children: [
-                const Icon(Icons.search, color: Colors.blue, size: 28),
-                const SizedBox(width: 12),
-                const Text(
-                  'Search Pincode',
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                ),
-                const Spacer(),
-                IconButton(
-                  icon: const Icon(Icons.close),
-                  onPressed: () => Navigator.pop(context),
-                ),
-              ],
-            ),
-            const SizedBox(height: 20),
-            TextField(
-              controller: _controller,
-              decoration: const InputDecoration(
-                labelText: 'Pincode',
-                hintText: '411001',
-                border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.location_on),
-              ),
-              keyboardType: TextInputType.number,
-              maxLength: 6,
-              onSubmitted: (_) => _search(),
-            ),
-            const SizedBox(height: 16),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: _isSearching ? null : _search,
-                icon: _isSearching
-                    ? const SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white,
-                        ),
-                      )
-                    : const Icon(Icons.search),
-                label: const Text('Search'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.black,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.all(16),
-                ),
-              ),
-            ),
-            if (_error != null) ...[
-              const SizedBox(height: 16),
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.red.shade50,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.red.shade200),
-                ),
-                child: Row(
-                  children: [
-                    Icon(Icons.error_outline, color: Colors.red.shade700),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        _error!,
-                        style: TextStyle(color: Colors.red.shade700),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-            if (_result != null) ...[
-              const SizedBox(height: 16),
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.green.shade50,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.green.shade200, width: 2),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        const Icon(Icons.check_circle, color: Colors.green),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Found!',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.green.shade900,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const Divider(height: 24),
-                    _buildResultRow(Icons.business, 'Region', _result!['name']),
-                    const SizedBox(height: 8),
-                    _buildResultRow(
-                        Icons.location_city, 'City', _result!['city']),
-                    const SizedBox(height: 8),
-                    _buildResultRow(Icons.map, 'Code', _result!['regionName']),
-                  ],
-                ),
-              ),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildResultRow(IconData icon, String label, String? value) {
-    return Row(
-      children: [
-        Icon(icon, size: 16, color: Colors.grey[700]),
-        const SizedBox(width: 8),
-        Text(
-          '$label:',
-          style: TextStyle(fontSize: 13, color: Colors.grey[700]),
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Text(
-            value ?? 'N/A',
-            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-          ),
-        ),
-      ],
-    );
   }
 }

@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
+import 'package:pharmaish/core/services/auth_service.dart';
 import 'package:pharmaish/core/theme/app_theme.dart';
 import 'package:pharmaish/utils/app_logger.dart';
-import 'package:pharmaish/utils/constants.dart';
 import 'package:pharmaish/utils/storage.dart';
 
 /// Allows an authenticated user to change their password.
@@ -18,7 +16,7 @@ import 'package:pharmaish/utils/storage.dart';
 class ChangePasswordPage extends StatefulWidget {
   final String? mobileNumber;
 
-  const ChangePasswordPage({Key? key, this.mobileNumber}) : super(key: key);
+  const ChangePasswordPage({super.key, this.mobileNumber});
 
   @override
   State<ChangePasswordPage> createState() => _ChangePasswordPageState();
@@ -108,20 +106,13 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
 
     try {
       // Verify via login endpoint
-      final loginResp = await http.post(
-        Uri.parse('${AppConstants.apiBaseUrl}/Auth/login'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
-        body: jsonEncode({
-          'mobileNumber': _mobileNumber,
-          'password': _currentPasswordController.text.trim(),
-          'stayLoggedIn': false,
-        }),
+      final loginResp = await AuthService.login(
+        mobileNumber: _mobileNumber,
+        password: _currentPasswordController.text.trim(),
+        stayLoggedIn: false,
       );
 
-      if (loginResp.statusCode != 200 && loginResp.statusCode != 201) {
+      if (!loginResp.isHttpSuccess) {
         setState(() {
           _isLoading = false;
           _errorMessage = loginResp.statusCode == 401
@@ -131,8 +122,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
         return;
       }
 
-      final loginData = jsonDecode(loginResp.body);
-      if (loginData['success'] != true) {
+      if (!loginResp.success) {
         setState(() {
           _isLoading = false;
           _errorMessage = 'Current password is incorrect.';
@@ -141,27 +131,18 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
       }
 
       // Current password verified → trigger OTP via forgot-password
-      final otpResp = await http.post(
-        Uri.parse('${AppConstants.apiBaseUrl}/Auth/forgot-password'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
-        body: jsonEncode({'mobileNumber': _mobileNumber}),
-      );
+      final otpResp =
+          await AuthService.forgotPassword(mobileNumber: _mobileNumber);
 
-      if (otpResp.statusCode == 200 || otpResp.statusCode == 201) {
-        final otpData = jsonDecode(otpResp.body);
-        if (otpData['success'] == true) {
-          final token = otpData['token']?.toString() ?? '';
-          setState(() {
-            _isLoading = false;
-            _resetToken = token;
-            if (token.isNotEmpty) _otpController.text = token;
-            _step = 2;
-          });
-          return;
-        }
+      if (otpResp.success) {
+        final token = otpResp.token ?? '';
+        setState(() {
+          _isLoading = false;
+          _resetToken = token;
+          if (token.isNotEmpty) _otpController.text = token;
+          _step = 2;
+        });
+        return;
       }
 
       setState(() {
@@ -184,44 +165,24 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
     setState(() { _isLoading = true; _errorMessage = ''; });
 
     try {
-      final response = await http.post(
-        Uri.parse('${AppConstants.apiBaseUrl}/Auth/reset-password'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
-        body: jsonEncode({
-          'mobileNumber': _mobileNumber,
-          'token':        _otpController.text.trim(),
-          'newPassword':  _newPasswordController.text.trim(),
-        }),
+      final response = await AuthService.resetPassword(
+        mobileNumber: _mobileNumber,
+        token: _otpController.text.trim(),
+        newPassword: _newPasswordController.text.trim(),
       );
 
-      AppLogger.apiResponse(response.statusCode, '/Auth/reset-password',
-          jsonDecode(response.body));
-
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        final data = jsonDecode(response.body);
-        if (data['success'] == true) {
-          setState(() => _isLoading = false);
-          if (mounted) _showSuccessDialog();
-          return;
-        }
+      if (response.success) {
+        setState(() => _isLoading = false);
+        if (mounted) _showSuccessDialog();
+        return;
       }
 
       // Error handling
-      setState(() { _isLoading = false; });
-      try {
-        final errData = jsonDecode(response.body);
-        final errors = errData['errors'] as List<dynamic>?;
-        setState(() {
-          _errorMessage = errors?.isNotEmpty == true
-              ? errors!.first.toString()
-              : 'Failed to update password. Check the OTP and try again.';
-        });
-      } catch (_) {
-        setState(() => _errorMessage = 'Failed to update password. Please try again.');
-      }
+      setState(() {
+        _isLoading = false;
+        _errorMessage = response.firstError ??
+            'Failed to update password. Check the OTP and try again.';
+      });
     } catch (e) {
       AppLogger.error('ChangePassword step2 error: $e');
       setState(() {
@@ -304,18 +265,23 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
   // ── Validators ────────────────────────────────────────────────────────────
   String? _validateNewPassword(String? value) {
     if (value == null || value.isEmpty) return 'Please enter a new password';
-    if (value == _currentPasswordController.text.trim())
+    if (value == _currentPasswordController.text.trim()) {
       return 'New password must be different from current password';
+    }
     if (value.length < 6) return 'Password must be at least 6 characters';
     if (value.length > 20) return 'Password cannot exceed 20 characters';
-    if (!RegExp(r'[A-Z]').hasMatch(value))
+    if (!RegExp(r'[A-Z]').hasMatch(value)) {
       return 'Password must contain at least 1 uppercase letter';
-    if (!RegExp(r'[a-z]').hasMatch(value))
+    }
+    if (!RegExp(r'[a-z]').hasMatch(value)) {
       return 'Password must contain at least 1 lowercase letter';
-    if (!RegExp(r'[0-9]').hasMatch(value))
+    }
+    if (!RegExp(r'[0-9]').hasMatch(value)) {
       return 'Password must contain at least 1 number';
-    if (!RegExp(r'[!@#\$%^&*(),.?":{}|<>]').hasMatch(value))
+    }
+    if (!RegExp(r'[!@#\$%^&*(),.?":{}|<>]').hasMatch(value)) {
       return 'Password must contain at least 1 special character';
+    }
     return null;
   }
 

@@ -7,7 +7,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 
 class DeliveryProfilePage extends StatefulWidget {
-  const DeliveryProfilePage({Key? key}) : super(key: key);
+  const DeliveryProfilePage({super.key});
 
   @override
   State<DeliveryProfilePage> createState() => _DeliveryProfilePageState();
@@ -62,7 +62,8 @@ class _DeliveryProfilePageState extends State<DeliveryProfilePage> {
       );
       if (r.statusCode == 200) {
         final d = jsonDecode(r.body);
-        if (mounted) setState(() {
+        if (mounted) {
+          setState(() {
           _deliveryBoyId = d['deliveryBoyId']?.toString() ?? '';
           _vehicleType   = d['vehicleType']?.toString()   ?? '';
           _licenseNumber = d['licenseNumber']?.toString() ?? '';
@@ -72,6 +73,7 @@ class _DeliveryProfilePageState extends State<DeliveryProfilePage> {
           _email         = d['emailId']?.toString()       ?? _email;
           _isActive      = d['isActive'] as bool?         ?? _isActive;
         });
+        }
       }
     } catch (e) { AppLogger.warning('DeliveryProfile API: $e'); }
   }

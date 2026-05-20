@@ -1,10 +1,10 @@
 // Create WhatsApp Order Screen - Customer Support
-import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:pharmaish/core/theme/app_theme.dart';
+import 'package:pharmaish/shared/widgets/app_snackbar.dart';
 import 'package:pharmaish/utils/constants.dart';
 import 'package:pharmaish/utils/storage.dart';
 import 'package:pharmaish/utils/app_logger.dart';
@@ -79,12 +79,7 @@ class _CreateWhatsAppOrderScreenState extends State<CreateWhatsAppOrderScreen> {
       AppLogger.error('Error loading customers: $e');
       setState(() => _isLoading = false);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Failed to load customers'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        AppSnackBar.error(context, 'Failed to load customers');
       }
     }
   }
@@ -129,12 +124,7 @@ class _CreateWhatsAppOrderScreenState extends State<CreateWhatsAppOrderScreen> {
 
         if (_addresses.isEmpty) {
           if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Customer has no saved addresses'),
-                backgroundColor: Colors.orange,
-              ),
-            );
+            AppSnackBar.warning(context, 'Customer has no saved addresses');
           }
         }
       }
@@ -142,12 +132,7 @@ class _CreateWhatsAppOrderScreenState extends State<CreateWhatsAppOrderScreen> {
       AppLogger.error('Error loading addresses: $e');
       setState(() => _isLoading = false);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Failed to load addresses'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        AppSnackBar.error(context, 'Failed to load addresses');
       }
     }
   }
@@ -169,12 +154,7 @@ class _CreateWhatsAppOrderScreenState extends State<CreateWhatsAppOrderScreen> {
     } catch (e) {
       AppLogger.error('Error picking image: $e');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Failed to pick image'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        AppSnackBar.error(context, 'Failed to pick image');
       }
     }
   }
@@ -182,21 +162,11 @@ class _CreateWhatsAppOrderScreenState extends State<CreateWhatsAppOrderScreen> {
   Future<void> _submitOrder() async {
     if (!_formKey.currentState!.validate()) return;
     if (_selectedCustomer == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please select a customer'),
-          backgroundColor: Colors.orange,
-        ),
-      );
+      AppSnackBar.warning(context, 'Please select a customer');
       return;
     }
     if (_selectedAddress == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please select an address'),
-          backgroundColor: Colors.orange,
-        ),
-      );
+      AppSnackBar.warning(context, 'Please select an address');
       return;
     }
 
@@ -248,12 +218,7 @@ class _CreateWhatsAppOrderScreenState extends State<CreateWhatsAppOrderScreen> {
 
       if (response.statusCode == 201 || response.statusCode == 200) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('WhatsApp order created successfully!'),
-              backgroundColor: Colors.green,
-            ),
-          );
+          AppSnackBar.success(context, 'WhatsApp order created successfully!');
           Navigator.pop(context);
         }
       }
@@ -267,12 +232,7 @@ class _CreateWhatsAppOrderScreenState extends State<CreateWhatsAppOrderScreen> {
       }
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(errorMessage),
-            backgroundColor: Colors.red,
-          ),
-        );
+        AppSnackBar.error(context, errorMessage);
       }
     }
   }
@@ -417,7 +377,7 @@ class _CreateWhatsAppOrderScreenState extends State<CreateWhatsAppOrderScreen> {
                         )
                       else
                         DropdownButtonFormField<dynamic>(
-                          value: _selectedAddress,
+                          initialValue: _selectedAddress,
                           decoration: InputDecoration(
                             hintText: 'Select an address',
                             border: OutlineInputBorder(
@@ -457,7 +417,7 @@ class _CreateWhatsAppOrderScreenState extends State<CreateWhatsAppOrderScreen> {
                     ),
                     const SizedBox(height: 8),
                     DropdownButtonFormField<String>(
-                      value: _selectedOrderType,
+                      initialValue: _selectedOrderType,
                       decoration: InputDecoration(
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),

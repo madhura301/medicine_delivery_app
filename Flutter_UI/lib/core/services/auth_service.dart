@@ -1,91 +1,139 @@
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
+import 'package:pharmaish/utils/app_logger.dart';
 import 'package:pharmaish/utils/constants.dart';
-import '../../utils/app_logger.dart';
 
+/// Result of an auth-endpoint call.
+///
+/// Carries both the HTTP status code (callers branch on 401/400) and the
+/// parsed JSON body (callers read `success`, `token`, `errors`).
+class AuthResponse {
+  final int statusCode;
+  final Map<String, dynamic> data;
+
+  const AuthResponse({required this.statusCode, required this.data});
+
+  bool get isHttpSuccess => statusCode == 200 || statusCode == 201;
+
+  /// `true` when both the HTTP status and the body's `success` flag are OK.
+  bool get success => isHttpSuccess && data['success'] == true;
+
+  String? get token => data['token'] as String?;
+  String? get refreshToken => data['refreshToken'] as String?;
+  String? get userId => data['userId']?.toString();
+
+  /// First error message from `data['errors']`, if any.
+  String? get firstError {
+    final errors = data['errors'];
+    if (errors is List && errors.isNotEmpty) return errors.first.toString();
+    return null;
+  }
+}
+
+/// Authentication endpoints. Uses `package:http` directly because these calls
+/// happen before the user has a token, so the Dio bearer-token interceptor
+/// would have nothing to attach.
+///
+/// All methods throw on network errors — callers wrap calls in try/catch and
+/// branch on the returned [AuthResponse] for HTTP-level errors.
 class AuthService {
-  static Uri baseUrl = Uri.parse('${AppConstants.apiBaseUrl}/Auth/login');
+  AuthService._();
+
+  static const _jsonHeaders = {
+    'Content-Type': 'application/json',
+    'Accept': 'application/json',
+  };
+
+  /// POST /Auth/login
+  static Future<AuthResponse> login({
+    required String mobileNumber,
+    required String password,
+    bool stayLoggedIn = false,
+  }) async {
+    final response = await http.post(
+      Uri.parse('${AppConstants.apiBaseUrl}/Auth/login'),
+      headers: _jsonHeaders,
+      body: jsonEncode({
+        'mobileNumber': mobileNumber,
+        'password': password,
+        'stayLoggedIn': stayLoggedIn,
+      }),
+    );
+    return _parse(response, '/Auth/login');
+  }
+
+  /// POST /Auth/forgot-password — sends an OTP/reset token to [mobileNumber].
+  static Future<AuthResponse> forgotPassword({
+    required String mobileNumber,
+  }) async {
+    final response = await http.post(
+      Uri.parse('${AppConstants.apiBaseUrl}/Auth/forgot-password'),
+      headers: _jsonHeaders,
+      body: jsonEncode({'mobileNumber': mobileNumber}),
+    );
+    return _parse(response, '/Auth/forgot-password');
+  }
+
+  /// POST /Auth/reset-password — completes a password reset with the OTP token.
+  static Future<AuthResponse> resetPassword({
+    required String mobileNumber,
+    required String token,
+    required String newPassword,
+  }) async {
+    final response = await http.post(
+      Uri.parse('${AppConstants.apiBaseUrl}/Auth/reset-password'),
+      headers: _jsonHeaders,
+      body: jsonEncode({
+        'mobileNumber': mobileNumber,
+        'token': token,
+        'newPassword': newPassword,
+      }),
+    );
+    return _parse(response, '/Auth/reset-password');
+  }
+
+  /// POST /Auth/verify-otp-login — exchanges an OTP for an auth token.
+  static Future<AuthResponse> verifyOtpLogin({
+    required String phoneNumber,
+    required String otp,
+  }) async {
+    final response = await http.post(
+      Uri.parse('${AppConstants.apiBaseUrl}/Auth/verify-otp-login'),
+      headers: _jsonHeaders,
+      body: jsonEncode({'phoneNumber': phoneNumber, 'otp': otp}),
+    );
+    return _parse(response, '/Auth/verify-otp-login');
+  }
+
+  /// Legacy wrapper. Returns the auth token on success or `null` otherwise.
+  /// Prefer [login] for new code — it surfaces status codes and errors.
   static Future<String?> invokeLogin({
     required String mobileNumber,
     required String password,
     bool stayLoggedIn = false,
   }) async {
     try {
-      // Make API call
-      final response = await http.post(
-        baseUrl,
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
-        body: jsonEncode({
-          'mobileNumber': mobileNumber,
-          'password': password,
-          'stayLoggedIn': stayLoggedIn
-        }),
+      final response = await login(
+        mobileNumber: mobileNumber,
+        password: password,
+        stayLoggedIn: stayLoggedIn,
       );
-
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        final responseData = jsonDecode(response.body);
-        AppLogger.apiResponse(
-            response.statusCode, '$baseUrl/Auth/login', responseData);
-        if (responseData['success'] == true) {
-          // Extract tokens and user data
-          final token = responseData['token'];
-          // final refreshToken = responseData['refreshToken'];
-          // final userId = responseData['userId'] ?? '';
-
-          // // Store authentication tokens
-          // await StorageService.storeAuthTokens(
-          //   token: token,
-          //   refreshToken: refreshToken,
-          // );
-
-          // // Store user ID
-          // if (userId.isNotEmpty) {
-          //   await StorageService.storeUserId(userId);
-          // }
-
-          // // Decode JWT token and extract user info
-          // final userInfo = StorageService.decodeJwtToken(token);
-          // final extractedUserInfo = StorageService.extractUserInfo(userInfo);
-
-          // if (extractedUserInfo.isNotEmpty) {
-          //   await StorageService.storeUserInfo(extractedUserInfo);
-          // }
-
-          return token; // Return token for immediate use
-        }
-      }
-
-      // All error cases return null
-      return null;
+      return response.success ? response.token : null;
     } catch (e) {
       AppLogger.error('Login API error : $e');
       return null;
     }
   }
 
-  //   user methods removed - app now uses real API authentication
-  // All authentication is handled through the real API endpoints
-
-  //  static Future<void> storeTokens(String token, String? refreshToken) async {
-  //   final prefs = await SharedPreferences.getInstance();
-  //   await prefs.setString('auth_token', token);
-  //   if (refreshToken != null) {
-  //     await prefs.setString('refresh_token', refreshToken);
-  //   }
-  // }
-
-  // static Future<String?> getToken() async {
-  //   final prefs = await SharedPreferences.getInstance();
-  //   return prefs.getString('auth_token');
-  // }
-
-  // static Future<void> clearTokens() async {
-  //   final prefs = await SharedPreferences.getInstance();
-  //   await prefs.remove('auth_token');
-  //   await prefs.remove('refresh_token');
-  // }
+  static AuthResponse _parse(http.Response response, String endpoint) {
+    Map<String, dynamic> data;
+    try {
+      data = jsonDecode(response.body) as Map<String, dynamic>;
+    } catch (_) {
+      data = const {};
+    }
+    AppLogger.apiResponse(response.statusCode, endpoint, data);
+    return AuthResponse(statusCode: response.statusCode, data: data);
+  }
 }

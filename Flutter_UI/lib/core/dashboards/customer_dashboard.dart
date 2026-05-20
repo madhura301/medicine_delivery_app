@@ -10,6 +10,7 @@ import 'package:pharmaish/utils/constants.dart';
 import 'package:pharmaish/utils/storage.dart';
 import 'package:flutter/material.dart';
 import 'package:pharmaish/shared/widgets/order_widgets.dart';
+import 'package:pharmaish/shared/widgets/confirm_dialog.dart';
 
 class CustomerDashboard extends StatefulWidget {
   const CustomerDashboard({super.key});
@@ -179,29 +180,9 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
   }
 
   Future<void> _logout(BuildContext context) async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Logout'),
-        content: const Text('Are you sure you want to logout?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
-              foregroundColor: Colors.white,
-            ),
-            child: const Text('Logout'),
-          ),
-        ],
-      ),
-    );
+    final confirm = await confirmLogout(context);
 
-    if (confirm == true) {
+    if (confirm) {
       try {
         await StorageService.clearAuthTokens();
         await StorageService.clearSavedCredentials();
@@ -498,7 +479,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
               decoration: const BoxDecoration(
                 color: AppTheme.primaryColor,
               ),
-              currentAccountPicture: Stack(
+              currentAccountPicture: const Stack(
                 clipBehavior: Clip.none,
                 children: [
                   CircleAvatar(

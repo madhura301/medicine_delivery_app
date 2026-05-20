@@ -5,15 +5,15 @@
 
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
+import 'package:pharmaish/shared/widgets/app_button.dart';
 import 'package:pharmaish/utils/app_logger.dart';
-import 'package:pharmaish/utils/role-entity-manager.dart';
+import 'package:pharmaish/utils/role_entity_manager.dart';
 import 'package:pharmaish/core/screens/admin/create_user_screen.dart';
 
 class AdminUserManagementPage extends StatefulWidget {
   final Dio dio;
 
-  const AdminUserManagementPage({Key? key, required this.dio})
-      : super(key: key);
+  const AdminUserManagementPage({super.key, required this.dio});
 
   @override
   State<AdminUserManagementPage> createState() =>
@@ -442,8 +442,7 @@ class _AdminUserManagementPageState extends State<AdminUserManagementPage> {
               child: const Text('Cancel')),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red, foregroundColor: Colors.white),
+            style: AppButton.danger(),
             child: const Text('Delete'),
           ),
         ],
@@ -647,14 +646,14 @@ class _AdminUserManagementPageState extends State<AdminUserManagementPage> {
                 title: const Text('Active Status'),
                 subtitle: Text(active ? 'Currently active' : 'Currently inactive'),
                 value: active,
-                activeColor: Colors.green,
+                activeThumbColor: Colors.green,
                 onChanged: (v) => isActiveNotifier.value = v,
               ),
             ),
             // Store dropdown
             StatefulBuilder(
               builder: (_, setSt) => DropdownButtonFormField<String>(
-                value: selectedStoreId,
+                initialValue: selectedStoreId,
                 decoration: InputDecoration(
                   labelText: 'Assigned Pharmacy',
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),

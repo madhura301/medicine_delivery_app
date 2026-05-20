@@ -1,14 +1,13 @@
 import 'package:pharmaish/utils/app_logger.dart';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:pharmaish/core/app_routes.dart';
 import 'package:pharmaish/core/screens/auth/forgot_password_page.dart';
 import 'package:pharmaish/core/screens/auth/otp_verification_page.dart';
 import 'package:pharmaish/core/screens/auth/register_customer_page.dart';
 import 'package:pharmaish/core/screens/auth/register_pharmacist_page.dart';
-import 'package:pharmaish/utils/constants.dart';
+import 'package:pharmaish/core/services/auth_service.dart';
+import 'package:pharmaish/utils/storage.dart';
 
 class LoginWithOTPPage extends StatefulWidget {
   const LoginWithOTPPage({super.key});
@@ -346,12 +345,12 @@ class _LoginWithOTPPageState extends State<LoginWithOTPPage> {
                         borderRadius: BorderRadius.circular(12),
                       ),
                     ),
-                    child: Row(
+                    child: const Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Icon(Icons.local_pharmacy, size: 20),
-                        const SizedBox(width: 8),
-                        const Text(
+                        Icon(Icons.local_pharmacy, size: 20),
+                        SizedBox(width: 8),
+                        Text(
                           'Register as Pharmacist',
                           style: TextStyle(
                             fontSize: 18,
@@ -478,7 +477,7 @@ class _LoginWithOTPPageState extends State<LoginWithOTPPage> {
       MaterialPageRoute(
         builder: (context) => OTPVerificationPage(
           username: _phoneController.text.trim(),
-          email: _phoneController.text.trim() + '@medimart.com',
+          email: '${_phoneController.text.trim()}@medimart.com',
           mobile: _phoneController.text.trim(),
         ),
       ),
@@ -549,76 +548,46 @@ class _LoginWithOTPPageState extends State<LoginWithOTPPage> {
       final otp = _otpController.text.trim();
 
       // Make API call to verify OTP and login
-      final response = await http.post(
-        Uri.parse('${AppConstants.apiBaseUrl}/Auth/verify-otp-login'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
-        body: jsonEncode({
-          'phoneNumber': phoneNumber,
-          'otp': otp,
-        }),
+      final response = await AuthService.verifyOtpLogin(
+        phoneNumber: phoneNumber,
+        otp: otp,
       );
 
       setState(() {
         _isLoading = false;
       });
 
-      if (response.statusCode == 200) {
-        // Parse response
-        final responseData = jsonDecode(response.body);
+      if (response.success) {
+        final token = response.token!;
+        final refreshToken = response.refreshToken;
 
-        // Check if login was successful
-        if (responseData['success'] == true) {
-          // Extract data from response
-          final token = responseData['token'];
-          final refreshToken = responseData['refreshToken'];
+        // Store token securely
+        await _storeToken(token, refreshToken);
 
-          // Store token securely
-          await _storeToken(token, refreshToken);
+        AppLogger.info('Login successful!');
 
-          AppLogger.info('Login successful!');
-          AppLogger.info('Token: $token');
-          AppLogger.info('Refresh Token: $refreshToken');
+        // Decode JWT token to get user information
+        final userInfo = StorageService.decodeJwtToken(token);
+        final userRole = _determineUserRole(userInfo);
 
-          // Decode JWT token to get user information
-          final userInfo = _decodeJwtToken(token);
-          final userRole = _determineUserRole(userInfo);
-
-          // Navigate to appropriate dashboard
-          _navigateToDashboard(userRole);
-        } else {
-          // API returned success: false
-          final errors = responseData['errors'] as List<dynamic>;
-          setState(() {
-            _errorMessage = errors.isNotEmpty
-                ? errors.first.toString()
-                : 'Login failed. Please try again.';
-          });
-        }
+        // Navigate to appropriate dashboard
+        _navigateToDashboard(userRole);
+      } else if (response.statusCode == 200) {
+        // 200 with success=false → bubble the body's first error
+        setState(() {
+          _errorMessage =
+              response.firstError ?? 'Login failed. Please try again.';
+        });
       } else if (response.statusCode == 401) {
-        // Unauthorized - wrong OTP
         setState(() {
           _errorMessage = 'Invalid OTP. Please try again.';
         });
       } else if (response.statusCode == 400) {
-        // Bad request - validation errors
-        try {
-          final errorData = jsonDecode(response.body);
-          final errors = errorData['errors'] as List<dynamic>;
-          setState(() {
-            _errorMessage = errors.isNotEmpty
-                ? errors.first.toString()
-                : 'Invalid OTP or phone number';
-          });
-        } catch (e) {
-          setState(() {
-            _errorMessage = 'Invalid OTP or phone number';
-          });
-        }
+        setState(() {
+          _errorMessage =
+              response.firstError ?? 'Invalid OTP or phone number';
+        });
       } else {
-        // Other server errors
         setState(() {
           _errorMessage = 'Server error. Please try again later.';
         });
@@ -647,26 +616,6 @@ class _LoginWithOTPPageState extends State<LoginWithOTPPage> {
       AppLogger.info('Tokens stored successfully');
     } catch (e) {
       AppLogger.error('Error storing tokens: $e');
-    }
-  }
-
-  // Helper method to decode JWT token and extract user information
-  Map<String, dynamic> _decodeJwtToken(String token) {
-    try {
-      final parts = token.split('.');
-      if (parts.length != 3) {
-        throw Exception('Invalid token');
-      }
-
-      final payload = parts[1];
-      final normalized = base64Url.normalize(payload);
-      final resp = utf8.decode(base64Url.decode(normalized));
-      final payloadMap = json.decode(resp);
-
-      return payloadMap;
-    } catch (e) {
-      AppLogger.error('Error decoding token: $e');
-      return {};
     }
   }
 

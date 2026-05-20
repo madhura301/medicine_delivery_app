@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
 import 'package:pharmaish/core/screens/splash/splash_page.dart';
+import 'package:pharmaish/core/services/auth_service.dart';
 import 'package:pharmaish/utils/app_logger.dart';
-import 'package:pharmaish/utils/constants.dart';
 
 class ResetPasswordPage extends StatefulWidget {
   final String mobileNumber;
@@ -391,38 +389,21 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
       final newPassword = _passwordController.text.trim();
 
       // Make API call to reset password endpoint
-      final response = await http.post(
-        Uri.parse('${AppConstants.apiBaseUrl}/Auth/reset-password'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
-        body: jsonEncode({
-          'mobileNumber': mobileNumber,
-          'token': token,
-          'newPassword': newPassword,
-        }),
+      final response = await AuthService.resetPassword(
+        mobileNumber: mobileNumber,
+        token: token,
+        newPassword: newPassword,
       );
 
-      AppLogger.apiResponse(
-        response.statusCode,
-        '/Auth/reset-password',
-        jsonDecode(response.body),
-      );
+      if (response.success) {
+        setState(() {
+          _isLoading = false;
+        });
 
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        final responseData = jsonDecode(response.body);
-
-        if (responseData['success'] == true) {
-          setState(() {
-            _isLoading = false;
-          });
-
-          if (mounted) {
-            _showSuccessDialog();
-          }
-          return;
+        if (mounted) {
+          _showSuccessDialog();
         }
+        return;
       }
 
       // Handle error responses
@@ -430,28 +411,16 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
         _isLoading = false;
       });
 
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        final responseData = jsonDecode(response.body);
-        final errors = responseData['errors'] as List<dynamic>?;
+      if (response.isHttpSuccess) {
         setState(() {
-          _errorMessage = errors?.isNotEmpty == true
-              ? errors!.first.toString()
-              : 'Failed to reset password. Please try again.';
+          _errorMessage = response.firstError ??
+              'Failed to reset password. Please try again.';
         });
       } else if (response.statusCode == 400) {
-        try {
-          final errorData = jsonDecode(response.body);
-          final errors = errorData['errors'] as List<dynamic>?;
-          setState(() {
-            _errorMessage = errors?.isNotEmpty == true
-                ? errors!.first.toString()
-                : 'Invalid reset token or password';
-          });
-        } catch (e) {
-          setState(() {
-            _errorMessage = 'Invalid reset token or password';
-          });
-        }
+        setState(() {
+          _errorMessage =
+              response.firstError ?? 'Invalid reset token or password';
+        });
       } else if (response.statusCode == 404) {
         setState(() {
           _errorMessage = 'Mobile number not found';

@@ -3,8 +3,9 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:pharmaish/core/screens/orders/camera_prescription_screen.dart';
 import 'package:pharmaish/core/screens/orders/upload_prescription_screen.dart';
 import 'package:pharmaish/core/screens/orders/voice_order_screen.dart';
-import 'package:pharmaish/core/services/order_service.dart';
+import 'package:pharmaish/core/services/customer_service.dart';
 import 'package:pharmaish/utils/app_logger.dart';
+import 'package:pharmaish/shared/widgets/app_snackbar.dart';
 import 'package:pharmaish/utils/order_exceptions.dart';
 import 'package:pharmaish/utils/storage.dart';
 
@@ -26,7 +27,7 @@ class AppHelpers {
   }
 
   static void logout(BuildContext context) {
-    Future<void> _logout(BuildContext context) async {
+    Future<void> logout(BuildContext context) async {
       try {
         // Clear ALL stored data
         await StorageService.clearAuthTokens();
@@ -80,30 +81,25 @@ class AppHelpers {
       AppLogger.warning('❌ Mobile number not found in storage - user not logged in');
       // Show a message and redirect to login
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Please log in to place an order'),
-            backgroundColor: Colors.orange,
-          ),
-        );
+        AppSnackBar.warning(context, 'Please log in to place an order');
         // Navigate to login screen
         Navigator.pushReplacementNamed(context, '/login');
       }
       return;
     }
-    
+
     // Clean the mobile number - remove quotes and trim whitespace
     mobileNumber = mobileNumber.replaceAll('"', '').replaceAll("'", '').trim();
     AppLogger.info('User mobile number: "$mobileNumber"');
-    
-    var customer = await OrderService.getCustomerFromMobileNumber(
+
+    var customer = await CustomerService.getCustomerByMobile(
         mobileNumber: mobileNumber);
-        
+
     if (customer != null) {
       AppLogger.info('🔍 Retrieved customer: "$customer"');
       AppLogger.info(
           "Navigating to Upload Prescription for customerId: ${customer['customerId']}");
-      
+
       if (context.mounted) {
         Navigator.push(
           context,
@@ -122,12 +118,7 @@ class AppHelpers {
           '❌ No customer found for mobile number: "$mobileNumber" - possibly logged out');
       // User's session may have expired
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Session expired. Please log in again.'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        AppSnackBar.error(context, 'Session expired. Please log in again.');
         // Navigate to login screen
         Navigator.pushReplacementNamed(context, '/login');
       }
@@ -140,29 +131,24 @@ class AppHelpers {
     if (mobileNumber == null) {
       AppLogger.warning('❌ Mobile number not found in storage - user not logged in');
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Please log in to place an order'),
-            backgroundColor: Colors.orange,
-          ),
-        );
+        AppSnackBar.warning(context, 'Please log in to place an order');
         Navigator.pushReplacementNamed(context, '/login');
       }
       return;
     }
-    
+
     // Clean the mobile number - remove quotes and trim whitespace
     mobileNumber = mobileNumber.replaceAll('"', '').replaceAll("'", '').trim();
     AppLogger.info('User mobile number: "$mobileNumber"');
-    
-    var customer = await OrderService.getCustomerFromMobileNumber(
+
+    var customer = await CustomerService.getCustomerByMobile(
         mobileNumber: mobileNumber);
-        
+
     if (customer != null) {
       AppLogger.info('🔍 Retrieved customer: "$customer"');
       AppLogger.info(
           "Navigating to Camera Prescription for customerId: ${customer['customerId']}");
-      
+
       if (context.mounted) {
         Navigator.push(
           context,
@@ -180,12 +166,7 @@ class AppHelpers {
       AppLogger.error(
           '❌ No customer found for mobile number: "$mobileNumber" - possibly logged out');
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Session expired. Please log in again.'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        AppSnackBar.error(context, 'Session expired. Please log in again.');
         Navigator.pushReplacementNamed(context, '/login');
       }
     }
@@ -198,21 +179,16 @@ class AppHelpers {
     if (mobileNumber == null) {
       AppLogger.warning('❌ Mobile number not found in storage - user not logged in');
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Please log in to place an order'),
-            backgroundColor: Colors.orange,
-          ),
-        );
+        AppSnackBar.warning(context, 'Please log in to place an order');
         Navigator.pushReplacementNamed(context, '/login');
       }
       return;
     }
-    
+
     mobileNumber = mobileNumber.replaceAll('"', '').replaceAll("'", '').trim();
     AppLogger.info('User mobile number: "$mobileNumber"');
     
-    var customer = await OrderService.getCustomerFromMobileNumber(
+    var customer = await CustomerService.getCustomerByMobile(
         mobileNumber: mobileNumber);
         
     if (customer != null) {
@@ -233,12 +209,7 @@ class AppHelpers {
       AppLogger.error(
           '❌ No customer found for mobile number: "$mobileNumber" - possibly logged out');
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Session expired. Please log in again.'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        AppSnackBar.error(context, 'Session expired. Please log in again.');
         Navigator.pushReplacementNamed(context, '/login');
       }
     }

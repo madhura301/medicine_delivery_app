@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:dio/dio.dart';
+import 'package:pharmaish/shared/widgets/app_snackbar.dart';
 import 'package:pharmaish/utils/app_logger.dart';
-import 'package:pharmaish/utils/constants.dart';
-import 'package:pharmaish/utils/storage.dart';
-import 'package:pharmaish/config/environment_config.dart';
+import 'package:pharmaish/core/services/dio_client.dart';
 
 class PaymentSummaryPage extends StatefulWidget {
   final int orderId;           // ← NEW: required to record payment
@@ -14,13 +12,13 @@ class PaymentSummaryPage extends StatefulWidget {
   final VoidCallback? onPaymentSuccess;
 
   const PaymentSummaryPage({
-    Key? key,
+    super.key,
     required this.orderId,     // ← NEW
     required this.medicinesTotal,
     this.convenienceFee = 20.0,
     this.orderNumber,
     this.onPaymentSuccess,
-  }) : super(key: key);
+  });
 
   @override
   State<PaymentSummaryPage> createState() => _PaymentSummaryPageState();
@@ -29,28 +27,13 @@ class PaymentSummaryPage extends StatefulWidget {
 class _PaymentSummaryPageState extends State<PaymentSummaryPage> {
   PaymentMethod _selectedPaymentMethod = PaymentMethod.upi;
   bool _isProcessing = false;
-  late Dio _dio;
+  final Dio _dio = DioClient.instance;
 
   double get totalAmount => widget.medicinesTotal + widget.convenienceFee;
 
   @override
   void initState() {
     super.initState();
-    _setupDio();
-  }
-
-  void _setupDio() {
-    _dio = Dio();
-    _dio.options.baseUrl = AppConstants.apiBaseUrl;
-    _dio.options.connectTimeout = EnvironmentConfig.timeoutDuration;
-    _dio.options.receiveTimeout = EnvironmentConfig.timeoutDuration;
-    _dio.interceptors.add(InterceptorsWrapper(
-      onRequest: (options, handler) async {
-        final token = await StorageService.getAuthToken();
-        if (token != null) options.headers['Authorization'] = 'Bearer \$token';
-        handler.next(options);
-      },
-    ));
   }
 
   @override
@@ -506,19 +489,13 @@ Widget _buildPaymentMethods() {
         msg = d['error']?.toString() ?? d['message']?.toString() ?? msg;
       }
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(msg), backgroundColor: Colors.red),
-        );
+        AppSnackBar.error(context, msg);
       }
     } catch (e) {
       AppLogger.error('Unexpected payment error', e);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('An unexpected error occurred. Please try again.'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        AppSnackBar.error(
+            context, 'An unexpected error occurred. Please try again.');
       }
     } finally {
       if (mounted) setState(() => _isProcessing = false);

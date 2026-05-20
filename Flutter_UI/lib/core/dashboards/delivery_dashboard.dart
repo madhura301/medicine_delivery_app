@@ -1,15 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import 'package:intl/intl.dart';
-import 'package:pharmaish/config/environment_config.dart';
-import 'package:pharmaish/core/screens/chemist/chemist_delivery_management.dart';
 import 'package:pharmaish/core/screens/delivery/complete_delivery_screen.dart';
 import 'package:pharmaish/utils/app_logger.dart';
-import 'package:pharmaish/utils/constants.dart';
 import 'package:pharmaish/utils/storage.dart';
 import 'package:pharmaish/shared/models/order_model.dart';
-import 'package:pharmaish/core/theme/app_theme.dart';
 import 'package:pharmaish/core/screens/profiles/delivery_profile_page.dart';
+import 'package:pharmaish/shared/widgets/app_button.dart';
+import 'package:pharmaish/shared/widgets/confirm_dialog.dart';
+import 'package:pharmaish/core/services/dio_client.dart';
 
 class DeliveryDashboard extends StatefulWidget {
   const DeliveryDashboard({super.key});
@@ -20,43 +19,13 @@ class DeliveryDashboard extends StatefulWidget {
 
 class _DeliveryDashboardState extends State<DeliveryDashboard> {
   int _selectedIndex = 0;
-  late Dio _dio;
+  final Dio _dio = DioClient.instance;
   String _userName = 'Delivery Boy';
 
   @override
   void initState() {
     super.initState();
-    _setupDio();
     _loadUserName();
-  }
-
-  void _setupDio() {
-    _dio = Dio();
-    _dio.options.baseUrl = AppConstants.apiBaseUrl;
-    _dio.options.connectTimeout = EnvironmentConfig.timeoutDuration;
-    _dio.options.receiveTimeout = EnvironmentConfig.timeoutDuration;
-
-    if (EnvironmentConfig.shouldLog) {
-      _dio.interceptors.add(LogInterceptor(
-        requestBody: true,
-        responseBody: true,
-        logPrint: (o) => AppLogger.info('API: $o'),
-      ));
-    }
-
-    _dio.interceptors.add(InterceptorsWrapper(
-      onRequest: (options, handler) async {
-        final token = await StorageService.getAuthToken();
-        if (token != null) {
-          options.headers['Authorization'] = 'Bearer $token';
-        }
-        handler.next(options);
-      },
-      onError: (error, handler) {
-        AppLogger.error('API Error: ${error.message}');
-        handler.next(error);
-      },
-    ));
   }
 
   Future<void> _loadUserName() async {
@@ -78,29 +47,8 @@ class _DeliveryDashboardState extends State<DeliveryDashboard> {
   }
 
   Future<void> _handleLogout() async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Logout'),
-        content: const Text('Are you sure you want to logout?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
-              foregroundColor: Colors.white,
-            ),
-            child: const Text('Logout'),
-          ),
-        ],
-      ),
-    );
-
-    if (confirm == true) {
+    final confirm = await confirmLogout(context);
+    if (confirm) {
       await StorageService.clearAuthTokens();
       await StorageService.clearSavedCredentials();
       if (mounted) {
@@ -410,15 +358,15 @@ class _DeliveryActiveOrdersPageState extends State<_DeliveryActiveOrdersPage>
         if (addrResp.statusCode != 200) continue;
 
         final d = addrResp.data as Map<String, dynamic>;
-        String _get(String key) =>
+        String get(String key) =>
             (d[key] ?? d[key[0].toUpperCase() + key.substring(1)] ?? '').toString().trim();
 
         final parts = [
-          _get('addressLine1'),
-          _get('addressLine2'),
-          _get('area'),
-          _get('city'),
-          _get('pincode'),
+          get('addressLine1'),
+          get('addressLine2'),
+          get('area'),
+          get('city'),
+          get('pincode'),
         ].where((s) => s.isNotEmpty).toList();
 
         _addressCache[order.orderId] = parts.isNotEmpty
@@ -474,9 +422,7 @@ class _DeliveryActiveOrdersPageState extends State<_DeliveryActiveOrdersPage>
                 onPressed: _loadOrders,
                 icon: const Icon(Icons.refresh),
                 label: const Text('Retry'),
-                style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.black,
-                    foregroundColor: Colors.white),
+                style: AppButton.primary(),
               ),
             ],
           ),
@@ -818,8 +764,7 @@ class _DeliveryCompletedOrdersPageState
               onPressed: _loadOrders,
               icon: const Icon(Icons.refresh),
               label: const Text('Retry'),
-              style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.black, foregroundColor: Colors.white),
+              style: AppButton.primary(),
             ),
           ],
         ),

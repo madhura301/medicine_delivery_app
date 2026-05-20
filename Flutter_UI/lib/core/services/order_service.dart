@@ -1,172 +1,115 @@
-// lib/core/services/order_service.dart
-
-import 'dart:convert';
-import 'dart:io';
 import 'package:dio/dio.dart';
-import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as path;
-import 'package:pharmaish/shared/models/order_model.dart';
+import 'package:pharmaish/core/services/dio_client.dart';
 import 'package:pharmaish/shared/models/order_enums.dart';
+import 'package:pharmaish/shared/models/order_model.dart';
 import 'package:pharmaish/utils/app_logger.dart';
-import 'package:pharmaish/utils/constants.dart';
 import 'package:pharmaish/utils/order_exceptions.dart';
 import 'package:pharmaish/utils/order_validators.dart';
-import 'package:pharmaish/config/environment_config.dart';
-import 'package:pharmaish/utils/storage.dart';
 
+/// Backend API for orders.
+///
+/// All methods throw [DioException] on transport/HTTP failure. Callers
+/// retain responsibility for status-code-specific UX (e.g. 401 → re-login).
 class OrderService {
-  final Dio _dio;
+  OrderService._();
 
-  OrderService()
-      : _dio = Dio(
-          BaseOptions(
-            baseUrl: EnvironmentConfig.apiBaseUrl,
-            connectTimeout: const Duration(seconds: 30),
-            receiveTimeout: const Duration(seconds: 30),
-            responseType: ResponseType.json,
-            headers: {
-              'Content-Type': 'multipart/form-data',
-            },
-          ),
-        ) {
-    _setupInterceptors();
+  static Dio get _dio => DioClient.instance;
+
+  /// GET /Orders — full list (admin views).
+  static Future<List<dynamic>> getAllOrders() async {
+    final response = await _dio.get('/Orders');
+    final data = response.data;
+    if (data is List) return data;
+    if (data is Map && data.containsKey('data')) return data['data'] as List;
+    if (data is Map && data.containsKey('orders')) return data['orders'] as List;
+    return <dynamic>[];
   }
 
-  void _setupInterceptors() {
-    _dio.interceptors.add(
-      InterceptorsWrapper(
-        onRequest: (options, handler) async {
-          // Add auth token
-          final token = await StorageService.getAuthToken();
-          if (token != null) {
-            options.headers['Authorization'] = 'Bearer $token';
-          }
+  /// GET /Orders/{orderId} — raw JSON (caller parses with OrderModel.fromJson).
+  static Future<Map<String, dynamic>> getOrderById(String orderId) async {
+    final response = await _dio.get('/Orders/$orderId');
+    return Map<String, dynamic>.from(response.data as Map);
+  }
 
-          // ADD THIS - Log full URL
-          AppLogger.info('🌐 FULL URL: ${options.baseUrl}${options.path}');
-          AppLogger.info(
-              'Order API Request: ${options.method} ${options.path}');
-          return handler.next(options);
-        },
-        onResponse: (response, handler) {
-          AppLogger.info('Order API Response: ${response.statusCode}');
-          return handler.next(response);
-        },
-        onError: (error, handler) {
-          AppLogger.error('Order API Error: ${error.message}');
-          return handler.next(error);
-        },
-      ),
+  /// GET /Orders/medicalstore/{storeId} — orders for a specific medical store.
+  static Future<List<dynamic>> getOrdersForMedicalStore(String storeId) async {
+    final response = await _dio.get('/Orders/medicalstore/$storeId');
+    final data = response.data;
+    if (data is List) return data;
+    if (data is Map && data.containsKey('data')) return data['data'] as List;
+    if (data is Map && data.containsKey('orders')) return data['orders'] as List;
+    return <dynamic>[];
+  }
+
+  /// GET /Orders/customer/{customerId} — orders for a specific customer.
+  static Future<List<dynamic>> getOrdersForCustomer(String customerId) async {
+    final response = await _dio.get('/Orders/customer/$customerId');
+    final data = response.data;
+    if (data is List) return data;
+    if (data is Map && data.containsKey('data')) return data['data'] as List;
+    if (data is Map && data.containsKey('orders')) return data['orders'] as List;
+    return <dynamic>[];
+  }
+
+  /// PUT /Orders/{orderId}/accept — chemist accepts an order.
+  static Future<void> acceptOrder(String orderId) async {
+    await _dio.put('/Orders/$orderId/accept');
+  }
+
+  /// PUT /Orders/{orderId}/reject — chemist rejects an order with a note.
+  static Future<void> rejectOrder({
+    required String orderId,
+    required String rejectNote,
+  }) async {
+    await _dio.put('/Orders/$orderId/reject', data: {
+      'RejectNote': rejectNote,
+    });
+  }
+
+  /// POST /Orders/{orderId}/upload-bill — chemist uploads a bill (multipart).
+  static Future<void> uploadBill({
+    required String orderId,
+    required FormData formData,
+  }) async {
+    await _dio.post(
+      '/Orders/$orderId/upload-bill',
+      data: formData,
+      options: Options(headers: {'Content-Type': 'multipart/form-data'}),
     );
   }
 
-  static Future<Map<String, dynamic>?> getCustomerFromMobileNumber({
-    required String mobileNumber,
+  /// POST /Orders/assign-to-delivery — chemist assigns an order to a delivery boy.
+  static Future<void> assignToDelivery({
+    required String orderId,
+    required int deliveryId,
   }) async {
-    try {
-      final token = await StorageService.getAuthToken();
-      AppLogger.info('Fetching customer by mobile number: $mobileNumber' +
-          ' Token: $token');
-
-      // If no token, user is not logged in - return null immediately
-      if (token == null) {
-        AppLogger.warning('No auth token found - user not logged in');
-        return null;
-      }
-
-      final response = await http.get(
-        Uri.parse(
-            '${AppConstants.apiBaseUrl}/Customers/by-mobile/$mobileNumber'),
-        headers: {
-          'Accept': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-      );
-
-      AppLogger.info(
-          'Customers/by-mobile API response status: ${response.statusCode}');
-
-      // Check status code BEFORE parsing JSON
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        AppLogger.apiResponse(
-          response.statusCode,
-          '${AppConstants.apiBaseUrl}/Customers/by-mobile/$mobileNumber',
-          response.body,
-        );
-
-        final responseData = jsonDecode(response.body);
-        return responseData; // this is Map<String, dynamic>
-      } else if (response.statusCode == 401) {
-        // Unauthorized - token expired or invalid
-        AppLogger.warning('Unauthorized access - token may be expired');
-        // Optionally clear storage here
-        await StorageService.clearAll();
-        return null;
-      } else {
-        // Other error status codes
-        AppLogger.warning(
-            'API returned error status: ${response.statusCode}, Body: ${response.body}');
-        return null;
-      }
-    } catch (e) {
-      AppLogger.error('Customers/by-mobile API error : $e');
-      return null;
-    }
+    await _dio.post('/Orders/assign-to-delivery', data: {
+      'OrderId': orderId,
+      'DeliveryId': deliveryId,
+    });
   }
 
-  // static Future<Map<String, dynamic>?> getCustomerFromMobileNumber({
-  //   required String mobileNumber,
-  // }) async {
-  //   try {
-  //     final token = await StorageService.getAuthToken();
-  //     AppLogger.info('Fetching customer by mobile number: $mobileNumber' +
-  //         ' Token: $token');
-  //     if (token == null) return null;
+  /// PUT /Orders/{orderId}/complete — delivery boy completes delivery with OTP.
+  static Future<void> completeDelivery({
+    required String orderId,
+    required String otp,
+  }) async {
+    await _dio.put('/Orders/$orderId/complete', data: {'OTP': otp});
+  }
 
-  //     final response = await http.get(
-  //       Uri.parse(
-  //           '${AppConstants.apiBaseUrl}/Customers/by-mobile/$mobileNumber'),
-  //       headers: {
-  //         'Accept': 'application/json',
-  //         'Authorization': 'Bearer $token',
-  //       },
-  //     );
-
-  //     AppLogger.apiResponse(
-  //       response.statusCode,
-  //       '${AppConstants.apiBaseUrl}/Customers/by-mobile/$mobileNumber',
-  //       response.body,
-  //     );
-
-  //     AppLogger.info(
-  //         'Customers/by-mobile API response status: ${response.statusCode}');
-
-  //     final responseData = jsonDecode(response.body);
-
-  //     if (response.statusCode == 200 || response.statusCode == 201) {
-  //       return responseData; // this is Map<String, dynamic>
-  //     }
-
-  //     return null;
-  //   } catch (e) {
-  //     AppLogger.error('Customers/by-mobile API error : $e');
-  //     return null;
-  //   }
-  // }
-
-  /// Create a new order
-  Future<OrderModel> createOrder(CreateOrderRequest request) async {
+  /// POST /Orders — create a new order with prescription file/text/voice.
+  ///
+  /// Validates the request before sending. Throws
+  /// [OrderValidationException] for client-side validation failures and
+  /// [OrderNetworkException] / [OrderException] for transport / server errors.
+  static Future<OrderModel> createOrder(CreateOrderRequest request) async {
     try {
       AppLogger.info('Creating order: $request');
 
-      // Validate request
       await _validateOrderRequest(request);
 
-      // Prepare form data
-      //final formData = FormData.fromMap(request.toFormData());
-      // Create form data manually
       final formData = FormData();
-
       formData.fields.add(MapEntry('CustomerId', request.customerId));
       formData.fields
           .add(MapEntry('CustomerAddressId', request.customerAddressId));
@@ -181,33 +124,18 @@ class OrderService {
             .add(MapEntry('OrderInputText', request.orderInputText!));
       }
 
-      // Add file if present
       if (request.orderInputFile != null) {
         final file = request.orderInputFile!;
         final fileName = path.basename(file.path);
-
         formData.files.add(
           MapEntry(
             'OrderInputFile',
-            await MultipartFile.fromFile(
-              file.path,
-              filename: fileName,
-            ),
+            await MultipartFile.fromFile(file.path, filename: fileName),
           ),
         );
-
         AppLogger.info('Added file to request: $fileName');
       }
 
-      AppLogger.info('Form data fields: ${formData.fields}');
-      AppLogger.info('📋 Form Data Debug:');
-      AppLogger.info('OrderType index: ${request.orderType.index}');
-      AppLogger.info('OrderType type: ${request.orderType.index.runtimeType}');
-      AppLogger.info('OrderInputType index: ${request.orderInputType.index}');
-      AppLogger.info(
-          'OrderInputType type: ${request.orderInputType.index.runtimeType}');
-
-      // Send request
       final response = await _dio.post(
         '/Orders',
         data: formData,
@@ -218,76 +146,19 @@ class OrderService {
         },
       );
 
-      AppLogger.apiRequest(
-        'POST',
-        '/Orders',
-        request.toFormData(),
-      );
+      AppLogger.apiRequest('POST', '/Orders', request.toFormData());
       if (response.statusCode == 201) {
         AppLogger.info('Order created successfully');
         return OrderModel.fromJson(response.data);
       }
-      // //For detailed debugging
-      // if (response.statusCode == 201) {
-      //   AppLogger.info('✅ Order created successfully');
-
-      //   if (response.data is Map<String, dynamic>) {
-      //     final data = response.data as Map<String, dynamic>;
-
-      //     AppLogger.info('');
-      //     AppLogger.info('🎯 SUSPECT FIELDS TYPE CHECK:');
-      //     AppLogger.info('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-
-      //     // Check the three suspect fields
-      //     final suspects = ['shippingPincode', 'status', 'completionOtp'];
-
-      //     for (final field in suspects) {
-      //       if (data.containsKey(field)) {
-      //         final value = data[field];
-      //         final type = value.runtimeType;
-      //         final isInt = value is int;
-      //         final isString = value is String;
-
-      //         AppLogger.info('');
-      //         AppLogger.info('Field: $field');
-      //         AppLogger.info('  Value: $value');
-      //         AppLogger.info('  Type: $type');
-      //         AppLogger.info('  Is int? $isInt ${isInt ? "⚠️ PROBLEM!" : ""}');
-      //         AppLogger.info(
-      //             '  Is String? $isString ${isString ? "✅ OK" : ""}');
-
-      //         if (isInt) {
-      //           AppLogger.error(
-      //               '🚨 FOUND IT! $field is an INT but model expects STRING');
-      //         }
-      //       } else {
-      //         AppLogger.info('Field: $field - NOT PRESENT in response');
-      //       }
-      //     }
-
-      //     AppLogger.info('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-      //   }
-
-      //   // Now try to parse with detailed error catching
-      //   try {
-      //     final order = OrderModel.fromJson(response.data);
-      //     AppLogger.info('✅ Successfully parsed OrderModel');
-      //     return order;
-      //   } catch (e, stackTrace) {
-      //     AppLogger.error('❌ FAILED to parse OrderModel');
-      //     AppLogger.error('Error: $e');
-      //     AppLogger.error('StackTrace: $stackTrace');
-      //     rethrow;
-      //   }
-      // } 
-      else {
-        throw OrderNetworkException(
-          'Unexpected status code: ${response.statusCode}',
-        );
-      }
+      throw OrderNetworkException(
+        'Unexpected status code: ${response.statusCode}',
+      );
     } on DioException catch (e) {
       AppLogger.error('Dio error creating order: ${e.message}');
       throw _handleDioError(e);
+    } on OrderException {
+      rethrow;
     } catch (e) {
       AppLogger.error('Error creating order: $e');
       throw OrderException(
@@ -298,70 +169,53 @@ class OrderService {
     }
   }
 
-  /// Validate order request before submission
-  Future<void> _validateOrderRequest(CreateOrderRequest request) async {
-    // Validate based on input type
+  static Future<void> _validateOrderRequest(CreateOrderRequest request) async {
     switch (request.orderInputType) {
       case OrderInputType.image:
         if (request.orderInputFile == null) {
           throw OrderValidationException('File is required for image orders');
         }
-
-        final validationResult = await OrderValidators.validateFile(
+        final result = await OrderValidators.validateFile(
           request.orderInputFile!,
           isAudio: false,
         );
-
-        if (!validationResult.isValid) {
+        if (!result.isValid) {
           throw OrderValidationException(
-            validationResult.errorMessage ?? 'Invalid file',
-          );
+              result.errorMessage ?? 'Invalid file');
         }
         break;
-
       case OrderInputType.voice:
         if (request.orderInputFile == null) {
           throw OrderValidationException(
               'Audio file is required for voice orders');
         }
-
-        final validationResult = await OrderValidators.validateFile(
+        final result = await OrderValidators.validateFile(
           request.orderInputFile!,
           isAudio: true,
         );
-
-        if (!validationResult.isValid) {
+        if (!result.isValid) {
           throw OrderValidationException(
-            validationResult.errorMessage ?? 'Invalid audio file',
-          );
+              result.errorMessage ?? 'Invalid audio file');
         }
         break;
-
       case OrderInputType.text:
         if (request.orderInputText == null || request.orderInputText!.isEmpty) {
           throw OrderValidationException('Text is required for text orders');
         }
-
-        final validationResult = OrderValidators.validateText(
-          request.orderInputText!,
-        );
-
-        if (!validationResult.isValid) {
+        final result = OrderValidators.validateText(request.orderInputText!);
+        if (!result.isValid) {
           throw OrderValidationException(
-            validationResult.errorMessage ?? 'Invalid text',
-          );
+              result.errorMessage ?? 'Invalid text');
         }
         break;
     }
 
-    // Validate address ID
     if (request.customerAddressId.isEmpty) {
       throw OrderValidationException('Delivery address is required');
     }
   }
 
-  /// Handle Dio errors
-  OrderException _handleDioError(DioException error) {
+  static OrderException _handleDioError(DioException error) {
     switch (error.type) {
       case DioExceptionType.connectionTimeout:
       case DioExceptionType.sendTimeout:
@@ -370,29 +224,24 @@ class OrderService {
           'Connection timeout. Please check your internet connection.',
           originalError: error,
         );
-
       case DioExceptionType.badResponse:
         final statusCode = error.response?.statusCode;
         final message = error.response?.data?['message'] ??
             error.response?.data?['error'] ??
             'Server error occurred';
-
-        if (statusCode == 400) {
-          return OrderValidationException(message);
-        } else if (statusCode == 401) {
+        if (statusCode == 400) return OrderValidationException(message);
+        if (statusCode == 401) {
           return OrderNetworkException('Unauthorized. Please login again.');
-        } else if (statusCode == 404) {
-          return OrderNetworkException('Order endpoint not found.');
-        } else {
-          return OrderNetworkException(
-            'Server error ($statusCode): $message',
-            originalError: error,
-          );
         }
-
+        if (statusCode == 404) {
+          return OrderNetworkException('Order endpoint not found.');
+        }
+        return OrderNetworkException(
+          'Server error ($statusCode): $message',
+          originalError: error,
+        );
       case DioExceptionType.cancel:
         return OrderNetworkException('Request was cancelled.');
-
       default:
         return OrderNetworkException(
           'Network error occurred. Please try again.',
@@ -401,51 +250,4 @@ class OrderService {
     }
   }
 
-  /// Get order by ID
-  Future<OrderModel> getOrderById(String orderId) async {
-  try {
-    final response = await _dio.get('/Orders/$orderId');
-    
-    if (response.statusCode == 200) {
-      final jsonData = response.data;
-      
-      // 🔍 DEBUG: Check what we received
-      AppLogger.info('📦 Received order data: $jsonData');
-      AppLogger.info('📋 Assignment history field exists: ${jsonData.containsKey("assignmentHistory")}');
-      AppLogger.info('📋 Assignment history value: ${jsonData["assignmentHistory"]}');
-      AppLogger.info('📋 Assignment history type: ${jsonData["assignmentHistory"]?.runtimeType}');
-      
-      if (jsonData['assignmentHistory'] != null) {
-        AppLogger.info('📋 Assignment history length: ${(jsonData["assignmentHistory"] as List).length}');
-      }
-      
-      // Parse the order
-      final order = OrderModel.fromJson(jsonData);
-      
-      // 🔍 DEBUG: Check parsed result
-      AppLogger.info('✅ Parsed order ID: ${order.orderId}');
-      AppLogger.info('✅ Assignment history count: ${order.assignmentHistory.length}');
-      AppLogger.info('✅ Has assignment history: ${order.hasAssignmentHistory}');
-      
-      return order;
-    }
-    
-    throw Exception('Failed to load order');
-  } catch (e, stackTrace) {
-    AppLogger.error('Error fetching order: $e');
-    AppLogger.error('Stack trace: $stackTrace');
-    rethrow;
-  }
-}
-
-  /// Get customer orders
-  Future<List<OrderModel>> getCustomerOrders(String customerId) async {
-    try {
-      final response = await _dio.get('/api/Orders/customer/$customerId');
-      final List<dynamic> data = response.data;
-      return data.map((json) => OrderModel.fromJson(json)).toList();
-    } on DioException catch (e) {
-      throw _handleDioError(e);
-    }
-  }
 }

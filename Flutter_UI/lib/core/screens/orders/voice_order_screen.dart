@@ -8,10 +8,10 @@ import 'package:pharmaish/core/services/order_service.dart';
 import 'package:pharmaish/shared/models/order_enums.dart';
 import 'package:pharmaish/shared/models/order_model.dart';
 import 'package:pharmaish/utils/app_logger.dart';
+import 'package:pharmaish/shared/widgets/app_snackbar.dart';
 import 'package:pharmaish/shared/widgets/step_progress_indicator.dart';
 import 'package:pharmaish/shared/widgets/address_selector_widget.dart';
 import 'package:pharmaish/utils/order_exceptions.dart';
-import 'package:pharmaish/utils/storage.dart';
 
 class VoiceOrderScreen extends StatefulWidget {
   final String customerId;
@@ -90,12 +90,7 @@ class _VoiceOrderScreenState extends State<VoiceOrderScreen> {
     } catch (e) {
       AppLogger.error('Error initializing audio: $e');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error initializing audio: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        AppSnackBar.error(context, 'Error initializing audio: $e');
       }
     }
   }
@@ -117,12 +112,8 @@ class _VoiceOrderScreenState extends State<VoiceOrderScreen> {
     final status = await Permission.microphone.request();
     if (status != PermissionStatus.granted) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Microphone permission is required for recording'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        AppSnackBar.error(
+            context, 'Microphone permission is required for recording');
       }
       return false;
     }
@@ -131,12 +122,7 @@ class _VoiceOrderScreenState extends State<VoiceOrderScreen> {
 
   Future<void> _startRecording() async {
     if (!_recorderInitialized) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Recorder not initialized. Please try again.'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      AppSnackBar.error(context, 'Recorder not initialized. Please try again.');
       return;
     }
 
@@ -166,12 +152,7 @@ class _VoiceOrderScreenState extends State<VoiceOrderScreen> {
     } catch (e) {
       AppLogger.error('Error starting recording: $e');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error starting recording: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        AppSnackBar.error(context, 'Error starting recording: $e');
       }
     }
   }
@@ -243,12 +224,7 @@ class _VoiceOrderScreenState extends State<VoiceOrderScreen> {
     } catch (e) {
       AppLogger.error('Error playing recording: $e');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error playing recording: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        AppSnackBar.error(context, 'Error playing recording: $e');
       }
     }
   }
@@ -300,23 +276,13 @@ class _VoiceOrderScreenState extends State<VoiceOrderScreen> {
   void _nextStep() {
     if (_currentStep == 0) {
       if (_audioPath == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Please record your order first'),
-            backgroundColor: Colors.orange,
-          ),
-        );
+        AppSnackBar.warning(context, 'Please record your order first');
         return;
       }
     } else if (_currentStep == 1) {
       // Validate address selection
       if (_selectedAddress == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Please select a delivery address'),
-            backgroundColor: Colors.orange,
-          ),
-        );
+        AppSnackBar.warning(context, 'Please select a delivery address');
         return;
       }
       if (!_formKey.currentState!.validate()) {
@@ -340,42 +306,26 @@ class _VoiceOrderScreenState extends State<VoiceOrderScreen> {
     //   return;
     // }
     if (_audioPath == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('No recording available'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      AppSnackBar.error(context, 'No recording available');
       return;
     }
 
     if (_selectedAddress == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please select a delivery address'),
-          backgroundColor: Colors.orange,
-        ),
-      );
+      AppSnackBar.warning(context, 'Please select a delivery address');
       return;
     }
 
     if (_selectedAddress?.addressId == null ||
         _selectedAddress!.addressId!.isEmpty) {
       AppLogger.error('❌ Selected address has no ID!');
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content:
-              Text('Invalid address selected. Please select another address.'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      AppSnackBar.error(
+          context, 'Invalid address selected. Please select another address.');
       return;
     }
 
     setState(() => _isLoading = true);
 
     try {
-      final orderService = OrderService();
       final audioFile = File(_audioPath!);
 
       final orderRequest = CreateOrderRequest(
@@ -396,48 +346,28 @@ class _VoiceOrderScreenState extends State<VoiceOrderScreen> {
       AppLogger.info(
           'Recording Duration: ${_formatDuration(_recordingDuration)}');
 
-      final createdOrder = await orderService.createOrder(orderRequest);
+      final createdOrder = await OrderService.createOrder(orderRequest);
 
       AppLogger.info('✅ Order created! ID: ${createdOrder.orderId}');
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Voice order submitted successfully!'),
-            backgroundColor: Colors.green,
-          ),
-        );
+        AppSnackBar.success(context, 'Voice order submitted successfully!');
         Navigator.of(context).pop(true);
       }
     } on OrderValidationException catch (e) {
       AppLogger.error('Validation error: ${e.message}');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Validation Error: ${e.message}'),
-            backgroundColor: Colors.orange,
-          ),
-        );
+        AppSnackBar.warning(context, 'Validation Error: ${e.message}');
       }
     } on OrderNetworkException catch (e) {
       AppLogger.error('Network error: ${e.message}');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Network Error: ${e.message}'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        AppSnackBar.error(context, 'Network Error: ${e.message}');
       }
     } catch (e) {
       AppLogger.error('Error submitting order: $e');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        AppSnackBar.error(context, 'Error: $e');
       }
     } finally {
       if (mounted) {
@@ -585,7 +515,7 @@ class _VoiceOrderScreenState extends State<VoiceOrderScreen> {
                 // Duration Display
                 Text(
                   _formatDuration(_recordingDuration),
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontSize: 32,
                     fontWeight: FontWeight.bold,
                     color: Colors.black,
@@ -673,11 +603,11 @@ class _VoiceOrderScreenState extends State<VoiceOrderScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Row(
+                  const Row(
                     children: [
                       Icon(Icons.audiotrack, color: Colors.black),
-                      const SizedBox(width: 8),
-                      const Text(
+                      SizedBox(width: 8),
+                      Text(
                         'Your Recording',
                         style: TextStyle(
                           fontSize: 16,
@@ -1107,11 +1037,11 @@ class _VoiceOrderScreenState extends State<VoiceOrderScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
+                const Row(
                   children: [
                     Icon(Icons.mic, color: Colors.black),
-                    const SizedBox(width: 8),
-                    const Text(
+                    SizedBox(width: 8),
+                    Text(
                       'Voice Recording',
                       style: TextStyle(
                         fontSize: 16,
@@ -1123,7 +1053,7 @@ class _VoiceOrderScreenState extends State<VoiceOrderScreen> {
                 const Divider(height: 20),
                 Row(
                   children: [
-                    Icon(Icons.audiotrack, color: Colors.black, size: 40),
+                    const Icon(Icons.audiotrack, color: Colors.black, size: 40),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Column(
@@ -1159,11 +1089,11 @@ class _VoiceOrderScreenState extends State<VoiceOrderScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
+                const Row(
                   children: [
                     Icon(Icons.medical_services, color: Colors.black),
-                    const SizedBox(width: 8),
-                    const Text(
+                    SizedBox(width: 8),
+                    Text(
                       'Order Type',
                       style: TextStyle(
                         fontSize: 16,
@@ -1193,11 +1123,11 @@ class _VoiceOrderScreenState extends State<VoiceOrderScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
+                const Row(
                   children: [
                     Icon(Icons.person, color: Colors.black),
-                    const SizedBox(width: 8),
-                    const Text(
+                    SizedBox(width: 8),
+                    Text(
                       'Patient Details',
                       style: TextStyle(
                         fontSize: 16,
@@ -1226,11 +1156,11 @@ class _VoiceOrderScreenState extends State<VoiceOrderScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
+                  const Row(
                     children: [
                       Icon(Icons.location_on, color: Colors.black),
-                      const SizedBox(width: 8),
-                      const Text(
+                      SizedBox(width: 8),
+                      Text(
                         'Delivery Address',
                         style: TextStyle(
                           fontSize: 16,
@@ -1258,11 +1188,11 @@ class _VoiceOrderScreenState extends State<VoiceOrderScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
+                const Row(
                   children: [
                     Icon(Icons.local_shipping, color: Colors.black),
-                    const SizedBox(width: 8),
-                    const Text(
+                    SizedBox(width: 8),
+                    Text(
                       'Delivery Details',
                       style: TextStyle(
                         fontSize: 16,
@@ -1323,13 +1253,13 @@ class _VoiceOrderScreenState extends State<VoiceOrderScreen> {
   Widget _buildNavigationButtons() {
     return Container(
       padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
+      decoration: const BoxDecoration(
         color: Colors.white,
         boxShadow: [
           BoxShadow(
             color: Colors.black12,
             blurRadius: 4,
-            offset: const Offset(0, -2),
+            offset: Offset(0, -2),
           ),
         ],
       ),

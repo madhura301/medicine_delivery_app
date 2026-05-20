@@ -1,5 +1,6 @@
 // File: lib/shared/widgets/order_widgets.dart
 import 'package:flutter/material.dart';
+import 'package:pharmaish/shared/widgets/app_snackbar.dart';
 import 'package:pharmaish/utils/constants.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:pharmaish/utils/app_logger.dart';
@@ -22,23 +23,13 @@ class OrderWidgets {
       } else {
         // If WhatsApp is not installed, show error
         if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('WhatsApp is not installed on this device'),
-              backgroundColor: Colors.red,
-            ),
-          );
+          AppSnackBar.error(context, 'WhatsApp is not installed on this device');
         }
       }
     } catch (e) {
       AppLogger.error('Error opening WhatsApp', e);
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Unable to open WhatsApp. Please try again.'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        AppSnackBar.error(context, 'Unable to open WhatsApp. Please try again.');
       }
     }
   }
@@ -61,13 +52,8 @@ class OrderWidgets {
     } catch (e) {
       AppLogger.error('Error opening membership PDF', e);
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Unable to open Membership Code document'),
-            backgroundColor: Colors.red,
-            duration: Duration(seconds: 3),
-          ),
-        );
+        AppSnackBar.error(context, 'Unable to open Membership Code document',
+            duration: const Duration(seconds: 3));
       }
     }
   }
@@ -90,13 +76,8 @@ class OrderWidgets {
     } catch (e) {
       AppLogger.error('Error opening membership benefits PDF', e);
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Unable to open Membership Benefits document'),
-            backgroundColor: Colors.red,
-            duration: Duration(seconds: 3),
-          ),
-        );
+        AppSnackBar.error(context, 'Unable to open Membership Benefits document',
+            duration: const Duration(seconds: 3));
       }
     }
   }

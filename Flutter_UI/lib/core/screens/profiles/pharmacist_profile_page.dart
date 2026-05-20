@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:pharmaish/core/screens/auth/change_password_page.dart';
 import 'package:pharmaish/core/theme/app_theme.dart';
+import 'package:pharmaish/shared/widgets/app_button.dart';
 import 'package:pharmaish/utils/app_logger.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -266,12 +267,12 @@ class _PharmacistProfilePageState extends State<PharmacistProfilePage> {
                     width: double.infinity,
                     padding: const EdgeInsets.all(12),
                     color: AppTheme.primaryColor.withValues(alpha: 0.1),
-                    child: Row(
+                    child: const Row(
                       children: [
                         Icon(Icons.edit,
                             color: AppTheme.primaryColor, size: 16),
-                        const SizedBox(width: 8),
-                        const Text(
+                        SizedBox(width: 8),
+                        Text(
                           'Edit Mode - Make changes to your profile',
                           style: TextStyle(
                             color: AppTheme.primaryColor,
@@ -480,8 +481,9 @@ class _PharmacistProfilePageState extends State<PharmacistProfilePage> {
                                 enabled: _isEditMode,
                                 keyboardType: TextInputType.emailAddress,
                                 validator: (value) {
-                                  if (value == null || value.isEmpty)
+                                  if (value == null || value.isEmpty) {
                                     return null;
+                                  }
                                   final emailRegex = RegExp(
                                       r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$');
                                   return emailRegex.hasMatch(value)
@@ -617,12 +619,12 @@ class _PharmacistProfilePageState extends State<PharmacistProfilePage> {
                                     crossAxisAlignment:
                                         CrossAxisAlignment.start,
                                     children: [
-                                      Row(
+                                      const Row(
                                         children: [
-                                          const Icon(Icons.map,
+                                          Icon(Icons.map,
                                               color: AppTheme.primaryColor),
-                                          const SizedBox(width: 8),
-                                          const Text('Location:',
+                                          SizedBox(width: 8),
+                                          Text('Location:',
                                               style: TextStyle(
                                                   fontWeight: FontWeight.bold)),
                                         ],
@@ -635,11 +637,7 @@ class _PharmacistProfilePageState extends State<PharmacistProfilePage> {
                                             _checkLocationAndRequest, //_getCurrentLocation,
                                         icon: const Icon(Icons.my_location),
                                         label: const Text('Update Location'),
-                                        style: ElevatedButton.styleFrom(
-                                          backgroundColor:
-                                              AppTheme.primaryColor,
-                                          foregroundColor: Colors.white,
-                                        ),
+                                        style: AppButton.primary(),
                                       ),
                                     ],
                                   ),
@@ -805,11 +803,11 @@ class _PharmacistProfilePageState extends State<PharmacistProfilePage> {
                 topRight: Radius.circular(12),
               ),
             ),
-            child: Row(
+            child: const Row(
               children: [
-                const Icon(Icons.security, color: AppTheme.primaryColor, size: 20),
-                const SizedBox(width: 8),
-                const Text(
+                Icon(Icons.security, color: AppTheme.primaryColor, size: 20),
+                SizedBox(width: 8),
+                Text(
                   'Security',
                   style: TextStyle(
                     fontSize: 18,
@@ -992,7 +990,7 @@ class _PharmacistProfilePageState extends State<PharmacistProfilePage> {
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: AppTheme.primaryColor, width: 2),
+          borderSide: const BorderSide(color: AppTheme.primaryColor, width: 2),
         ),
         disabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
@@ -1042,7 +1040,7 @@ class _PharmacistProfilePageState extends State<PharmacistProfilePage> {
 
   Widget _buildDropdownField() {
     return DropdownButtonFormField<String>(
-      value: _selectedState != null && _states.contains(_selectedState)
+      initialValue: _selectedState != null && _states.contains(_selectedState)
           ? _selectedState
           : null,
       isExpanded: true,
@@ -1052,7 +1050,7 @@ class _PharmacistProfilePageState extends State<PharmacistProfilePage> {
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: AppTheme.primaryColor, width: 2),
+          borderSide: const BorderSide(color: AppTheme.primaryColor, width: 2),
         ),
       ),
       items: _states.map((String state) {
@@ -1283,7 +1281,7 @@ class _PharmacistProfilePageState extends State<PharmacistProfilePage> {
             children: [
               Container(
                 padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
+                decoration: const BoxDecoration(
                   color: AppTheme.primaryColor,
                   shape: BoxShape.circle,
                 ),
