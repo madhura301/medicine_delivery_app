@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cd:*)",
+      "Bash(dotnet add *)",
+      "Bash(dotnet build *)",
+      "Bash(dotnet ef *)",
+      "WebFetch(domain:www.tatatelebusiness.com)",
+      "Bash(Get-ChildItem -Path \"J:\\\\Projects\\\\MedicineDeliveryRepo\\\\medicine_delivery_app\\\\WebApp\" -Recurse -Directory)",
+      "Bash(Select-Object -First 30)",
+      "Bash(Format-Table FullName)",
+      "Bash(Get-ChildItem -Path \"J:\\\\Projects\\\\MedicineDeliveryRepo\\\\medicine_delivery_app\\\\Flutter_UI\" -Directory)",
+      "Bash(Select-Object Name)",
+      "Bash(find J:\\\\Projects\\\\MedicineDeliveryRepo\\\\medicine_delivery_app\\\\WebApp *)",
+      "WebSearch",
+      "WebFetch(domain:github.com)"
+    ]
+  }
+}

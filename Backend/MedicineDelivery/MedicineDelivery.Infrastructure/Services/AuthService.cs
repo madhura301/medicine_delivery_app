@@ -335,5 +335,13 @@ namespace MedicineDelivery.Infrastructure.Services
                 Success = true
             };
         }
+
+        // OTP-based password reset is implemented in MedicineDelivery.API.Services.AuthService.
+        // This class is not registered in DI; these stubs satisfy the interface contract.
+        public Task<AuthResult> SendForgotPasswordOtpAsync(string phoneNumber) =>
+            throw new NotImplementedException("Use the API-layer AuthService.");
+
+        public Task<AuthResult> VerifyOtpAndResetPasswordAsync(string phoneNumber, string otpCode, string newPassword) =>
+            throw new NotImplementedException("Use the API-layer AuthService.");
     }
 }

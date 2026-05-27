@@ -24,6 +24,8 @@ namespace MedicineDelivery.Infrastructure.Repositories
         private IRepository<ServiceRegionPinCode>? _serviceRegionPinCodes;
         private IRepository<Consent>? _consents;
         private IRepository<ConsentLog>? _consentLogs;
+        private IRepository<UserOtp>? _userOtps;
+        private IRepository<RazorpayOrder>? _razorpayOrders;
 
         public UnitOfWork(ApplicationDbContext context)
         {
@@ -46,6 +48,8 @@ namespace MedicineDelivery.Infrastructure.Repositories
         public IRepository<ServiceRegionPinCode> ServiceRegionPinCodes => _serviceRegionPinCodes ??= new Repository<ServiceRegionPinCode>(_context);
         public IRepository<Consent> Consents => _consents ??= new Repository<Consent>(_context);
         public IRepository<ConsentLog> ConsentLogs => _consentLogs ??= new Repository<ConsentLog>(_context);
+        public IRepository<UserOtp> UserOtps => _userOtps ??= new Repository<UserOtp>(_context);
+        public IRepository<RazorpayOrder> RazorpayOrders => _razorpayOrders ??= new Repository<RazorpayOrder>(_context);
 
         public async Task<int> SaveChangesAsync()
         {

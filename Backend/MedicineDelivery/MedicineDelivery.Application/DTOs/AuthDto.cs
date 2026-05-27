@@ -46,4 +46,19 @@ namespace MedicineDelivery.Application.DTOs
         public string CurrentPassword { get; set; } = string.Empty;
         public string NewPassword { get; set; } = string.Empty;
     }
+
+    /// <summary>Request body for POST /api/auth/forgot-password — sends OTP via SMS.</summary>
+    public class SendOtpRequestDto
+    {
+        public string PhoneNumber { get; set; } = string.Empty;
+    }
+
+    /// <summary>Request body for POST /api/auth/verify-otp-reset-password.</summary>
+    public class VerifyOtpResetPasswordDto
+    {
+        public string PhoneNumber { get; set; } = string.Empty;
+        public string OtpCode { get; set; } = string.Empty;
+        public string NewPassword { get; set; } = string.Empty;
+        public string ConfirmPassword { get; set; } = string.Empty;
+    }
 }

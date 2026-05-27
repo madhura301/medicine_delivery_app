@@ -20,7 +20,9 @@ namespace MedicineDelivery.Domain.Interfaces
         IRepository<ServiceRegionPinCode> ServiceRegionPinCodes { get; }
         IRepository<Consent> Consents { get; }
         IRepository<ConsentLog> ConsentLogs { get; }
-        
+        IRepository<UserOtp> UserOtps { get; }
+        IRepository<RazorpayOrder> RazorpayOrders { get; }
+
         Task<int> SaveChangesAsync();
         Task BeginTransactionAsync();
         Task CommitTransactionAsync();

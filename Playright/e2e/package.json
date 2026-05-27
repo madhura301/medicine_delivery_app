@@ -1,0 +1,19 @@
+{
+  "name": "pharmaish-e2e",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Playwright API + E2E suite for the Pharmaish medicine delivery app",
+  "scripts": {
+    "test": "playwright test",
+    "test:api": "playwright test --project=api",
+    "test:webapp": "playwright test --project=webapp-chromium",
+    "test:flutter": "playwright test --project=flutter-web",
+    "report": "playwright show-report reports/html"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.49.0",
+    "@types/node": "^24.12.0",
+    "dotenv": "^16.4.5",
+    "typescript": "~5.9.3"
+  }
+}

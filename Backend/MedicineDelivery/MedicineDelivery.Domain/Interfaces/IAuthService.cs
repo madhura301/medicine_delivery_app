@@ -10,6 +10,12 @@ namespace MedicineDelivery.Domain.Interfaces
         Task<AuthResult> ForgotPasswordAsync(string mobileNumber);
         Task<AuthResult> ResetPasswordAsync(string mobileNumber, string token, string newPassword);
         Task<AuthResult> ChangePasswordAsync(string mobileNumber, string currentPassword, string newPassword);
+
+        /// <summary>Generates a 6-digit OTP, stores a hash, and sends it via SMS.</summary>
+        Task<AuthResult> SendForgotPasswordOtpAsync(string phoneNumber);
+
+        /// <summary>Validates the OTP and resets the user password if valid.</summary>
+        Task<AuthResult> VerifyOtpAndResetPasswordAsync(string phoneNumber, string otpCode, string newPassword);
     }
 
     public class AuthResult

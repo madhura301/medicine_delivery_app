@@ -375,6 +375,8 @@ builder.Services.AddScoped<MedicineDelivery.Application.Interfaces.IOrderService
 builder.Services.AddScoped<MedicineDelivery.Application.Interfaces.IConsentService, MedicineDelivery.Infrastructure.Services.ConsentService>();
 builder.Services.AddScoped<MedicineDelivery.Application.Interfaces.IPaymentService, MedicineDelivery.Infrastructure.Services.PaymentService>();
 builder.Services.AddScoped<MedicineDelivery.Infrastructure.Services.IBrowserInfoService, MedicineDelivery.Infrastructure.Services.BrowserInfoService>();
+builder.Services.AddScoped<MedicineDelivery.Domain.Interfaces.ISmsService, MedicineDelivery.Infrastructure.Services.ConsoleSmsService>();
+builder.Services.AddScoped<MedicineDelivery.Domain.Interfaces.IRazorpayService, MedicineDelivery.Infrastructure.Services.RazorpayService>();
 
 // Add SignInManager explicitly (not automatically registered with AddIdentity)
 builder.Services.AddScoped<SignInManager<MedicineDelivery.Domain.Entities.ApplicationUser>>();

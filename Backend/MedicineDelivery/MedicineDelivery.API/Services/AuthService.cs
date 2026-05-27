@@ -1,11 +1,14 @@
+using System.Security.Cryptography;
+using System.Text;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Linq;
 using System.Security.Claims;
-using System.Text;
 using MedicineDelivery.Infrastructure.Data;
 using MedicineDelivery.Domain.Interfaces;
+using MedicineDelivery.Domain.Entities;
+using MedicineDelivery.Domain.Enums;
 
 namespace MedicineDelivery.API.Services
 {
@@ -16,19 +19,22 @@ namespace MedicineDelivery.API.Services
         private readonly IConfiguration _configuration;
         private readonly ILogger<AuthService> _logger;
         private readonly IUnitOfWork _unitOfWork;
+        private readonly ISmsService _smsService;
 
         public AuthService(
             UserManager<Domain.Entities.ApplicationUser> userManager,
             SignInManager<Domain.Entities.ApplicationUser> signInManager,
             IConfiguration configuration,
             ILogger<AuthService> logger,
-            IUnitOfWork unitOfWork)
+            IUnitOfWork unitOfWork,
+            ISmsService smsService)
         {
             _userManager = userManager;
             _signInManager = signInManager;
             _configuration = configuration;
             _logger = logger;
             _unitOfWork = unitOfWork;
+            _smsService = smsService;
         }
 
         public async Task<Domain.Interfaces.AuthResult> LoginAsync(string mobileNumber, string password, bool stayLoggedIn = false)
@@ -354,7 +360,7 @@ namespace MedicineDelivery.API.Services
         public async Task<Domain.Interfaces.AuthResult> ChangePasswordAsync(string mobileNumber, string currentPassword, string newPassword)
         {
             _logger.LogInformation("Change password request for mobile number: {MobileNumber}", mobileNumber);
-            
+
             try
             {
                 var user = await _userManager.FindByNameAsync(mobileNumber);
@@ -371,7 +377,7 @@ namespace MedicineDelivery.API.Services
                 var result = await _userManager.ChangePasswordAsync(user, currentPassword, newPassword);
                 if (!result.Succeeded)
                 {
-                    _logger.LogWarning("Change password failed for mobile number: {MobileNumber}. Errors: {Errors}", 
+                    _logger.LogWarning("Change password failed for mobile number: {MobileNumber}. Errors: {Errors}",
                         mobileNumber, string.Join(", ", result.Errors.Select(e => e.Description)));
                     return new Domain.Interfaces.AuthResult
                     {
@@ -381,7 +387,7 @@ namespace MedicineDelivery.API.Services
                 }
 
                 _logger.LogInformation("Change password successful for mobile number: {MobileNumber}", mobileNumber);
-                
+
                 return new Domain.Interfaces.AuthResult
                 {
                     Success = true
@@ -396,6 +402,182 @@ namespace MedicineDelivery.API.Services
                     Errors = new List<string> { "An error occurred during change password" }
                 };
             }
+        }
+
+        public async Task<Domain.Interfaces.AuthResult> SendForgotPasswordOtpAsync(string phoneNumber)
+        {
+            _logger.LogInformation("Send forgot-password OTP request for phone: {PhoneNumber}", phoneNumber);
+
+            try
+            {
+                // Always return the same response shape to prevent phone number enumeration.
+                var user = await _userManager.FindByNameAsync(phoneNumber);
+                if (user == null)
+                {
+                    _logger.LogWarning("SendForgotPasswordOtp - no user found for phone: {PhoneNumber}", phoneNumber);
+                    // Return success so callers cannot infer whether the number is registered.
+                    return new Domain.Interfaces.AuthResult { Success = true };
+                }
+
+                var expiryMinutes = int.Parse(_configuration["OtpSettings:ExpiryMinutes"] ?? "5");
+
+                // Invalidate any existing unused OTPs for this phone + purpose
+                var existing = await _unitOfWork.UserOtps
+                    .FindAsync(o => o.PhoneNumber == phoneNumber
+                                    && o.Purpose == OtpPurpose.ForgotPassword
+                                    && !o.IsUsed
+                                    && o.ExpiresAt > DateTime.UtcNow);
+
+                foreach (var old in existing)
+                {
+                    old.IsUsed = true;
+                    _unitOfWork.UserOtps.Update(old);
+                }
+
+                // Generate a 6-digit crypto-random OTP
+                var otpCode = GenerateOtpCode();
+
+                var otpRecord = new UserOtp
+                {
+                    PhoneNumber = phoneNumber,
+                    OtpCodeHash = ComputeSha256(otpCode),
+                    Purpose = OtpPurpose.ForgotPassword,
+                    CreatedAt = DateTime.UtcNow,
+                    ExpiresAt = DateTime.UtcNow.AddMinutes(expiryMinutes),
+                    IsUsed = false,
+                    AttemptCount = 0
+                };
+
+                await _unitOfWork.UserOtps.AddAsync(otpRecord);
+                await _unitOfWork.SaveChangesAsync();
+
+                await _smsService.SendOtpAsync(phoneNumber, otpCode);
+
+                _logger.LogInformation("Forgot-password OTP sent for phone: {PhoneNumber}", phoneNumber);
+                return new Domain.Interfaces.AuthResult { Success = true };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error sending forgot-password OTP for phone: {PhoneNumber}", phoneNumber);
+                return new Domain.Interfaces.AuthResult
+                {
+                    Success = false,
+                    Errors = new List<string> { "An error occurred. Please try again." }
+                };
+            }
+        }
+
+        public async Task<Domain.Interfaces.AuthResult> VerifyOtpAndResetPasswordAsync(string phoneNumber, string otpCode, string newPassword)
+        {
+            _logger.LogInformation("Verify OTP and reset password for phone: {PhoneNumber}", phoneNumber);
+
+            try
+            {
+                var maxAttempts = int.Parse(_configuration["OtpSettings:MaxAttempts"] ?? "5");
+
+                var otpRecord = await _unitOfWork.UserOtps
+                    .FirstOrDefaultAsync(o => o.PhoneNumber == phoneNumber
+                                              && o.Purpose == OtpPurpose.ForgotPassword
+                                              && !o.IsUsed
+                                              && o.ExpiresAt > DateTime.UtcNow);
+
+                if (otpRecord == null)
+                {
+                    _logger.LogWarning("VerifyOtpAndResetPassword - no valid OTP found for phone: {PhoneNumber}", phoneNumber);
+                    return new Domain.Interfaces.AuthResult
+                    {
+                        Success = false,
+                        Errors = new List<string> { "OTP is invalid or has expired. Please request a new one." }
+                    };
+                }
+
+                otpRecord.AttemptCount++;
+
+                if (otpRecord.AttemptCount > maxAttempts)
+                {
+                    otpRecord.IsUsed = true; // block further attempts on this OTP
+                    _unitOfWork.UserOtps.Update(otpRecord);
+                    await _unitOfWork.SaveChangesAsync();
+
+                    _logger.LogWarning("VerifyOtpAndResetPassword - max attempts exceeded for phone: {PhoneNumber}", phoneNumber);
+                    return new Domain.Interfaces.AuthResult
+                    {
+                        Success = false,
+                        Errors = new List<string> { "Too many failed attempts. Please request a new OTP." }
+                    };
+                }
+
+                if (ComputeSha256(otpCode) != otpRecord.OtpCodeHash)
+                {
+                    _unitOfWork.UserOtps.Update(otpRecord);
+                    await _unitOfWork.SaveChangesAsync();
+
+                    _logger.LogWarning("VerifyOtpAndResetPassword - invalid OTP for phone: {PhoneNumber}", phoneNumber);
+                    return new Domain.Interfaces.AuthResult
+                    {
+                        Success = false,
+                        Errors = new List<string> { "Invalid OTP. Please try again." }
+                    };
+                }
+
+                // OTP is valid — mark as used before touching the password
+                otpRecord.IsUsed = true;
+                _unitOfWork.UserOtps.Update(otpRecord);
+                await _unitOfWork.SaveChangesAsync();
+
+                var user = await _userManager.FindByNameAsync(phoneNumber);
+                if (user == null)
+                {
+                    _logger.LogWarning("VerifyOtpAndResetPassword - user disappeared for phone: {PhoneNumber}", phoneNumber);
+                    return new Domain.Interfaces.AuthResult
+                    {
+                        Success = false,
+                        Errors = new List<string> { "User not found." }
+                    };
+                }
+
+                // Remove old password and set the new one
+                await _userManager.RemovePasswordAsync(user);
+                var result = await _userManager.AddPasswordAsync(user, newPassword);
+
+                if (!result.Succeeded)
+                {
+                    _logger.LogWarning("VerifyOtpAndResetPassword - password reset failed for phone: {PhoneNumber}. Errors: {Errors}",
+                        phoneNumber, string.Join(", ", result.Errors.Select(e => e.Description)));
+                    return new Domain.Interfaces.AuthResult
+                    {
+                        Success = false,
+                        Errors = result.Errors.Select(e => e.Description).ToList()
+                    };
+                }
+
+                _logger.LogInformation("Password reset successful for phone: {PhoneNumber}", phoneNumber);
+                return new Domain.Interfaces.AuthResult { Success = true };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error verifying OTP and resetting password for phone: {PhoneNumber}", phoneNumber);
+                return new Domain.Interfaces.AuthResult
+                {
+                    Success = false,
+                    Errors = new List<string> { "An error occurred. Please try again." }
+                };
+            }
+        }
+
+        private static string GenerateOtpCode()
+        {
+            // Crypto-random 6-digit number: 100000–999999
+            var bytes = new byte[4];
+            RandomNumberGenerator.Fill(bytes);
+            var value = Math.Abs(BitConverter.ToInt32(bytes, 0)) % 900000 + 100000;
+            return value.ToString();
+        }
+
+        private static string ComputeSha256(string input)
+        {
+            var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(input));
+            return Convert.ToHexString(bytes).ToLowerInvariant();
         }
     }
 }

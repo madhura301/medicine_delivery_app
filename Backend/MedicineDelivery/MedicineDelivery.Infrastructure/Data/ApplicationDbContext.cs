@@ -30,6 +30,8 @@ namespace MedicineDelivery.Infrastructure.Data
         public DbSet<ServiceRegionPinCode> ServiceRegionPinCodes { get; set; }
         public DbSet<Consent> Consents { get; set; }
         public DbSet<ConsentLog> ConsentLogs { get; set; }
+        public DbSet<UserOtp> UserOtps { get; set; }
+        public DbSet<RazorpayOrder> RazorpayOrders { get; set; }
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
@@ -690,6 +692,62 @@ namespace MedicineDelivery.Infrastructure.Data
                 entity.HasIndex(c => c.CreatedOn);
             });
 
+            // Configure UserOtp entity
+            builder.Entity<UserOtp>(entity =>
+            {
+                entity.HasKey(o => o.Id);
+
+                entity.Property(o => o.PhoneNumber)
+                    .HasMaxLength(15)
+                    .IsRequired();
+
+                entity.Property(o => o.OtpCodeHash)
+                    .HasMaxLength(512)
+                    .IsRequired();
+
+                entity.Property(o => o.Purpose)
+                    .HasConversion<string>()
+                    .HasMaxLength(30);
+
+                entity.HasIndex(o => o.PhoneNumber);
+                entity.HasIndex(o => new { o.PhoneNumber, o.Purpose, o.IsUsed });
+            });
+
+            // Configure RazorpayOrder entity
+            builder.Entity<RazorpayOrder>(entity =>
+            {
+                entity.HasKey(r => r.Id);
+
+                entity.Property(r => r.RazorpayOrderId)
+                    .HasMaxLength(100)
+                    .IsRequired();
+
+                entity.Property(r => r.Amount)
+                    .HasColumnType("decimal(10,2)");
+
+                entity.Property(r => r.Currency)
+                    .HasMaxLength(10)
+                    .IsRequired();
+
+                entity.Property(r => r.Status)
+                    .HasConversion<string>()
+                    .HasMaxLength(20);
+
+                entity.Property(r => r.RazorpayPaymentId)
+                    .HasMaxLength(100);
+
+                entity.Property(r => r.RazorpaySignature)
+                    .HasMaxLength(256);
+
+                entity.HasIndex(r => r.RazorpayOrderId).IsUnique();
+                entity.HasIndex(r => r.OrderId);
+
+                entity.HasOne(r => r.Order)
+                    .WithMany()
+                    .HasForeignKey(r => r.OrderId)
+                    .OnDelete(DeleteBehavior.Restrict);
+            });
+
             // Configure ConsentLog entity
             builder.Entity<ConsentLog>(entity =>
             {
@@ -930,6 +988,24 @@ namespace MedicineDelivery.Infrastructure.Data
                 .Property(cl => cl.CreatedOn)
                 .HasColumnType("timestamp with time zone")
                 .HasDefaultValueSql("now() at time zone 'utc'");
+
+            // Configure UserOtp DateTime properties for PostgreSQL
+            builder.Entity<UserOtp>()
+                .Property(o => o.CreatedAt)
+                .HasColumnType("timestamp with time zone");
+
+            builder.Entity<UserOtp>()
+                .Property(o => o.ExpiresAt)
+                .HasColumnType("timestamp with time zone");
+
+            // Configure RazorpayOrder DateTime properties for PostgreSQL
+            builder.Entity<RazorpayOrder>()
+                .Property(r => r.CreatedAt)
+                .HasColumnType("timestamp with time zone");
+
+            builder.Entity<RazorpayOrder>()
+                .Property(r => r.Amount)
+                .HasColumnType("numeric(10,2)");
 
         }
     }
