@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
-import 'package:pharmaish/utils/app_logger.dart';
-import 'package:pharmaish/utils/constants.dart';
 import 'package:pharmaish/core/screens/auth/reset_password_page.dart';
+import 'package:pharmaish/core/services/auth_service.dart';
+import 'package:pharmaish/utils/app_logger.dart';
 
 class ForgotPasswordPage extends StatefulWidget {
   const ForgotPasswordPage({super.key});
@@ -222,51 +220,33 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
       final mobileNumber = _mobileNumberController.text.trim();
 
       // Make API call to forgot password endpoint
-      final response = await http.post(
-        Uri.parse('${AppConstants.apiBaseUrl}/Auth/forgot-password'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
-        body: jsonEncode({
-          'mobileNumber': mobileNumber,
-        }),
-      );
+      final response =
+          await AuthService.forgotPassword(mobileNumber: mobileNumber);
 
-      AppLogger.apiResponse(
-        response.statusCode,
-        '/Auth/forgot-password',
-        jsonDecode(response.body),
-      );
+      if (response.success) {
+        setState(() {
+          _isLoading = false;
+        });
 
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        final responseData = jsonDecode(response.body);
+        // Extract the reset token from response
+        final token = response.token ?? '';
 
-        if (responseData['success'] == true) {
-          setState(() {
-            _isLoading = false;
-          });
+        if (mounted) {
+          // Show success dialog
+          await _showSuccessDialog();
 
-          // Extract the reset token from response
-          final token = responseData['token'] ?? '';
-
-          if (mounted) {
-            // Show success dialog
-            await _showSuccessDialog();
-
-            // Navigate to Reset Password page with mobile number and token
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                builder: (context) => ResetPasswordPage(
-                  mobileNumber: mobileNumber,
-                  token: token,
-                ),
+          // Navigate to Reset Password page with mobile number and token
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (context) => ResetPasswordPage(
+                mobileNumber: mobileNumber,
+                token: token,
               ),
-            );
-          }
-          return;
+            ),
+          );
         }
+        return;
       }
 
       // Handle error responses
@@ -274,32 +254,19 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
         _isLoading = false;
       });
 
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        final responseData = jsonDecode(response.body);
-        final errors = responseData['errors'] as List<dynamic>?;
+      if (response.isHttpSuccess) {
         setState(() {
-          _errorMessage = errors?.isNotEmpty == true
-              ? errors!.first.toString()
-              : 'Failed to send reset token. Please try again.';
+          _errorMessage = response.firstError ??
+              'Failed to send reset token. Please try again.';
         });
       } else if (response.statusCode == 404) {
         setState(() {
           _errorMessage = 'Mobile number not found. Please check and try again.';
         });
       } else if (response.statusCode == 400) {
-        try {
-          final errorData = jsonDecode(response.body);
-          final errors = errorData['errors'] as List<dynamic>?;
-          setState(() {
-            _errorMessage = errors?.isNotEmpty == true
-                ? errors!.first.toString()
-                : 'Invalid mobile number';
-          });
-        } catch (e) {
-          setState(() {
-            _errorMessage = 'Invalid mobile number';
-          });
-        }
+        setState(() {
+          _errorMessage = response.firstError ?? 'Invalid mobile number';
+        });
       } else {
         setState(() {
           _errorMessage = 'Server error. Please try again later.';

@@ -3,10 +3,9 @@
 // User Card Widget
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
-import 'package:pharmaish/config/environment_config.dart';
+import 'package:pharmaish/shared/widgets/app_snackbar.dart';
 import 'package:pharmaish/utils/app_logger.dart';
-import 'package:pharmaish/utils/constants.dart';
-import 'package:pharmaish/utils/storage.dart';
+import 'package:pharmaish/core/services/dio_client.dart';
 
 class UserCard extends StatelessWidget {
   final UserDto user;
@@ -194,7 +193,7 @@ class EditUserPage extends StatefulWidget {
 
 class _EditUserPageState extends State<EditUserPage> {
   final _formKey = GlobalKey<FormState>();
-  late Dio _dio;
+  final Dio _dio = DioClient.instance;
   bool _isLoading = false;
 
   // Common fields
@@ -235,25 +234,7 @@ class _EditUserPageState extends State<EditUserPage> {
   @override
   void initState() {
     super.initState();
-    _setupDio();
     _initializeControllers();
-  }
-
-  void _setupDio() {
-    _dio = Dio();
-    _dio.options.baseUrl = AppConstants.apiBaseUrl;
-    _dio.options.connectTimeout = EnvironmentConfig.timeoutDuration;
-    _dio.options.receiveTimeout = EnvironmentConfig.timeoutDuration;
-
-    _dio.interceptors.add(InterceptorsWrapper(
-      onRequest: (options, handler) async {
-        final token = await StorageService.getAuthToken();
-        if (token != null) {
-          options.headers['Authorization'] = 'Bearer $token';
-        }
-        handler.next(options);
-      },
-    ));
   }
 
   void _initializeControllers() {
@@ -365,23 +346,23 @@ class _EditUserPageState extends State<EditUserPage> {
     _mobileController.dispose();
     _emailController.dispose();
     _altMobileController.dispose();
-    _dobController?.dispose();
-    _addressController?.dispose();
-    _cityController?.dispose();
-    _stateController?.dispose();
-    _employeeIdController?.dispose();
-    _medicalNameController?.dispose();
-    _addressLine1Controller?.dispose();
-    _addressLine2Controller?.dispose();
-    _postalCodeController?.dispose();
-    _gstinController?.dispose();
-    _panController?.dispose();
-    _fssaiController?.dispose();
-    _dlNoController?.dispose();
-    _pharmacistFirstNameController?.dispose();
-    _pharmacistLastNameController?.dispose();
-    _pharmacistRegNoController?.dispose();
-    _pharmacistMobileController?.dispose();
+    _dobController.dispose();
+    _addressController.dispose();
+    _cityController.dispose();
+    _stateController.dispose();
+    _employeeIdController.dispose();
+    _medicalNameController.dispose();
+    _addressLine1Controller.dispose();
+    _addressLine2Controller.dispose();
+    _postalCodeController.dispose();
+    _gstinController.dispose();
+    _panController.dispose();
+    _fssaiController.dispose();
+    _dlNoController.dispose();
+    _pharmacistFirstNameController.dispose();
+    _pharmacistLastNameController.dispose();
+    _pharmacistRegNoController.dispose();
+    _pharmacistMobileController.dispose();
     super.dispose();
   }
 
@@ -404,12 +385,7 @@ class _EditUserPageState extends State<EditUserPage> {
         setState(() => _isLoading = false);
 
         if (response.statusCode == 200 || response.statusCode == 204) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('User updated successfully'),
-              backgroundColor: Colors.green,
-            ),
-          );
+          AppSnackBar.success(context, 'User updated successfully');
 
           widget.onSaved();
           Navigator.of(context).pop();
@@ -440,13 +416,7 @@ class _EditUserPageState extends State<EditUserPage> {
       if (mounted) {
         setState(() => _isLoading = false);
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(errorMsg),
-            backgroundColor: Colors.red,
-            duration: const Duration(seconds: 4),
-          ),
-        );
+        AppSnackBar.error(context, errorMsg);
       }
 
       AppLogger.error('❌ Error updating user: $errorMsg');
@@ -1040,7 +1010,7 @@ class _EditUserPageState extends State<EditUserPage> {
 
   Widget _buildGenderField() {
     return DropdownButtonFormField<String>(
-      value: _selectedGender,
+      initialValue: _selectedGender,
       decoration: const InputDecoration(
         labelText: 'Gender',
         prefixIcon: Icon(Icons.wc),
@@ -1066,7 +1036,7 @@ class _EditUserPageState extends State<EditUserPage> {
         onChanged: (value) {
           setState(() => _isActive = value);
         },
-        activeColor: Colors.green,
+        activeThumbColor: Colors.green,
       ),
     );
   }
@@ -1116,7 +1086,7 @@ class AddUserPage extends StatefulWidget {
 
 class _AddUserPageState extends State<AddUserPage> {
   final _formKey = GlobalKey<FormState>();
-  late Dio _dio;
+  final Dio _dio = DioClient.instance;
   bool _isLoading = false;
 
   final _emailController = TextEditingController();
@@ -1129,29 +1099,6 @@ class _AddUserPageState extends State<AddUserPage> {
   bool _isActive = true;
   bool _emailConfirmed = false;
   bool _obscurePassword = true;
-
-  @override
-  void initState() {
-    super.initState();
-    _setupDio();
-  }
-
-  void _setupDio() {
-    _dio = Dio();
-    _dio.options.baseUrl = AppConstants.apiBaseUrl;
-    _dio.options.connectTimeout = EnvironmentConfig.timeoutDuration;
-    _dio.options.receiveTimeout = EnvironmentConfig.timeoutDuration;
-
-    _dio.interceptors.add(InterceptorsWrapper(
-      onRequest: (options, handler) async {
-        final token = await StorageService.getAuthToken();
-        if (token != null) {
-          options.headers['Authorization'] = 'Bearer $token';
-        }
-        handler.next(options);
-      },
-    ));
-  }
 
   @override
   void dispose() {
@@ -1169,12 +1116,7 @@ class _AddUserPageState extends State<AddUserPage> {
     }
 
     if (_selectedRoleId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please select a role'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      AppSnackBar.error(context, 'Please select a role');
       return;
     }
 
@@ -1199,12 +1141,7 @@ class _AddUserPageState extends State<AddUserPage> {
         setState(() => _isLoading = false);
 
         if (response.statusCode == 201 || response.statusCode == 200) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('User created successfully'),
-              backgroundColor: Colors.green,
-            ),
-          );
+          AppSnackBar.success(context, 'User created successfully');
 
           widget.onSaved();
           Navigator.of(context).pop();
@@ -1226,12 +1163,7 @@ class _AddUserPageState extends State<AddUserPage> {
       if (mounted) {
         setState(() => _isLoading = false);
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(errorMsg),
-            backgroundColor: Colors.red,
-          ),
-        );
+        AppSnackBar.error(context, errorMsg);
       }
 
       AppLogger.error('Error creating user: $errorMsg');
@@ -1342,7 +1274,7 @@ class _AddUserPageState extends State<AddUserPage> {
             ),
             const SizedBox(height: 24),
             DropdownButtonFormField<String>(
-              value: _selectedRoleId,
+              initialValue: _selectedRoleId,
               decoration: const InputDecoration(
                 labelText: 'Role *',
                 prefixIcon: Icon(Icons.shield),
@@ -1378,7 +1310,7 @@ class _AddUserPageState extends State<AddUserPage> {
                     onChanged: (value) {
                       setState(() => _isActive = value);
                     },
-                    activeColor: Colors.green,
+                    activeThumbColor: Colors.green,
                   ),
                   const Divider(height: 1),
                   SwitchListTile(
@@ -1388,7 +1320,7 @@ class _AddUserPageState extends State<AddUserPage> {
                     onChanged: (value) {
                       setState(() => _emailConfirmed = value);
                     },
-                    activeColor: Colors.blue,
+                    activeThumbColor: Colors.blue,
                   ),
                 ],
               ),
@@ -1480,8 +1412,9 @@ class UserDto {
         rolesList = rolesData.map((r) {
           if (r is String) return r;
           if (r is Map && r.containsKey('name')) return r['name'].toString();
-          if (r is Map && r.containsKey('roleName'))
+          if (r is Map && r.containsKey('roleName')) {
             return r['roleName'].toString();
+          }
           return r.toString();
         }).toList();
       } else if (json['roles'] is String) {

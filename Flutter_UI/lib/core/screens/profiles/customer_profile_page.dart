@@ -3,170 +3,14 @@ import 'package:http/http.dart' as http;
 import 'package:pharmaish/core/screens/auth/change_password_page.dart';
 import 'package:pharmaish/core/services/location_service.dart';
 import 'package:pharmaish/core/theme/app_theme.dart';
+import 'package:pharmaish/shared/models/customer_profile_dtos.dart';
+import 'package:pharmaish/shared/widgets/app_button.dart';
+import 'package:pharmaish/shared/widgets/app_snackbar.dart';
 import 'package:pharmaish/utils/app_logger.dart';
 import 'dart:convert';
 
 import 'package:pharmaish/utils/constants.dart';
 import 'package:pharmaish/utils/storage.dart';
-
-class CustomerDto {
-  final String customerId;
-  final String customerFirstName;
-  final String customerLastName;
-  final String? customerMiddleName;
-  final String mobileNumber;
-  final String? alternativeMobileNumber;
-  final String? emailId;
-  final String? address;
-  final String? city;
-  final String? state;
-  final String? postalCode;
-  final DateTime dateOfBirth;
-  final String? gender;
-  final String? customerPhoto;
-  final bool isActive;
-  final DateTime createdOn;
-  final DateTime? updatedOn;
-  final String? userId;
-
-  CustomerDto({
-    required this.customerId,
-    required this.customerFirstName,
-    required this.customerLastName,
-    this.customerMiddleName,
-    required this.mobileNumber,
-    this.alternativeMobileNumber,
-    this.emailId,
-    this.address,
-    this.city,
-    this.state,
-    this.postalCode,
-    required this.dateOfBirth,
-    this.gender,
-    this.customerPhoto,
-    required this.isActive,
-    required this.createdOn,
-    this.updatedOn,
-    this.userId,
-  });
-
-  factory CustomerDto.fromJson(Map<String, dynamic> json) {
-    return CustomerDto(
-      customerId: json['customerId'] ?? '',
-      customerFirstName: json['customerFirstName'] ?? '',
-      customerLastName: json['customerLastName'] ?? '',
-      customerMiddleName: json['customerMiddleName'],
-      mobileNumber: json['mobileNumber'] ?? '',
-      alternativeMobileNumber: json['alternativeMobileNumber'],
-      emailId: json['emailId'],
-      address: json['address'],
-      city: json['city'],
-      state: json['state'],
-      postalCode: json['postalCode'],
-      dateOfBirth: DateTime.parse(json['dateOfBirth']),
-      gender: json['gender'],
-      customerPhoto: json['customerPhoto'],
-      isActive: json['isActive'] ?? false,
-      createdOn: DateTime.parse(json['createdOn']),
-      updatedOn:
-          json['updatedOn'] != null ? DateTime.parse(json['updatedOn']) : null,
-      userId: json['userId'],
-    );
-  }
-}
-
-class CustomerAddressDto {
-  final String? addressId;
-  final String customerId;
-  final String? address;
-  final String? addressLine1;
-  final String? addressLine2;
-  final String? addressLine3;
-  final String? city;
-  final String? state;
-  final String? postalCode;
-   final double? latitude;
-  final double? longitude;
-  final bool isDefault;
-  final bool isActive;
-  final DateTime createdOn;
-  final DateTime? updatedOn;
-
-  CustomerAddressDto({
-    this.addressId,
-    required this.customerId,
-    this.address,
-    this.addressLine1,
-    this.addressLine2,
-    this.addressLine3,
-    this.city,
-    this.state,
-    this.postalCode,
-    this.latitude,
-    this.longitude,
-    this.isDefault = false,
-    this.isActive = true,
-    required this.createdOn,
-    this.updatedOn,
-  });
-
-  factory CustomerAddressDto.fromJson(Map<String, dynamic> json) {
-    return CustomerAddressDto(
-      addressId: json['id'],
-      customerId: json['customerId'] ?? '',
-      address: json['address'],
-      addressLine1: json['addressLine1'],
-      addressLine2: json['addressLine2'],
-      addressLine3: json['addressLine3'],
-      city: json['city'],
-      state: json['state'],
-      postalCode: json['postalCode'],
-      latitude: json['latitude'] != null
-          ? (json['latitude'] as num).toDouble()
-          : null,
-      longitude: json['longitude'] != null
-          ? (json['longitude'] as num).toDouble()
-          : null,
-      isDefault: json['isDefault'] ?? false,
-      isActive: json['isActive'] ?? true,
-      createdOn: DateTime.parse(json['createdOn']),
-      updatedOn:
-          json['updatedOn'] != null ? DateTime.parse(json['updatedOn']) : null,
-    );
-  }
-
-  Map<String, dynamic> toJson() {
-    return {
-      if (addressId != null) 'id': addressId,
-      'customerId': customerId,
-      'address': address,
-      'addressLine1': addressLine1,
-      'addressLine2': addressLine2,
-      'addressLine3': addressLine3,
-      'city': city,
-      'state': state,
-      'postalCode': postalCode,
-      'latitude': latitude,
-      'longitude': longitude,
-      'isDefault': isDefault,
-      'isActive': isActive,
-      'createdOn': createdOn.toIso8601String(),
-      if (updatedOn != null) 'updatedOn': updatedOn!.toIso8601String(),
-    };
-  }
-
-  String get fullAddress {
-    final parts = [
-      if (addressLine1?.isNotEmpty == true) addressLine1,
-      if (addressLine2?.isNotEmpty == true) addressLine2,
-      if (addressLine3?.isNotEmpty == true) addressLine3,
-      if (city?.isNotEmpty == true) city,
-      if (state?.isNotEmpty == true) state,
-      if (postalCode?.isNotEmpty == true) postalCode,
-    ];
-    return parts.join(', ');
-  }
-}
 
 class CustomerProfilePage extends StatefulWidget {
   const CustomerProfilePage({super.key});
@@ -481,13 +325,7 @@ class _CustomerProfilePageState extends State<CustomerProfilePage> {
   }
 
   void _showErrorMessage(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.red,
-        duration: const Duration(seconds: 3),
-      ),
-    );
+    AppSnackBar.error(context, message, duration: const Duration(seconds: 3));
   }
 
   void _cancelEdit() {
@@ -549,10 +387,7 @@ class _CustomerProfilePageState extends State<CustomerProfilePage> {
             const SizedBox(height: 16),
             ElevatedButton(
               onPressed: _loadCustomerProfile,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.primaryColor,
-                foregroundColor: Colors.white,
-              ),
+              style: AppButton.primary(),
               child: const Text('Retry'),
             ),
           ],
@@ -639,12 +474,12 @@ class _CustomerProfilePageState extends State<CustomerProfilePage> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Row(
+                const Row(
                   children: [
-                    const Icon(Icons.location_on,
+                    Icon(Icons.location_on,
                         color: AppTheme.primaryColor, size: 20),
-                    const SizedBox(width: 8),
-                    const Text(
+                    SizedBox(width: 8),
+                    Text(
                       'Addresses',
                       style: TextStyle(
                         fontSize: 16,
@@ -696,10 +531,7 @@ class _CustomerProfilePageState extends State<CustomerProfilePage> {
             const SizedBox(height: 16),
             ElevatedButton(
               onPressed: _showAddAddressDialog,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.primaryColor,
-                foregroundColor: Colors.white,
-              ),
+              style: AppButton.primary(),
               child: const Text('Add First Address'),
             ),
           ],
@@ -1050,7 +882,7 @@ class _CustomerProfilePageState extends State<CustomerProfilePage> {
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
                   borderSide:
-                      BorderSide(color: AppTheme.primaryColor, width: 2),
+                      const BorderSide(color: AppTheme.primaryColor, width: 2),
                 ),
               ),
             )
@@ -1121,12 +953,12 @@ class _CustomerProfilePageState extends State<CustomerProfilePage> {
                 topRight: Radius.circular(12),
               ),
             ),
-            child: Row(
+            child: const Row(
               children: [
-                const Icon(Icons.security,
+                Icon(Icons.security,
                     color: AppTheme.primaryColor, size: 20),
-                const SizedBox(width: 8),
-                const Text(
+                SizedBox(width: 8),
+                Text(
                   'Security',
                   style: TextStyle(
                     fontSize: 16,
@@ -1437,13 +1269,7 @@ class _AddAddressDialogState extends State<AddAddressDialog> {
   }
 
   void _showError(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.red,
-        duration: const Duration(seconds: 3),
-      ),
-    );
+    AppSnackBar.error(context, message, duration: const Duration(seconds: 3));
   }
 
   Future<void> _getCurrentLocation() async {
@@ -1669,10 +1495,7 @@ class _AddAddressDialogState extends State<AddAddressDialog> {
         ),
         ElevatedButton(
           onPressed: _isSaving ? null : _saveAddress,
-          style: ElevatedButton.styleFrom(
-            backgroundColor: AppTheme.primaryColor,
-            foregroundColor: Colors.white,
-          ),
+          style: AppButton.primary(),
           child: _isSaving
               ? const SizedBox(
                   width: 16,

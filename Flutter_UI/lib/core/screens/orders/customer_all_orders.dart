@@ -4,14 +4,16 @@ import 'package:intl/intl.dart';
 import 'package:pharmaish/core/app_routes.dart';
 import 'package:pharmaish/core/screens/payment/payment_summary_page.dart';
 import 'package:pharmaish/utils/app_logger.dart';
-import 'package:pharmaish/utils/constants.dart';
 import 'package:pharmaish/utils/storage.dart';
-import 'package:pharmaish/config/environment_config.dart';
 import 'package:pharmaish/shared/models/order_model.dart';
+import 'package:pharmaish/shared/widgets/app_snackbar.dart';
 import 'package:pharmaish/core/theme/app_theme.dart';
+import 'package:pharmaish/core/services/dio_client.dart';
+import 'package:pharmaish/core/services/order_service.dart';
+import 'package:pharmaish/shared/widgets/order_status_chip.dart';
 
 class CustomerAllOrders extends StatefulWidget {
-  const CustomerAllOrders({Key? key}) : super(key: key);
+  const CustomerAllOrders({super.key});
 
   @override
   State<CustomerAllOrders> createState() => _CustomerAllOrdersState();
@@ -22,7 +24,7 @@ class _CustomerAllOrdersState extends State<CustomerAllOrders> {
   List<OrderModel> _filteredOrders = [];
   bool _isLoading = true;
   String? _errorMessage;
-  late Dio _dio;
+  final Dio _dio = DioClient.instance;
   int _selectedFilterIndex = 0;
   String _customerId = '';
 
@@ -35,42 +37,7 @@ class _CustomerAllOrdersState extends State<CustomerAllOrders> {
   @override
   void initState() {
     super.initState();
-    _setupDio();
     _loadCustomerIdAndOrders();
-  }
-
-  void _setupDio() {
-    _dio = Dio();
-    _dio.options.baseUrl = AppConstants.apiBaseUrl;
-    _dio.options.connectTimeout = EnvironmentConfig.timeoutDuration;
-    _dio.options.receiveTimeout = EnvironmentConfig.timeoutDuration;
-
-    if (EnvironmentConfig.shouldLog) {
-      _dio.interceptors.add(LogInterceptor(
-        requestBody: true,
-        responseBody: true,
-        requestHeader: true,
-        logPrint: (object) => AppLogger.info('API: $object'),
-      ));
-    }
-
-    _dio.interceptors.add(InterceptorsWrapper(
-      onRequest: (options, handler) async {
-        final token = await StorageService.getAuthToken();
-        if (token != null) {
-          options.headers['Authorization'] = 'Bearer $token';
-        }
-        handler.next(options);
-      },
-      onError: (error, handler) {
-        if (EnvironmentConfig.shouldLog) {
-          AppLogger.error('API Error: ${error.message}');
-          AppLogger.error('Status Code: ${error.response?.statusCode}');
-          AppLogger.error('Response Data: ${error.response?.data}');
-        }
-        handler.next(error);
-      },
-    ));
   }
 
   Future<void> _loadCustomerIdAndOrders() async {
@@ -107,43 +74,27 @@ class _CustomerAllOrdersState extends State<CustomerAllOrders> {
     try {
       AppLogger.info('Fetching all orders for customer: $_customerId');
 
-      // GET /api/Orders/customer/{customerId}
-      final response = await _dio.get('/Orders/customer/$_customerId');
+      final ordersList =
+          await OrderService.getOrdersForCustomer(_customerId);
 
-      if (response.statusCode == 200) {
-        final data = response.data;
+      AppLogger.info('Received ${ordersList.length} orders');
 
-        List<dynamic> ordersList;
-        if (data is List) {
-          ordersList = data;
-        } else if (data is Map && data.containsKey('data')) {
-          ordersList = data['data'] as List;
-        } else if (data is Map && data.containsKey('orders')) {
-          ordersList = data['orders'] as List;
-        } else {
-          throw Exception('Unexpected response format');
-        }
+      final allOrders =
+          ordersList.map((json) => OrderModel.fromJson(json)).toList();
 
-        AppLogger.info('Received ${ordersList.length} orders');
+      // Sort by date (most recent first)
+      allOrders.sort((a, b) => b.createdOn.compareTo(a.createdOn));
 
-        final allOrders = ordersList.map((json) {
-          return OrderModel.fromJson(json);
-        }).toList();
+      // Load chemist info
+      await _loadChemistInfo(allOrders);
 
-        // Sort by date (most recent first)
-        allOrders.sort((a, b) => b.createdOn.compareTo(a.createdOn));
+      setState(() {
+        _allOrders = allOrders;
+        _filteredOrders = allOrders;
+        _isLoading = false;
+      });
 
-        // Load chemist info
-        await _loadChemistInfo(allOrders);
-
-        setState(() {
-          _allOrders = allOrders;
-          _filteredOrders = allOrders;
-          _isLoading = false;
-        });
-
-        _applyFilter(_selectedFilterIndex);
-      }
+      _applyFilter(_selectedFilterIndex);
     } on DioException catch (e) {
       AppLogger.error('Error loading orders', e);
 
@@ -763,52 +714,7 @@ class _CustomerAllOrdersState extends State<CustomerAllOrders> {
     );
   }
 
-  Widget _buildStatusChip(String status) {
-    Color chipColor;
-    String statusText = status;
-
-    final statusLower = status.toLowerCase();
-    if (statusLower.contains('pending') || statusLower.contains('assigned')) {
-      chipColor = Colors.orange;
-      statusText = 'Pending';
-    } else if (statusLower.contains('accepted')) {
-      chipColor = Colors.blue;
-      statusText = 'Accepted';
-    } else if (statusLower.contains('rejected')) {
-      chipColor = Colors.red;
-      statusText = 'Rejected';
-    } else if (statusLower.contains('completed')) {
-      chipColor = Colors.green;
-      statusText = 'Completed';
-    } else if (statusLower.contains('outfordelivery') ||
-        (statusLower.contains('delivery') && !statusLower.contains('completed'))) {
-      chipColor = Colors.deepPurple;
-      statusText = 'Out for Delivery';
-    } else if (statusLower.contains('billuploaded') ||
-        statusLower.contains('bill')) {
-      chipColor = Colors.purple;
-      statusText = 'Bill Uploaded';
-    } else {
-      chipColor = Colors.grey;
-    }
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: chipColor.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: chipColor, width: 1),
-      ),
-      child: Text(
-        statusText,
-        style: TextStyle(
-          color: chipColor,
-          fontSize: 12,
-          fontWeight: FontWeight.bold,
-        ),
-      ),
-    );
-  }
+  Widget _buildStatusChip(String status) => OrderStatusChip(status);
 
   String _getOrderTypeLabel(String? type) {
     if (type == null) return 'N/A';
@@ -909,33 +815,31 @@ class _CustomerAllOrdersState extends State<CustomerAllOrders> {
     setState(() => _rejectingOrders.add(order.orderId));
 
     try {
-      final response = await _dio.put(
-        '/Orders/${order.orderId}/reject',
-        data: {'rejectNote': reason},
+      await OrderService.rejectOrder(
+        orderId: order.orderId,
+        rejectNote: reason,
       );
 
-      if (response.statusCode == 200) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Row(
-                children: [
-                  const Icon(Icons.check_circle, color: Colors.white, size: 20),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      'Order #${order.orderNumber ?? order.orderId} rejected. Our team will contact you.',
-                      style: const TextStyle(color: Colors.white),
-                    ),
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.check_circle, color: Colors.white, size: 20),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Order #${order.orderNumber ?? order.orderId} rejected. Our team will contact you.',
+                    style: const TextStyle(color: Colors.white),
                   ),
-                ],
-              ),
-              backgroundColor: Colors.green,
-              duration: const Duration(seconds: 4),
+                ),
+              ],
             ),
-          );
-          await _loadAllOrders();
-        }
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 4),
+          ),
+        );
+        await _loadAllOrders();
       }
     } on DioException catch (e) {
       AppLogger.error('Error rejecting order', e);
@@ -945,19 +849,12 @@ class _CustomerAllOrdersState extends State<CustomerAllOrders> {
         msg = d['error']?.toString() ?? d['message']?.toString() ?? msg;
       }
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(msg), backgroundColor: Colors.red),
-        );
+        AppSnackBar.error(context, msg);
       }
     } catch (e) {
       AppLogger.error('Unexpected error rejecting order', e);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('An unexpected error occurred'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        AppSnackBar.error(context, 'An unexpected error occurred');
       }
     } finally {
       if (mounted) setState(() => _rejectingOrders.remove(order.orderId));

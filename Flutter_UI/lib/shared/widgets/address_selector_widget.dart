@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 import 'package:pharmaish/core/screens/profiles/customer_profile_page.dart';
 import 'dart:convert';
 import 'package:pharmaish/core/theme/app_theme.dart';
+import 'package:pharmaish/shared/widgets/app_snackbar.dart';
 import 'package:pharmaish/utils/app_logger.dart';
 import 'package:pharmaish/utils/storage.dart';
 import 'package:pharmaish/utils/constants.dart';
@@ -91,12 +92,15 @@ class CustomerAddressDto {
   String get fullAddress {
     List<String> parts = [];
     if (address != null && address!.isNotEmpty) parts.add(address!);
-    if (addressLine1 != null && addressLine1!.isNotEmpty)
+    if (addressLine1 != null && addressLine1!.isNotEmpty) {
       parts.add(addressLine1!);
-    if (addressLine2 != null && addressLine2!.isNotEmpty)
+    }
+    if (addressLine2 != null && addressLine2!.isNotEmpty) {
       parts.add(addressLine2!);
-    if (addressLine3 != null && addressLine3!.isNotEmpty)
+    }
+    if (addressLine3 != null && addressLine3!.isNotEmpty) {
       parts.add(addressLine3!);
+    }
     if (city != null && city!.isNotEmpty) parts.add(city!);
     if (state != null && state!.isNotEmpty) parts.add(state!);
     if (postalCode != null && postalCode!.isNotEmpty) parts.add(postalCode!);
@@ -208,12 +212,7 @@ class _AddressSelectorWidgetState extends State<AddressSelectorWidget> {
           customerId: widget.customerId,
           onAddressAdded: () {
             _loadAddresses();
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Address added successfully!'),
-                backgroundColor: Colors.green,
-              ),
-            );
+            AppSnackBar.success(context, 'Address added successfully!');
           },
         );
       },

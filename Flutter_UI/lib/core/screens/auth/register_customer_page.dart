@@ -473,7 +473,7 @@ Widget _buildProgressIndicator() {
 
           // Gender Field - Optional
           DropdownButtonFormField<String>(
-            value: _selectedGender,
+            initialValue: _selectedGender,
             decoration: InputDecoration(
               labelText: 'Gender (Optional)',
               prefixIcon: const Icon(Icons.person),
@@ -520,7 +520,7 @@ Widget _buildProgressIndicator() {
 
           // Address Type - Required
           DropdownButtonFormField<String>(
-            value: _selectedAddressType,
+            initialValue: _selectedAddressType,
             decoration: InputDecoration(
               labelText: 'Address Type *',
               prefixIcon: const Icon(Icons.label),
@@ -590,7 +590,7 @@ Widget _buildProgressIndicator() {
 
           // State Field - Required
           DropdownButtonFormField<String>(
-            value: _selectedState,
+            initialValue: _selectedState,
             isExpanded: true,
             decoration: InputDecoration(
               labelText: 'State *',
@@ -906,21 +906,17 @@ Widget _buildProgressIndicator() {
           if (responseData['success'] == true) {
             _showSuccessDialog();
           } else {
-            final errors = responseData['errors'] as List<dynamic>?;
             setState(() {
-              _errorMessage = errors?.isNotEmpty == true
-                  ? errors!.first.toString()
-                  : 'Registration failed. Please try again.';
+              _errorMessage = _extractErrorMessages(
+                  responseData, 'Registration failed. Please try again.');
             });
           }
         } else if (response.statusCode == 400) {
           try {
             final errorData = jsonDecode(response.body);
-            final errors = errorData['errors'] as List<dynamic>?;
             setState(() {
-              _errorMessage = errors?.isNotEmpty == true
-                  ? errors!.first.toString()
-                  : 'Invalid registration data. Please check your inputs.';
+              _errorMessage = _extractErrorMessages(
+                  errorData, 'Invalid registration data. Please check your inputs.');
             });
           } catch (e) {
             setState(() {
@@ -951,6 +947,27 @@ Widget _buildProgressIndicator() {
         _errorMessage = 'Network error. Please check your connection.';
       });
     }
+  }
+
+  String _extractErrorMessages(dynamic errorData, String fallback) {
+    final errors = errorData['errors'];
+    if (errors is List && errors.isNotEmpty) {
+      return errors.join('\n');
+    }
+    if (errors is Map) {
+      final messages = <String>[];
+      errors.forEach((field, fieldErrors) {
+        if (fieldErrors is List) {
+          for (final msg in fieldErrors) {
+            messages.add('$field: $msg');
+          }
+        }
+      });
+      if (messages.isNotEmpty) return messages.join('\n');
+    }
+    final message = errorData['message'];
+    if (message is String && message.isNotEmpty) return message;
+    return fallback;
   }
 
   void _showSuccessDialog() {

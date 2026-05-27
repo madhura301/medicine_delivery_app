@@ -1,7 +1,6 @@
 // Example of how to use the AppLogger framework
 
 import 'package:flutter/material.dart';
-import 'package:pharmaish/utils/helpers.dart';
 import '../utils/app_logger.dart';
 
 class LoggingUsageExample extends StatefulWidget {

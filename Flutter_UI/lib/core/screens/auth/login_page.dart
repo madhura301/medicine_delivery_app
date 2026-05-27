@@ -1,13 +1,13 @@
 import 'package:pharmaish/core/services/consent_service.dart';
 import 'package:pharmaish/core/theme/app_theme.dart';
+import 'package:pharmaish/shared/widgets/app_snackbar.dart';
 import 'package:pharmaish/shared/widgets/transparent_pricing_dialog.dart';
 import 'package:pharmaish/utils/app_logger.dart';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
 import 'package:pharmaish/core/app_routes.dart';
 import 'package:pharmaish/core/screens/auth/forgot_password_page.dart';
 import 'package:pharmaish/core/screens/auth/change_password_page.dart';
+import 'package:pharmaish/core/services/auth_service.dart';
 import 'package:pharmaish/utils/consent_manager.dart';
 import 'package:pharmaish/utils/constants.dart';
 import 'package:flutter/gestures.dart';
@@ -76,12 +76,7 @@ class _LoginPageState extends State<LoginPage> {
     } catch (e) {
       AppLogger.error('Error opening Privacy Policy', e);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Unable to open Privacy Policy'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        AppSnackBar.error(context, 'Unable to open Privacy Policy');
       }
     }
   }
@@ -98,12 +93,7 @@ class _LoginPageState extends State<LoginPage> {
     } catch (e) {
       AppLogger.error('Error opening Terms and Conditions', e);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Unable to open Terms and Conditions'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        AppSnackBar.error(context, 'Unable to open Terms and Conditions');
       }
     }
   }
@@ -648,63 +638,50 @@ class _LoginPageState extends State<LoginPage> {
       final password = _passwordController.text.trim();
 
       // Make API call
-      final response = await http.post(
-        Uri.parse('${AppConstants.apiBaseUrl}/Auth/login'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
-        body: jsonEncode({
-          'mobileNumber': userName,
-          'password': password,
-          'stayLoggedIn': _rememberPassword
-        }),
+      final response = await AuthService.login(
+        mobileNumber: userName,
+        password: password,
+        stayLoggedIn: _rememberPassword,
       );
 
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        final responseData = jsonDecode(response.body);
-        AppLogger.apiResponse(response.statusCode, '/Auth/login', responseData);
+      if (response.success) {
+        // Extract tokens and user data
+        final token = response.token!;
+        final refreshToken = response.refreshToken;
+        final userId = response.userId ?? '';
 
-        if (responseData['success'] == true) {
-          // Extract tokens and user data
-          final token = responseData['token'];
-          final refreshToken = responseData['refreshToken'];
-          final userId = responseData['userId'] ?? '';
+        // Store authentication tokens
+        await StorageService.storeAuthTokens(
+          token: token,
+          refreshToken: refreshToken,
+        );
 
-          // Store authentication tokens
-          await StorageService.storeAuthTokens(
-            token: token,
-            refreshToken: refreshToken,
-          );
-
-          // Store user ID
-          if (userId.isNotEmpty) {
-            await StorageService.storeUserId(userId);
-          }
-
-          // Decode JWT token and extract user info
-          final userInfo = StorageService.decodeJwtToken(token);
-          final extractedUserInfo = StorageService.extractUserInfo(userInfo);
-
-          if (extractedUserInfo.isNotEmpty) {
-            await StorageService.storeUserInfo(extractedUserInfo);
-          }
-
-          // Get user role
-          final role =
-              extractedUserInfo['role'] ?? extractedUserInfo['Role'] ?? '';
-
-          // ===== NEW: CHECK TERMS AFTER LOGIN =====
-          setState(() {
-            _isLoading = false;
-          });
-
-          if (mounted) {
-            await _checkAndShowTermsAfterLogin(role);
-          }
-
-          return;
+        // Store user ID
+        if (userId.isNotEmpty) {
+          await StorageService.storeUserId(userId);
         }
+
+        // Decode JWT token and extract user info
+        final userInfo = StorageService.decodeJwtToken(token);
+        final extractedUserInfo = StorageService.extractUserInfo(userInfo);
+
+        if (extractedUserInfo.isNotEmpty) {
+          await StorageService.storeUserInfo(extractedUserInfo);
+        }
+
+        // Get user role
+        final role =
+            extractedUserInfo['role'] ?? extractedUserInfo['Role'] ?? '';
+
+        setState(() {
+          _isLoading = false;
+        });
+
+        if (mounted) {
+          await _checkAndShowTermsAfterLogin(role);
+        }
+
+        return;
       }
 
       // Handle different error responses
@@ -712,37 +689,21 @@ class _LoginPageState extends State<LoginPage> {
         _isLoading = false;
       });
 
-      if (response.statusCode == 200 || response.statusCode == 201) {
+      if (response.isHttpSuccess) {
         // Success=false case
-        final responseData = jsonDecode(response.body);
-        final errors = responseData['errors'] as List<dynamic>?;
         setState(() {
-          _errorMessage = errors?.isNotEmpty == true
-              ? errors!.first.toString()
-              : 'Login failed. Please try again.';
+          _errorMessage =
+              response.firstError ?? 'Login failed. Please try again.';
         });
       } else if (response.statusCode == 401) {
-        // Unauthorized - wrong credentials
         setState(() {
           _errorMessage = 'Incorrect phone number or password';
         });
       } else if (response.statusCode == 400) {
-        // Bad request - validation errors
-        try {
-          final errorData = jsonDecode(response.body);
-          final errors = errorData['errors'] as List<dynamic>?;
-          setState(() {
-            _errorMessage = errors?.isNotEmpty == true
-                ? errors!.first.toString()
-                : 'Invalid login details';
-          });
-        } catch (e) {
-          setState(() {
-            _errorMessage = 'Invalid login details';
-          });
-        }
+        setState(() {
+          _errorMessage = response.firstError ?? 'Invalid login details';
+        });
       } else {
-        // Other server errors
         setState(() {
           _errorMessage = 'Server error. Please try again later.';
         });

@@ -33,4 +33,10 @@ export const ordersApi = {
 
   getEligibleDeliveries: (orderId: string) =>
     api.get(`/Orders/${orderId}/eligible-deliveries`),
+
+  getNearbyChemists: (orderNumber: string) =>
+    api.get(`/Orders/nearby-chemists/${orderNumber}`),
+
+  assignToMedicalStore: (orderId: number, medicalStoreId: string) =>
+    api.put('/Orders/assign', { orderId, medicalStoreId }),
 };

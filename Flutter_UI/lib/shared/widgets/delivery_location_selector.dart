@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:pharmaish/core/services/location_service.dart';
 import 'package:pharmaish/core/theme/app_theme.dart';
+import 'package:pharmaish/shared/widgets/app_button.dart';
 import 'package:pharmaish/utils/app_logger.dart';
 
 /// Model class to hold delivery location data
@@ -63,12 +64,12 @@ class DeliveryLocationSelector extends StatefulWidget {
   final DeliveryLocationData? initialLocation;
 
   const DeliveryLocationSelector({
-    Key? key,
+    super.key,
     required this.onLocationSelected,
     this.title = 'Delivery Location',
     this.subtitle = 'Where should we deliver your order?',
     this.initialLocation,
-  }) : super(key: key);
+  });
 
   @override
   State<DeliveryLocationSelector> createState() =>
@@ -405,14 +406,14 @@ class _DeliveryLocationSelectorState extends State<DeliveryLocationSelector> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
+          const Row(
             children: [
               Icon(Icons.location_on, color: AppTheme.primaryColor),
-              const SizedBox(width: 12),
+              SizedBox(width: 12),
               Expanded(
                 child: Text(
                   'Current Location',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
                   ),
@@ -454,7 +455,7 @@ class _DeliveryLocationSelectorState extends State<DeliveryLocationSelector> {
                 label: const Text('Update Location'),
                 style: OutlinedButton.styleFrom(
                   foregroundColor: AppTheme.primaryColor,
-                  side: BorderSide(color: AppTheme.primaryColor),
+                  side: const BorderSide(color: AppTheme.primaryColor),
                 ),
               ),
             ),
@@ -473,10 +474,7 @@ class _DeliveryLocationSelectorState extends State<DeliveryLocationSelector> {
                 onPressed: _getCurrentLocation,
                 icon: const Icon(Icons.my_location),
                 label: const Text('Get Current Location'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.primaryColor,
-                  foregroundColor: Colors.white,
-                ),
+                style: AppButton.primary(),
               ),
             ),
           ],
@@ -559,7 +557,7 @@ class _DeliveryLocationSelectorState extends State<DeliveryLocationSelector> {
 
   Widget _buildDropdownField() {
     return DropdownButtonFormField<String>(
-      value: _selectedState != null && _states.contains(_selectedState)
+      initialValue: _selectedState != null && _states.contains(_selectedState)
           ? _selectedState
           : null,
       isExpanded: true,

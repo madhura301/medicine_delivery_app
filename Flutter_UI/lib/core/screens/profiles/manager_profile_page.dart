@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:pharmaish/core/screens/auth/change_password_page.dart';
 import 'package:pharmaish/core/theme/app_theme.dart';
+import 'package:pharmaish/shared/widgets/app_button.dart';
 import 'package:pharmaish/utils/app_logger.dart';
 import 'package:pharmaish/utils/constants.dart';
 import 'package:pharmaish/utils/storage.dart';
@@ -8,7 +9,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 
 class ManagerProfilePage extends StatefulWidget {
-  const ManagerProfilePage({Key? key}) : super(key: key);
+  const ManagerProfilePage({super.key});
 
   @override
   State<ManagerProfilePage> createState() => _ManagerProfilePageState();
@@ -60,7 +61,8 @@ class _ManagerProfilePageState extends State<ManagerProfilePage> {
       );
       if (r.statusCode == 200) {
         final d = jsonDecode(r.body);
-        if (mounted) setState(() {
+        if (mounted) {
+          setState(() {
           _managerId    = d['managerId']?.toString()    ?? '';
           _region       = d['region']?.toString()       ?? '';
           _firstName    = d['firstName']?.toString()    ?? _firstName;
@@ -69,6 +71,7 @@ class _ManagerProfilePageState extends State<ManagerProfilePage> {
           _email        = d['emailId']?.toString()      ?? _email;
           _isActive     = d['isActive'] as bool?        ?? _isActive;
         });
+        }
       }
     } catch (e) { AppLogger.warning('ManagerProfile API: $e'); }
   }
@@ -100,8 +103,7 @@ class _ManagerProfilePageState extends State<ManagerProfilePage> {
         onPressed: _loadProfile,
         icon: const Icon(Icons.refresh),
         label: const Text('Retry'),
-        style: ElevatedButton.styleFrom(
-            backgroundColor: AppTheme.primaryColor, foregroundColor: Colors.white),
+        style: AppButton.primary(),
       ),
     ]),
   );

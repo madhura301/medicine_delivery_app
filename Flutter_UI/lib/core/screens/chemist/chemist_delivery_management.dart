@@ -6,10 +6,12 @@ import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import 'package:intl/intl.dart';
 import 'package:pharmaish/utils/app_logger.dart';
-import 'package:pharmaish/utils/constants.dart';
 import 'package:pharmaish/utils/storage.dart';
 import 'package:pharmaish/shared/models/order_model.dart';
+import 'package:pharmaish/shared/widgets/app_button.dart';
 import 'package:pharmaish/core/screens/delivery/complete_delivery_screen.dart';
+import 'package:pharmaish/core/services/customer_service.dart';
+import 'package:pharmaish/core/services/order_service.dart';
 
 class ChemistDeliveryManagement extends StatefulWidget {
   const ChemistDeliveryManagement({super.key});
@@ -23,7 +25,6 @@ class _ChemistDeliveryManagementState extends State<ChemistDeliveryManagement> {
   List<OrderModel> _outForDeliveryOrders = [];
   bool _isLoading = true;
   String? _errorMessage;
-  late Dio _dio;
   String? _medicalStoreId;
 
   // Customer cache
@@ -34,25 +35,7 @@ class _ChemistDeliveryManagementState extends State<ChemistDeliveryManagement> {
   @override
   void initState() {
     super.initState();
-    _setupDio();
     _loadMedicalStoreId();
-  }
-
-  void _setupDio() {
-    _dio = Dio();
-    _dio.options.baseUrl = AppConstants.apiBaseUrl;
-    _dio.options.connectTimeout = const Duration(seconds: 30);
-    _dio.options.receiveTimeout = const Duration(seconds: 30);
-
-    _dio.interceptors.add(InterceptorsWrapper(
-      onRequest: (options, handler) async {
-        final token = await StorageService.getAuthToken();
-        if (token != null) {
-          options.headers['Authorization'] = 'Bearer $token';
-        }
-        handler.next(options);
-      },
-    ));
   }
 
   Future<void> _loadMedicalStoreId() async {
@@ -90,47 +73,34 @@ class _ChemistDeliveryManagementState extends State<ChemistDeliveryManagement> {
     try {
       AppLogger.info('Fetching out-for-delivery orders for medical store: $_medicalStoreId');
 
-      // GET /api/Orders/medicalstore/{medicalStoreId}
       // Filter for OutForDelivery status on client side
-      final response = await _dio.get('/Orders/medicalstore/$_medicalStoreId');
+      final ordersList =
+          await OrderService.getOrdersForMedicalStore(_medicalStoreId!);
 
-      if (response.statusCode == 200) {
-        final data = response.data;
-        List<dynamic> ordersList;
+      AppLogger.info('Received ${ordersList.length} active orders');
 
-        if (data is List) {
-          ordersList = data;
-        } else if (data is Map && data.containsKey('data')) {
-          ordersList = data['data'] as List;
-        } else {
-          ordersList = [];
-        }
+      final allOrders =
+          ordersList.map((json) => OrderModel.fromJson(json)).toList();
 
-        AppLogger.info('Received ${ordersList.length} active orders');
+      // Filter for OutForDelivery status
+      final outForDeliveryOrders = allOrders.where((order) {
+        return order.status.toLowerCase().contains('outfordelivery') ||
+            order.status.toLowerCase().contains('out for delivery');
+      }).toList();
 
-        final allOrders = ordersList.map((json) {
-          return OrderModel.fromJson(json);
-        }).toList();
+      AppLogger.info(
+          'Filtered ${outForDeliveryOrders.length} out-for-delivery orders');
 
-        // Filter for OutForDelivery status
-        final outForDeliveryOrders = allOrders.where((order) {
-          return order.status.toLowerCase().contains('outfordelivery') ||
-                 order.status.toLowerCase().contains('out for delivery');
-        }).toList();
+      // Sort by created date (oldest first - FIFO)
+      outForDeliveryOrders.sort((a, b) => a.createdOn.compareTo(b.createdOn));
 
-        AppLogger.info('Filtered ${outForDeliveryOrders.length} out-for-delivery orders');
+      // Load additional info
+      await _loadCustomerInfo(outForDeliveryOrders);
 
-        // Sort by created date (oldest first - FIFO)
-        outForDeliveryOrders.sort((a, b) => a.createdOn.compareTo(b.createdOn));
-
-        // Load additional info
-        await _loadCustomerInfo(outForDeliveryOrders);
-
-        setState(() {
-          _outForDeliveryOrders = outForDeliveryOrders;
-          _isLoading = false;
-        });
-      }
+      setState(() {
+        _outForDeliveryOrders = outForDeliveryOrders;
+        _isLoading = false;
+      });
     } on DioException catch (e) {
       AppLogger.error('Error loading orders: ${e.message}');
 
@@ -163,17 +133,15 @@ class _ChemistDeliveryManagementState extends State<ChemistDeliveryManagement> {
     for (var order in orders) {
       if (!_customerCache.containsKey(order.customerId)) {
         try {
-          final response = await _dio.get('/Customers/${order.customerId}');
-          if (response.statusCode == 200) {
-            final customerData = response.data;
-            _customerCache[order.customerId] = {
-              'name':
-                  '${customerData['customerFirstName'] ?? ''} ${customerData['customerLastName'] ?? ''}'
-                      .trim(),
-              'email': customerData['emailId']?.toString() ?? '',
-              'phone': customerData['mobileNumber']?.toString() ?? '',
-            };
-          }
+          final customerData =
+              await CustomerService.getCustomer(order.customerId);
+          _customerCache[order.customerId] = {
+            'name':
+                '${customerData['customerFirstName'] ?? ''} ${customerData['customerLastName'] ?? ''}'
+                    .trim(),
+            'email': customerData['emailId']?.toString() ?? '',
+            'phone': customerData['mobileNumber']?.toString() ?? '',
+          };
         } catch (e) {
           _customerCache[order.customerId] = {
             'name': 'Customer',
@@ -250,7 +218,7 @@ class _ChemistDeliveryManagementState extends State<ChemistDeliveryManagement> {
             ),
             child: Row(
               children: [
-                Icon(Icons.local_shipping, color: Colors.white, size: 24),
+                const Icon(Icons.local_shipping, color: Colors.white, size: 24),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(
@@ -327,10 +295,7 @@ class _ChemistDeliveryManagementState extends State<ChemistDeliveryManagement> {
                 onPressed: _loadOutForDeliveryOrders,
                 icon: const Icon(Icons.refresh),
                 label: const Text('Retry'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.black,
-                  foregroundColor: Colors.white,
-                ),
+                style: AppButton.primary(),
               ),
             ],
           ),

@@ -4,7 +4,6 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:pharmaish/core/screens/auth/reset_password_page.dart';
 
 class OTPVerificationPage extends StatefulWidget {
   final String username;

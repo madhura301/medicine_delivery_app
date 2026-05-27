@@ -115,8 +115,9 @@ class LocationService {
         // Build formatted address string
         String address = '';
         if (place.street?.isNotEmpty == true) address += '${place.street}, ';
-        if (place.locality?.isNotEmpty == true)
+        if (place.locality?.isNotEmpty == true) {
           address += '${place.locality}, ';
+        }
         if (place.administrativeArea?.isNotEmpty == true) {
           address += '${place.administrativeArea}';
         }

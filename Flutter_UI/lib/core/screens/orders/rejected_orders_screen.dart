@@ -2,6 +2,8 @@
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import 'package:pharmaish/core/theme/app_theme.dart';
+import 'package:pharmaish/shared/widgets/app_button.dart';
+import 'package:pharmaish/shared/widgets/app_snackbar.dart';
 import 'package:pharmaish/utils/constants.dart';
 import 'package:pharmaish/utils/storage.dart';
 import 'package:pharmaish/utils/app_logger.dart';
@@ -52,12 +54,8 @@ class _RejectedOrdersScreenState extends State<RejectedOrdersScreen> {
       AppLogger.error('Error loading rejected orders: $e');
       setState(() => _isLoading = false);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to load rejected orders: ${e.toString()}'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        AppSnackBar.error(
+            context, 'Failed to load rejected orders: ${e.toString()}');
       }
     }
   }
@@ -110,12 +108,7 @@ class _RejectedOrdersScreenState extends State<RejectedOrdersScreen> {
 
       if (response.statusCode == 200) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Order reassigned successfully!'),
-              backgroundColor: Colors.green,
-            ),
-          );
+          AppSnackBar.success(context, 'Order reassigned successfully!');
           // Reload the list
           _loadRejectedOrders();
         }
@@ -132,24 +125,14 @@ class _RejectedOrdersScreenState extends State<RejectedOrdersScreen> {
       }
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(errorMessage),
-            backgroundColor: Colors.red,
-          ),
-        );
+        AppSnackBar.error(context, errorMessage);
       }
     }
   }
 
   void _showOrderDetails(dynamic order) {
     if (order is! Map) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Invalid order data'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      AppSnackBar.error(context, 'Invalid order data');
       return;
     }
 
@@ -393,7 +376,7 @@ class _RejectedOrdersScreenState extends State<RejectedOrdersScreen> {
                 )
               else
                 DropdownButtonFormField<String>(
-                  value: selectedStoreId,
+                  initialValue: selectedStoreId,
                   decoration: InputDecoration(
                     hintText: 'Select medical store',
                     border: OutlineInputBorder(
@@ -431,10 +414,7 @@ class _RejectedOrdersScreenState extends State<RejectedOrdersScreen> {
                         selectedStoreId!,
                       );
                     },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.primaryColor,
-                foregroundColor: Colors.white,
-              ),
+              style: AppButton.primary(),
               child: const Text('Reassign'),
             ),
           ],

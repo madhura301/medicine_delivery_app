@@ -6,9 +6,11 @@ import 'package:pharmaish/utils/app_logger.dart';
 import 'package:flutter/material.dart';
 import 'package:pharmaish/utils/storage.dart';
 import 'package:dio/dio.dart';
-import 'package:pharmaish/utils/constants.dart';
-import 'package:pharmaish/config/environment_config.dart';
 import 'package:pharmaish/core/screens/admin/admin_service_regions.dart';
+import 'package:pharmaish/core/services/dio_client.dart';
+import 'package:pharmaish/shared/widgets/confirm_dialog.dart';
+import 'package:pharmaish/core/services/customer_service.dart';
+import 'package:pharmaish/core/services/order_service.dart';
 
 class AdminDashboard extends StatefulWidget {
   const AdminDashboard({super.key});
@@ -26,47 +28,12 @@ class _AdminDashboardState extends State<AdminDashboard> {
     'pendingOrders': 0,
   };
   bool _isLoading = true;
-  late Dio _dio;
+  final Dio _dio = DioClient.instance;
 
   @override
   void initState() {
     super.initState();
-    _setupDio();
     _loadDashboardData();
-  }
-
-  void _setupDio() {
-    _dio = Dio();
-    _dio.options.baseUrl = AppConstants.apiBaseUrl;
-    _dio.options.connectTimeout = EnvironmentConfig.timeoutDuration;
-    _dio.options.receiveTimeout = EnvironmentConfig.timeoutDuration;
-
-    if (EnvironmentConfig.shouldLog) {
-      _dio.interceptors.add(LogInterceptor(
-        requestBody: true,
-        responseBody: true,
-        requestHeader: true,
-        logPrint: (object) => AppLogger.info('API: $object'),
-      ));
-    }
-
-    _dio.interceptors.add(InterceptorsWrapper(
-      onRequest: (options, handler) async {
-        final token = await StorageService.getAuthToken();
-        if (token != null) {
-          options.headers['Authorization'] = 'Bearer $token';
-        }
-        handler.next(options);
-      },
-      onError: (error, handler) {
-        if (EnvironmentConfig.shouldLog) {
-          AppLogger.error('API Error: ${error.message}');
-          AppLogger.error('Status Code: ${error.response?.statusCode}');
-          AppLogger.error('Response Data: ${error.response?.data}');
-        }
-        handler.next(error);
-      },
-    ));
   }
 
   Future<void> _loadDashboardData() async {
@@ -85,14 +52,9 @@ class _AdminDashboardState extends State<AdminDashboard> {
 
       // Get all customers (Total Users)
       try {
-        final customersResponse = await _dio.get('/Customers');
-        if (customersResponse.statusCode == 200) {
-          final data = customersResponse.data;
-          if (data is List) {
-            totalUsers = data.length;
-          }
-          AppLogger.info('Loaded ${totalUsers} customers');
-        }
+        final customers = await CustomerService.getAllCustomers();
+        totalUsers = customers.length;
+        AppLogger.info('Loaded $totalUsers customers');
       } catch (e) {
         AppLogger.error('Error loading customers count', e);
       }
@@ -105,7 +67,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
           if (data is List) {
             activeChemists = data.length;
           }
-          AppLogger.info('Loaded ${activeChemists} chemists');
+          AppLogger.info('Loaded $activeChemists chemists');
         }
       } catch (e) {
         AppLogger.error('Error loading chemists count', e);
@@ -113,32 +75,17 @@ class _AdminDashboardState extends State<AdminDashboard> {
 
       // Get all orders
       try {
-        final ordersResponse = await _dio.get('/Orders');
-        if (ordersResponse.statusCode == 200) {
-          final data = ordersResponse.data;
-          List<dynamic> ordersList;
+        final ordersList = await OrderService.getAllOrders();
+        totalOrders = ordersList.length;
 
-          if (data is List) {
-            ordersList = data;
-          } else if (data is Map && data.containsKey('data')) {
-            ordersList = data['data'] as List;
-          } else if (data is Map && data.containsKey('orders')) {
-            ordersList = data['orders'] as List;
-          } else {
-            ordersList = [];
-          }
+        // Count pending orders
+        pendingOrders = ordersList.where((order) {
+          final status = order['status']?.toString().toLowerCase() ?? '';
+          return status.contains('pending') || status.contains('assigned');
+        }).length;
 
-          totalOrders = ordersList.length;
-
-          // Count pending orders
-          pendingOrders = ordersList.where((order) {
-            final status = order['status']?.toString().toLowerCase() ?? '';
-            return status.contains('pending') || status.contains('assigned');
-          }).length;
-
-          AppLogger.info(
-              'Loaded ${totalOrders} total orders, ${pendingOrders} pending');
-        }
+        AppLogger.info(
+            'Loaded $totalOrders total orders, $pendingOrders pending');
       } catch (e) {
         AppLogger.error('Error loading orders count', e);
         // If /Orders doesn't exist, set to 0
@@ -195,29 +142,9 @@ class _AdminDashboardState extends State<AdminDashboard> {
   }
 
   Future<void> _handleLogout() async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Logout'),
-        content: const Text('Are you sure you want to logout?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
-              foregroundColor: Colors.white,
-            ),
-            child: const Text('Logout'),
-          ),
-        ],
-      ),
-    );
+    final confirm = await confirmLogout(context);
 
-    if (confirm == true) {
+    if (confirm) {
       try {
         await StorageService.clearAuthTokens();
         await StorageService.clearSavedCredentials();
@@ -400,8 +327,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
                   },
                 ),
                 ListTile(
-                  leading: Icon(Icons.location_city),
-                  title: Text('Service Regions'),
+                  leading: const Icon(Icons.location_city),
+                  title: const Text('Service Regions'),
                   onTap: () {
                     Navigator.of(context).pop();
                     _goToRegionManagementPage(context);
@@ -440,6 +367,15 @@ class _AdminDashboardState extends State<AdminDashboard> {
                 ),
               ],
             ),
+          ),
+
+          ListTile(
+            leading: const Icon(Icons.contact_support, color: Colors.black),
+            title: const Text('Contact Us'),
+            onTap: () {
+              Navigator.of(context).pop();
+              Navigator.pushNamed(context, '/contact-us');
+            },
           ),
 
           // Logout at bottom

@@ -1,21 +1,18 @@
-import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import 'package:intl/intl.dart';
 import 'package:pharmaish/utils/app_logger.dart';
-import 'package:pharmaish/utils/constants.dart';
-import 'package:pharmaish/utils/storage.dart';
-import 'package:pharmaish/config/environment_config.dart';
+import 'package:pharmaish/core/services/dio_client.dart';
 
 class AdminConsentLogsPage extends StatefulWidget {
-  const AdminConsentLogsPage({Key? key}) : super(key: key);
+  const AdminConsentLogsPage({super.key});
 
   @override
   State<AdminConsentLogsPage> createState() => _AdminConsentLogsPageState();
 }
 
 class _AdminConsentLogsPageState extends State<AdminConsentLogsPage> {
-  late Dio _dio;
+  final Dio _dio = DioClient.instance;
 
   List<Map<String, dynamic>> _allLogs = [];
   List<Map<String, dynamic>> _filteredLogs = [];
@@ -40,7 +37,6 @@ class _AdminConsentLogsPageState extends State<AdminConsentLogsPage> {
   @override
   void initState() {
     super.initState();
-    _setupDio();
     _loadConsentLogs();
   }
 
@@ -48,32 +44,6 @@ class _AdminConsentLogsPageState extends State<AdminConsentLogsPage> {
   void dispose() {
     _searchController.dispose();
     super.dispose();
-  }
-
-  void _setupDio() {
-    _dio = Dio();
-    _dio.options.baseUrl = AppConstants.apiBaseUrl;
-    _dio.options.connectTimeout = EnvironmentConfig.timeoutDuration;
-    _dio.options.receiveTimeout = EnvironmentConfig.timeoutDuration;
-
-    if (EnvironmentConfig.shouldLog) {
-      _dio.interceptors.add(LogInterceptor(
-        requestBody: true,
-        responseBody: true,
-        requestHeader: true,
-        logPrint: (object) => AppLogger.info('API: $object'),
-      ));
-    }
-
-    _dio.interceptors.add(InterceptorsWrapper(
-      onRequest: (options, handler) async {
-        final token = await StorageService.getAuthToken();
-        if (token != null) {
-          options.headers['Authorization'] = 'Bearer $token';
-        }
-        handler.next(options);
-      },
-    ));
   }
 
   Future<void> _loadConsentLogs() async {
@@ -175,11 +145,13 @@ class _AdminConsentLogsPageState extends State<AdminConsentLogsPage> {
               ? DateTime.parse(log['createdOn'])
               : null;
           if (createdOn != null) {
-            if (_startDate != null && createdOn.isBefore(_startDate!))
+            if (_startDate != null && createdOn.isBefore(_startDate!)) {
               return false;
+            }
             if (_endDate != null &&
-                createdOn.isAfter(_endDate!.add(const Duration(days: 1))))
+                createdOn.isAfter(_endDate!.add(const Duration(days: 1)))) {
               return false;
+            }
           }
         }
 
@@ -190,7 +162,9 @@ class _AdminConsentLogsPageState extends State<AdminConsentLogsPage> {
               log['consent']?['name']?.toString().toLowerCase() ?? '';
           final searchLower = _searchQuery.toLowerCase();
           if (!userId.contains(searchLower) &&
-              !consentName.contains(searchLower)) return false;
+              !consentName.contains(searchLower)) {
+            return false;
+          }
         }
 
         return true;
@@ -234,8 +208,9 @@ class _AdminConsentLogsPageState extends State<AdminConsentLogsPage> {
     final typeStr = userType.toString();
     if (typeStr == 'Customer' || typeStr == '0') return 'Customer';
     if (typeStr == 'Chemist' || typeStr == '1') return 'Chemist';
-    if (typeStr == 'CustomerSupport' || typeStr == '2')
+    if (typeStr == 'CustomerSupport' || typeStr == '2') {
       return 'CustomerSupport';
+    }
     if (typeStr == 'Delivery' || typeStr == '3') return 'Delivery';
     if (typeStr == 'Admin' || typeStr == '4') return 'Admin'; // ✨ ADD THIS
 

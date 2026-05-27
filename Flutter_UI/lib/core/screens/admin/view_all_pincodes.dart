@@ -1,24 +1,21 @@
-
-import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:pharmaish/core/services/region_service.dart';
 import 'package:pharmaish/utils/app_logger.dart';
 
 class ViewAllPincodesPage extends StatefulWidget {
-  final Dio dio;
   final List<Map<String, dynamic>> regions;
 
   const ViewAllPincodesPage({
-    Key? key,
-    required this.dio,
+    super.key,
     required this.regions,
-  }) : super(key: key);
+  });
 
   @override
   State<ViewAllPincodesPage> createState() => _ViewAllPincodesPageState();
 }
 
 class _ViewAllPincodesPageState extends State<ViewAllPincodesPage> {
-  Map<String, Map<String, dynamic>> _pincodeToRegion = {};
+  final Map<String, Map<String, dynamic>> _pincodeToRegion = {};
   List<MapEntry<String, Map<String, dynamic>>> _filteredPincodes = [];
   final _searchController = TextEditingController();
   String _searchQuery = '';
@@ -42,16 +39,11 @@ class _ViewAllPincodesPageState extends State<ViewAllPincodesPage> {
     try {
       for (var region in widget.regions) {
         final regionId = region['id'] ?? region['Id'];
-        final response = await widget.dio.get(
-          '/ServiceRegions/$regionId/pincodes',
+        final pincodes = await RegionService.getRegionPincodes(
+          (regionId as num).toInt(),
         );
-
-        if (response.statusCode == 200) {
-          final pincodes =
-              (response.data as List).map((e) => e.toString()).toList();
-          for (var pincode in pincodes) {
-            _pincodeToRegion[pincode] = region;
-          }
+        for (var pincode in pincodes) {
+          _pincodeToRegion[pincode] = region;
         }
       }
 

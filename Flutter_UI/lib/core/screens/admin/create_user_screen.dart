@@ -4,12 +4,13 @@
 
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
+import 'package:pharmaish/shared/widgets/app_snackbar.dart';
 import 'package:pharmaish/utils/app_logger.dart';
 
 class CreateUserScreen extends StatefulWidget {
   final Dio dio;
 
-  const CreateUserScreen({Key? key, required this.dio}) : super(key: key);
+  const CreateUserScreen({super.key, required this.dio});
 
   @override
   State<CreateUserScreen> createState() => _CreateUserScreenState();
@@ -414,23 +415,11 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
   }
 
   void _showError(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.red,
-        duration: const Duration(seconds: 4),
-      ),
-    );
+    AppSnackBar.error(context, message);
   }
 
   void _showSuccess(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.green,
-        duration: const Duration(seconds: 2),
-      ),
-    );
+    AppSnackBar.success(context, message);
   }
 
   // =========================================================================
@@ -555,7 +544,7 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
             ),
             const SizedBox(height: 16),
             DropdownButtonFormField<String>(
-              value: _selectedRole,
+              initialValue: _selectedRole,
               decoration: InputDecoration(
                 labelText: 'Role',
                 prefixIcon: const Icon(Icons.admin_panel_settings),
@@ -798,7 +787,7 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
         if (_selectedRole != 'Chemist' && _selectedRole != 'CustomerSupport' && _selectedRole != 'Manager') ...[
           const SizedBox(height: 16),
           DropdownButtonFormField<String>(
-            value: _selectedGender,
+            initialValue: _selectedGender,
             decoration: InputDecoration(
               labelText: 'Gender',
               prefixIcon: const Icon(Icons.wc),

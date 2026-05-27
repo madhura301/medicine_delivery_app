@@ -6,6 +6,7 @@ import 'package:pharmaish/core/services/order_service.dart';
 import 'package:pharmaish/shared/models/order_enums.dart';
 import 'package:pharmaish/shared/models/order_model.dart';
 import 'package:pharmaish/utils/app_logger.dart';
+import 'package:pharmaish/shared/widgets/app_snackbar.dart';
 import 'package:pharmaish/shared/widgets/step_progress_indicator.dart';
 import 'package:pharmaish/shared/widgets/address_selector_widget.dart';
 import 'package:pharmaish/utils/order_exceptions.dart';
@@ -70,12 +71,7 @@ class _CameraPrescriptionScreenState extends State<CameraPrescriptionScreen> {
     } catch (e) {
       AppLogger.error('Error capturing image: $e');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error capturing image: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        AppSnackBar.error(context, 'Error capturing image: $e');
       }
     }
   }
@@ -98,12 +94,7 @@ class _CameraPrescriptionScreenState extends State<CameraPrescriptionScreen> {
     } catch (e) {
       AppLogger.error('Error selecting image: $e');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error selecting image: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        AppSnackBar.error(context, 'Error selecting image: $e');
       }
     }
   }
@@ -122,23 +113,13 @@ class _CameraPrescriptionScreenState extends State<CameraPrescriptionScreen> {
   void _nextStep() {
     if (_currentStep == 0) {
       if (_capturedImage == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Please capture or select an image first'),
-            backgroundColor: Colors.orange,
-          ),
-        );
+        AppSnackBar.warning(context, 'Please capture or select an image first');
         return;
       }
     } else if (_currentStep == 1) {
       // Validate address selection
       if (_selectedAddress == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Please select a delivery address'),
-            backgroundColor: Colors.orange,
-          ),
-        );
+        AppSnackBar.warning(context, 'Please select a delivery address');
         return;
       }
       if (!_formKey.currentState!.validate()) {
@@ -167,12 +148,7 @@ AppLogger.info('🔍 Selected Address Debug:');
 AppLogger.info('Selected Address : $_selectedAddress');
 
     if (_selectedAddress == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please select a delivery address'),
-          backgroundColor: Colors.orange,
-        ),
-      );
+      AppSnackBar.warning(context, 'Please select a delivery address');
       return;
     }
 
@@ -186,25 +162,17 @@ AppLogger.info('Selected Address : $_selectedAddress');
     if (_selectedAddress?.addressId == null ||
         _selectedAddress!.addressId!.isEmpty) {
       AppLogger.error('❌ Selected address has no ID!');
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content:
-              Text('Invalid address selected. Please select another address.'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      AppSnackBar.error(
+          context, 'Invalid address selected. Please select another address.');
       return;
     }
 
     setState(() => _isLoading = true);
 
     try {
-      final orderService = OrderService();
-
-      // Now safe to use !
       final orderRequest = CreateOrderRequest(
         customerId: widget.customerId,
-        customerAddressId: _selectedAddress?.addressId ?? '', // Safe now
+        customerAddressId: _selectedAddress?.addressId ?? '',
         orderType: OrderType.prescriptionDrugs,
         orderInputType: OrderInputType.image,
         orderInputFile: _capturedImage,
@@ -216,48 +184,28 @@ AppLogger.info('Selected Address : $_selectedAddress');
       AppLogger.info('Customer ID: ${widget.customerId}');
       AppLogger.info('Address ID: ${_selectedAddress?.addressId}');
 
-      final createdOrder = await orderService.createOrder(orderRequest);
+      final createdOrder = await OrderService.createOrder(orderRequest);
 
       AppLogger.info('✅ Order created! ID: ${createdOrder.orderId}');
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Order submitted successfully!'),
-            backgroundColor: Colors.green,
-          ),
-        );
+        AppSnackBar.success(context, 'Order submitted successfully!');
         Navigator.of(context).pop(true);
       }
     } on OrderValidationException catch (e) {
       AppLogger.error('Validation error: ${e.message}');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Validation Error: ${e.message}'),
-            backgroundColor: Colors.orange,
-          ),
-        );
+        AppSnackBar.warning(context, 'Validation Error: ${e.message}');
       }
     } on OrderNetworkException catch (e) {
       AppLogger.error('Network error: ${e.message}');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Network Error: ${e.message}'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        AppSnackBar.error(context, 'Network Error: ${e.message}');
       }
     } catch (e) {
       AppLogger.error('Error submitting order: $e');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        AppSnackBar.error(context, 'Error: $e');
       }
     } finally {
       if (mounted) {
@@ -492,7 +440,7 @@ AppLogger.info('Selected Address : $_selectedAddress');
             children: [
               Row(
                 children: [
-                  Icon(Icons.lightbulb_outline, color: Colors.black),
+                  const Icon(Icons.lightbulb_outline, color: Colors.black),
                   const SizedBox(width: 8),
                   Text(
                     'Tips for better photos',
@@ -751,11 +699,11 @@ AppLogger.info('Selected Address : $_selectedAddress');
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
+                const Row(
                   children: [
                     Icon(Icons.camera_alt, color: Colors.black),
-                    const SizedBox(width: 8),
-                    const Text(
+                    SizedBox(width: 8),
+                    Text(
                       'Prescription Photo',
                       style: TextStyle(
                         fontSize: 16,
@@ -788,11 +736,11 @@ AppLogger.info('Selected Address : $_selectedAddress');
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
+                const Row(
                   children: [
                     Icon(Icons.person, color: Colors.black),
-                    const SizedBox(width: 8),
-                    const Text(
+                    SizedBox(width: 8),
+                    Text(
                       'Patient Details',
                       style: TextStyle(
                         fontSize: 16,
@@ -821,11 +769,11 @@ AppLogger.info('Selected Address : $_selectedAddress');
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
+                  const Row(
                     children: [
                       Icon(Icons.location_on, color: Colors.black),
-                      const SizedBox(width: 8),
-                      const Text(
+                      SizedBox(width: 8),
+                      Text(
                         'Delivery Address',
                         style: TextStyle(
                           fontSize: 16,
@@ -852,11 +800,11 @@ AppLogger.info('Selected Address : $_selectedAddress');
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
+                const Row(
                   children: [
                     Icon(Icons.local_shipping, color: Colors.black),
-                    const SizedBox(width: 8),
-                    const Text(
+                    SizedBox(width: 8),
+                    Text(
                       'Delivery Details',
                       style: TextStyle(
                         fontSize: 16,
@@ -917,13 +865,13 @@ AppLogger.info('Selected Address : $_selectedAddress');
   Widget _buildNavigationButtons() {
     return Container(
       padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
+      decoration: const BoxDecoration(
         color: Colors.white,
         boxShadow: [
           BoxShadow(
             color: Colors.black12,
             blurRadius: 4,
-            offset: const Offset(0, -2),
+            offset: Offset(0, -2),
           ),
         ],
       ),

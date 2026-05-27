@@ -1,614 +1,301 @@
 import 'package:flutter/material.dart';
 import 'package:pharmaish/core/services/consent_service.dart';
 import 'package:pharmaish/shared/widgets/consent_dialog.dart';
-import 'package:pharmaish/utils/app_logger.dart';
 import 'package:pharmaish/utils/constants.dart';
-import 'package:pharmaish/utils/storage.dart';
 
-/// Manages the display and logging of all pharmacist consent dialogs
+/// Show a consent dialog and log the accept/reject decision to the backend.
+///
+/// Returns `true` when the user accepts. The dialog auto-pops on accept; on
+/// cancel the helper pops the dialog itself before calling [rejectConsent].
+///
+/// Reject metadata is derived from [metadata] by overlaying
+/// `{action: 'rejected', reason: 'User clicked cancel'}` so audit logs always
+/// include the consent context.
+Future<bool> _showConsent(
+  BuildContext context, {
+  required ConsentType consentType,
+  required String title,
+  required IconData titleIcon,
+  required Color titleColor,
+  required String message,
+  required Map<String, dynamic> metadata,
+  String confirmButtonText = 'I Agree',
+  String cancelButtonText = 'Cancel',
+  bool requireCheckbox = false,
+  String? checkboxText,
+  Map<String, String>? links,
+  String rejectionReason = 'User declined consent',
+  bool barrierDismissible = false,
+}) async {
+  bool accepted = false;
+  final consentId = await ConsentService.getConsentIdByType(consentType);
+
+  await showDialog(
+    context: context,
+    barrierDismissible: barrierDismissible,
+    builder: (ctx) => ConsentDialog(
+      title: title,
+      titleIcon: titleIcon,
+      titleColor: titleColor,
+      message: message,
+      requireCheckbox: requireCheckbox,
+      checkboxText: checkboxText,
+      links: links,
+      confirmButtonText: confirmButtonText,
+      cancelButtonText: cancelButtonText,
+      onConfirm: () async {
+        accepted = true;
+        if (consentId != null) {
+          await ConsentService.acceptConsent(
+            consentId: consentId,
+            metadata: metadata,
+          );
+        }
+      },
+      onCancel: () async {
+        accepted = false;
+        Navigator.of(ctx).pop();
+        if (consentId != null) {
+          await ConsentService.rejectConsent(
+            consentId: consentId,
+            reason: rejectionReason,
+            metadata: {
+              ...metadata,
+              'action': 'rejected',
+              'reason': 'User clicked cancel',
+            },
+          );
+        }
+      },
+    ),
+  );
+
+  return accepted;
+}
+
+/// Pharmacist-facing consent dialogs.
 class PharmacistConsentManager {
-  /// 1. Retailer Registration Consent (DPDP Required)
-  /// Shown during pharmacy sign-up
-  static Future<bool> showRetailerRegistrationConsent(
-    BuildContext context,
-  ) async {
-    bool accepted = false;
-
-// Get consent ID from backend
-    final consentId = await ConsentService.getConsentIdByType(
-        ConsentType.retailerRegistrationConsent);
-    await showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => ConsentDialog(
+  /// Retailer Registration Consent (DPDP). Shown during pharmacy sign-up.
+  static Future<bool> showRetailerRegistrationConsent(BuildContext context) =>
+      _showConsent(
+        context,
+        consentType: ConsentType.retailerRegistrationConsent,
         title: 'Retailer Registration Consent',
         titleIcon: Icons.handshake,
-        titleColor: const Color(0xFFD97706), // Orange
+        titleColor: const Color(0xFFD97706),
         message:
             'By registering, you consent to Pharmaish processing your personal and store information for verification, communication, and referrals. We do not share any data without your consent.',
-        requireCheckbox: false,
         confirmButtonText: 'I Agree',
-        cancelButtonText: 'Cancel',
-        onConfirm: () async {
-          accepted = true;
-          // await ConsentService.logConsent(
-          //   consentType: ConsentType.retailerRegistrationConsent,
-          //   granted: true,
-          //   metadata: {
-          //     'context': 'pharmacy_registration',
-          //     'mandatory': true,
-          //     'compliance': 'DPDP',
-          //   },
-          // );
-          if (consentId != null) {
-            await ConsentService.acceptConsent(
-              // ✅ Call accept API
-              consentId: consentId,
-              metadata: {
-                'context': 'pharmacy_registration',
-                'mandatory': true,
-                'compliance': 'DPDP',
-              },
-            );
-          }
+        metadata: const {
+          'context': 'pharmacy_registration',
+          'mandatory': true,
+          'compliance': 'DPDP',
         },
-        onCancel: () async {
-          // ✅ NEW: Handle cancel
-          accepted = false;
-          Navigator.of(context).pop(); 
-          if (consentId != null) {
-            await ConsentService.rejectConsent(
-              // ✅ Call reject API
-              consentId: consentId,
-              reason: 'User declined consent',
-              metadata: {
-                'action': 'rejected',
-                'reason': 'User clicked cancel',
-                'context': 'pharmacy_registration',
-              },
-            );
-          }
-        },
-      ),
-    );
+      );
 
-    return accepted;
-  }
-
-  /// 2. License Verification Confirmation (Drugs & Cosmetics Act Required)
-  /// Shown during pharmacy onboarding
+  /// License Verification Confirmation (Drugs & Cosmetics Act).
+  /// Shown during pharmacy onboarding.
   static Future<bool> showLicenseVerificationConfirmation(
-    BuildContext context,
-  ) async {
-    bool accepted = false;
-
-// Get consent ID from backend
-    final consentId = await ConsentService.getConsentIdByType(
-        ConsentType.licenseVerificationConfirmation);
-    await showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => ConsentDialog(
+          BuildContext context) =>
+      _showConsent(
+        context,
+        consentType: ConsentType.licenseVerificationConfirmation,
         title: 'License Verification Confirmation',
         titleIcon: Icons.verified_outlined,
-        titleColor: const Color(0xFFD97706), // Orange
+        titleColor: const Color(0xFFD97706),
         message:
             'I confirm that my pharmacy holds valid licenses required to dispense medicines. I agree to upload/verify my Drug License, GST, and Pharmacist-in-charge details.',
-        requireCheckbox: false,
         confirmButtonText: 'Confirm',
-        cancelButtonText: 'Cancel',
-        onConfirm: () async {
-          accepted = true;
-          // await ConsentService.logConsent(
-          //   consentType: ConsentType.licenseVerificationConfirmation,
-          //   granted: true,
-          //   metadata: {
-          //     'context': 'pharmacy_onboarding',
-          //     'mandatory': true,
-          //     'compliance': 'Drugs & Cosmetics Act',
-          //   },
-          // );
-
-          if (consentId != null) {
-            await ConsentService.acceptConsent(
-              // ✅ Call accept API
-              consentId: consentId,
-              metadata: {
-                'context': 'pharmacy_onboarding',
-                'mandatory': true,
-                'compliance': 'Drugs & Cosmetics Act',
-              },
-            );
-          }
+        metadata: const {
+          'context': 'pharmacy_onboarding',
+          'mandatory': true,
+          'compliance': 'Drugs & Cosmetics Act',
         },
-        onCancel: () async {
-          // ✅ NEW: Handle cancel
-          accepted = false;
-          Navigator.of(context).pop(); 
-          if (consentId != null) {
-            await ConsentService.rejectConsent(
-                // ✅ Call reject API
-                consentId: consentId,
-                reason: 'User declined consent',
-                metadata: {
-                  'action': 'rejected',
-                  'reason': 'User clicked cancel',
-                  'context': 'pharmacy_onboarding',
-                });
-          }
-        },
-      ),
-    );
+      );
 
-    return accepted;
-  }
-
-  /// 3. Data Handling & Liability Disclaimer (Legal Protection Required)
-  /// Shown when pharmacy opens a patient order
-static Future<bool> showDataHandlingLiabilityDisclaimer(
+  /// Data Handling & Liability Disclaimer (Legal Protection).
+  /// Shown when pharmacy opens a patient order.
+  static Future<bool> showDataHandlingLiabilityDisclaimer(
     BuildContext context, {
     String? orderId,
-    String? customerId,  // Changed from patientName to customerId
-  }) async {
-    bool accepted = false;
-
-    // Get consent ID from backend
-    final consentId = await ConsentService.getConsentIdByType(
-        ConsentType.dataHandlingLiabilityDisclaimer);
-    
-    await showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => ConsentDialog(
+    String? customerId,
+  }) =>
+      _showConsent(
+        context,
+        consentType: ConsentType.dataHandlingLiabilityDisclaimer,
         title: 'Data Handling & Liability Disclaimer',
         titleIcon: Icons.balance,
-        titleColor: const Color(0xFFD97706), // Orange
+        titleColor: const Color(0xFFD97706),
         message:
             'As a licensed pharmacy, you are solely responsible for dispensing '
             'medicines as per prescription, pricing, packing, expiry compliance, '
             'and legal obligations. Pharmaish is not involved in '
             'sale/stock/dispensing of medicines.',
-        requireCheckbox: false,
         confirmButtonText: 'Understood',
-        cancelButtonText: 'Cancel',
-        onConfirm: () async {
-          accepted = true;
-          if (consentId != null) {
-            await ConsentService.acceptConsent(
-              consentId: consentId,
-              metadata: {
-                'context': 'order_view',
-                'orderId': orderId,
-                'customerId': customerId,
-                'mandatory': true,
-                'compliance': 'Legal Protection',
-              },
-            );
-          }
+        rejectionReason: 'User declined disclaimer',
+        metadata: {
+          'context': 'order_view',
+          'orderId': orderId,
+          'customerId': customerId,
+          'mandatory': true,
+          'compliance': 'Legal Protection',
         },
-        onCancel: () async {
-          accepted = false;
-          Navigator.of(context).pop(); 
-          if (consentId != null) {
-            await ConsentService.rejectConsent(
-              consentId: consentId,
-              reason: 'User declined disclaimer',
-              metadata: {
-                'action': 'rejected',
-                'reason': 'User clicked cancel',
-                'context': 'order_view',
-                'orderId': orderId,
-                'customerId': customerId,
-              },
-            );
-          }
-        },
-      ),
-    );
+      );
 
-    return accepted;
-  }
-
-  /// 4. Prescription Access Permission (DPDP-Sensitive Data Required)
-  /// Shown when viewing patient prescription
+  /// Prescription Access Permission (DPDP-Sensitive Data).
+  /// Shown when viewing patient prescription.
   static Future<bool> showPrescriptionAccessPermission(
     BuildContext context, {
     String? orderId,
-    String? customerId,  // Changed from patientName to customerId
-  }) async {
-    bool accepted = false;
-
-    // Get consent ID from backend
-    final consentId = await ConsentService.getConsentIdByType(
-        ConsentType.prescriptionAccessPermission);
-    
-    await showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => ConsentDialog(
+    String? customerId,
+  }) =>
+      _showConsent(
+        context,
+        consentType: ConsentType.prescriptionAccessPermission,
         title: 'Prescription Access Permission',
         titleIcon: Icons.description_outlined,
-        titleColor: const Color(0xFFD97706), // Orange
+        titleColor: const Color(0xFFD97706),
         message:
             'By tapping "View Prescription", you acknowledge that the prescription '
             'contains sensitive personal health information and you will access it '
             'only for lawful dispensing purposes.',
-        requireCheckbox: false,
         confirmButtonText: 'View Prescription',
-        cancelButtonText: 'Cancel',
-        onConfirm: () async {
-          accepted = true;
-          if (consentId != null) {
-            await ConsentService.acceptConsent(
-              consentId: consentId,
-              metadata: {
-                'context': 'prescription_view',
-                'orderId': orderId,
-                'customerId': customerId,
-                'mandatory': true,
-                'compliance': 'DPDP-Sensitive Data',
-              },
-            );
-          }
+        metadata: {
+          'context': 'prescription_view',
+          'orderId': orderId,
+          'customerId': customerId,
+          'mandatory': true,
+          'compliance': 'DPDP-Sensitive Data',
         },
-        onCancel: () async {
-          accepted = false;
-          Navigator.of(context).pop(); 
-          if (consentId != null) {
-            await ConsentService.rejectConsent(
-              consentId: consentId,
-              reason: 'User declined consent',
-              metadata: {
-                'action': 'rejected',
-                'reason': 'User clicked cancel',
-                'context': 'prescription_view',
-                'orderId': orderId,
-                'customerId': customerId,
-              },
-            );
-          }
-        },
-      ),
-    );
+      );
 
-    return accepted;
-  }
-  
-  /// Check if pharmacist has already accepted the order disclaimer
-  /// This prevents showing the dialog multiple times for the same order
-  static Future<bool> hasAcceptedOrderDisclaimer(String orderId) async {
-    // Check local storage for this specific order
-    // You can implement this using SharedPreferences or similar
-    // For now, we'll return false to always show (you can optimize this)
-    return false;
-  }
+  /// Check if pharmacist has already accepted the order disclaimer.
+  /// TODO: persist per-order acceptance to avoid re-prompting.
+  static Future<bool> hasAcceptedOrderDisclaimer(String orderId) async => false;
 
-  /// Check if pharmacist has already accepted prescription access for this order
-  static Future<bool> hasAcceptedPrescriptionAccess(String orderId) async {
-    // Check local storage for this specific order
-    // For now, we'll return false to always show (you can optimize this)
-    return false;
-  }
+  /// Check if pharmacist has already accepted prescription access for this order.
+  /// TODO: persist per-order acceptance to avoid re-prompting.
+  static Future<bool> hasAcceptedPrescriptionAccess(String orderId) async =>
+      false;
 
-  /// Show all onboarding consents in sequence
-  /// Returns true only if all mandatory consents are accepted
+  /// Show all onboarding consents in sequence.
+  /// Returns true only if all mandatory consents are accepted.
   static Future<bool> showOnboardingConsentsSequence(
-    BuildContext context,
-  ) async {
-    // 1. Registration Consent
+      BuildContext context) async {
     final registrationAccepted = await showRetailerRegistrationConsent(context);
     if (!registrationAccepted) return false;
 
-    // 2. License Verification
-    final licenseAccepted = await showLicenseVerificationConfirmation(context);
+    final licenseAccepted =
+        await showLicenseVerificationConfirmation(context);
     if (!licenseAccepted) return false;
 
     return true;
   }
 
-  /// Check if prescription access consent has been given for this session
-  static Future<bool> needsPrescriptionAccessConsent() async {
-    // Check if consent was given in the current session
-    // You could implement session-based consent tracking here
-    return true; // Always show for maximum compliance
-  }
+  /// Whether prescription access consent must be re-prompted in this session.
+  static Future<bool> needsPrescriptionAccessConsent() async => true;
 }
 
-/// Customer-specific consent dialogs
+/// Customer-facing consent dialogs.
 class CustomerConsentManager {
-  /// General Data Consent (DPDP Required)
-  /// Shown immediately after first login/registration
-  static Future<bool> showGeneralDataConsent(BuildContext context) async {
-    bool accepted = false;
-
-    // Get consent ID from backend
-    final consentId =
-        await ConsentService.getConsentIdByType(ConsentType.generalDataConsent);
-    await showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => ConsentDialog(
+  /// General Data Consent (DPDP). Shown after first login/registration.
+  static Future<bool> showGeneralDataConsent(BuildContext context) =>
+      _showConsent(
+        context,
+        consentType: ConsentType.generalDataConsent,
         title: 'General Data Consent',
         titleIcon: Icons.lock_outline,
-        titleColor: const Color(0xFF2E7D32), // Green
+        titleColor: const Color(0xFF2E7D32),
         message:
             'To continue, please allow us to process your personal data for secure account creation and order fulfillment. We do not share any data without your consent.',
-        requireCheckbox: false,
         confirmButtonText: 'Allow',
-        cancelButtonText: 'Cancel',
-        onConfirm: () async {
-          accepted = true;
-          // await ConsentService.logConsent(
-          //   consentType: ConsentType.generalDataConsent,
-          //   granted: true,
-          //   metadata: {
-          //     'context': 'customer_registration',
-          //     'mandatory': true,
-          //     'compliance': 'DPDP',
-          //   },
-          // );
-          if (consentId != null) {
-            await ConsentService.acceptConsent(
-              // ✅ Call accept API
-              consentId: consentId,
-              metadata: {
-                'context': 'customer_registration',
-                'mandatory': true,
-                'compliance': 'DPDP',
-              },
-            );
-          }
+        metadata: const {
+          'context': 'customer_registration',
+          'mandatory': true,
+          'compliance': 'DPDP',
         },
-        onCancel: () async {
-          // ✅ NEW: Handle cancel
-          accepted = false;
-          Navigator.of(context).pop(); 
-          if (consentId != null) {
-            await ConsentService.rejectConsent(
-                // ✅ Call reject API
-                consentId: consentId,
-                reason: 'User declined consent',
-                metadata: {
-                  'action': 'rejected',
-                  'reason': 'User clicked cancel',
-                  'context': 'customer_registration'
-                });
-          }
-        },
-      ),
-    );
+      );
 
-    return accepted;
-  }
-
-  /// Prescription Sharing Consent
-  /// Shown when user uploads prescription
-  static Future<bool> showPrescriptionSharingConsent(
-    BuildContext context,
-  ) async {
-    bool accepted = false;
-
-// Get consent ID from backend
-    final consentId = await ConsentService.getConsentIdByType(
-        ConsentType.prescriptionSharingConsent);
-    await showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => ConsentDialog(
+  /// Prescription Sharing Consent. Shown when uploading a prescription.
+  static Future<bool> showPrescriptionSharingConsent(BuildContext context) =>
+      _showConsent(
+        context,
+        consentType: ConsentType.prescriptionSharingConsent,
         title: 'Prescription Sharing Consent',
         titleIcon: Icons.local_pharmacy,
-        titleColor: const Color(0xFFD97706), // Orange
+        titleColor: const Color(0xFFD97706),
         message:
             'We need your permission to securely share your prescription with a licensed pharmacy to fulfil your order.',
-        requireCheckbox: false,
         confirmButtonText: 'Allow',
-        cancelButtonText: 'Cancel',
-        onConfirm: () async {
-          accepted = true;
-          // await ConsentService.logConsent(
-          //   consentType: ConsentType.prescriptionSharingConsent,
-          //   granted: true,
-          //   metadata: {
-          //     'context': 'prescription_upload',
-          //     'mandatory': true,
-          //     'compliance': 'DPDP',
-          //   },
-          // );
-          if (consentId != null) {
-            await ConsentService.acceptConsent(
-              // ✅ Call accept API
-              consentId: consentId,
-              metadata: {
-                'context': 'prescription_upload',
-                'mandatory': true,
-                'compliance': 'DPDP',
-              },
-            );
-          }
+        metadata: const {
+          'context': 'prescription_upload',
+          'mandatory': true,
+          'compliance': 'DPDP',
         },
-        onCancel: () async {
-          // ✅ NEW: Handle cancel
-          accepted = false;
-          Navigator.of(context).pop(); 
-          if (consentId != null) {
-            await ConsentService.rejectConsent(
-                // ✅ Call reject API
-                consentId: consentId,
-                reason: 'User declined consent',
-                metadata: {
-                  'action': 'rejected',
-                  'reason': 'User clicked cancel',
-                  'context': 'prescription_upload'
-                });
-          }
-        },
-      ),
-    );
+      );
 
-    return accepted;
-  }
-
-  /// Terms & Conditions Acceptance
-  /// Shown on first app launch
-  static Future<bool> showTermsAndConditions(BuildContext context) async {
-    bool accepted = false;
-
-// Get consent ID from backend
-    final consentId =
-    await ConsentService.getConsentIdByType(ConsentType.termsAndConditions);
-    AppLogger.info("ConsentID: " + consentId.toString());
-    await showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => ConsentDialog(
+  /// Terms & Conditions Acceptance. Shown on first app launch.
+  static Future<bool> showTermsAndConditions(BuildContext context) =>
+      _showConsent(
+        context,
+        consentType: ConsentType.termsAndConditions,
         title: 'Accept Terms & Conditions',
         titleIcon: Icons.check_circle_outline,
-        titleColor: const Color(0xFFD97706), // Orange
+        titleColor: const Color(0xFFD97706),
         message:
             'To continue, please accept our Terms & Conditions and Privacy Policy to use the Pharmaish platform.',
         checkboxText:
             'I have read and agree to the Terms & Conditions and Privacy Policy',
         requireCheckbox: true,
         confirmButtonText: 'I Accept',
-        cancelButtonText: 'Cancel',
         links: {
           'Terms & Conditions':
               '${AppConstants.documentsProdBaseUrl}/Terms_and_Conditions.pdf',
           'Privacy Policy':
               '${AppConstants.documentsProdBaseUrl}/Privacy_Policy.pdf',
         },
-        onConfirm: () async {
-          accepted = true;
-          // await ConsentService.logConsent(
-          //   consentType: ConsentType.termsAndConditions,
-          //   granted: true,
-          //   metadata: {
-          //     'context': 'app_launch',
-          //     'mandatory': true,
-          //     'compliance': 'Legal',
-          //   },
-          // );
-          if (consentId != null) {
-            await ConsentService.acceptConsent(
-              // ✅ Call accept API
-              consentId: consentId,
-              metadata: {
-                'context': 'app_launch',
-                'mandatory': true,
-                'compliance': 'DPDP',
-              },
-            );
-          }
+        metadata: const {
+          'context': 'app_launch',
+          'mandatory': true,
+          'compliance': 'DPDP',
         },
-        onCancel: () async {
-          // ✅ NEW: Handle cancel
-          accepted = false;
-          Navigator.of(context).pop(); 
-          if (consentId != null) {
-            await ConsentService.rejectConsent(
-                // ✅ Call reject API
-                consentId: consentId,
-                reason: 'User declined consent',
-                metadata: {
-                  'action': 'rejected',
-                  'reason': 'User clicked cancel',
-                  'context': 'app_launch'
-                });
-          }
-        },
-      ),
-    );
+      );
 
-    return accepted;
-  }
-
-  /// Patient Counselling Disclaimer
-  /// Shown in footer or when accessing pharmacy support features
+  /// Patient Counselling Disclaimer. Information-only — no consent logging.
   static Future<void> showPatientCounsellingDisclaimer(
-    BuildContext context,
-  ) async {
+      BuildContext context) async {
     await showDialog(
       context: context,
       barrierDismissible: true,
       builder: (context) => InfoDialog(
         title: 'Patient Counselling Disclaimer',
         titleIcon: Icons.info_outline,
-        titleColor: const Color(0xFFD97706), // Orange
+        titleColor: const Color(0xFFD97706),
         message:
             'Pharmacist counselling is for educational purposes only and is NOT a substitute for medical advice. Users must consult their doctor for any diagnosis or treatment changes.',
         buttonText: 'Understood',
-        onConfirm: () {
-          // No logging needed for information-only disclaimers
-        },
+        onConfirm: () {},
       ),
     );
   }
 
-  /// Account/Data Deletion Confirmation
-  /// Shown when user requests account deletion
-  static Future<bool> showAccountDeletionConfirmation(
-    BuildContext context,
-  ) async {
-    bool confirmed = false;
-
-// Get consent ID from backend
-    final consentId =
-        await ConsentService.getConsentIdByType(ConsentType.generalDataConsent);
-    await showDialog(
-      context: context,
-      barrierDismissible: true,
-      builder: (context) => ConsentDialog(
+  /// Account/Data Deletion Confirmation (DPDP Right to be Forgotten).
+  /// NOTE: uses `generalDataConsent` type — preserved from original code, may
+  /// be a backend-side bug worth confirming with the team.
+  static Future<bool> showAccountDeletionConfirmation(BuildContext context) =>
+      _showConsent(
+        context,
+        consentType: ConsentType.generalDataConsent,
         title: 'Delete Account & Data?',
         titleIcon: Icons.warning_amber,
         titleColor: Colors.red.shade600,
         message:
             'Deleting your account will permanently erase all your stored data. Do you want to continue?',
-        requireCheckbox: false,
         confirmButtonText: 'Yes, Delete',
-        cancelButtonText: 'Cancel',
-        onConfirm: () async {
-          confirmed = true;
-          // Log the deletion request
-          // await ConsentService.logConsent(
-          //   consentType: ConsentType.generalDataConsent,
-          //   granted: false,
-          //   metadata: {
-          //     'action': 'account_deletion_requested',
-          //     'compliance': 'DPDP Right to be Forgotten',
-          //   },
-          // );
-
-          if (consentId != null) {
-            await ConsentService.acceptConsent(
-              // ✅ Call accept API
-              consentId: consentId,
-              metadata: {
-                'action': 'account_deletion_requested',
-                'compliance': 'DPDP Right to be Forgotten'
-              },
-            );
-          }
-        },
-        onCancel: () async {
-          // ✅ NEW: Handle cancel
-          confirmed = false;
-          Navigator.of(context).pop(); 
-          if (consentId != null) {
-            await ConsentService.rejectConsent(
-                // ✅ Call reject API
-                consentId: consentId,
-                reason: 'User declined consent',
-                metadata: {
-                  'action': 'rejected',
-                  'reason': 'User clicked cancel',
-                  'context': 'account_deletion_requested'
-                });
-          }
-        },
         barrierDismissible: true,
-      ),
-    );
-
-    return confirmed;
-  }
+        metadata: const {
+          'action': 'account_deletion_requested',
+          'compliance': 'DPDP Right to be Forgotten',
+        },
+      );
 }

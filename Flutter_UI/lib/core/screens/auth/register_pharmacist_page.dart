@@ -1,5 +1,7 @@
 import 'dart:async';
 import 'package:pharmaish/core/theme/app_theme.dart';
+import 'package:pharmaish/shared/widgets/app_button.dart';
+import 'package:pharmaish/shared/widgets/app_snackbar.dart';
 import 'package:pharmaish/shared/widgets/step_progress_indicator.dart';
 import 'package:pharmaish/utils/app_logger.dart';
 import 'package:flutter/material.dart';
@@ -127,13 +129,8 @@ class _PharmacistRegistrationPageState
     } catch (e) {
       AppLogger.error('Error opening Area Retailer Policy', e);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Unable to open policy document'),
-            backgroundColor: Colors.red,
-            duration: Duration(seconds: 3),
-          ),
-        );
+        AppSnackBar.error(context, 'Unable to open policy document',
+            duration: const Duration(seconds: 3));
       }
     }
   }
@@ -581,11 +578,11 @@ class _PharmacistRegistrationPageState
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
+                  const Row(
                     children: [
-                      const Icon(Icons.map, color: AppTheme.primaryColor),
-                      const SizedBox(width: 8),
-                      const Text(
+                      Icon(Icons.map, color: AppTheme.primaryColor),
+                      SizedBox(width: 8),
+                      Text(
                         'Location:',
                         style: TextStyle(fontWeight: FontWeight.bold),
                       ),
@@ -607,10 +604,7 @@ class _PharmacistRegistrationPageState
                     label: Text(_latitude != null
                         ? 'Update Location'
                         : 'Select Current Location'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppTheme.primaryColor,
-                      foregroundColor: Colors.white,
-                    ),
+                    style: AppButton.primary(),
                   ),
                 ],
               ),
@@ -775,10 +769,6 @@ class _PharmacistRegistrationPageState
                 final phoneRegex = RegExp(r'^[6-9]\d{9}$');
                 if (!phoneRegex.hasMatch(value!)) {
                   return 'Enter valid 10-digit mobile number';
-                }
-                if (value == _spcController.text &&
-                    _spcController.text.isNotEmpty) {
-                  return 'Cannot be same as SPC number';
                 }
                 return null;
               },
@@ -1000,7 +990,7 @@ class _PharmacistRegistrationPageState
 
   Widget _buildDropdownField() {
     return DropdownButtonFormField<String>(
-      value: _selectedState,
+      initialValue: _selectedState,
       isExpanded: true,
       decoration: InputDecoration(
         labelText: 'State *',
@@ -1261,10 +1251,6 @@ class _PharmacistRegistrationPageState
       setState(() => _errorMessage = 'Enter valid 10-digit mobile number');
       return false;
     }
-    if (_userNameController.text == _spcController.text) {
-      setState(() => _errorMessage = 'Username cannot be same as SPC number');
-      return false;
-    }
     if (_passwordController.text.isEmpty) {
       setState(() => _errorMessage = 'Password is required');
       return false;
@@ -1391,12 +1377,7 @@ class _PharmacistRegistrationPageState
     if (!consentAccepted) {
       if (mounted) {
         Navigator.of(context).pop(); // Exit if declined
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Registration consent is required to proceed'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        AppSnackBar.error(context, 'Registration consent is required to proceed');
       }
       return; // Stop registration
     }
@@ -1468,21 +1449,17 @@ class _PharmacistRegistrationPageState
           if (responseData['success'] == true) {
             _showSuccessDialog();
           } else {
-            final errors = responseData['errors'] as List<dynamic>?;
             setState(() {
-              _errorMessage = errors?.isNotEmpty == true
-                  ? errors!.first.toString()
-                  : 'Registration failed. Please try again.';
+              _errorMessage = _extractErrorMessages(
+                  responseData, 'Registration failed. Please try again.');
             });
           }
         } else if (response.statusCode == 400) {
           try {
             final errorData = jsonDecode(response.body);
-            final errors = errorData['errors'] as List<dynamic>?;
             setState(() {
-              _errorMessage = errors?.isNotEmpty == true
-                  ? errors!.first.toString()
-                  : 'Invalid registration data. Please check your inputs.';
+              _errorMessage = _extractErrorMessages(
+                  errorData, 'Invalid registration data. Please check your inputs.');
             });
           } catch (e) {
             setState(() {
@@ -1513,6 +1490,27 @@ class _PharmacistRegistrationPageState
         _errorMessage = 'Authentication token not found. Please log in again.';
       });
     }
+  }
+
+  String _extractErrorMessages(dynamic errorData, String fallback) {
+    final errors = errorData['errors'];
+    if (errors is List && errors.isNotEmpty) {
+      return errors.join('\n');
+    }
+    if (errors is Map) {
+      final messages = <String>[];
+      errors.forEach((field, fieldErrors) {
+        if (fieldErrors is List) {
+          for (final msg in fieldErrors) {
+            messages.add('$field: $msg');
+          }
+        }
+      });
+      if (messages.isNotEmpty) return messages.join('\n');
+    }
+    final message = errorData['message'];
+    if (message is String && message.isNotEmpty) return message;
+    return fallback;
   }
 
   void _showSuccessDialog() {

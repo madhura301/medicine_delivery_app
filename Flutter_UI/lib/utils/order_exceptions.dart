@@ -65,6 +65,5 @@ class OrderNetworkException extends OrderException {
 }
 
 class OrderPermissionException extends OrderException {
-  OrderPermissionException(OrderErrorType type, String message)
-      : super(type, message);
+  OrderPermissionException(super.type, super.message);
 }

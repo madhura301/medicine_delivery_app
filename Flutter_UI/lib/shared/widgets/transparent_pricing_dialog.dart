@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:pharmaish/core/app_routes.dart';
 
 class TransparentPricingDialog extends StatefulWidget {
-  const TransparentPricingDialog();
+  const TransparentPricingDialog({super.key});
 
   @override
   State<TransparentPricingDialog> createState() =>
@@ -54,13 +54,13 @@ class TransparentPricingDialogState extends State<TransparentPricingDialog> {
 
                 _pricingItem(
                   text: 'Platform Access & Technology Usage Fee:\n',
-                  trailing: Text.rich(
+                  trailing: const Text.rich(
                     TextSpan(children: [
-                      const TextSpan(
+                      TextSpan(
                         text: '2%',
                         style: TextStyle(fontWeight: FontWeight.bold),
                       ),
-                      const TextSpan(
+                      TextSpan(
                         text: ' per successful order',
                         style: TextStyle(fontStyle: FontStyle.italic),
                       ),
@@ -85,16 +85,16 @@ class TransparentPricingDialogState extends State<TransparentPricingDialog> {
                 const Divider(height: 24),
 
                 _pricingItem(
-                  leading: Text.rich(TextSpan(children: [
-                    const TextSpan(
+                  leading: const Text.rich(TextSpan(children: [
+                    TextSpan(
                       text: '100%',
                       style: TextStyle(fontWeight: FontWeight.bold),
                     ),
-                    const TextSpan(
+                    TextSpan(
                       text: ' of the invoice value is ',
                       style: TextStyle(fontStyle: FontStyle.italic),
                     ),
-                    const TextSpan(
+                    TextSpan(
                       text: 'remitted to the pharmacy.',
                       style: TextStyle(
                           fontWeight: FontWeight.bold,

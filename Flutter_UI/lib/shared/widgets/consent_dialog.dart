@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
+import 'package:pharmaish/shared/widgets/app_snackbar.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 /// Generic consent dialog that can be used for various consent scenarios
@@ -49,12 +50,7 @@ class _ConsentDialogState extends State<ConsentDialog> {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Unable to open link'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        AppSnackBar.error(context, 'Unable to open link');
       }
     }
   }

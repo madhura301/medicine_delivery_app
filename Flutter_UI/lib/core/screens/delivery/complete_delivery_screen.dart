@@ -2,9 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:dio/dio.dart';
 import 'package:pharmaish/utils/app_logger.dart';
-import 'package:pharmaish/utils/constants.dart';
-import 'package:pharmaish/utils/storage.dart';
 import 'package:pharmaish/shared/models/order_model.dart';
+import 'package:pharmaish/core/services/order_service.dart';
 
 class CompleteDeliveryScreen extends StatefulWidget {
   final OrderModel order;
@@ -13,12 +12,12 @@ class CompleteDeliveryScreen extends StatefulWidget {
   final String? deliveryAddress; // ← NEW param
 
   const CompleteDeliveryScreen({
-    Key? key,
+    super.key,
     required this.order,
     required this.customerName,
     this.customerPhone,
     this.deliveryAddress,       // ← NEW param
-  }) : super(key: key);
+  });
 
   @override
   State<CompleteDeliveryScreen> createState() => _CompleteDeliveryScreenState();
@@ -31,29 +30,10 @@ class _CompleteDeliveryScreenState extends State<CompleteDeliveryScreen> {
       List.generate(4, (index) => TextEditingController());
 
   bool _isCompleting = false;
-  late Dio _dio;
 
   @override
   void initState() {
     super.initState();
-    _setupDio();
-  }
-
-  void _setupDio() {
-    _dio = Dio();
-    _dio.options.baseUrl = AppConstants.apiBaseUrl;
-    _dio.options.connectTimeout = const Duration(seconds: 30);
-    _dio.options.receiveTimeout = const Duration(seconds: 30);
-
-    _dio.interceptors.add(InterceptorsWrapper(
-      onRequest: (options, handler) async {
-        final token = await StorageService.getAuthToken();
-        if (token != null) {
-          options.headers['Authorization'] = 'Bearer $token';
-        }
-        handler.next(options);
-      },
-    ));
   }
 
   Future<void> _completeDelivery() async {
@@ -70,65 +50,63 @@ class _CompleteDeliveryScreenState extends State<CompleteDeliveryScreen> {
     try {
       AppLogger.info('Completing delivery for order ${widget.order.orderId} with OTP: $otp');
 
-      final response = await _dio.put(
-        '/Orders/${widget.order.orderId}/complete',
-        data: {'OTP': otp},
+      await OrderService.completeDelivery(
+        orderId: widget.order.orderId,
+        otp: otp,
       );
 
-      if (response.statusCode == 200) {
-        AppLogger.info('Delivery completed successfully');
-        if (mounted) {
-          await showDialog(
-            context: context,
-            barrierDismissible: false,
-            builder: (context) => AlertDialog(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-              title: const Row(children: [
-                Icon(Icons.check_circle, color: Colors.green, size: 32),
-                SizedBox(width: 12),
-                Text('Delivery Complete!'),
-              ]),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Order #${widget.order.orderNumber ?? widget.order.orderId} has been successfully delivered.'),
-                  const SizedBox(height: 12),
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Colors.green.shade50,
-                      borderRadius: BorderRadius.circular(8),
+      AppLogger.info('Delivery completed successfully');
+      if (mounted) {
+        await showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            title: const Row(children: [
+              Icon(Icons.check_circle, color: Colors.green, size: 32),
+              SizedBox(width: 12),
+              Text('Delivery Complete!'),
+            ]),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Order #${widget.order.orderNumber ?? widget.order.orderId} has been successfully delivered.'),
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.green.shade50,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(children: [
+                    Icon(Icons.person, color: Colors.green.shade700, size: 20),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(widget.customerName,
+                        style: TextStyle(fontWeight: FontWeight.w600, color: Colors.green.shade900)),
                     ),
-                    child: Row(children: [
-                      Icon(Icons.person, color: Colors.green.shade700, size: 20),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(widget.customerName,
-                          style: TextStyle(fontWeight: FontWeight.w600, color: Colors.green.shade900)),
-                      ),
-                    ]),
-                  ),
-                ],
-              ),
-              actions: [
-                ElevatedButton(
-                  onPressed: () {
-                    Navigator.of(context).pop(); // close dialog
-                    Navigator.of(context).pop(true); // return success
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.green,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                  ),
-                  child: const Text('Done'),
+                  ]),
                 ),
               ],
             ),
-          );
-        }
+            actions: [
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.of(context).pop();
+                  Navigator.of(context).pop(true);
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.green,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+                child: const Text('Done'),
+              ),
+            ],
+          ),
+        );
       }
     } on DioException catch (e) {
       AppLogger.error('Error completing delivery: ${e.message}');
@@ -177,8 +155,12 @@ class _CompleteDeliveryScreenState extends State<CompleteDeliveryScreen> {
 
   @override
   void dispose() {
-    for (var c in _digitControllers) c.dispose();
-    for (var n in _focusNodes) n.dispose();
+    for (var c in _digitControllers) {
+      c.dispose();
+    }
+    for (var n in _focusNodes) {
+      n.dispose();
+    }
     super.dispose();
   }
 

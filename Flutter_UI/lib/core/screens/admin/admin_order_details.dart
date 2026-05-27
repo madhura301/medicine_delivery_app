@@ -5,28 +5,29 @@ import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import 'package:intl/intl.dart';
 import 'package:pharmaish/shared/models/order_assignment_history_model.dart';
+import 'package:pharmaish/shared/widgets/app_button.dart';
 import 'package:pharmaish/shared/widgets/order_assignment_history_widget.dart';
 import 'package:pharmaish/utils/app_logger.dart';
-import 'package:pharmaish/utils/constants.dart';
 import 'package:pharmaish/utils/storage.dart';
-import 'package:pharmaish/config/environment_config.dart';
 import 'package:pharmaish/shared/models/order_model.dart';
 import 'package:pharmaish/shared/widgets/authenticated_image.dart';
+import 'package:pharmaish/core/services/dio_client.dart';
+import 'package:pharmaish/core/services/order_service.dart';
 
 class AdminOrderDetailsPage extends StatefulWidget {
   final OrderModel order;
 
   const AdminOrderDetailsPage({
-    Key? key,
+    super.key,
     required this.order,
-  }) : super(key: key);
+  });
 
   @override
   State<AdminOrderDetailsPage> createState() => _AdminOrderDetailsPageState();
 }
 
 class _AdminOrderDetailsPageState extends State<AdminOrderDetailsPage> {
-  late Dio _dio;
+  final Dio _dio = DioClient.instance;
   bool _isLoading = true;
   String? _errorMessage;
   bool _isLoadingCustomer = true;
@@ -44,34 +45,7 @@ class _AdminOrderDetailsPageState extends State<AdminOrderDetailsPage> {
   void initState() {
     super.initState();
     _currentOrder = widget.order;
-    _setupDio();
     _loadOrderDetails();
-  }
-
-  void _setupDio() {
-    _dio = Dio();
-    _dio.options.baseUrl = AppConstants.apiBaseUrl;
-    _dio.options.connectTimeout = EnvironmentConfig.timeoutDuration;
-    _dio.options.receiveTimeout = EnvironmentConfig.timeoutDuration;
-
-    if (EnvironmentConfig.shouldLog) {
-      _dio.interceptors.add(LogInterceptor(
-        requestBody: true,
-        responseBody: true,
-        requestHeader: true,
-        logPrint: (object) => AppLogger.info('API: $object'),
-      ));
-    }
-
-    _dio.interceptors.add(InterceptorsWrapper(
-      onRequest: (options, handler) async {
-        final token = await StorageService.getAuthToken();
-        if (token != null) {
-          options.headers['Authorization'] = 'Bearer $token';
-        }
-        handler.next(options);
-      },
-    ));
   }
 
   /// Opens a full-screen image viewer with pinch-to-zoom.
@@ -84,13 +58,11 @@ class _AdminOrderDetailsPageState extends State<AdminOrderDetailsPage> {
 
   Future<void> _refreshOrder() async {
     try {
-      final response = await _dio.get('/Orders/${widget.order.orderId}');
-      if (response.statusCode == 200) {
-        final updatedOrder = OrderModel.fromJson(response.data);
-        setState(() {
-          _currentOrder = updatedOrder;
-        });
-      }
+      final json = await OrderService.getOrderById(widget.order.orderId);
+      final updatedOrder = OrderModel.fromJson(json);
+      setState(() {
+        _currentOrder = updatedOrder;
+      });
     } catch (e) {
       AppLogger.error('Error refreshing order: $e');
     }
@@ -223,9 +195,8 @@ class _AdminOrderDetailsPageState extends State<AdminOrderDetailsPage> {
   Future<void> _loadDeliveryAddress() async {
     try {
       setState(() => _isLoadingAddress = true);
-      final orderResp = await _dio.get('/Orders/${_currentOrder.orderId}');
-      if (orderResp.statusCode != 200) return;
-      final orderJson = orderResp.data as Map<String, dynamic>;
+      final orderJson =
+          await OrderService.getOrderById(_currentOrder.orderId);
       final addressId = orderJson['customerAddressId']?.toString() ??
           orderJson['CustomerAddressId']?.toString();
       if (addressId == null || addressId.isEmpty) return;
@@ -298,10 +269,7 @@ class _AdminOrderDetailsPageState extends State<AdminOrderDetailsPage> {
             const SizedBox(height: 24),
             ElevatedButton(
               onPressed: _loadOrderDetails,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.black,
-                foregroundColor: Colors.white,
-              ),
+              style: AppButton.primary(),
               child: const Text('Retry'),
             ),
           ],
@@ -762,8 +730,8 @@ class _AdminOrderDetailsPageState extends State<AdminOrderDetailsPage> {
         _buildDetailRow('Store Name', storeName.isNotEmpty ? storeName : 'N/A'),
         _buildDetailRow(
             'Owner',
-            '${ownerFirst} ${ownerLast}'.trim().isNotEmpty
-                ? '${ownerFirst} ${ownerLast}'.trim()
+            '$ownerFirst $ownerLast'.trim().isNotEmpty
+                ? '$ownerFirst $ownerLast'.trim()
                 : 'N/A'),
         _buildDetailRow('Mobile', mobile.isNotEmpty ? mobile : 'N/A'),
         if (addressParts.isNotEmpty) _buildDetailRow('Address', addressParts),
@@ -918,13 +886,13 @@ class _AdminOrderDetailsPageState extends State<AdminOrderDetailsPage> {
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(color: Colors.grey.shade300),
                   ),
-                  child: Column(
+                  child: const Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Icon(Icons.broken_image,
+                      Icon(Icons.broken_image,
                           size: 48, color: Colors.grey),
-                      const SizedBox(height: 8),
-                      const Text('Failed to load bill image'),
+                      SizedBox(height: 8),
+                      Text('Failed to load bill image'),
                     ],
                   ),
                 );

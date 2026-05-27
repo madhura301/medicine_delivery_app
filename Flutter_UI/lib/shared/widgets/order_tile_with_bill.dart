@@ -2,16 +2,13 @@
 // Shows "Assign Delivery Boy" button for BillUploaded orders
 
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
-import 'package:pharmaish/core/app_routes.dart';
 import 'package:pharmaish/core/screens/payment/payment_summary_page.dart';
 import 'package:pharmaish/shared/models/order_model.dart';
 import 'package:pharmaish/core/screens/orders/accepted_order_bill_screen.dart';
 import 'package:pharmaish/core/screens/delivery/assign_delivery_boy_screen.dart';
-import 'package:pharmaish/shared/widgets/payment_summary_dialog.dart';
 import 'package:pharmaish/shared/widgets/authenticated_image.dart';
+import 'package:pharmaish/shared/widgets/order_status_chip.dart';
 import 'package:pharmaish/utils/consent_manager.dart';
-import 'package:pharmaish/utils/constants.dart';
 
 class OrderTileWithBill extends StatelessWidget {
   final OrderModel order;
@@ -25,7 +22,7 @@ class OrderTileWithBill extends StatelessWidget {
   final VoidCallback? onRefresh;
 
   const OrderTileWithBill({
-    Key? key,
+    super.key,
     required this.order,
     required this.customerName,
     this.customerEmail,
@@ -35,7 +32,7 @@ class OrderTileWithBill extends StatelessWidget {
     this.onAccept,
     this.onReject,
     this.onRefresh,
-  }) : super(key: key);
+  });
 
   bool _isAccepted() {
     final statusLower = order.status.toLowerCase();
@@ -503,50 +500,7 @@ class OrderTileWithBill extends StatelessWidget {
     );
   }
 
-  Widget _buildStatusChip() {
-    Color chipColor;
-    String statusText = order.status;
-
-    final statusLower = order.status.toLowerCase();
-    if (statusLower.contains('pending') || statusLower.contains('assigned')) {
-      chipColor = Colors.orange;
-      statusText = 'Pending';
-    } else if (statusLower.contains('accepted')) {
-      chipColor = Colors.green;
-      statusText = 'Accepted';
-    } else if (statusLower.contains('billuploaded')) {
-      chipColor = Colors.purple;
-      statusText = 'Bill Uploaded';
-    } else if (statusLower.contains('outfordelivery')) {
-      chipColor = Colors.blue;
-      statusText = 'Out for Delivery';
-    } else if (statusLower.contains('rejected')) {
-      chipColor = Colors.red;
-      statusText = 'Rejected';
-    } else if (statusLower.contains('completed')) {
-      chipColor = Colors.teal;
-      statusText = 'Completed';
-    } else {
-      chipColor = Colors.grey;
-    }
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: chipColor.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: chipColor, width: 1),
-      ),
-      child: Text(
-        statusText,
-        style: TextStyle(
-          color: chipColor.withOpacity(0.9),
-          fontSize: 11,
-          fontWeight: FontWeight.bold,
-        ),
-      ),
-    );
-  }
+  Widget _buildStatusChip() => OrderStatusChip(order.status);
 
   String _getTimeAgo(DateTime dateTime) {
     final now = DateTime.now();
