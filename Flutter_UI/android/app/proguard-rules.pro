@@ -37,6 +37,19 @@
 -allowaccessmodification
 -dontpreverify
 
+# Razorpay checkout
+-keep class com.razorpay.** { *; }
+-dontwarn com.razorpay.**
+-keepattributes *Annotation*
+-keepattributes JavascriptInterface
+-keepclassmembers class * {
+    @android.webkit.JavascriptInterface <methods>;
+}
+-optimizations !method/inlining/*
+-keepclasseswithmembers class * {
+    public void onPayment*(...);
+}
+
 # Remove unused code
 -dontwarn **
 -ignorewarnings

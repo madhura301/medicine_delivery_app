@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
+import 'package:razorpay_flutter/razorpay_flutter.dart';
 import 'package:pharmaish/shared/widgets/app_snackbar.dart';
 import 'package:pharmaish/utils/app_logger.dart';
-import 'package:pharmaish/core/services/dio_client.dart';
+import 'package:pharmaish/core/services/payment_service.dart';
 
 class PaymentSummaryPage extends StatefulWidget {
   final int orderId;           // ← NEW: required to record payment
@@ -27,13 +28,27 @@ class PaymentSummaryPage extends StatefulWidget {
 class _PaymentSummaryPageState extends State<PaymentSummaryPage> {
   PaymentMethod _selectedPaymentMethod = PaymentMethod.upi;
   bool _isProcessing = false;
-  final Dio _dio = DioClient.instance;
+  late final Razorpay _razorpay;
+
+  /// Razorpay order id for the checkout currently in flight (needed to verify
+  /// the payment server-side once the success callback fires).
+  String? _currentRazorpayOrderId;
 
   double get totalAmount => widget.medicinesTotal + widget.convenienceFee;
 
   @override
   void initState() {
     super.initState();
+    _razorpay = Razorpay();
+    _razorpay.on(Razorpay.EVENT_PAYMENT_SUCCESS, _onPaymentSuccess);
+    _razorpay.on(Razorpay.EVENT_PAYMENT_ERROR, _onPaymentError);
+    _razorpay.on(Razorpay.EVENT_EXTERNAL_WALLET, _onExternalWallet);
+  }
+
+  @override
+  void dispose() {
+    _razorpay.clear();
+    super.dispose();
   }
 
   @override
@@ -455,60 +470,131 @@ Widget _buildPaymentMethods() {
     );
   }
 
+  /// Step 1: ask the server to create a Razorpay order, then open checkout.
   Future<void> _handlePayment() async {
     setState(() => _isProcessing = true);
 
     try {
-      // Build a transaction ID (in real app this comes from payment gateway)
-      final transactionId = 'TXN_${widget.orderId}_${DateTime.now().millisecondsSinceEpoch}';
-      final paymentMode = _paymentModeString(_selectedPaymentMethod);
+      AppLogger.info(
+          'Creating Razorpay order for order ${widget.orderId}, amount=$totalAmount');
 
-      AppLogger.info('Recording payment for order ${widget.orderId}: '
-          'amount=\$totalAmount, mode=\$paymentMode, txn=\$transactionId');
-
-      // POST /api/Payments  — records the payment and marks order FullyPaid
-      await _dio.post(
-        '/Payments',
-        data: {
-          'orderId': widget.orderId,
-          'paymentMode': paymentMode,
-          'transactionId': transactionId,
-          'amount': totalAmount,
-          'paymentStatus': 1, // 1 = Success
-        },
+      final rzpOrder = await PaymentService.createRazorpayOrder(
+        orderId: widget.orderId,
+        amount: totalAmount,
       );
 
-      if (mounted) {
-        _showSuccessDialog();
-      }
+      _currentRazorpayOrderId = rzpOrder.razorpayOrderId;
+
+      final options = <String, dynamic>{
+        'key': rzpOrder.keyId,
+        'order_id': rzpOrder.razorpayOrderId,
+        'amount': rzpOrder.amountInPaise,
+        'currency': rzpOrder.currency,
+        'name': 'Pharmaish',
+        'description': 'Order #${widget.orderNumber ?? widget.orderId}',
+        // Pre-select the method the user tapped; they can still switch in the sheet.
+        'prefill': {
+          if (_razorpayMethod(_selectedPaymentMethod) != null)
+            'method': _razorpayMethod(_selectedPaymentMethod),
+        },
+      };
+
+      // Razorpay's success/error callbacks drive the rest of the flow.
+      _razorpay.open(options);
     } on DioException catch (e) {
-      AppLogger.error('Payment recording failed', e);
-      String msg = 'Payment failed. Please try again.';
-      if (e.response?.data is Map) {
-        final d = e.response!.data as Map;
-        msg = d['error']?.toString() ?? d['message']?.toString() ?? msg;
-      }
+      AppLogger.error('Failed to create Razorpay order', e);
       if (mounted) {
-        AppSnackBar.error(context, msg);
+        AppSnackBar.error(context, _dioMessage(e, 'Could not start payment.'));
+        setState(() => _isProcessing = false);
       }
     } catch (e) {
-      AppLogger.error('Unexpected payment error', e);
+      AppLogger.error('Unexpected error starting payment', e);
       if (mounted) {
         AppSnackBar.error(
             context, 'An unexpected error occurred. Please try again.');
+        setState(() => _isProcessing = false);
       }
-    } finally {
-      if (mounted) setState(() => _isProcessing = false);
     }
   }
 
-  String _paymentModeString(PaymentMethod method) {
+  /// Step 2: checkout succeeded on the client — verify it on the server before
+  /// treating the payment as confirmed.
+  Future<void> _onPaymentSuccess(PaymentSuccessResponse response) async {
+    AppLogger.info(
+        'Razorpay checkout success: paymentId=${response.paymentId}, '
+        'orderId=${response.orderId}');
+
+    try {
+      await PaymentService.verifyPayment(
+        orderId: widget.orderId,
+        razorpayOrderId:
+            _currentRazorpayOrderId ?? response.orderId ?? '',
+        razorpayPaymentId: response.paymentId ?? '',
+        razorpaySignature: response.signature ?? '',
+      );
+
+      if (mounted) {
+        setState(() => _isProcessing = false);
+        _showSuccessDialog();
+      }
+    } on DioException catch (e) {
+      AppLogger.error('Server payment verification failed', e);
+      if (mounted) {
+        setState(() => _isProcessing = false);
+        AppSnackBar.error(
+          context,
+          _dioMessage(
+            e,
+            'Payment could not be verified. If money was deducted, please '
+            'contact support before paying again.',
+          ),
+        );
+      }
+    } catch (e) {
+      AppLogger.error('Unexpected error verifying payment', e);
+      if (mounted) {
+        setState(() => _isProcessing = false);
+        AppSnackBar.error(
+            context, 'An unexpected error occurred while verifying payment.');
+      }
+    }
+  }
+
+  void _onPaymentError(PaymentFailureResponse response) {
+    AppLogger.error(
+        'Razorpay checkout error: code=${response.code}, message=${response.message}');
+    if (!mounted) return;
+    setState(() => _isProcessing = false);
+
+    final msg = response.code == Razorpay.PAYMENT_CANCELLED
+        ? 'Payment cancelled.'
+        : (response.message?.isNotEmpty == true
+            ? response.message!
+            : 'Payment failed. Please try again.');
+    AppSnackBar.error(context, msg);
+  }
+
+  void _onExternalWallet(ExternalWalletResponse response) {
+    // Final success/failure still arrives via the success/error callbacks.
+    AppLogger.info('Razorpay external wallet selected: ${response.walletName}');
+  }
+
+  String _dioMessage(DioException e, String fallback) {
+    if (e.response?.data is Map) {
+      final d = e.response!.data as Map;
+      return d['message']?.toString() ?? d['error']?.toString() ?? fallback;
+    }
+    return fallback;
+  }
+
+  /// Maps the in-app method tiles to Razorpay's `prefill.method` values.
+  String? _razorpayMethod(PaymentMethod method) {
     switch (method) {
-      case PaymentMethod.upi:        return 'UPI';
-      case PaymentMethod.card:       return 'Card';
-      case PaymentMethod.netBanking: return 'NetBanking';
-      case PaymentMethod.wallet:     return 'Wallet';
-      case PaymentMethod.cod:        return 'COD';
+      case PaymentMethod.upi:        return 'upi';
+      case PaymentMethod.card:       return 'card';
+      case PaymentMethod.netBanking: return 'netbanking';
+      case PaymentMethod.wallet:     return 'wallet';
+      case PaymentMethod.cod:        return null;
     }
   }
 
