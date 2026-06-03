@@ -48,7 +48,16 @@
       "Bash(where.exe flutter *)",
       "Bash(where.exe dart *)",
       "PowerShell($env:Path -split ';' | Where-Object { $_ -match 'flutter|dart|Flutter' }; Write-Output \"---PATH SCAN DONE---\"; Get-ChildItem -Path \"C:\\\\\",\"J:\\\\\" -Filter \"flutter.bat\" -Recurse -Depth 4 -ErrorAction SilentlyContinue -File | Select-Object -First 5 -ExpandProperty FullName)",
-      "PowerShell(Get-ChildItem *)"
+      "PowerShell(Get-ChildItem *)",
+      "WebFetch(domain:razorpay.com)",
+      "Read(//j/tmp/**)",
+      "Bash(python -c \"import pypdf; print\\('pypdf ok'\\)\")",
+      "Bash(python -c \"import pdfplumber; print\\('pdfplumber ok'\\)\")",
+      "Bash(python -c \"import fitz; print\\('pymupdf ok'\\)\")",
+      "Bash(pip install *)",
+      "Bash(python -c \"import pypdf; r=pypdf.PdfReader\\(r'C:\\\\Users\\\\Admin\\\\Downloads\\\\Razorpay Route Marketplace Integration Wireframe.pdf'\\); print\\('PAGES',len\\(r.pages\\)\\); [print\\('==== PAGE',i+1,'====\\\\n', p.extract_text\\(\\)\\) for i,p in enumerate\\(r.pages\\)]\")",
+      "Bash(python -c \"import pypdf,io; r=pypdf.PdfReader\\(r'C:\\\\Users\\\\Admin\\\\Downloads\\\\Razorpay Route Marketplace Integration Wireframe.pdf'\\); open\\(r'C:\\\\Users\\\\Admin\\\\Downloads\\\\_route_wireframe.txt','w',encoding='utf-8'\\).write\\('\\\\n'.join\\('==== PAGE %d ====\\\\n%s'%\\(i+1,p.extract_text\\(\\)\\) for i,p in enumerate\\(r.pages\\)\\)\\)\")",
+      "Bash(python -c \"import os; os.remove\\(r'C:\\\\Users\\\\Admin\\\\Downloads\\\\_route_wireframe.txt'\\)\")"
     ]
   }
 }

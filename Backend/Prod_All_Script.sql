@@ -164,7 +164,7 @@ CREATE TABLE IF NOT EXISTS "OrderItems" (
     "UnitPrice" decimal(18,2) NOT NULL,
     "TotalPrice" decimal(18,2) NOT NULL,
     CONSTRAINT "PK_OrderItems" PRIMARY KEY ("Id"),
-    CONSTRAINT "FK_OrderItems_Orders_OrderId" FOREIGN KEY ("OrderId") REFERENCES "Orders" ("Id") ON DELETE CASCADE,
+    CONSTRAINT "FK_OrderItems_Orders_OrderId" FOREIGN KEY ("OrderId") REFERENCES "Orders" ("OrderId") ON DELETE CASCADE,
     CONSTRAINT "FK_OrderItems_Products_ProductId" FOREIGN KEY ("ProductId") REFERENCES "Products" ("Id") ON DELETE RESTRICT
 );
 
@@ -376,7 +376,8 @@ VALUES
     (48, 'AllCustomerDelete', 'Can delete any customer account', 'Customer', NOW(), true),
     (49, 'AllChemistRead', 'Can read all Chemist information', 'Chemist', NOW(), true),
     (50, 'AllChemistUpdate', 'Can update any Chemist information', 'Chemist', NOW(), true),
-    (51, 'AllChemistDelete', 'Can delete any Chemist account', 'Chemist', NOW(), true);
+    (51, 'AllChemistDelete', 'Can delete any Chemist account', 'Chemist', NOW(), true)
+ON CONFLICT DO NOTHING;
 
 -- =====================================================
 -- SECTION 5: SEED DATA - IDENTITY ROLES
@@ -389,7 +390,8 @@ VALUES
     ('22222222-2222-2222-2222-222222222222', 'Manager', 'MANAGER', '38424e1e-b8df-4484-bb7c-2b01feecebe4'),
     ('33333333-3333-3333-3333-333333333333', 'CustomerSupport', 'CUSTOMERSUPPORT', 'ff9cf118-d192-4c50-900c-8eb5c92d5288'),
     ('44444444-4444-4444-4444-444444444444', 'Customer', 'CUSTOMER', '8c8930a9-68c0-4849-a307-0f8be968d489'),
-    ('55555555-5555-5555-5555-555555555555', 'Chemist', 'CHEMIST', '79ec17b2-a6fc-4709-bfaf-71308fa70fd1');
+    ('55555555-5555-5555-5555-555555555555', 'Chemist', 'CHEMIST', '79ec17b2-a6fc-4709-bfaf-71308fa70fd1')
+ON CONFLICT DO NOTHING;
 
 -- =====================================================
 -- SECTION 6: SEED DATA - ROLE PERMISSIONS
@@ -446,7 +448,8 @@ VALUES
     (48, '11111111-1111-1111-1111-111111111111', NOW(), NULL, true),
     (49, '11111111-1111-1111-1111-111111111111', NOW(), NULL, true),
     (50, '11111111-1111-1111-1111-111111111111', NOW(), NULL, true),
-    (51, '11111111-1111-1111-1111-111111111111', NOW(), NULL, true);
+    (51, '11111111-1111-1111-1111-111111111111', NOW(), NULL, true)
+ON CONFLICT DO NOTHING;
 
 -- Manager Role Permissions (RoleId: 22222222-2222-2222-2222-222222222222)
 INSERT INTO "RolePermissions" ("PermissionId", "RoleId", "GrantedAt", "GrantedBy", "IsActive")
@@ -486,7 +489,8 @@ VALUES
     (48, '22222222-2222-2222-2222-222222222222', NOW(), NULL, true),
     (49, '22222222-2222-2222-2222-222222222222', NOW(), NULL, true),
     (50, '22222222-2222-2222-2222-222222222222', NOW(), NULL, true),
-    (51, '22222222-2222-2222-2222-222222222222', NOW(), NULL, true);
+    (51, '22222222-2222-2222-2222-222222222222', NOW(), NULL, true)
+ON CONFLICT DO NOTHING;
 
 -- CustomerSupport Role Permissions (RoleId: 33333333-3333-3333-3333-333333333333)
 INSERT INTO "RolePermissions" ("PermissionId", "RoleId", "GrantedAt", "GrantedBy", "IsActive")
@@ -515,7 +519,8 @@ VALUES
     (48, '33333333-3333-3333-3333-333333333333', NOW(), NULL, true),
     (49, '33333333-3333-3333-3333-333333333333', NOW(), NULL, true),
     (50, '33333333-3333-3333-3333-333333333333', NOW(), NULL, true),
-    (51, '33333333-3333-3333-3333-333333333333', NOW(), NULL, true);
+    (51, '33333333-3333-3333-3333-333333333333', NOW(), NULL, true)
+ON CONFLICT DO NOTHING;
 
 -- Customer Role Permissions (RoleId: 44444444-4444-4444-4444-444444444444)
 INSERT INTO "RolePermissions" ("PermissionId", "RoleId", "GrantedAt", "GrantedBy", "IsActive")
@@ -525,7 +530,8 @@ VALUES
     (10, '44444444-4444-4444-4444-444444444444', NOW(), NULL, true),
     (42, '44444444-4444-4444-4444-444444444444', NOW(), NULL, true),
     (44, '44444444-4444-4444-4444-444444444444', NOW(), NULL, true),
-    (45, '44444444-4444-4444-4444-444444444444', NOW(), NULL, true);
+    (45, '44444444-4444-4444-4444-444444444444', NOW(), NULL, true)
+ON CONFLICT DO NOTHING;
 
 -- Chemist Role Permissions (RoleId: 55555555-5555-5555-5555-555555555555)
 INSERT INTO "RolePermissions" ("PermissionId", "RoleId", "GrantedAt", "GrantedBy", "IsActive")
@@ -540,7 +546,48 @@ VALUES
     (12, '55555555-5555-5555-5555-555555555555', NOW(), NULL, true),
     (30, '55555555-5555-5555-5555-555555555555', NOW(), NULL, true),
     (32, '55555555-5555-5555-5555-555555555555', NOW(), NULL, true),
-    (33, '55555555-5555-5555-5555-555555555555', NOW(), NULL, true);
+    (33, '55555555-5555-5555-5555-555555555555', NOW(), NULL, true)
+ON CONFLICT DO NOTHING;
+
+-- =====================================================
+-- SECTION 6.1: CREATE OTP AND RAZORPAY TABLES
+-- (EF migration: 20260416154405_AddOtpAndRazorpayTables)
+-- =====================================================
+
+-- Create RazorpayOrders table
+-- NOTE: FK references "Orders" ("OrderId") to match the EF schema (PK_Orders is "OrderId").
+CREATE TABLE IF NOT EXISTS "RazorpayOrders" (
+    "Id" integer GENERATED BY DEFAULT AS IDENTITY,
+    "OrderId" integer NOT NULL,
+    "RazorpayOrderId" character varying(100) NOT NULL,
+    "Amount" numeric(10,2) NOT NULL,
+    "Currency" character varying(10) NOT NULL,
+    "Status" character varying(20) NOT NULL,
+    "CreatedAt" timestamp with time zone NOT NULL,
+    "RazorpayPaymentId" character varying(100) NULL,
+    "RazorpaySignature" character varying(256) NULL,
+    CONSTRAINT "PK_RazorpayOrders" PRIMARY KEY ("Id"),
+    CONSTRAINT "FK_RazorpayOrders_Orders_OrderId" FOREIGN KEY ("OrderId") REFERENCES "Orders" ("OrderId") ON DELETE RESTRICT
+);
+
+-- Create UserOtps table
+CREATE TABLE IF NOT EXISTS "UserOtps" (
+    "Id" integer GENERATED BY DEFAULT AS IDENTITY,
+    "PhoneNumber" character varying(15) NOT NULL,
+    "OtpCodeHash" character varying(512) NOT NULL,
+    "Purpose" character varying(30) NOT NULL,
+    "CreatedAt" timestamp with time zone NOT NULL,
+    "ExpiresAt" timestamp with time zone NOT NULL,
+    "IsUsed" boolean NOT NULL,
+    "AttemptCount" integer NOT NULL,
+    CONSTRAINT "PK_UserOtps" PRIMARY KEY ("Id")
+);
+
+-- Indexes for RazorpayOrders and UserOtps
+CREATE INDEX IF NOT EXISTS "IX_RazorpayOrders_OrderId" ON "RazorpayOrders" ("OrderId");
+CREATE UNIQUE INDEX IF NOT EXISTS "IX_RazorpayOrders_RazorpayOrderId" ON "RazorpayOrders" ("RazorpayOrderId");
+CREATE INDEX IF NOT EXISTS "IX_UserOtps_PhoneNumber" ON "UserOtps" ("PhoneNumber");
+CREATE INDEX IF NOT EXISTS "IX_UserOtps_PhoneNumber_Purpose_IsUsed" ON "UserOtps" ("PhoneNumber", "Purpose", "IsUsed");
 
 -- =====================================================
 -- SECTION 7: VERIFICATION
@@ -560,6 +607,8 @@ SELECT 'CustomerSupports' as TableName, COUNT(*) as RecordCount FROM "CustomerSu
 SELECT 'Managers' as TableName, COUNT(*) as RecordCount FROM "Managers";
 SELECT 'Customers' as TableName, COUNT(*) as RecordCount FROM "Customers";
 SELECT 'CustomerAddresses' as TableName, COUNT(*) as RecordCount FROM "CustomerAddresses";
+SELECT 'RazorpayOrders' as TableName, COUNT(*) as RecordCount FROM "RazorpayOrders";
+SELECT 'UserOtps' as TableName, COUNT(*) as RecordCount FROM "UserOtps";
 
 -- Show role summary
 SELECT 

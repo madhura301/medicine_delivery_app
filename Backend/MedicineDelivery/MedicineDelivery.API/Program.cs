@@ -370,6 +370,7 @@ else
 {
     builder.Services.AddScoped<MedicineDelivery.Application.Interfaces.IFileStorageService, MedicineDelivery.Infrastructure.Services.LocalFileStorageService>();
 }
+builder.Services.AddScoped<MedicineDelivery.Application.Interfaces.IPolicyDocumentService, MedicineDelivery.Infrastructure.Services.PolicyDocumentService>();
 builder.Services.AddScoped<MedicineDelivery.Application.Interfaces.IPermissionCheckerService, MedicineDelivery.Infrastructure.Services.PermissionCheckerService>();
 builder.Services.AddScoped<MedicineDelivery.Application.Interfaces.IOrderService, MedicineDelivery.Infrastructure.Services.OrderService>();
 builder.Services.AddScoped<MedicineDelivery.Application.Interfaces.IConsentService, MedicineDelivery.Infrastructure.Services.ConsentService>();
