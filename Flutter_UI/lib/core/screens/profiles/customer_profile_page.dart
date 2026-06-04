@@ -1255,6 +1255,7 @@ class _AddAddressDialogState extends State<AddAddressDialog> {
       AppLogger.info(
           'Save address response: ${response.statusCode} - ${response.body}');
       if (response.statusCode == 200 || response.statusCode == 201) {
+        if (!mounted) return;
         Navigator.of(context).pop();
         widget.onAddressAdded();
       } else {
@@ -1349,10 +1350,10 @@ class _AddAddressDialogState extends State<AddAddressDialog> {
                   width: double.infinity,
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: AppTheme.primaryColor.withOpacity(0.05),
+                    color: AppTheme.primaryColor.withValues(alpha: 0.05),
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                      color: AppTheme.primaryColor.withOpacity(0.2),
+                      color: AppTheme.primaryColor.withValues(alpha: 0.2),
                     ),
                   ),
                   child: Column(

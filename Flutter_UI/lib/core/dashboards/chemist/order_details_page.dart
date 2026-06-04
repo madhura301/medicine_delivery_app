@@ -13,8 +13,8 @@ class OrderDetailsPage extends StatefulWidget {
   final String customerName;
   final String? customerEmail;
   final String? customerPhone;
-  final VoidCallback? onAccept;
-  final VoidCallback? onReject;
+  final Future<void> Function()? onAccept;
+  final Future<void> Function()? onReject;
   final VoidCallback? onRefresh;
 
   const OrderDetailsPage({
@@ -34,10 +34,10 @@ class OrderDetailsPage extends StatefulWidget {
 
 class _OrderDetailsPageState extends State<OrderDetailsPage> {
   bool _isPlaying = false;
-late OrderModel _currentOrder;
-  bool _isLoadingHistory = true;
+  bool _isProcessing = false;
+  late OrderModel _currentOrder;
 
-   @override
+  @override
   void initState() {
     super.initState();
     _currentOrder = widget.order;
@@ -47,13 +47,25 @@ late OrderModel _currentOrder;
   Future<void> _fetchFullOrder() async {
     try {
       final json = await OrderService.getOrderById(_currentOrder.orderId);
+      if (!mounted) return;
       setState(() {
         _currentOrder = OrderModel.fromJson(json);
-        _isLoadingHistory = false;
       });
     } catch (e) {
       AppLogger.error('Error fetching full order: $e');
-      setState(() => _isLoadingHistory = false);
+    }
+  }
+
+  /// Runs an accept/reject action, then re-fetches this order so the status
+  /// banner and action bar update immediately once the POST succeeds.
+  Future<void> _runAction(Future<void> Function()? action) async {
+    if (action == null || _isProcessing) return;
+    setState(() => _isProcessing = true);
+    try {
+      await action();
+      if (mounted) await _fetchFullOrder();
+    } finally {
+      if (mounted) setState(() => _isProcessing = false);
     }
   }
 
@@ -279,7 +291,7 @@ late OrderModel _currentOrder;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Row(
@@ -319,7 +331,7 @@ late OrderModel _currentOrder;
       customerId: _currentOrder.customerId,
     );
 
-    if (!accepted) {
+    if (!accepted || !mounted) {
       return;
     }
 
@@ -338,14 +350,6 @@ late OrderModel _currentOrder;
           appBar: AppBar(
             title: const Text('Prescription'),
             backgroundColor: Colors.black,
-            actions: [
-              IconButton(
-                icon: const Icon(Icons.download),
-                onPressed: () {
-                  // TODO: Implement download
-                },
-              ),
-            ],
           ),
           body: Center(
             child: InteractiveViewer(
@@ -387,14 +391,6 @@ late OrderModel _currentOrder;
           ),
         ),
       ),
-    );
-  }
-
-  Future<void> _downloadPrescriptionImage() async {
-    await downloadPrescriptionImage(
-      context,
-      orderId: _currentOrder.orderId,
-      prescriptionFileUrl: _currentOrder.prescriptionFileUrl,
     );
   }
 
@@ -455,14 +451,6 @@ late OrderModel _currentOrder;
             ),
           ),
         ),
-        const SizedBox(height: 12),
-        Center(
-          child: TextButton.icon(
-            onPressed: () => _downloadPrescriptionImage(),
-            icon: const Icon(Icons.download),
-            label: const Text('Download'),
-          ),
-        ),
       ],
     );
   }
@@ -521,13 +509,6 @@ late OrderModel _currentOrder;
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
-              TextButton.icon(
-                onPressed: () {
-                  // TODO: Implement download
-                },
-                icon: const Icon(Icons.download),
-                label: const Text('Download'),
-              ),
               TextButton.icon(
                 onPressed: () {
                   // TODO: Implement speed control
@@ -687,7 +668,7 @@ late OrderModel _currentOrder;
   Widget _buildTotalAmountCard() {
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      color: Colors.black.withOpacity(0.05),
+      color: Colors.black.withValues(alpha: 0.05),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Row(
@@ -721,7 +702,7 @@ late OrderModel _currentOrder;
         color: Colors.white,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withValues(alpha: 0.1),
             blurRadius: 8,
             offset: const Offset(0, -2),
           ),
@@ -732,8 +713,17 @@ late OrderModel _currentOrder;
           children: [
             Expanded(
               child: ElevatedButton.icon(
-                onPressed: widget.onReject,
-                icon: const Icon(Icons.close, color: Colors.white),
+                onPressed: (_isProcessing || widget.onReject == null)
+                    ? null
+                    : () => _runAction(widget.onReject),
+                icon: _isProcessing
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2, color: Colors.white),
+                      )
+                    : const Icon(Icons.close, color: Colors.white),
                 label: const Text(
                   'Reject Order',
                   style: TextStyle(color: Colors.white),
@@ -741,6 +731,7 @@ late OrderModel _currentOrder;
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.red,
                   foregroundColor: Colors.white,
+                  disabledBackgroundColor: Colors.red.shade200,
                   elevation: 2,
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   shape: RoundedRectangleBorder(
@@ -752,8 +743,17 @@ late OrderModel _currentOrder;
             const SizedBox(width: 16),
             Expanded(
               child: ElevatedButton.icon(
-                onPressed: widget.onAccept,
-                icon: const Icon(Icons.check, color: Colors.white),
+                onPressed: (_isProcessing || widget.onAccept == null)
+                    ? null
+                    : () => _runAction(widget.onAccept),
+                icon: _isProcessing
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2, color: Colors.white),
+                      )
+                    : const Icon(Icons.check, color: Colors.white),
                 label: const Text(
                   'Accept Order',
                   style: TextStyle(color: Colors.white),
@@ -761,6 +761,7 @@ late OrderModel _currentOrder;
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.green,
                   foregroundColor: Colors.white,
+                  disabledBackgroundColor: Colors.green.shade200,
                   elevation: 2,
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   shape: RoundedRectangleBorder(

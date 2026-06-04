@@ -11,7 +11,7 @@ import 'package:pharmaish/core/services/auth_service.dart';
 import 'package:pharmaish/core/services/location_service.dart';
 import 'package:pharmaish/utils/consent_manager.dart';
 import 'package:pharmaish/utils/constants.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:pharmaish/utils/document_opener.dart';
 
 class PharmacistRegistrationPage extends StatefulWidget {
   const PharmacistRegistrationPage({super.key});
@@ -107,32 +107,9 @@ class _PharmacistRegistrationPageState
   ];
 
   Future<void> _openAreaRetailerPolicy() async {
-    const String pdfUrl =
-        '${AppConstants.documentsProdBaseUrl}/AREA_RETAILER_POLICY.pdf';
-    // Test URL: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf'
-
-    try {
-      final Uri uri = Uri.parse(pdfUrl);
-
-      try {
-        await launchUrl(
-          uri,
-          mode: LaunchMode.externalApplication,
-        );
-      } catch (e) {
-        AppLogger.info('External app launch failed, trying browser mode');
-        await launchUrl(
-          uri,
-          mode: LaunchMode.platformDefault,
-        );
-      }
-    } catch (e) {
-      AppLogger.error('Error opening Area Retailer Policy', e);
-      if (mounted) {
-        AppSnackBar.error(context, 'Unable to open policy document',
-            duration: const Duration(seconds: 3));
-      }
-    }
+    final String pdfUrl =
+        AppConstants.policyDocumentUrl('AREA_RETAILER_POLICY.pdf');
+    await openAuthenticatedDocument(context, url: pdfUrl);
   }
 
   @override
@@ -226,10 +203,10 @@ class _PharmacistRegistrationPageState
           const SizedBox(height: 32),
           _buildBusinessTypeOption('Retailer', Icons.store),
           const SizedBox(height: 16),
-          _buildBusinessTypeOption('Distributor/Wholesaler', Icons.warehouse),
-          const SizedBox(height: 16),
-          _buildBusinessTypeOption('Both', Icons.business),
-          const SizedBox(height: 32),
+          // _buildBusinessTypeOption('Distributor/Wholesaler', Icons.warehouse),
+          // const SizedBox(height: 16),
+          // _buildBusinessTypeOption('Both', Icons.business),
+          // const SizedBox(height: 32),
           _buildNavigationButtons(),
         ],
       ),
@@ -244,7 +221,7 @@ class _PharmacistRegistrationPageState
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
           color: isSelected
-              ? AppTheme.primaryColor.withOpacity(0.1)
+              ? AppTheme.primaryColor.withValues(alpha: 0.1)
               : Colors.white,
           border: Border.all(
             color: isSelected ? AppTheme.primaryColor : Colors.grey.shade300,
@@ -393,32 +370,30 @@ class _PharmacistRegistrationPageState
                 border: Border.all(color: Colors.grey.shade300),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: Column(
-                children: [
-                  RadioListTile<bool>(
-                    title: const Text('GST Registered'),
-                    value: true,
-                    groupValue: _isGstRegistered,
-                    activeColor: AppTheme.primaryColor,
-                    onChanged: (value) {
-                      setState(() => _isGstRegistered = value!);
-                    },
-                  ),
-                  RadioListTile<bool>(
-                    title: const Text('GST Un-Registered'),
-                    value: false,
-                    groupValue: _isGstRegistered,
-                    activeColor: AppTheme.primaryColor,
-                    onChanged: (value) {
-                      setState(() {
-                        _isGstRegistered = value!;
-                        if (!_isGstRegistered) {
-                          _gstNumberController.clear();
-                        }
-                      });
-                    },
-                  ),
-                ],
+              child: RadioGroup<bool>(
+                groupValue: _isGstRegistered,
+                onChanged: (value) {
+                  setState(() {
+                    _isGstRegistered = value!;
+                    if (!_isGstRegistered) {
+                      _gstNumberController.clear();
+                    }
+                  });
+                },
+                child: const Column(
+                  children: [
+                    RadioListTile<bool>(
+                      title: Text('GST Registered'),
+                      value: true,
+                      activeColor: AppTheme.primaryColor,
+                    ),
+                    RadioListTile<bool>(
+                      title: Text('GST Un-Registered'),
+                      value: false,
+                      activeColor: AppTheme.primaryColor,
+                    ),
+                  ],
+                ),
               ),
             ),
             if (_isGstRegistered) ...[
@@ -700,10 +675,10 @@ class _PharmacistRegistrationPageState
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: AppTheme.primaryColor.withOpacity(0.1),
+                color: AppTheme.primaryColor.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(12),
                 border:
-                    Border.all(color: AppTheme.primaryColor.withOpacity(0.3)),
+                    Border.all(color: AppTheme.primaryColor.withValues(alpha: 0.3)),
               ),
               child: const Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -880,10 +855,10 @@ class _PharmacistRegistrationPageState
               width: double.infinity,
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: AppTheme.primaryColor.withOpacity(0.05),
+                color: AppTheme.primaryColor.withValues(alpha: 0.05),
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(
-                  color: AppTheme.primaryColor.withOpacity(0.2),
+                  color: AppTheme.primaryColor.withValues(alpha: 0.2),
                 ),
               ),
               child: Row(
@@ -1557,7 +1532,7 @@ class _PharmacistRegistrationPageState
                 width: double.infinity,
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: AppTheme.primaryColor.withOpacity(0.1),
+                  color: AppTheme.primaryColor.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: const Column(

@@ -234,6 +234,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
         if (mounted) {
           // Show success dialog
           await _showSuccessDialog();
+          if (!mounted) return;
 
           // Navigate to Reset Password page with mobile number and token
           Navigator.pushReplacement(

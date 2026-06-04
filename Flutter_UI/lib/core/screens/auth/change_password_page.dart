@@ -45,7 +45,6 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
   bool _isLoading       = false;
   String _errorMessage  = '';
   String _mobileNumber  = '';
-  String _resetToken    = ''; // token returned by forgot-password
 
   // ── Password strength ─────────────────────────────────────────────────────
   double _passwordStrength = 0;
@@ -138,7 +137,6 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
         final token = otpResp.token ?? '';
         setState(() {
           _isLoading = false;
-          _resetToken = token;
           if (token.isNotEmpty) _otpController.text = token;
           _step = 2;
         });

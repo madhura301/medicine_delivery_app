@@ -109,8 +109,8 @@ class UserCard extends StatelessWidget {
                       const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
                     color: user.isActive
-                        ? Colors.green.withOpacity(0.1)
-                        : Colors.red.withOpacity(0.1),
+                        ? Colors.green.withValues(alpha: 0.1)
+                        : Colors.red.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(
@@ -136,9 +136,9 @@ class UserCard extends StatelessWidget {
                             style: const TextStyle(fontSize: 12),
                           ),
                           backgroundColor:
-                              _getRoleColor(role).withOpacity(0.1),
+                              _getRoleColor(role).withValues(alpha: 0.1),
                           side: BorderSide(
-                              color: _getRoleColor(role).withOpacity(0.3)),
+                              color: _getRoleColor(role).withValues(alpha: 0.3)),
                         ))
                     .toList(),
               ),

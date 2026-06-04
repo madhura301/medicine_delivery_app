@@ -26,8 +26,23 @@ class AppConstants {
   static const String adminMobileNumber = '9999999999';
   static const String adminPassword = 'Admin@123';
 
+  // Public web pages for legal policies
+  static const String termsAndConditionsUrl =
+      'https://pharmaish.com/terms-condition.html';
+  static const String privacyPolicyUrl =
+      'https://pharmaish.com/privacy-policy.html';
+
   // Document URLs
-  static const String documentsProdBaseUrl = "http://188.241.187.172/MediMartAPIProd/documents";
+  /// Base URL for policy/legal documents served by the API
+  /// (GET /api/PolicyDocuments/download/{fileName}).
+  static String get policyDocumentsBaseUrl =>
+      '$apiBaseUrl/PolicyDocuments/download';
+
+  /// Builds the download URL for a policy document. [fileName] is the document's
+  /// file name including the ".pdf" extension, keeping its original casing, e.g.
+  /// "AREA_RETAILER_POLICY.pdf", "Privacy_Policy.pdf".
+  static String policyDocumentUrl(String fileName) =>
+      '$policyDocumentsBaseUrl/$fileName';
 
   // Order Configuration
   static const int maxFileSizeMB = 10;

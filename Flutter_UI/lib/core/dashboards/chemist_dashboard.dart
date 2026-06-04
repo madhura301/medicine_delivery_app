@@ -47,6 +47,7 @@ class _ChemistDashboardState extends State<ChemistDashboard> {
 
   Future<void> _navigateToChemistProfile(BuildContext context) async {
     final pharmacistId = await StorageService.getUserId();
+    if (!context.mounted) return;
     Navigator.pushNamed(context, '/pharmacistProfile',
         arguments: {'pharmacistId': pharmacistId!});
   }
@@ -217,9 +218,11 @@ class _ChemistDashboardState extends State<ChemistDashboard> {
     );
 
     if (!hasConsent) {
+      if (!mounted) return;
       final accepted =
           await PharmacistConsentManager.showDataHandlingLiabilityDisclaimer(
               context);
+      if (!mounted) return;
 
       if (!accepted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -231,6 +234,7 @@ class _ChemistDashboardState extends State<ChemistDashboard> {
       }
     }
 
+    if (!mounted) return;
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (context) => OrderDetailsPage(
@@ -238,13 +242,15 @@ class _ChemistDashboardState extends State<ChemistDashboard> {
           customerName: getCustomerName(order),
           customerEmail: getCustomerEmail(order),
           customerPhone: getCustomerPhone(order),
-          onAccept: () {
-            _handleAcceptOrder(order);
-            Navigator.of(context).pop();
+          onAccept: () async {
+            final navigator = Navigator.of(context);
+            await _handleAcceptOrder(order);
+            navigator.pop();
           },
-          onReject: () {
-            _handleRejectOrder(order);
-            Navigator.of(context).pop();
+          onReject: () async {
+            final navigator = Navigator.of(context);
+            await _handleRejectOrder(order);
+            navigator.pop();
           },
           onRefresh: _loadDashboardData,
         ),
@@ -417,7 +423,7 @@ class _ChemistDashboardState extends State<ChemistDashboard> {
                 Text(
                   'Licensed Pharmacist',
                   style: TextStyle(
-                    color: Colors.white.withOpacity(0.9),
+                    color: Colors.white.withValues(alpha: 0.9),
                     fontSize: 14,
                   ),
                 ),
@@ -432,7 +438,7 @@ class _ChemistDashboardState extends State<ChemistDashboard> {
                   leading: const Icon(Icons.dashboard, color: Colors.black),
                   title: const Text('Dashboard'),
                   selected: true,
-                  selectedTileColor: Colors.black.withOpacity(0.1),
+                  selectedTileColor: Colors.black.withValues(alpha: 0.1),
                   onTap: () => Navigator.of(context).pop(),
                 ),
                 ListTile(
@@ -569,7 +575,8 @@ class _ChemistDashboardState extends State<ChemistDashboard> {
                     'Pending',
                     '${_orderCounts['pending'] ?? 0}',
                     Icons.pending_actions,
-                    Colors.orange),
+                    Colors.orange,
+                    onTap: () => _openFilteredOrders('pending', 'Pending Orders')),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -577,7 +584,9 @@ class _ChemistDashboardState extends State<ChemistDashboard> {
                     'Accepted',
                     '${_orderCounts['accepted'] ?? 0}',
                     Icons.check_circle,
-                    Colors.green),
+                    Colors.green,
+                    onTap: () =>
+                        _openFilteredOrders('accepted', 'Accepted Orders')),
               ),
             ],
           ),
@@ -589,7 +598,9 @@ class _ChemistDashboardState extends State<ChemistDashboard> {
                     'Rejected',
                     '${_orderCounts['rejected'] ?? 0}',
                     Icons.cancel,
-                    Colors.red),
+                    Colors.red,
+                    onTap: () =>
+                        _openFilteredOrders('rejected', 'Rejected Orders')),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -597,7 +608,9 @@ class _ChemistDashboardState extends State<ChemistDashboard> {
                     'Out for Delivery',
                     '${_orderCounts['outForDelivery'] ?? 0}',
                     Icons.done_all,
-                    Colors.blue),
+                    Colors.blue,
+                    onTap: () => _openFilteredOrders(
+                        'outForDelivery', 'Out for Delivery')),
               ),
             ],
           ),
@@ -609,7 +622,9 @@ class _ChemistDashboardState extends State<ChemistDashboard> {
                     'Bill Uploaded',
                     '${_orderCounts['billUploaded'] ?? 0}',
                     Icons.cancel,
-                    Colors.red),
+                    Colors.red,
+                    onTap: () => _openFilteredOrders(
+                        'billUploaded', 'Bill Uploaded Orders')),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -617,7 +632,9 @@ class _ChemistDashboardState extends State<ChemistDashboard> {
                     'Completed',
                     '${_orderCounts['completed'] ?? 0}',
                     Icons.done_all,
-                    Colors.blue),
+                    Colors.blue,
+                    onTap: () =>
+                        _openFilteredOrders('completed', 'Completed Orders')),
               ),
             ],
           ),
@@ -627,28 +644,48 @@ class _ChemistDashboardState extends State<ChemistDashboard> {
   }
 
   Widget _buildStatCard(
-      String label, String value, IconData icon, Color color) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withOpacity(0.3)),
+      String label, String value, IconData icon, Color color,
+      {VoidCallback? onTap}) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: color.withValues(alpha: 0.3)),
+        ),
+        child: Column(
+          children: [
+            Icon(icon, color: color, size: 32),
+            const SizedBox(height: 8),
+            Text(value,
+                style: TextStyle(
+                    fontSize: 24, fontWeight: FontWeight.bold, color: color)),
+            const SizedBox(height: 4),
+            Text(label,
+                style: TextStyle(
+                    fontSize: 13,
+                    color: Colors.grey[700],
+                    fontWeight: FontWeight.w500)),
+          ],
+        ),
       ),
-      child: Column(
-        children: [
-          Icon(icon, color: color, size: 32),
-          const SizedBox(height: 8),
-          Text(value,
-              style: TextStyle(
-                  fontSize: 24, fontWeight: FontWeight.bold, color: color)),
-          const SizedBox(height: 4),
-          Text(label,
-              style: TextStyle(
-                  fontSize: 13,
-                  color: Colors.grey[700],
-                  fontWeight: FontWeight.w500)),
-        ],
+    );
+  }
+
+  /// Opens the orders list filtered to a single status (from an Overview tile).
+  void _openFilteredOrders(String statusKey, String title) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => CustomerOrdersPage(
+          allOrders: _allOrders,
+          customerCache: _customerCache,
+          onRefresh: _loadDashboardData,
+          initialStatusFilter: statusKey,
+          filterTitle: title,
+        ),
       ),
     );
   }
@@ -727,9 +764,14 @@ class _ChemistDashboardState extends State<ChemistDashboard> {
       await OrderService.acceptOrder(order.orderId);
       await _loadDashboardData();
 
+      final pharmacyName = await StorageService.getPharmacyName();
       if (mounted) {
         AppSnackBar.success(
-            context, 'Order ${order.orderNumber ?? order.orderId} accepted');
+          context,
+          pharmacyName != null && pharmacyName.isNotEmpty
+              ? 'Request accepted by $pharmacyName'
+              : 'Request accepted',
+        );
       }
     } catch (e) {
       AppLogger.error('Error accepting order', e);

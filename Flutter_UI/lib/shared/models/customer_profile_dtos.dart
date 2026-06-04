@@ -13,6 +13,25 @@
 // in `address_selector_widget.dart`). Unifying these requires confirming the
 // canonical backend schema first.
 
+/// Converts a backend timestamp (UTC, possibly without a `Z`/offset) into the
+/// device's local time zone. Returns null for null/empty/invalid input.
+DateTime? _parseDateAsLocal(dynamic value) {
+  if (value == null) return null;
+  final raw = value.toString();
+  if (raw.isEmpty) return null;
+
+  final parsed = DateTime.tryParse(raw);
+  if (parsed == null) return null;
+
+  // A zone-less string is parsed as local with the UTC wall-clock; re-tag it as
+  // UTC before converting. A `Z`/offset already yields a UTC value.
+  final utc = parsed.isUtc
+      ? parsed
+      : DateTime.utc(parsed.year, parsed.month, parsed.day, parsed.hour,
+          parsed.minute, parsed.second, parsed.millisecond, parsed.microsecond);
+  return utc.toLocal();
+}
+
 class CustomerDto {
   final String customerId;
   final String customerFirstName;
@@ -71,9 +90,8 @@ class CustomerDto {
       gender: json['gender'],
       customerPhoto: json['customerPhoto'],
       isActive: json['isActive'] ?? false,
-      createdOn: DateTime.parse(json['createdOn']),
-      updatedOn:
-          json['updatedOn'] != null ? DateTime.parse(json['updatedOn']) : null,
+      createdOn: _parseDateAsLocal(json['createdOn']) ?? DateTime.now(),
+      updatedOn: _parseDateAsLocal(json['updatedOn']),
       userId: json['userId'],
     );
   }
@@ -133,9 +151,8 @@ class CustomerAddressDto {
           : null,
       isDefault: json['isDefault'] ?? false,
       isActive: json['isActive'] ?? true,
-      createdOn: DateTime.parse(json['createdOn']),
-      updatedOn:
-          json['updatedOn'] != null ? DateTime.parse(json['updatedOn']) : null,
+      createdOn: _parseDateAsLocal(json['createdOn']) ?? DateTime.now(),
+      updatedOn: _parseDateAsLocal(json['updatedOn']),
     );
   }
 

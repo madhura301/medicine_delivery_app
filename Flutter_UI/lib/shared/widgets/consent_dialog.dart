@@ -46,8 +46,7 @@ class _ConsentDialogState extends State<ConsentDialog> {
 
   Future<void> _launchUrl(String url) async {
     try {
-      final Uri uri = Uri.parse(url);
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
+      await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
     } catch (e) {
       if (mounted) {
         AppSnackBar.error(context, 'Unable to open link');
@@ -128,8 +127,8 @@ class _ConsentDialogState extends State<ConsentDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return WillPopScope(
-      onWillPop: () async => widget.barrierDismissible,
+    return PopScope(
+      canPop: widget.barrierDismissible,
       child: Dialog(
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(20),
@@ -158,7 +157,7 @@ class _ConsentDialogState extends State<ConsentDialog> {
                     Container(
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.2),
+                        color: Colors.white.withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Icon(
@@ -204,10 +203,10 @@ class _ConsentDialogState extends State<ConsentDialog> {
                         Container(
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
-                            color: widget.titleColor.withOpacity(0.1),
+                            color: widget.titleColor.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(
-                              color: widget.titleColor.withOpacity(0.3),
+                              color: widget.titleColor.withValues(alpha: 0.3),
                             ),
                           ),
                           child: Row(

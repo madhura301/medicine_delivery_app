@@ -143,7 +143,7 @@ class _CustomerSupportDashboardState extends State<CustomerSupportDashboard> {
                 Text(
                   'Customer Support',
                   style: TextStyle(
-                    color: Colors.white.withOpacity(0.9),
+                    color: Colors.white.withValues(alpha: 0.9),
                     fontSize: 14,
                   ),
                 ),
@@ -158,7 +158,7 @@ class _CustomerSupportDashboardState extends State<CustomerSupportDashboard> {
                   leading: const Icon(Icons.dashboard, color: Colors.black),
                   title: const Text('Dashboard'),
                   selected: _selectedIndex == 0,
-                  selectedTileColor: Colors.black.withOpacity(0.1),
+                  selectedTileColor: Colors.black.withValues(alpha: 0.1),
                   onTap: () {
                     setState(() => _selectedIndex = 0);
                     Navigator.of(context).pop();
@@ -169,7 +169,7 @@ class _CustomerSupportDashboardState extends State<CustomerSupportDashboard> {
                       const Icon(Icons.assignment_return, color: Colors.red),
                   title: const Text('Rejected Orders'),
                   selected: _selectedIndex == 1,
-                  selectedTileColor: Colors.black.withOpacity(0.1),
+                  selectedTileColor: Colors.black.withValues(alpha: 0.1),
                   onTap: () {
                     setState(() => _selectedIndex = 1);
                     Navigator.of(context).pop();
@@ -179,7 +179,7 @@ class _CustomerSupportDashboardState extends State<CustomerSupportDashboard> {
                   leading: const Icon(Icons.message, color: Colors.green),
                   title: const Text('WhatsApp Orders'),
                   selected: _selectedIndex == 2,
-                  selectedTileColor: Colors.black.withOpacity(0.1),
+                  selectedTileColor: Colors.black.withValues(alpha: 0.1),
                   onTap: () {
                     setState(() => _selectedIndex = 2);
                     Navigator.of(context).pop();
@@ -189,7 +189,7 @@ class _CustomerSupportDashboardState extends State<CustomerSupportDashboard> {
                   leading: const Icon(Icons.assignment_ind, color: Colors.blue),
                   title: const Text('Assigned Orders'),
                   selected: _selectedIndex == 3,
-                  selectedTileColor: Colors.black.withOpacity(0.1),
+                  selectedTileColor: Colors.black.withValues(alpha: 0.1),
                   onTap: () {
                     setState(() => _selectedIndex = 3);
                     Navigator.of(context).pop();
@@ -281,9 +281,9 @@ class _CustomerSupportDashboardState extends State<CustomerSupportDashboard> {
         width: double.infinity,
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          color: color.withOpacity(0.1),
+          color: color.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: color.withOpacity(0.3)),
+          border: Border.all(color: color.withValues(alpha: 0.3)),
         ),
         child: Row(
           children: [

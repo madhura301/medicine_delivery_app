@@ -1,8 +1,8 @@
 import 'dart:io';
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:pharmaish/core/services/order_service.dart';
+import 'package:pharmaish/core/services/customer_service.dart';
 import 'package:pharmaish/shared/models/order_enums.dart';
 import 'package:pharmaish/shared/models/order_model.dart';
 import 'package:pharmaish/utils/app_logger.dart';
@@ -48,6 +48,34 @@ class _UploadPrescriptionScreenState extends State<UploadPrescriptionScreen> {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    _prefillPatientDetails();
+  }
+
+  /// Pre-fills the patient name and phone from the logged-in customer's profile.
+  /// The fields stay editable (e.g. ordering for a family member).
+  Future<void> _prefillPatientDetails() async {
+    try {
+      final data = await CustomerService.getCustomer(widget.customerId);
+      final first = (data['customerFirstName'] ?? '').toString().trim();
+      final last = (data['customerLastName'] ?? '').toString().trim();
+      final mobile = (data['mobileNumber'] ?? '').toString().trim();
+      if (!mounted) return;
+      setState(() {
+        if (_patientNameController.text.trim().isEmpty) {
+          _patientNameController.text = '$first $last'.trim();
+        }
+        if (_phoneController.text.trim().isEmpty) {
+          _phoneController.text = mobile;
+        }
+      });
+    } catch (e) {
+      AppLogger.error('Error pre-filling patient details', e);
+    }
+  }
+
+  @override
   void dispose() {
     _notesController.dispose();
     _patientNameController.dispose();
@@ -76,17 +104,6 @@ class _UploadPrescriptionScreenState extends State<UploadPrescriptionScreen> {
       if (mounted) {
         AppSnackBar.error(context, 'Error selecting file: $e');
       }
-    }
-  }
-
-  Future<String> _convertFileToBase64() async {
-    if (_selectedFile == null) return '';
-    try {
-      List<int> fileBytes = await _selectedFile!.readAsBytes();
-      return base64Encode(fileBytes);
-    } catch (e) {
-      AppLogger.error('Error converting file to base64: $e');
-      return '';
     }
   }
 
@@ -171,10 +188,10 @@ class _UploadPrescriptionScreenState extends State<UploadPrescriptionScreen> {
 
       final createdOrder = await OrderService.createOrder(orderRequest);
 
-      AppLogger.info('✅ Order created! ID: ${createdOrder.orderId}');
+      AppLogger.info('✅ Request Shared with Nearby Licensed Pharmacies! ID: ${createdOrder.orderId}');
 
       if (mounted) {
-        AppSnackBar.success(context, 'Order submitted successfully!');
+        AppSnackBar.success(context, 'Your request has been shared with nearby licensed pharmacies.');
         Navigator.of(context).pop(true);
       }
     } on OrderValidationException catch (e) {
@@ -275,7 +292,7 @@ class _UploadPrescriptionScreenState extends State<UploadPrescriptionScreen> {
             decoration: BoxDecoration(
               border: Border.all(color: Colors.black, width: 2),
               borderRadius: BorderRadius.circular(16),
-              color: Colors.blue.withOpacity(0.05),
+              color: Colors.blue.withValues(alpha: 0.05),
             ),
             child: Column(
               children: [
@@ -478,42 +495,38 @@ class _UploadPrescriptionScreenState extends State<UploadPrescriptionScreen> {
             style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: RadioListTile<String>(
-                  title: const Text('Home'),
-                  subtitle: const Text('Deliver to home'),
-                  value: 'home',
-                  groupValue: _deliveryType,
-                  activeColor: Colors.black,
-                  onChanged: (value) {
-                    setState(() => _deliveryType = value!);
-                  },
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    side: BorderSide(color: Colors.grey.shade300),
+          RadioGroup<String>(
+            groupValue: _deliveryType,
+            onChanged: (value) => setState(() => _deliveryType = value!),
+            child: Row(
+              children: [
+                Expanded(
+                  child: RadioListTile<String>(
+                    title: const Text('Home'),
+                    subtitle: const Text('Deliver to home'),
+                    value: 'home',
+                    activeColor: Colors.black,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      side: BorderSide(color: Colors.grey.shade300),
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: RadioListTile<String>(
-                  title: const Text('Pickup'),
-                  subtitle: const Text('Store pickup'),
-                  value: 'pickup',
-                  groupValue: _deliveryType,
-                  activeColor: Colors.black,
-                  onChanged: (value) {
-                    setState(() => _deliveryType = value!);
-                  },
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    side: BorderSide(color: Colors.grey.shade300),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: RadioListTile<String>(
+                    title: const Text('Pickup'),
+                    subtitle: const Text('Store pickup'),
+                    value: 'pickup',
+                    activeColor: Colors.black,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      side: BorderSide(color: Colors.grey.shade300),
+                    ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
           const SizedBox(height: 24),
 
@@ -523,42 +536,38 @@ class _UploadPrescriptionScreenState extends State<UploadPrescriptionScreen> {
             style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: RadioListTile<String>(
-                  title: const Text('Regular'),
-                  subtitle: const Text('1-2 days'),
-                  value: 'regular',
-                  groupValue: _urgency,
-                  activeColor: Colors.black,
-                  onChanged: (value) {
-                    setState(() => _urgency = value!);
-                  },
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    side: BorderSide(color: Colors.grey.shade300),
+          RadioGroup<String>(
+            groupValue: _urgency,
+            onChanged: (value) => setState(() => _urgency = value!),
+            child: Row(
+              children: [
+                Expanded(
+                  child: RadioListTile<String>(
+                    title: const Text('Regular'),
+                    subtitle: const Text('1-2 days'),
+                    value: 'regular',
+                    activeColor: Colors.black,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      side: BorderSide(color: Colors.grey.shade300),
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: RadioListTile<String>(
-                  title: const Text('Urgent'),
-                  subtitle: const Text('Same day'),
-                  value: 'urgent',
-                  groupValue: _urgency,
-                  activeColor: Colors.black,
-                  onChanged: (value) {
-                    setState(() => _urgency = value!);
-                  },
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    side: BorderSide(color: Colors.grey.shade300),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: RadioListTile<String>(
+                    title: const Text('Urgent'),
+                    subtitle: const Text('Same day'),
+                    value: 'urgent',
+                    activeColor: Colors.black,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      side: BorderSide(color: Colors.grey.shade300),
+                    ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ],
       ),

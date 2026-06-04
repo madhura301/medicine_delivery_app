@@ -8,6 +8,7 @@ import 'package:pharmaish/core/screens/orders/accepted_order_bill_screen.dart';
 import 'package:pharmaish/core/screens/delivery/assign_delivery_boy_screen.dart';
 import 'package:pharmaish/shared/widgets/authenticated_image.dart';
 import 'package:pharmaish/shared/widgets/order_status_chip.dart';
+import 'package:pharmaish/utils/app_logger.dart';
 import 'package:pharmaish/utils/consent_manager.dart';
 
 class OrderTileWithBill extends StatelessWidget {
@@ -81,8 +82,7 @@ class OrderTileWithBill extends StatelessWidget {
           convenienceFee: 20.0,
           orderNumber: '5IKK4FVR3F',
           onPaymentSuccess: () {
-            // Handle success
-            print('Payment completed!');
+            AppLogger.info('Payment completed!');
           },
         ),
       ),
@@ -107,7 +107,6 @@ class OrderTileWithBill extends StatelessWidget {
 
   void _showPrescriptionDialog(BuildContext context) {
     final url = getOrderInputFileUrl(order.orderId);
-    final fileName = extractFileName(order.prescriptionFileUrl);
 
     showDialog(
       context: context,
@@ -261,7 +260,7 @@ class OrderTileWithBill extends StatelessWidget {
                   Icon(Icons.list_alt, size: 16, color: Colors.grey[600]),
                   const SizedBox(width: 4),
                   Text(
-                    order.orderInputType.value.toString() ?? 'N/A',
+                    order.orderInputType.value.toString(),
                     style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                   ),
                 ],

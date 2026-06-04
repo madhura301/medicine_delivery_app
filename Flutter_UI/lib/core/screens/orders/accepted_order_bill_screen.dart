@@ -82,22 +82,29 @@ class _AcceptedOrderBillScreenState extends State<AcceptedOrderBillScreen> {
     }
   }
 
-  Future<void> _pickPdfFile() async {
+  Future<void> _pickFile() async {
     try {
       FilePickerResult? result = await FilePicker.platform.pickFiles(
-        type: FileType.custom,
-        allowedExtensions: ['pdf'],
+        type: FileType.any,
         allowMultiple: false,
       );
 
       if (result != null && result.files.isNotEmpty) {
         final file = result.files.first;
-        
+
+        if (file.path == null) {
+          if (mounted) {
+            AppSnackBar.error(context, 'Could not read the selected file.',
+                duration: const Duration(seconds: 3));
+          }
+          return;
+        }
+
         // Check file size (max 10MB)
         if (file.size > 10 * 1024 * 1024) {
           if (mounted) {
             AppSnackBar.warning(
-                context, 'PDF file is too large. Maximum size is 10MB.',
+                context, 'File is too large. Maximum size is 10MB.',
                 duration: const Duration(seconds: 3));
           }
           return;
@@ -106,17 +113,69 @@ class _AcceptedOrderBillScreenState extends State<AcceptedOrderBillScreen> {
         setState(() {
           _billFile = File(file.path!);
           _billFileName = file.name;
-          _billFileType = 'pdf';
+          _billFileType = _typeFromExtension(file.extension);
         });
-        
-        AppLogger.info('PDF selected: ${file.name}, Size: ${(file.size / 1024).toStringAsFixed(2)} KB');
+
+        AppLogger.info(
+            'File selected: ${file.name}, Size: ${(file.size / 1024).toStringAsFixed(2)} KB');
       }
     } catch (e) {
-      AppLogger.error('Error picking PDF: $e');
+      AppLogger.error('Error picking file: $e');
       if (mounted) {
-        AppSnackBar.error(context, 'Failed to pick PDF: ${e.toString()}',
+        AppSnackBar.error(context, 'Failed to pick file: ${e.toString()}',
             duration: const Duration(seconds: 3));
       }
+    }
+  }
+
+  /// Classifies a file by extension so the preview/upload can label it.
+  String _typeFromExtension(String? extension) {
+    final ext = (extension ?? '').toLowerCase();
+    const imageExts = {'jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp', 'heic'};
+    if (ext == 'pdf') return 'pdf';
+    if (imageExts.contains(ext)) return 'image';
+    return 'file';
+  }
+
+  /// Returns the lowercase extension (no dot) of a file name/path, or ''.
+  String _fileExtension(String? nameOrPath) {
+    if (nameOrPath == null) return '';
+    final i = nameOrPath.lastIndexOf('.');
+    if (i < 0 || i == nameOrPath.length - 1) return '';
+    return nameOrPath.substring(i + 1).toLowerCase();
+  }
+
+  IconData get _billFileIcon {
+    switch (_billFileType) {
+      case 'pdf':
+        return Icons.picture_as_pdf;
+      case 'image':
+        return Icons.image;
+      default:
+        return Icons.insert_drive_file;
+    }
+  }
+
+  MaterialColor get _billFileColor {
+    switch (_billFileType) {
+      case 'pdf':
+        return Colors.red;
+      case 'image':
+        return Colors.blue;
+      default:
+        return Colors.blueGrey;
+    }
+  }
+
+  String get _billFileTypeLabel {
+    switch (_billFileType) {
+      case 'pdf':
+        return 'PDF Document';
+      case 'image':
+        return 'Image File';
+      default:
+        final ext = _fileExtension(_billFileName);
+        return ext.isNotEmpty ? '${ext.toUpperCase()} File' : 'File';
     }
   }
 
@@ -149,7 +208,7 @@ class _AcceptedOrderBillScreenState extends State<AcceptedOrderBillScreen> {
             ),
             const SizedBox(height: 8),
             Text(
-              'Choose image or PDF file',
+              'Choose an image or any file',
               style: TextStyle(
                 fontSize: 14,
                 color: Colors.grey.shade600,
@@ -188,16 +247,16 @@ class _AcceptedOrderBillScreenState extends State<AcceptedOrderBillScreen> {
             
             const SizedBox(height: 12),
             
-            // PDF option
+            // File option (PDF, documents, or any other file type)
             SizedBox(
               width: double.infinity,
               child: _buildFileSourceOption(
-                icon: Icons.picture_as_pdf,
-                label: 'PDF File',
-                color: Colors.red,
+                icon: Icons.upload_file,
+                label: 'Choose File',
+                color: Colors.deepPurple,
                 onTap: () {
                   Navigator.pop(context);
-                  _pickPdfFile();
+                  _pickFile();
                 },
               ),
             ),
@@ -221,9 +280,9 @@ class _AcceptedOrderBillScreenState extends State<AcceptedOrderBillScreen> {
       child: Container(
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          color: color.withOpacity(0.1),
+          color: color.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: color.withOpacity(0.3)),
+          border: Border.all(color: color.withValues(alpha: 0.3)),
         ),
         child: Column(
           children: [
@@ -274,20 +333,13 @@ class _AcceptedOrderBillScreenState extends State<AcceptedOrderBillScreen> {
       final amount = double.parse(_amountController.text);
       final notes = _notesController.text.trim();
 
-      // Determine file extension
-      String fileExtension;
-      if (_billFileType == 'pdf') {
-        fileExtension = 'pdf';
-      } else {
-        // Get extension from file path
-        final path = _billFile!.path.toLowerCase();
-        if (path.endsWith('.jpg') || path.endsWith('.jpeg')) {
-          fileExtension = 'jpg';
-        } else if (path.endsWith('.png')) {
-          fileExtension = 'png';
-        } else {
-          fileExtension = 'jpg'; // default
-        }
+      // Preserve the real file extension from the selected file.
+      String fileExtension = _fileExtension(_billFileName);
+      if (fileExtension.isEmpty) {
+        fileExtension = _fileExtension(_billFile!.path);
+      }
+      if (fileExtension.isEmpty) {
+        fileExtension = _billFileType == 'pdf' ? 'pdf' : 'jpg';
       }
 
       // Create FormData matching the backend UploadOrderBillDto
@@ -467,7 +519,7 @@ class _AcceptedOrderBillScreenState extends State<AcceptedOrderBillScreen> {
               color: Colors.black,
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.1),
+                  color: Colors.black.withValues(alpha: 0.1),
                   blurRadius: 4,
                   offset: const Offset(0, 2),
                 ),
@@ -518,7 +570,7 @@ class _AcceptedOrderBillScreenState extends State<AcceptedOrderBillScreen> {
                       title: 'Order Information',
                       icon: Icons.shopping_bag,
                       children: [
-                        _buildInfoRow('Order ID',
+                        _buildInfoRow('Pharmacy Reference ID',
                             widget.order.orderNumber ?? widget.order.orderId.toString()),
                         _buildInfoRow('Status', widget.order.status),
                         if (widget.order.orderInputType.name.isNotEmpty)
@@ -728,7 +780,7 @@ class _AcceptedOrderBillScreenState extends State<AcceptedOrderBillScreen> {
         border: Border.all(color: Colors.grey.shade300),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 4,
             offset: const Offset(0, 2),
           ),
@@ -807,19 +859,13 @@ class _AcceptedOrderBillScreenState extends State<AcceptedOrderBillScreen> {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: _billFileType == 'pdf'
-                      ? Colors.red.shade50
-                      : Colors.blue.shade50,
+                  color: _billFileColor.shade50,
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Icon(
-                  _billFileType == 'pdf'
-                      ? Icons.picture_as_pdf
-                      : Icons.image,
+                  _billFileIcon,
                   size: 32,
-                  color: _billFileType == 'pdf'
-                      ? Colors.red.shade700
-                      : Colors.blue.shade700,
+                  color: _billFileColor.shade700,
                 ),
               ),
               const SizedBox(width: 12),
@@ -838,7 +884,7 @@ class _AcceptedOrderBillScreenState extends State<AcceptedOrderBillScreen> {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      _billFileType == 'pdf' ? 'PDF Document' : 'Image File',
+                      _billFileTypeLabel,
                       style: TextStyle(
                         fontSize: 12,
                         color: Colors.grey.shade600,

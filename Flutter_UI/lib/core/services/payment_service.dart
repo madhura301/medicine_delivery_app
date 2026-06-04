@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:pharmaish/core/services/dio_client.dart';
+import 'package:pharmaish/shared/models/payment_model.dart';
 import 'package:pharmaish/shared/models/razorpay_models.dart';
 
 /// Backend API for the server-driven Razorpay payment flow.
@@ -50,5 +51,15 @@ class PaymentService {
         'razorpaySignature': razorpaySignature,
       },
     );
+  }
+
+  /// GET /Payments/order/{orderId} — all payments recorded for an order
+  /// (successful and failed alike). Used to show payment history.
+  static Future<List<PaymentModel>> getPaymentsForOrder(int orderId) async {
+    final response = await _dio.get('/Payments/order/$orderId');
+    final data = response.data as List;
+    return data
+        .map((e) => PaymentModel.fromJson(Map<String, dynamic>.from(e as Map)))
+        .toList();
   }
 }

@@ -12,7 +12,6 @@
 
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
-import 'package:pharmaish/core/screens/admin/manage_pincodes_dialog.dart';
 import 'package:pharmaish/core/screens/admin/quick_pincode_lookup_dialog.dart';
 import 'package:pharmaish/core/screens/admin/view_all_pincodes.dart';
 import 'package:pharmaish/core/services/region_service.dart';
@@ -390,181 +389,6 @@ class _AdminServiceRegionsPageState extends State<AdminServiceRegionsPage> {
   }
 
   // =========================================================================
-  // MANAGE PINCODES
-  // =========================================================================
-
-  Future<void> _showManagePincodesDialog(Map<String, dynamic> region) async {
-    if (!_hasPermission) {
-      _showError('You do not have permission to manage pincodes');
-      return;
-    }
-
-    final regionId = region['id'] ?? region['Id'];
-    List<String> pincodes = [];
-
-    try {
-      pincodes = await RegionService.getRegionPincodes((regionId as num).toInt());
-    } catch (e) {
-      AppLogger.error('Error loading pincodes: $e');
-    }
-
-    if (!mounted) return;
-
-    await showDialog(
-      context: context,
-      builder: (context) => ManagePincodesDialog(
-        region: region,
-        initialPincodes: pincodes,
-        onSaved: () => _loadRegions(),
-      ),
-    );
-  }
-
-  // =========================================================================
-  // ASSIGN CUSTOMER SUPPORT
-  // =========================================================================
-
-  Future<void> _showAssignCustomerSupportDialog(
-      Map<String, dynamic> region) async {
-    if (!_hasPermission) {
-      _showError('You do not have permission to assign staff');
-      return;
-    }
-
-    if (_customerSupports.isEmpty) {
-      _showError('No customer support staff available to assign.');
-      return;
-    }
-
-    String? selectedCustomerSupportId;
-
-    final result = await showDialog<String>(
-      context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setState) => AlertDialog(
-          title: Text('Assign to ${region['name']}'),
-          contentPadding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
-          content: SizedBox(
-            width: double.maxFinite,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text('Select Customer Support to assign:'),
-                const SizedBox(height: 16),
-                DropdownButtonFormField<String>(
-                  initialValue: selectedCustomerSupportId,
-                  isExpanded: true,
-                  decoration: const InputDecoration(
-                    labelText: 'Customer Support',
-                    border: OutlineInputBorder(),
-                    contentPadding: EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 10,
-                    ),
-                  ),
-                  items: _customerSupports.map((cs) {
-                    final firstName = cs['customerSupportFirstName'] ?? '';
-                    final lastName = cs['customerSupportLastName'] ?? '';
-                    final employeeId = cs['employeeId'] ?? '';
-                    final currentRegionId = cs['serviceRegionId'];
-
-                    return DropdownMenuItem<String>(
-                      value: cs['serviceRegionId'],
-                      child: Container(
-                        constraints: const BoxConstraints(maxWidth: 300),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              '$firstName $lastName',
-                              style: const TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w600,
-                              ),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              'Emp ID: $employeeId${currentRegionId != null ? ' (Assigned)' : ''}',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.grey[600],
-                              ),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
-                  }).toList(),
-                  onChanged: (value) {
-                    setState(() {
-                      selectedCustomerSupportId = value;
-                    });
-                  },
-                  selectedItemBuilder: (context) {
-                    return _customerSupports.map((cs) {
-                      final firstName = cs['customerSupportFirstName'] ?? '';
-                      final lastName = cs['customerSupportLastName'] ?? '';
-                      return Text(
-                        '$firstName $lastName',
-                        overflow: TextOverflow.ellipsis,
-                      );
-                    }).toList();
-                  },
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel'),
-            ),
-            ElevatedButton(
-              onPressed: selectedCustomerSupportId == null
-                  ? null
-                  : () => Navigator.pop(context, selectedCustomerSupportId),
-              style: AppButton.primary(),
-              child: const Text('Assign'),
-            ),
-          ],
-        ),
-      ),
-    );
-
-    if (result != null) {
-      await _assignCustomerSupport(region['id'] ?? region['Id'], result);
-    }
-  }
-
-  Future<void> _assignCustomerSupport(
-      int regionId, String customerSupportId) async {
-    try {
-      await RegionService.assignCustomerSupportToRegion(
-        regionId: regionId,
-        customerSupportId: customerSupportId,
-      );
-      if (mounted) {
-        _showSuccess('Customer support assigned successfully');
-        await _checkPermissionAndLoad();
-      }
-    } on DioException catch (e) {
-      if (mounted) {
-        if (e.response?.statusCode == 403) {
-          _showError(
-              'Access Denied: You do not have permission to assign staff');
-        } else {
-          _showError(
-              'Failed to assign: ${e.response?.data?['error'] ?? e.message}');
-        }
-      }
-    }
-  }
-
-  // =========================================================================
   // DELETE REGION
   // =========================================================================
 
@@ -778,7 +602,7 @@ class _AdminServiceRegionsPageState extends State<AdminServiceRegionsPage> {
             color: Colors.white,
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.05),
+                color: Colors.black.withValues(alpha: 0.05),
                 blurRadius: 4,
                 offset: const Offset(0, 2),
               ),
@@ -1765,13 +1589,8 @@ class _AdminServiceRegionsPageState extends State<AdminServiceRegionsPage> {
 
   Future<void> _showAssignPersonDialog(
       Map<String, dynamic> region, RegionType regionType) async {
-    // 🔍 DEBUG: See what's actually in the region
-    print('=== REGION DEBUG ===');
-    print('Region keys: ${region.keys.toList()}');
-    print('Full region: $region');
-    print('region[\'id\']: ${region['id']}');
-    print('region[\'Id\']: ${region['Id']}');
-    print('====================');
+    AppLogger.info(
+        'Assign person dialog — region keys: ${region.keys.toList()}, id: ${region['id'] ?? region['Id']}');
     final regionId = region['id'] ?? region['Id'];
 
     // Get unassigned persons based on type
@@ -1944,60 +1763,6 @@ class _AdminServiceRegionsPageState extends State<AdminServiceRegionsPage> {
       await _checkPermissionAndLoad();
     } catch (e) {
       AppLogger.error('Error unassigning person: $e');
-    }
-  }
-
-  Widget _buildAssignedStaffTile(
-      Map<String, dynamic> cs, Map<String, dynamic> region) {
-    final firstName = cs['customerSupportFirstName'] ?? '';
-    final lastName = cs['customerSupportLastName'] ?? '';
-    final employeeId = cs['employeeId'] ?? '';
-    final mobile = cs['mobileNumber'] ?? '';
-
-    return ListTile(
-      leading: const CircleAvatar(
-        backgroundColor: Colors.green,
-        child: Icon(Icons.support_agent, color: Colors.white, size: 20),
-      ),
-      title: Text('$firstName $lastName'),
-      subtitle: Text('Emp ID: $employeeId\n📱 $mobile'),
-      isThreeLine: true,
-      trailing: IconButton(
-        icon: const Icon(Icons.remove_circle_outline, color: Colors.red),
-        onPressed: () => _unassignCustomerSupport(cs, region),
-        tooltip: 'Unassign',
-      ),
-    );
-  }
-
-  Future<void> _unassignCustomerSupport(
-      Map<String, dynamic> cs, Map<String, dynamic> region) async {
-    final firstName = cs['customerSupportFirstName'] ?? '';
-    final lastName = cs['customerSupportLastName'] ?? '';
-
-    final confirm = await confirmAction(
-      context,
-      title: 'Confirm Unassignment',
-      message:
-          'Are you sure you want to unassign $firstName $lastName from ${region['name']}?',
-      confirmLabel: 'Unassign',
-    );
-
-    if (!confirm) return;
-
-    try {
-      await RegionService.assignCustomerSupportToRegion(
-        regionId: null,
-        customerSupportId: cs['customerSupportId'],
-      );
-      if (mounted) {
-        _showSuccess('Customer support unassigned successfully');
-        await _checkPermissionAndLoad();
-      }
-    } on DioException catch (e) {
-      if (mounted) {
-        _showError('Failed to unassign: ${e.message}');
-      }
     }
   }
 

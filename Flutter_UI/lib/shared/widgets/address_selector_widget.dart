@@ -330,42 +330,46 @@ class _AddressSelectorWidgetState extends State<AddressSelectorWidget> {
 
         // Address List
         if (!_isLoading && _errorMessage.isEmpty && _addresses.isNotEmpty)
-          Column(
-            children: _addresses.map((address) {
-              final isSelected =
-                  _selectedAddress?.addressId == address.addressId;
-              return Card(
-                margin: const EdgeInsets.only(bottom: 12),
-                elevation: isSelected ? 4 : 1,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  side: BorderSide(
-                    color: isSelected ? color : Colors.grey.shade300,
-                    width: isSelected ? 2 : 1,
+          RadioGroup<String?>(
+            groupValue: _selectedAddress?.addressId,
+            onChanged: (value) {
+              if (value == null) return;
+              final address =
+                  _addresses.firstWhere((a) => a.addressId == value);
+              setState(() => _selectedAddress = address);
+              widget.onAddressSelected(address);
+            },
+            child: Column(
+              children: _addresses.map((address) {
+                final isSelected =
+                    _selectedAddress?.addressId == address.addressId;
+                return Card(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  elevation: isSelected ? 4 : 1,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    side: BorderSide(
+                      color: isSelected ? color : Colors.grey.shade300,
+                      width: isSelected ? 2 : 1,
+                    ),
                   ),
-                ),
-                child: InkWell(
-                  onTap: () {
-                    setState(() {
-                      _selectedAddress = address;
-                    });
-                    widget.onAddressSelected(address);
-                  },
-                  borderRadius: BorderRadius.circular(12),
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Row(
-                      children: [
-                        // Radio Button
-                        Radio<String?>(
-                          value: address.addressId,
-                          groupValue: _selectedAddress?.addressId,
-                          activeColor: color,
-                          onChanged: (value) {
-                            setState(() => _selectedAddress = address);
-                            widget.onAddressSelected(address);
-                          },
-                        ),
+                  child: InkWell(
+                    onTap: () {
+                      setState(() {
+                        _selectedAddress = address;
+                      });
+                      widget.onAddressSelected(address);
+                    },
+                    borderRadius: BorderRadius.circular(12),
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Row(
+                        children: [
+                          // Radio Button
+                          Radio<String?>(
+                            value: address.addressId,
+                            activeColor: color,
+                          ),
                         const SizedBox(width: 12),
 
                         // Address Details
@@ -395,7 +399,7 @@ class _AddressSelectorWidgetState extends State<AddressSelectorWidget> {
                                           vertical: 2,
                                         ),
                                         decoration: BoxDecoration(
-                                          color: color.withOpacity(0.1),
+                                          color: color.withValues(alpha: 0.1),
                                           borderRadius:
                                               BorderRadius.circular(4),
                                           border: Border.all(color: color),
@@ -436,7 +440,8 @@ class _AddressSelectorWidgetState extends State<AddressSelectorWidget> {
                   ),
                 ),
               );
-            }).toList(),
+              }).toList(),
+            ),
           ),
       ],
     );

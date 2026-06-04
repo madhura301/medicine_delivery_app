@@ -1,7 +1,6 @@
 // File: lib/shared/widgets/order_widgets.dart
 import 'package:flutter/material.dart';
 import 'package:pharmaish/shared/widgets/app_snackbar.dart';
-import 'package:pharmaish/utils/constants.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:pharmaish/utils/app_logger.dart';
 import 'package:pharmaish/utils/helpers.dart';
@@ -30,54 +29,6 @@ class OrderWidgets {
       AppLogger.error('Error opening WhatsApp', e);
       if (context.mounted) {
         AppSnackBar.error(context, 'Unable to open WhatsApp. Please try again.');
-      }
-    }
-  }
-
-  /// Opens membership code PDF - "Click here.." link
-  static Future<void> _showMembershipPDF(BuildContext context) async {
-    const String pdfUrl =
-        '${AppConstants.documentsProdBaseUrl}/Membership_Payment_Declaration_and_Consent.pdf';
-    // Test URL: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf'
-
-    try {
-      final Uri uri = Uri.parse(pdfUrl);
-
-      try {
-        await launchUrl(uri, mode: LaunchMode.externalApplication);
-      } catch (e) {
-        AppLogger.info('External app launch failed, trying browser mode');
-        await launchUrl(uri, mode: LaunchMode.platformDefault);
-      }
-    } catch (e) {
-      AppLogger.error('Error opening membership PDF', e);
-      if (context.mounted) {
-        AppSnackBar.error(context, 'Unable to open Membership Code document',
-            duration: const Duration(seconds: 3));
-      }
-    }
-  }
-
-  /// Opens membership benefits PDF - "extra benefits" link
-  static Future<void> _showMembershipBenefitsPDF(BuildContext context) async {
-    const String pdfUrl =
-        '${AppConstants.documentsProdBaseUrl}/MEMBERSHIP_BENEFITS_DOCUMENT.pdf';
-    // Test URL: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf'
-
-    try {
-      final Uri uri = Uri.parse(pdfUrl);
-
-      try {
-        await launchUrl(uri, mode: LaunchMode.externalApplication);
-      } catch (e) {
-        AppLogger.info('External app launch failed, trying browser mode');
-        await launchUrl(uri, mode: LaunchMode.platformDefault);
-      }
-    } catch (e) {
-      AppLogger.error('Error opening membership benefits PDF', e);
-      if (context.mounted) {
-        AppSnackBar.error(context, 'Unable to open Membership Benefits document',
-            duration: const Duration(seconds: 3));
       }
     }
   }

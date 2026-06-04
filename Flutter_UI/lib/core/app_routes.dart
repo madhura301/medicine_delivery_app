@@ -120,8 +120,7 @@ class AppRoutes {
         convenienceFee: args['convenienceFee'],
         orderNumber: args['orderId'],
         onPaymentSuccess: () {
-          // Handle success
-          print('Payment completed!');
+          AppLogger.info('Payment completed!');
         },
       );
     },

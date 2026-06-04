@@ -625,14 +625,14 @@ class _WhatsAppOrderCreationPageState extends State<WhatsAppOrderCreationPage>
       );
 
       if (response.statusCode == 200 || response.statusCode == 201) {
-        AppLogger.info('[SUCCESS] Order created!');
+        AppLogger.info('[SUCCESS] Request Shared with Nearby Licensed Pharmacies');
         AppLogger.info('Response: ${response.data}');
 
         if (mounted) {
           final orderId =
               response.data['orderId'] ?? response.data['id'] ?? 'N/A';
 
-          AppSnackBar.success(context, 'Order Created! ID: $orderId',
+          AppSnackBar.success(context, 'Request Shared with Nearby Licensed Pharmacies. Pharmacy Reference ID: $orderId',
               duration: const Duration(seconds: 3));
 
           Future.delayed(const Duration(seconds: 2), () {
@@ -681,96 +681,6 @@ class _WhatsAppOrderCreationPageState extends State<WhatsAppOrderCreationPage>
         setState(() => _isSubmitting = false);
       }
     }
-  }
-
-// ALSO ADD THIS HELPER METHOD to show address selection dialog if customer has multiple addresses:
-
-  Future<String?> _selectOrCreateAddress(String customerId) async {
-    try {
-      // Try to get customer's addresses
-      final response =
-          await widget.dio.get('/CustomerAddresses/customer/$customerId');
-
-      if (response.statusCode == 200) {
-        final List addresses = response.data;
-
-        if (addresses.isEmpty) {
-          // No addresses, create new one
-          return await _createNewAddress(customerId);
-        } else if (addresses.length == 1) {
-          // Only one address, use it
-          return addresses.first['id'];
-        } else {
-          // Multiple addresses - show selection dialog
-          return await _showAddressSelectionDialog(addresses, customerId);
-        }
-      }
-    } catch (e) {
-      AppLogger.error('Error getting addresses', e);
-    }
-
-    // Default: create new address
-    return await _createNewAddress(customerId);
-  }
-
-  Future<String?> _createNewAddress(String customerId) async {
-    try {
-      final response = await widget.dio.post('/CustomerAddresses', data: {
-        'customerId': customerId,
-        'addressLine1': _addressLine1Controller.text.trim(),
-        'addressLine2': _addressLine2Controller.text.trim(),
-        'city': _cityController.text.trim(),
-        'state': _selectedState,
-        'postalCode': _pincodeController.text.trim(),
-        'latitude': _latitude,
-        'longitude': _longitude,
-        'isDefault': true,
-        'isActive': true,
-      });
-
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        return response.data['id'];
-      }
-    } catch (e) {
-      AppLogger.error('Error creating address', e);
-    }
-    return null;
-  }
-
-  Future<String?> _showAddressSelectionDialog(
-      List addresses, String customerId) async {
-    return await showDialog<String>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Select Delivery Address'),
-        content: SizedBox(
-          width: double.maxFinite,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ...addresses.map((addr) => ListTile(
-                    leading: const Icon(Icons.location_on),
-                    title: Text(addr['addressLine1']),
-                    subtitle: Text(
-                        '${addr['city']}, ${addr['state']} - ${addr['postalCode']}'),
-                    onTap: () => Navigator.pop(context, addr['id']),
-                  )),
-              const Divider(),
-              ListTile(
-                leading: const Icon(Icons.add_location),
-                title: const Text('Use New Address'),
-                onTap: () async {
-                  final newAddressId = await _createNewAddress(customerId);
-                  if (context.mounted) {
-                    Navigator.pop(context, newAddressId);
-                  }
-                },
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
   }
 
   void _clearForm() {
@@ -1502,7 +1412,7 @@ class _WhatsAppOrderCreationPageState extends State<WhatsAppOrderCreationPage>
         color: Colors.white,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withValues(alpha: 0.1),
             blurRadius: 10,
             offset: const Offset(0, -2),
           ),

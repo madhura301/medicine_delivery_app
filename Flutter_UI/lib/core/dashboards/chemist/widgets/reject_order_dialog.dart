@@ -32,37 +32,39 @@ class _RejectOrderDialogState extends State<RejectOrderDialog> {
   Widget build(BuildContext context) {
     return AlertDialog(
       title: Text('Reject Order ${widget.orderId}'),
-      content: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Please select a reason for rejection:',
-              style: TextStyle(fontWeight: FontWeight.w500),
-            ),
-            const SizedBox(height: 16),
-            ..._reasons.map((reason) => RadioListTile<String>(
-                  title: Text(reason),
-                  value: reason,
-                  groupValue: _selectedReason,
-                  onChanged: (value) => setState(() => _selectedReason = value),
-                  contentPadding: EdgeInsets.zero,
-                  activeColor: Colors.black,
-                )),
-            if (_selectedReason == 'Other') ...[
-              const SizedBox(height: 12),
-              TextField(
-                controller: _controller,
-                decoration: const InputDecoration(
-                  labelText: 'Custom reason',
-                  border: OutlineInputBorder(),
-                  hintText: 'Enter your reason...',
-                ),
-                maxLines: 3,
+      content: RadioGroup<String>(
+        groupValue: _selectedReason,
+        onChanged: (value) => setState(() => _selectedReason = value),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Please select a reason for rejection:',
+                style: TextStyle(fontWeight: FontWeight.w500),
               ),
+              const SizedBox(height: 16),
+              ..._reasons.map((reason) => RadioListTile<String>(
+                    title: Text(reason),
+                    value: reason,
+                    contentPadding: EdgeInsets.zero,
+                    activeColor: Colors.black,
+                  )),
+              if (_selectedReason == 'Other') ...[
+                const SizedBox(height: 12),
+                TextField(
+                  controller: _controller,
+                  decoration: const InputDecoration(
+                    labelText: 'Custom reason',
+                    border: OutlineInputBorder(),
+                    hintText: 'Enter your reason...',
+                  ),
+                  maxLines: 3,
+                ),
+              ],
             ],
-          ],
+          ),
         ),
       ),
       actions: [

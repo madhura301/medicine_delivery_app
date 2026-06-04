@@ -165,9 +165,7 @@ class OrderModel {
               json['assignmentHistory'] // Try both cases
           ),
 
-      completedOn: json['completedOn'] != null
-          ? DateTime.parse(json['completedOn'])
-          : null,
+      completedOn: _parseDateAsLocal(json['completedOn']),
 
       rejectionReason: _toStringOrNull(json['rejectionReason']),
       customerRejectionReason: _toStringOrNull(json['customerRejectionReason']),
@@ -189,11 +187,32 @@ class OrderModel {
       shippingLongitude: json['shippingLongitude']?.toDouble(),
 
       isActive: json['isActive'] ?? true,
-      createdOn:
-          DateTime.parse(json['createdOn'] ?? DateTime.now().toIso8601String()),
-      updatedOn:
-          json['updatedOn'] != null ? DateTime.parse(json['updatedOn']) : null,
+      createdOn: _parseDateAsLocal(json['createdOn']) ?? DateTime.now(),
+      updatedOn: _parseDateAsLocal(json['updatedOn']),
     );
+  }
+
+  /// Parses a backend timestamp into the device's local time zone.
+  ///
+  /// Backend timestamps are UTC (`DateTime.UtcNow`), but they can arrive without
+  /// a `Z`/offset, in which case [DateTime.parse] would treat them as local and
+  /// show the UTC wall-clock unchanged. We re-tag any zone-less value as UTC
+  /// before converting to local. Returns null for null/empty input.
+  static DateTime? _parseDateAsLocal(dynamic value) {
+    if (value == null) return null;
+    final raw = value.toString();
+    if (raw.isEmpty) return null;
+
+    final parsed = DateTime.tryParse(raw);
+    if (parsed == null) return null;
+
+    // A 'Z' or numeric offset makes [DateTime.parse] return a UTC value; a
+    // zone-less string returns a local value whose wall-clock is really UTC.
+    final utc = parsed.isUtc
+        ? parsed
+        : DateTime.utc(parsed.year, parsed.month, parsed.day, parsed.hour,
+            parsed.minute, parsed.second, parsed.millisecond, parsed.microsecond);
+    return utc.toLocal();
   }
 
   /// Parse assignment history from JSON array

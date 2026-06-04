@@ -318,7 +318,7 @@ class _AdminAllOrdersState extends State<AdminAllOrders> {
         color: Colors.white,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 4,
             offset: const Offset(0, 2),
           ),
@@ -331,7 +331,7 @@ class _AdminAllOrdersState extends State<AdminAllOrders> {
               controller: _searchController,
               onChanged: _onSearchChanged,
               decoration: InputDecoration(
-                hintText: 'Search by customer, phone, order ID, address...',
+                hintText: 'Search by customer, phone, Pharmacy Reference ID, address...',
                 hintStyle: TextStyle(fontSize: 14, color: Colors.grey.shade500),
                 prefixIcon: const Icon(Icons.search, color: Colors.grey),
                 suffixIcon: _searchQuery.isNotEmpty
@@ -399,7 +399,7 @@ class _AdminAllOrdersState extends State<AdminAllOrders> {
         color: Colors.white,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 4,
             offset: const Offset(0, 2),
           ),
@@ -622,7 +622,7 @@ class _AdminAllOrdersState extends State<AdminAllOrders> {
   }
 
   Widget _buildOrderCard(OrderModel order) {
-    // Safe order ID display
+    // Safe Pharmacy Reference ID display
     String getSafeOrderId() {
       if (order.orderNumber != null && order.orderNumber!.isNotEmpty) {
         return order.orderNumber!;
@@ -718,7 +718,7 @@ class _AdminAllOrdersState extends State<AdminAllOrders> {
                         _buildInfoRow(
                           Icons.list_alt,
                           'Type',
-                          order.orderInputTypeDisplayName ?? 'N/A',
+                          order.orderInputTypeDisplayName,
                         ),
                         const SizedBox(height: 8),
                         if (order.totalAmount != null)

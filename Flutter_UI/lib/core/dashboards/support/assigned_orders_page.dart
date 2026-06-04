@@ -270,7 +270,7 @@ class _AssignedOrdersPageState extends State<AssignedOrdersPage>
                       Text(
                         'Order #${order.orderNumber ?? order.orderId} • $customerName',
                         style: TextStyle(
-                            color: Colors.white.withOpacity(0.85),
+                            color: Colors.white.withValues(alpha: 0.85),
                             fontSize: 12),
                       ),
                       const SizedBox(height: 6),
@@ -278,7 +278,7 @@ class _AssignedOrdersPageState extends State<AssignedOrdersPage>
                         padding: const EdgeInsets.symmetric(
                             horizontal: 8, vertical: 4),
                         decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.18),
+                          color: Colors.white.withValues(alpha: 0.18),
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: const Row(
@@ -730,7 +730,7 @@ class _AssignedOrderCard extends StatelessWidget {
             : Border.all(color: const Color(0xFFEEEEEE)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),

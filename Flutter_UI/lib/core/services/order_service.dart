@@ -148,7 +148,7 @@ class OrderService {
 
       AppLogger.apiRequest('POST', '/Orders', request.toFormData());
       if (response.statusCode == 201) {
-        AppLogger.info('Order created successfully');
+        AppLogger.info('Request Shared with Nearby Licensed Pharmacies');
         return OrderModel.fromJson(response.data);
       }
       throw OrderNetworkException(

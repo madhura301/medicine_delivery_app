@@ -338,9 +338,11 @@ class _RejectedOrdersPageState extends State<RejectedOrdersPage>
         'medicalStoreId': chemist.medicalStoreId,
       });
 
+      if (!mounted) return;
       AppSnackBar.success(context, 'Order reassigned to \${chemist.medicalName}');
       _loadRejectedOrders();
     } catch (e) {
+      if (!mounted) return;
       AppSnackBar.error(context, 'Failed to reassign order');
     }
   }

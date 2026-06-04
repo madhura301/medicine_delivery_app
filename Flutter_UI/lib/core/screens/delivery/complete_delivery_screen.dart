@@ -4,6 +4,7 @@ import 'package:dio/dio.dart';
 import 'package:pharmaish/utils/app_logger.dart';
 import 'package:pharmaish/shared/models/order_model.dart';
 import 'package:pharmaish/core/services/order_service.dart';
+import 'package:pharmaish/core/services/medical_store_service.dart';
 
 class CompleteDeliveryScreen extends StatefulWidget {
   final OrderModel order;
@@ -56,6 +57,11 @@ class _CompleteDeliveryScreenState extends State<CompleteDeliveryScreen> {
       );
 
       AppLogger.info('Delivery completed successfully');
+
+      final pharmacyName = await MedicalStoreService.getMedicalStoreNameById(
+        widget.order.medicalStoreId ?? '',
+      );
+
       if (mounted) {
         await showDialog(
           context: context,
@@ -71,7 +77,9 @@ class _CompleteDeliveryScreenState extends State<CompleteDeliveryScreen> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Order #${widget.order.orderNumber ?? widget.order.orderId} has been successfully delivered.'),
+                Text(pharmacyName != null && pharmacyName.isNotEmpty
+                    ? "The customer's request was fulfilled and delivered by $pharmacyName."
+                    : "The customer's request was fulfilled and delivered."),
                 const SizedBox(height: 12),
                 Container(
                   padding: const EdgeInsets.all(12),

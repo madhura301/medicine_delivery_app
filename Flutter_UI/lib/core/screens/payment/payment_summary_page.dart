@@ -1,12 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart';
 import 'package:dio/dio.dart';
+import 'package:intl/intl.dart';
 import 'package:razorpay_flutter/razorpay_flutter.dart';
 import 'package:pharmaish/shared/widgets/app_snackbar.dart';
 import 'package:pharmaish/utils/app_logger.dart';
+import 'package:pharmaish/utils/constants.dart';
 import 'package:pharmaish/core/services/payment_service.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class PaymentSummaryPage extends StatefulWidget {
-  final int orderId;           // ← NEW: required to record payment
+  final int orderId; // ← required to record payment
   final double medicinesTotal;
   final double convenienceFee;
   final String? orderNumber;
@@ -14,7 +18,7 @@ class PaymentSummaryPage extends StatefulWidget {
 
   const PaymentSummaryPage({
     super.key,
-    required this.orderId,     // ← NEW
+    required this.orderId,
     required this.medicinesTotal,
     this.convenienceFee = 20.0,
     this.orderNumber,
@@ -28,13 +32,25 @@ class PaymentSummaryPage extends StatefulWidget {
 class _PaymentSummaryPageState extends State<PaymentSummaryPage> {
   PaymentMethod _selectedPaymentMethod = PaymentMethod.upi;
   bool _isProcessing = false;
+  bool _agreedToTerms = false;
   late final Razorpay _razorpay;
 
   /// Razorpay order id for the checkout currently in flight (needed to verify
   /// the payment server-side once the success callback fires).
   String? _currentRazorpayOrderId;
 
+  // Brand colours
+  static const Color _blue = Color(0xFF1E3A8A);
+  static const Color _green = Color(0xFF16A34A);
+  static const Color _payGreen = Color(0xFF22C55E);
+
   double get totalAmount => widget.medicinesTotal + widget.convenienceFee;
+
+  String _money(double amount) => NumberFormat.currency(
+        locale: 'en_IN',
+        symbol: '₹',
+        decimalDigits: 2,
+      ).format(amount);
 
   @override
   void initState() {
@@ -54,51 +70,31 @@ class _PaymentSummaryPageState extends State<PaymentSummaryPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey.shade200,
+      backgroundColor: Colors.grey.shade100,
       appBar: AppBar(
-        title: const Text(
-          'My Order',
-          style: TextStyle(
-            color: Colors.black,
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
         backgroundColor: Colors.white,
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.black),
           onPressed: () => Navigator.pop(context),
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.shopping_cart, color: Colors.black),
-            onPressed: () {},
-          ),
-        ],
       ),
       body: SingleChildScrollView(
-        child: Column(
-          children: [
-            const SizedBox(height: 16),
-            _buildPaymentSummaryCard(),
-            const SizedBox(height: 24),
-          ],
-        ),
+        child: _buildPaymentSummaryCard(),
       ),
     );
   }
 
   Widget _buildPaymentSummaryCard() {
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16),
+      margin: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 10,
+            color: Colors.black.withValues(alpha: 0.08),
+            blurRadius: 12,
             offset: const Offset(0, 4),
           ),
         ],
@@ -106,153 +102,219 @@ class _PaymentSummaryPageState extends State<PaymentSummaryPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Header
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: Colors.blue.shade50,
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(20),
-                topRight: Radius.circular(20),
-              ),
-            ),
-            child: const Text(
-              'Payment Summary',
-              style: TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF1E3A8A),
-              ),
-              textAlign: TextAlign.center,
-            ),
-          ),
+          _buildHeader(),
+          const SizedBox(height: 16),
 
-          const SizedBox(height: 24),
-
-          // Price Breakdown
+          // Bill breakdown
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
+            padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Column(
               children: [
-                _buildPriceRow(
-                  'Medicines Total',
-                  widget.medicinesTotal,
-                  isRegular: true,
-                ),
-                const SizedBox(height: 12),
-                _buildPriceRow(
-                  '+ Convenience Fee',
-                  widget.convenienceFee,
-                  isHighlighted: true,
-                ),
-                const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 16),
-                  child: Divider(thickness: 1),
-                ),
-                _buildPriceRow(
-                  'Amount Payable',
-                  totalAmount,
-                  isTotal: true,
-                ),
+                _buildMedicineBillRow(),
+                const Divider(height: 28),
+                _buildConvenienceFeeRow(),
+                const SizedBox(height: 16),
+                _buildTotalBox(),
               ],
             ),
           ),
+          const SizedBox(height: 20),
 
-          const SizedBox(height: 24),
-
-          // Payment Methods
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: _buildPaymentMethods(),
-          ),
-
-          const SizedBox(height: 24),
-
-          // Pay Now Button
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: ElevatedButton(
-              onPressed: _isProcessing ? null : _handlePayment,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF22C55E),
-                padding: const EdgeInsets.symmetric(vertical: 18),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                elevation: 3,
+          // Payment methods
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 16),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                'Choose a payment method',
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
               ),
-              child: _isProcessing
-                  ? const SizedBox(
-                      height: 20,
-                      width: 20,
-                      child: CircularProgressIndicator(
-                        color: Colors.white,
-                        strokeWidth: 2,
-                      ),
-                    )
-                  : Text(
-                      'Pay Now ₹${totalAmount.toStringAsFixed(2)}',
-                      style: const TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                    ),
             ),
           ),
+          const SizedBox(height: 12),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: _buildPaymentMethods(),
+          ),
+          const SizedBox(height: 16),
 
-          const SizedBox(height: 24),
+          // Trust badges
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: _buildSecurityBadges(),
+          ),
+          const SizedBox(height: 16),
 
-          // Security Badges
-          _buildSecurityBadges(),
+          // Important information
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: _buildImportantInfo(),
+          ),
+          const SizedBox(height: 16),
 
-          const SizedBox(height: 20),
+          // Payment disclaimer
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: _buildPaymentDisclaimer(),
+          ),
+          const SizedBox(height: 16),
 
-          // Disclaimers
-          _buildDisclaimers(),
+          // Terms consent
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: _buildTermsConsent(),
+          ),
+          const SizedBox(height: 14),
 
-          const SizedBox(height: 20),
+          // Pay button
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: _buildPayButton(),
+          ),
+          const SizedBox(height: 14),
+
+          _buildFooter(),
+          const SizedBox(height: 18),
         ],
       ),
     );
   }
 
-  Widget _buildPriceRow(String label, double amount, {
-    bool isRegular = false,
-    bool isHighlighted = false,
-    bool isTotal = false,
-  }) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(
-          label,
+  // ── Header ────────────────────────────────────────────────────────────────
+  Widget _buildHeader() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.blue.shade50,
+        borderRadius: const BorderRadius.only(
+          topLeft: Radius.circular(20),
+          topRight: Radius.circular(20),
+        ),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Icon(Icons.receipt_long, color: _blue, size: 28),
+          ),
+          const SizedBox(width: 14),
+          const Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Payment Summary',
+                  style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color: _blue,
+                  ),
+                ),
+                SizedBox(height: 4),
+                Text(
+                  'Review your order and complete payment securely.',
+                  style: TextStyle(fontSize: 13, color: Colors.black54),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── Bill rows ─────────────────────────────────────────────────────────────
+  Widget _buildMedicineBillRow() {
+    return _buildAmountRow(
+      icon: Icons.medication_outlined,
+      iconColor: const Color(0xFF2563EB),
+      iconBg: Colors.blue.shade50,
+      title: const Text(
+        'Medicine Bill Amount',
+        style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+      ),
+      subtitle: Text(
+        'Amount set by the pharmacy',
+        style: TextStyle(fontSize: 12.5, color: Colors.grey.shade600),
+      ),
+      amount: widget.medicinesTotal,
+    );
+  }
+
+  Widget _buildConvenienceFeeRow() {
+    return _buildAmountRow(
+      icon: Icons.account_balance_wallet_outlined,
+      iconColor: _green,
+      iconBg: Colors.green.shade50,
+      title: Row(
+        children: [
+          const Flexible(
+            child: Text(
+              'Convenience / Payment Processing Fee',
+              style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+            ),
+          ),
+          const SizedBox(width: 6),
+          Icon(Icons.info_outline, size: 16, color: Colors.blue.shade700),
+        ],
+      ),
+      subtitle: GestureDetector(
+        onTap: _showFeeInfo,
+        child: Text(
+          'Why am I paying this?',
           style: TextStyle(
-            fontSize: isTotal ? 18 : 16,
-            fontWeight: isTotal ? FontWeight.bold : FontWeight.w500,
-            color: isTotal ? const Color(0xFF1E3A8A) : Colors.grey.shade700,
+            fontSize: 12.5,
+            color: Colors.blue.shade700,
+            fontWeight: FontWeight.w500,
           ),
         ),
+      ),
+      amount: widget.convenienceFee,
+    );
+  }
+
+  Widget _buildAmountRow({
+    required IconData icon,
+    required Color iconColor,
+    required Color iconBg,
+    required Widget title,
+    required Widget subtitle,
+    required double amount,
+  }) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
         Container(
-          padding: isHighlighted
-              ? const EdgeInsets.symmetric(horizontal: 12, vertical: 4)
-              : null,
-          decoration: isHighlighted
-              ? BoxDecoration(
-                  border: Border.all(color: Colors.orange, width: 2),
-                  borderRadius: BorderRadius.circular(8),
-                )
-              : null,
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(color: iconBg, shape: BoxShape.circle),
+          child: Icon(icon, color: iconColor, size: 22),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              title,
+              const SizedBox(height: 2),
+              subtitle,
+            ],
+          ),
+        ),
+        const SizedBox(width: 8),
+        Padding(
+          padding: const EdgeInsets.only(top: 6),
           child: Text(
-            '₹${amount.toStringAsFixed(2)}',
-            style: TextStyle(
-              fontSize: isTotal ? 24 : 16,
-              fontWeight: isTotal ? FontWeight.bold : FontWeight.w600,
-              color: isTotal
-                  ? const Color(0xFF22C55E)
-                  : isHighlighted
-                      ? Colors.orange
-                      : Colors.black87,
+            _money(amount),
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: Colors.black87,
             ),
           ),
         ),
@@ -260,124 +322,175 @@ class _PaymentSummaryPageState extends State<PaymentSummaryPage> {
     );
   }
 
-Widget _buildPaymentMethods() {
-  return Container(
-    padding: const EdgeInsets.all(16),
-    decoration: BoxDecoration(
-      border: Border.all(color: Colors.grey.shade300, width: 2),
-      borderRadius: BorderRadius.circular(12),
-    ),
-    child: Row(
-      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-      children: [
-        // Wrap each payment option in Expanded to prevent overflow
-        Expanded(
-          child: _buildPaymentMethodOption(
-            PaymentMethod.upi,
-            'assets/images/payments/upi.jpeg',
-            'UPI',
-          ),
-        ),
-        const SizedBox(width: 8), // Add spacing between items
-        Expanded(
-          child: _buildPaymentMethodOption(
-            PaymentMethod.card,
-            'assets/images/payments/credit_card.jpeg',
-            'Credit / Debit Card',
-          ),
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: _buildPaymentMethodOption(
-            PaymentMethod.netBanking,
-            'assets/images/payments/net_banking.jpeg',
-            'Net Banking',
-          ),
-        ),
-      ],
-    ),
-  );
-}
-
-  Widget _buildPaymentMethodOption(
-  PaymentMethod method,
-  String imagePath,
-  String label,
-) {
-  final isSelected = _selectedPaymentMethod == method;
-
-  return GestureDetector(
-    onTap: () {
-      setState(() {
-        _selectedPaymentMethod = method;
-      });
-    },
-    child: Column(
-      mainAxisSize: MainAxisSize.min, // Important: don't take more space than needed
-      children: [
-        Container(
-          // Remove fixed width, let it be flexible
-          constraints: const BoxConstraints(
-            maxWidth: 100, // Maximum width
-            minHeight: 60,  // Keep minimum height
-            maxHeight: 60,
-          ),
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: isSelected ? Colors.blue.shade50 : Colors.white,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(
-              color: isSelected ? Colors.blue : Colors.grey.shade300,
-              width: isSelected ? 3 : 1,
+  Widget _buildTotalBox() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFFE9F9EF),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFBCE8CC)),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Total Amount Payable',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF15803D),
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  '(Inclusive of all applicable charges)',
+                  style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                ),
+              ],
             ),
           ),
-          child: Image.asset(
-            imagePath,
-            fit: BoxFit.contain,
+          const SizedBox(width: 8),
+          Text(
+            _money(totalAmount),
+            style: const TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.bold,
+              color: _green,
+            ),
           ),
-        ),
-        const SizedBox(height: 8),
-        // Wrap text to prevent overflow
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 11,
-            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-            color: isSelected ? Colors.blue : Colors.grey.shade700,
-          ),
-          textAlign: TextAlign.center,
-          maxLines: 2, // Allow up to 2 lines
-          overflow: TextOverflow.ellipsis, // Add ellipsis if still too long
-        ),
-      ],
-    ),
-  );
-}
+        ],
+      ),
+    );
+  }
 
-  Widget _buildSecurityBadges() {
+  // ── Payment methods ───────────────────────────────────────────────────────
+  Widget _buildPaymentMethods() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        border: Border.all(color: Colors.grey.shade300, width: 2),
+        border: Border.all(color: Colors.grey.shade300, width: 1.5),
         borderRadius: BorderRadius.circular(12),
       ),
-      margin: const EdgeInsets.symmetric(horizontal: 20),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
-          _buildSecurityBadge(
-            'assets/images/payments/secure_payments.jpeg',
-            'Secure',
+          Expanded(
+            child: _buildPaymentMethodOption(
+              PaymentMethod.upi,
+              'UPI',
+              imagePath: 'assets/images/payments/upi.jpeg',
+            ),
           ),
-          Container(width: 1, height: 40, color: Colors.grey.shade300),
-          _buildSecurityBadge(
-            'assets/images/payments/rbi_authorized.jpeg',
-            'RBI Auth',
+          const SizedBox(width: 6),
+          Expanded(
+            child: _buildPaymentMethodOption(
+              PaymentMethod.card,
+              'Credit / Debit Card',
+              imagePath: 'assets/images/payments/credit_card.jpeg',
+            ),
           ),
-          Container(width: 1, height: 40, color: Colors.grey.shade300),
-          _buildSecurityBadge(
-            'assets/images/payments/ssl_encrypted.jpeg',
-            'Encrypted',
+          const SizedBox(width: 6),
+          Expanded(
+            child: _buildPaymentMethodOption(
+              PaymentMethod.netBanking,
+              'Net Banking',
+              imagePath: 'assets/images/payments/net_banking.jpeg',
+            ),
+          ),
+          const SizedBox(width: 6),
+          Expanded(
+            child: _buildPaymentMethodOption(
+              PaymentMethod.wallet,
+              'Wallets',
+              icon: Icons.account_balance_wallet_outlined,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPaymentMethodOption(
+    PaymentMethod method,
+    String label, {
+    String? imagePath,
+    IconData? icon,
+  }) {
+    final isSelected = _selectedPaymentMethod == method;
+
+    return GestureDetector(
+      onTap: () => setState(() => _selectedPaymentMethod = method),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            height: 54,
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: isSelected ? Colors.blue.shade50 : Colors.white,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: isSelected ? Colors.blue : Colors.grey.shade300,
+                width: isSelected ? 2.5 : 1,
+              ),
+            ),
+            child: imagePath != null
+                ? Image.asset(imagePath, fit: BoxFit.contain)
+                : Icon(
+                    icon,
+                    size: 28,
+                    color: isSelected ? Colors.blue : Colors.grey.shade700,
+                  ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+              color: isSelected ? Colors.blue : Colors.grey.shade700,
+            ),
+            textAlign: TextAlign.center,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── Trust badges ──────────────────────────────────────────────────────────
+  Widget _buildSecurityBadges() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+      decoration: BoxDecoration(
+        border: Border.all(color: Colors.grey.shade300, width: 1.5),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: _buildSecurityBadge(
+              'assets/images/payments/secure_payments.jpeg',
+              'Secure Payments',
+            ),
+          ),
+          Container(width: 1, height: 36, color: Colors.grey.shade300),
+          Expanded(
+            child: _buildSecurityBadge(
+              'assets/images/payments/rbi_authorized.jpeg',
+              'RBI-Compliant Payment Processing',
+            ),
+          ),
+          Container(width: 1, height: 36, color: Colors.grey.shade300),
+          Expanded(
+            child: _buildSecurityBadge(
+              'assets/images/payments/ssl_encrypted.jpeg',
+              'SSL Encrypted',
+            ),
           ),
         ],
       ),
@@ -386,88 +499,267 @@ Widget _buildPaymentMethods() {
 
   Widget _buildSecurityBadge(String imagePath, String text) {
     return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Image.asset(
-          imagePath,
-          width: 32,
-          height: 32,
-          fit: BoxFit.contain,
-        ),
-        const SizedBox(width: 8),
-        Text(
-          text,
-          style: TextStyle(
-            fontSize: 11,
-            fontWeight: FontWeight.w600,
-            color: Colors.grey.shade800,
-            height: 1.2,
+        Image.asset(imagePath, width: 26, height: 26, fit: BoxFit.contain),
+        const SizedBox(width: 6),
+        Flexible(
+          child: Text(
+            text,
+            style: TextStyle(
+              fontSize: 10.5,
+              fontWeight: FontWeight.w600,
+              color: Colors.grey.shade800,
+              height: 1.2,
+            ),
           ),
         ),
       ],
     );
   }
 
-  Widget _buildDisclaimers() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
+  // ── Important information ─────────────────────────────────────────────────
+  Widget _buildImportantInfo() {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFEF9E7),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFF3E5B3)),
+      ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildDisclaimerRow(
-            Icons.check_circle,
-            Colors.green,
-            'Payment for facilitation of offline medicine order.',
+          const Row(
+            children: [
+              Icon(Icons.info, color: Colors.orange, size: 20),
+              SizedBox(width: 8),
+              Text(
+                'Important Information',
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+              ),
+            ],
           ),
           const SizedBox(height: 12),
-          _buildDisclaimerRow(
-            Icons.medical_services,
-            Colors.blue,
-            'Pharmaish does not sell or dispense medicines.',
-            imagePath: 'assets/images/payments/medicines_icon.jpeg',
+          _infoBullet('Medicine invoice is generated by the retail pharmacy.'),
+          _infoBullet(
+              'Pharmaish is a technology platform and does not sell, stock, '
+              'dispense, or invoice medicines.'),
+          _infoBullet(
+              '100% of the medicine bill amount is settled to the pharmacy '
+              'through the marketplace settlement system (excluding platform '
+              'usage fee, as per T&C).'),
+          _infoBullet('Convenience / payment processing charges may apply.'),
+        ],
+      ),
+    );
+  }
+
+  Widget _infoBullet(String text) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(Icons.check_circle, color: _payGreen, size: 18),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              text,
+              style: TextStyle(
+                fontSize: 12.5,
+                color: Colors.grey.shade800,
+                height: 1.35,
+              ),
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildDisclaimerRow(
-    IconData icon,
-    Color color,
-    String text, {
-    String? imagePath,
-  }) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Container(
-          width: 36,
-          height: 36,
-          decoration: BoxDecoration(
-            color: color.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(8),
+  // ── Payment disclaimer ────────────────────────────────────────────────────
+  Widget _buildPaymentDisclaimer() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade50,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade300),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            children: [
+              Icon(Icons.gavel, color: Colors.black54, size: 18),
+              SizedBox(width: 8),
+              Text(
+                'Payment Disclaimer',
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+              ),
+            ],
           ),
-          child: imagePath != null
-              ? ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: Image.asset(
-                    imagePath,
-                    fit: BoxFit.cover,
-                  ),
-                )
-              : Icon(icon, color: color, size: 20),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Text(
-            text,
+          const SizedBox(height: 8),
+          Text(
+            'Platform fees, activation fees, convenience fees, and other charges '
+            'may be revised by Pharmaish from time to time upon prior notice.',
             style: TextStyle(
-              fontSize: 13,
-              color: Colors.grey.shade800,
+              fontSize: 12.5,
+              color: Colors.grey.shade700,
               height: 1.4,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── Terms consent ─────────────────────────────────────────────────────────
+  Widget _buildTermsConsent() {
+    final linkStyle = TextStyle(
+      fontSize: 13,
+      color: Colors.blue.shade700,
+      fontWeight: FontWeight.w600,
+      decoration: TextDecoration.underline,
+    );
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        SizedBox(
+          height: 24,
+          width: 24,
+          child: Checkbox(
+            value: _agreedToTerms,
+            onChanged: (v) => setState(() => _agreedToTerms = v ?? false),
+            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            visualDensity: VisualDensity.compact,
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: RichText(
+            text: TextSpan(
+              style: TextStyle(fontSize: 13, color: Colors.grey.shade800),
+              children: [
+                const TextSpan(text: 'By proceeding, you agree to our '),
+                TextSpan(
+                  text: 'Terms & Conditions',
+                  style: linkStyle,
+                  recognizer: TapGestureRecognizer()
+                    ..onTap =
+                        () => _openPolicy(AppConstants.termsAndConditionsUrl),
+                ),
+                const TextSpan(text: ' and '),
+                TextSpan(
+                  text: 'Privacy Policy',
+                  style: linkStyle,
+                  recognizer: TapGestureRecognizer()
+                    ..onTap = () => _openPolicy(AppConstants.privacyPolicyUrl),
+                ),
+                const TextSpan(text: '.'),
+              ],
             ),
           ),
         ),
       ],
     );
+  }
+
+  // ── Pay button + footer ───────────────────────────────────────────────────
+  Widget _buildPayButton() {
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton(
+        onPressed: _isProcessing ? null : _handlePayment,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: _payGreen,
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          elevation: 3,
+        ),
+        child: _isProcessing
+            ? const SizedBox(
+                height: 20,
+                width: 20,
+                child: CircularProgressIndicator(
+                  color: Colors.white,
+                  strokeWidth: 2,
+                ),
+              )
+            : Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.lock, color: Colors.white, size: 20),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Pay ${_money(totalAmount)}',
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                ],
+              ),
+      ),
+    );
+  }
+
+  Widget _buildFooter() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.verified_user_outlined,
+              size: 16, color: Colors.grey.shade500),
+          const SizedBox(width: 6),
+          Flexible(
+            child: Text(
+              'Your payment is safe and secure with encryption.',
+              style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+              textAlign: TextAlign.center,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showFeeInfo() {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Convenience / Payment Processing Fee'),
+        content: const Text(
+          'This is a small platform fee that covers secure online payment '
+          'processing and facilitation of your offline medicine order. '
+          'The full medicine bill amount is settled to the pharmacy.',
+          style: TextStyle(height: 1.4),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Got it'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _openPolicy(String url) async {
+    try {
+      await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+    } catch (e) {
+      AppLogger.error('Failed to open policy link: $url', e);
+      if (mounted) {
+        AppSnackBar.error(context, 'Unable to open link');
+      }
+    }
   }
 
   /// Step 1: ask the server to create a Razorpay order, then open checkout.
@@ -527,8 +819,7 @@ Widget _buildPaymentMethods() {
     try {
       await PaymentService.verifyPayment(
         orderId: widget.orderId,
-        razorpayOrderId:
-            _currentRazorpayOrderId ?? response.orderId ?? '',
+        razorpayOrderId: _currentRazorpayOrderId ?? response.orderId ?? '',
         razorpayPaymentId: response.paymentId ?? '',
         razorpaySignature: response.signature ?? '',
       );
@@ -590,11 +881,16 @@ Widget _buildPaymentMethods() {
   /// Maps the in-app method tiles to Razorpay's `prefill.method` values.
   String? _razorpayMethod(PaymentMethod method) {
     switch (method) {
-      case PaymentMethod.upi:        return 'upi';
-      case PaymentMethod.card:       return 'card';
-      case PaymentMethod.netBanking: return 'netbanking';
-      case PaymentMethod.wallet:     return 'wallet';
-      case PaymentMethod.cod:        return null;
+      case PaymentMethod.upi:
+        return 'upi';
+      case PaymentMethod.card:
+        return 'card';
+      case PaymentMethod.netBanking:
+        return 'netbanking';
+      case PaymentMethod.wallet:
+        return 'wallet';
+      case PaymentMethod.cod:
+        return null;
     }
   }
 
@@ -615,7 +911,7 @@ Widget _buildPaymentMethods() {
             ),
             const SizedBox(height: 8),
             Text(
-              'Amount: ₹${totalAmount.toStringAsFixed(2)}',
+              'Amount: ${_money(totalAmount)}',
               style: TextStyle(fontSize: 16, color: Colors.grey.shade700),
             ),
             const SizedBox(height: 8),
@@ -635,7 +931,8 @@ Widget _buildPaymentMethods() {
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.green,
               foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              shape:
+                  RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
             ),
             child: const Text('Done'),
           ),
@@ -649,6 +946,6 @@ enum PaymentMethod {
   upi,
   card,
   netBanking,
-  wallet,  // Add Paytm, PhonePe, etc.
-  cod     // Cash on Delivery
+  wallet, // Add Paytm, PhonePe, etc.
+  cod // Cash on Delivery
 }

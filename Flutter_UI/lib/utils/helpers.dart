@@ -26,34 +26,6 @@ class AppHelpers {
     );
   }
 
-  static void logout(BuildContext context) {
-    Future<void> logout(BuildContext context) async {
-      try {
-        // Clear ALL stored data
-        await StorageService.clearAuthTokens();
-        await StorageService.clearSavedCredentials();
-        //await StorageService.clearUserInfo();
-
-        // Navigate to login and remove all previous routes
-        if (context.mounted) {
-          Navigator.of(context).pushNamedAndRemoveUntil(
-            '/login',
-            (route) => false,
-          );
-        }
-      } catch (e) {
-        AppLogger.error('Error during logout', e);
-        // Even if there's an error, try to navigate to login
-        if (context.mounted) {
-          Navigator.of(context).pushNamedAndRemoveUntil(
-            '/login',
-            (route) => false,
-          );
-        }
-      }
-    }
-  }
-
   static void showErrorSnackBar(BuildContext context, String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(

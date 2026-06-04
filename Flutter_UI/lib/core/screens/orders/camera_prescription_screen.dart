@@ -1,8 +1,8 @@
 import 'dart:io';
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:pharmaish/core/services/order_service.dart';
+import 'package:pharmaish/core/services/customer_service.dart';
 import 'package:pharmaish/shared/models/order_enums.dart';
 import 'package:pharmaish/shared/models/order_model.dart';
 import 'package:pharmaish/utils/app_logger.dart';
@@ -44,6 +44,34 @@ class _CameraPrescriptionScreenState extends State<CameraPrescriptionScreen> {
     StepItem(label: 'Details', icon: Icons.edit_note),
     StepItem(label: 'Review', icon: Icons.preview),
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    _prefillPatientDetails();
+  }
+
+  /// Pre-fills the patient name and phone from the logged-in customer's profile.
+  /// The fields stay editable (e.g. ordering for a family member).
+  Future<void> _prefillPatientDetails() async {
+    try {
+      final data = await CustomerService.getCustomer(widget.customerId);
+      final first = (data['customerFirstName'] ?? '').toString().trim();
+      final last = (data['customerLastName'] ?? '').toString().trim();
+      final mobile = (data['mobileNumber'] ?? '').toString().trim();
+      if (!mounted) return;
+      setState(() {
+        if (_patientNameController.text.trim().isEmpty) {
+          _patientNameController.text = '$first $last'.trim();
+        }
+        if (_phoneController.text.trim().isEmpty) {
+          _phoneController.text = mobile;
+        }
+      });
+    } catch (e) {
+      AppLogger.error('Error pre-filling patient details', e);
+    }
+  }
 
   @override
   void dispose() {
@@ -96,17 +124,6 @@ class _CameraPrescriptionScreenState extends State<CameraPrescriptionScreen> {
       if (mounted) {
         AppSnackBar.error(context, 'Error selecting image: $e');
       }
-    }
-  }
-
-  Future<String> _convertImageToBase64() async {
-    if (_capturedImage == null) return '';
-    try {
-      List<int> imageBytes = await _capturedImage!.readAsBytes();
-      return base64Encode(imageBytes);
-    } catch (e) {
-      AppLogger.error('Error converting image to base64: $e');
-      return '';
     }
   }
 
@@ -186,10 +203,10 @@ AppLogger.info('Selected Address : $_selectedAddress');
 
       final createdOrder = await OrderService.createOrder(orderRequest);
 
-      AppLogger.info('✅ Order created! ID: ${createdOrder.orderId}');
+      AppLogger.info('✅ Request Shared with Nearby Licensed Pharmacies. ID: ${createdOrder.orderId}');
 
       if (mounted) {
-        AppSnackBar.success(context, 'Order submitted successfully!');
+        AppSnackBar.success(context, 'Your request has been shared with nearby licensed pharmacies.');
         Navigator.of(context).pop(true);
       }
     } on OrderValidationException catch (e) {
@@ -289,7 +306,7 @@ AppLogger.info('Selected Address : $_selectedAddress');
               decoration: BoxDecoration(
                 border: Border.all(color: Colors.black, width: 2),
                 borderRadius: BorderRadius.circular(16),
-                color: Colors.black.withOpacity(0.05),
+                color: Colors.black.withValues(alpha: 0.05),
               ),
               child: const Column(
                 children: [
@@ -370,7 +387,7 @@ AppLogger.info('Selected Address : $_selectedAddress');
                     right: 8,
                     child: Container(
                       decoration: BoxDecoration(
-                        color: Colors.black.withOpacity(0.6),
+                        color: Colors.black.withValues(alpha: 0.6),
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: IconButton(
@@ -589,42 +606,38 @@ AppLogger.info('Selected Address : $_selectedAddress');
             style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: RadioListTile<String>(
-                  title: const Text('Home'),
-                  subtitle: const Text('Deliver to home'),
-                  value: 'home',
-                  groupValue: _deliveryType,
-                  activeColor: Colors.black,
-                  onChanged: (value) {
-                    setState(() => _deliveryType = value!);
-                  },
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    side: BorderSide(color: Colors.grey.shade300),
+          RadioGroup<String>(
+            groupValue: _deliveryType,
+            onChanged: (value) => setState(() => _deliveryType = value!),
+            child: Row(
+              children: [
+                Expanded(
+                  child: RadioListTile<String>(
+                    title: const Text('Home'),
+                    subtitle: const Text('Deliver to home'),
+                    value: 'home',
+                    activeColor: Colors.black,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      side: BorderSide(color: Colors.grey.shade300),
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: RadioListTile<String>(
-                  title: const Text('Pickup'),
-                  subtitle: const Text('Store pickup'),
-                  value: 'pickup',
-                  groupValue: _deliveryType,
-                  activeColor: Colors.black,
-                  onChanged: (value) {
-                    setState(() => _deliveryType = value!);
-                  },
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    side: BorderSide(color: Colors.grey.shade300),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: RadioListTile<String>(
+                    title: const Text('Pickup'),
+                    subtitle: const Text('Store pickup'),
+                    value: 'pickup',
+                    activeColor: Colors.black,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      side: BorderSide(color: Colors.grey.shade300),
+                    ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
           const SizedBox(height: 24),
 
@@ -634,42 +647,38 @@ AppLogger.info('Selected Address : $_selectedAddress');
             style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: RadioListTile<String>(
-                  title: const Text('Regular'),
-                  subtitle: const Text('1-2 days'),
-                  value: 'regular',
-                  groupValue: _urgency,
-                  activeColor: Colors.black,
-                  onChanged: (value) {
-                    setState(() => _urgency = value!);
-                  },
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    side: BorderSide(color: Colors.grey.shade300),
+          RadioGroup<String>(
+            groupValue: _urgency,
+            onChanged: (value) => setState(() => _urgency = value!),
+            child: Row(
+              children: [
+                Expanded(
+                  child: RadioListTile<String>(
+                    title: const Text('Regular'),
+                    subtitle: const Text('1-2 days'),
+                    value: 'regular',
+                    activeColor: Colors.black,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      side: BorderSide(color: Colors.grey.shade300),
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: RadioListTile<String>(
-                  title: const Text('Urgent'),
-                  subtitle: const Text('Same day'),
-                  value: 'urgent',
-                  groupValue: _urgency,
-                  activeColor: Colors.black,
-                  onChanged: (value) {
-                    setState(() => _urgency = value!);
-                  },
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    side: BorderSide(color: Colors.grey.shade300),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: RadioListTile<String>(
+                    title: const Text('Urgent'),
+                    subtitle: const Text('Same day'),
+                    value: 'urgent',
+                    activeColor: Colors.black,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      side: BorderSide(color: Colors.grey.shade300),
+                    ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ],
       ),

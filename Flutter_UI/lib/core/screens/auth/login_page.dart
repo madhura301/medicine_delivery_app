@@ -1,17 +1,17 @@
 import 'package:pharmaish/core/services/consent_service.dart';
 import 'package:pharmaish/core/theme/app_theme.dart';
-import 'package:pharmaish/shared/widgets/app_snackbar.dart';
 import 'package:pharmaish/shared/widgets/transparent_pricing_dialog.dart';
 import 'package:pharmaish/utils/app_logger.dart';
 import 'package:flutter/material.dart';
 import 'package:pharmaish/core/app_routes.dart';
 import 'package:pharmaish/core/screens/auth/forgot_password_page.dart';
-import 'package:pharmaish/core/screens/auth/change_password_page.dart';
 import 'package:pharmaish/core/services/auth_service.dart';
+import 'package:pharmaish/core/services/medical_store_service.dart';
 import 'package:pharmaish/utils/consent_manager.dart';
 import 'package:pharmaish/utils/constants.dart';
 import 'package:flutter/gestures.dart';
 import 'package:pharmaish/utils/storage.dart';
+import 'package:pharmaish/shared/widgets/app_snackbar.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class LoginPage extends StatefulWidget {
@@ -64,36 +64,23 @@ class _LoginPageState extends State<LoginPage> {
       builder: (ctx) => const TransparentPricingDialog(),
     );
   }
-  /// Open Privacy Policy PDF
+  /// Open Privacy Policy web page.
   Future<void> _openPrivacyPolicy() async {
-    const String pdfUrl =
-        '${AppConstants.documentsProdBaseUrl}/Privacy_Policy.pdf';
-    // Alternative test URL: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf'
-
-    try {
-      final Uri uri = Uri.parse(pdfUrl);
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
-    } catch (e) {
-      AppLogger.error('Error opening Privacy Policy', e);
-      if (mounted) {
-        AppSnackBar.error(context, 'Unable to open Privacy Policy');
-      }
-    }
+    await _openUrl(AppConstants.privacyPolicyUrl);
   }
 
-  /// Open Terms and Conditions PDF
+  /// Open Terms and Conditions web page.
   Future<void> _openTermsAndConditions() async {
-    const String pdfUrl =
-        '${AppConstants.documentsProdBaseUrl}/Terms_and_Conditions.pdf';
-    // Alternative test URL: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf'
+    await _openUrl(AppConstants.termsAndConditionsUrl);
+  }
 
+  Future<void> _openUrl(String url) async {
     try {
-      final Uri uri = Uri.parse(pdfUrl);
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
+      await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
     } catch (e) {
-      AppLogger.error('Error opening Terms and Conditions', e);
+      AppLogger.error('Error opening link: $url', e);
       if (mounted) {
-        AppSnackBar.error(context, 'Unable to open Terms and Conditions');
+        AppSnackBar.error(context, 'Unable to open link');
       }
     }
   }
@@ -673,6 +660,12 @@ class _LoginPageState extends State<LoginPage> {
         final role =
             extractedUserInfo['role'] ?? extractedUserInfo['Role'] ?? '';
 
+        // For chemists, cache the pharmacy name so it can be shown locally
+        // (e.g. in the order-accepted confirmation) without a round trip.
+        if (role == 'Chemist') {
+          await _cachePharmacyName(extractedUserInfo['email'] ?? '');
+        }
+
         setState(() {
           _isLoading = false;
         });
@@ -718,68 +711,19 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
-  /// Shows a non-blocking prompt asking the user if they'd like to update
-  /// their password. Tapping "Update Now" opens [ChangePasswordPage].
-  /// Tapping "Skip" or dismissing continues the normal login flow.
-  Future<void> _offerPasswordUpdate() async {
-    if (!mounted) return;
-
-    final shouldUpdate = await showDialog<bool>(
-      context: context,
-      barrierDismissible: true,
-      builder: (ctx) => AlertDialog(
-        shape:
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: AppTheme.primaryColor.withValues(alpha: 0.1),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(Icons.lock_outline,
-                  color: AppTheme.primaryColor, size: 22),
-            ),
-            const SizedBox(width: 12),
-            const Text('Update Password?',
-                style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
-          ],
-        ),
-        content: Text(
-          'Would you like to update your password for better security?',
-          style: TextStyle(fontSize: 14, color: Colors.grey.shade700),
-        ),
-        actionsPadding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: Text('Skip',
-                style: TextStyle(color: Colors.grey.shade600)),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.primaryColor,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8)),
-            ),
-            child: const Text('Update Now'),
-          ),
-        ],
-      ),
-    );
-
-    if (shouldUpdate == true && mounted) {
-      final mobileNumber = _userNameController.text.trim();
-      await Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => ChangePasswordPage(mobileNumber: mobileNumber),
-        ),
-      );
+  /// Fetches the chemist's pharmacy name and caches it locally. Failures are
+  /// non-fatal — login proceeds regardless, the name simply won't be cached.
+  Future<void> _cachePharmacyName(String email) async {
+    if (email.isEmpty) return;
+    try {
+      final store =
+          await MedicalStoreService.getMedicalStoreByEmail(email: email);
+      final pharmacyName = store?['medicalName'] as String?;
+      if (pharmacyName != null && pharmacyName.isNotEmpty) {
+        await StorageService.storePharmacyName(pharmacyName);
+      }
+    } catch (e) {
+      AppLogger.error('Failed to cache pharmacy name: $e');
     }
   }
 

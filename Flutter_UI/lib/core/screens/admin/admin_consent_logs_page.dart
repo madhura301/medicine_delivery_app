@@ -4,6 +4,23 @@ import 'package:intl/intl.dart';
 import 'package:pharmaish/utils/app_logger.dart';
 import 'package:pharmaish/core/services/dio_client.dart';
 
+/// Converts a backend timestamp (UTC, possibly without a `Z`/offset) into the
+/// device's local time zone. Returns null for null/empty/invalid input.
+DateTime? _parseDateAsLocal(dynamic value) {
+  if (value == null) return null;
+  final raw = value.toString();
+  if (raw.isEmpty) return null;
+
+  final parsed = DateTime.tryParse(raw);
+  if (parsed == null) return null;
+
+  final utc = parsed.isUtc
+      ? parsed
+      : DateTime.utc(parsed.year, parsed.month, parsed.day, parsed.hour,
+          parsed.minute, parsed.second, parsed.millisecond, parsed.microsecond);
+  return utc.toLocal();
+}
+
 class AdminConsentLogsPage extends StatefulWidget {
   const AdminConsentLogsPage({super.key});
 
@@ -27,13 +44,6 @@ class _AdminConsentLogsPageState extends State<AdminConsentLogsPage> {
   DateTime? _endDate;
   String _searchQuery = '';
   final _searchController = TextEditingController();
-  final List<String> _userTypes = [
-    'Customer',
-    'Chemist',
-    'CustomerSupport',
-    'Delivery',
-    'Admin', // ✨ ADD THIS
-  ];
   @override
   void initState() {
     super.initState();
@@ -141,9 +151,7 @@ class _AdminConsentLogsPageState extends State<AdminConsentLogsPage> {
 
         // Filter by date range
         if (_startDate != null || _endDate != null) {
-          final createdOn = log['createdOn'] != null
-              ? DateTime.parse(log['createdOn'])
-              : null;
+          final createdOn = _parseDateAsLocal(log['createdOn']);
           if (createdOn != null) {
             if (_startDate != null && createdOn.isBefore(_startDate!)) {
               return false;
@@ -172,12 +180,8 @@ class _AdminConsentLogsPageState extends State<AdminConsentLogsPage> {
 
       // Sort by date (newest first)
       _filteredLogs.sort((a, b) {
-        final aDate = a['createdOn'] != null
-            ? DateTime.parse(a['createdOn'])
-            : DateTime.now();
-        final bDate = b['createdOn'] != null
-            ? DateTime.parse(b['createdOn'])
-            : DateTime.now();
+        final aDate = _parseDateAsLocal(a['createdOn']) ?? DateTime.now();
+        final bDate = _parseDateAsLocal(b['createdOn']) ?? DateTime.now();
         return bDate.compareTo(aDate);
       });
     });
@@ -499,9 +503,7 @@ class _AdminConsentLogsPageState extends State<AdminConsentLogsPage> {
     final consentName = log['consent']?['title'] ??
         log['consent']?['description'] ??
         'Unknown Consent'; // ✨ Use 'title' field
-    final createdOn = log['createdOn'] != null
-        ? DateTime.parse(log['createdOn'])
-        : DateTime.now();
+    final createdOn = _parseDateAsLocal(log['createdOn']) ?? DateTime.now();
     final userId = log['userId']?.toString() ?? '';
     final ipAddress = log['ipAddress']?.toString() ?? '';
     final userAgent = log['userAgent']?.toString() ?? '';
@@ -515,7 +517,7 @@ class _AdminConsentLogsPageState extends State<AdminConsentLogsPage> {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: ExpansionTile(
         leading: CircleAvatar(
-          backgroundColor: actionColor.withOpacity(0.2),
+          backgroundColor: actionColor.withValues(alpha: 0.2),
           child: Icon(actionIcon, color: actionColor, size: 24),
         ),
         title: Row(
@@ -616,9 +618,9 @@ class _AdminConsentLogsPageState extends State<AdminConsentLogsPage> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: color.withOpacity(0.3)),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,

@@ -29,6 +29,7 @@ Future<bool> _showConsent(
 }) async {
   bool accepted = false;
   final consentId = await ConsentService.getConsentIdByType(consentType);
+  if (!context.mounted) return false;
 
   await showDialog(
     context: context,
@@ -184,6 +185,7 @@ class PharmacistConsentManager {
       BuildContext context) async {
     final registrationAccepted = await showRetailerRegistrationConsent(context);
     if (!registrationAccepted) return false;
+    if (!context.mounted) return false;
 
     final licenseAccepted =
         await showLicenseVerificationConfirmation(context);
@@ -249,10 +251,8 @@ class CustomerConsentManager {
         requireCheckbox: true,
         confirmButtonText: 'I Accept',
         links: {
-          'Terms & Conditions':
-              '${AppConstants.documentsProdBaseUrl}/Terms_and_Conditions.pdf',
-          'Privacy Policy':
-              '${AppConstants.documentsProdBaseUrl}/Privacy_Policy.pdf',
+          'Terms & Conditions': AppConstants.termsAndConditionsUrl,
+          'Privacy Policy': AppConstants.privacyPolicyUrl,
         },
         metadata: const {
           'context': 'app_launch',

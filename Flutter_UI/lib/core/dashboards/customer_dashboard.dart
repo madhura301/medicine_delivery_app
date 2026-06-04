@@ -187,7 +187,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
         await StorageService.clearAuthTokens();
         await StorageService.clearSavedCredentials();
 
-        if (mounted) {
+        if (context.mounted) {
           Navigator.of(context).pushNamedAndRemoveUntil(
             '/login',
             (route) => false,
@@ -195,7 +195,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
         }
       } catch (e) {
         AppLogger.error('Error during logout', e);
-        if (mounted) {
+        if (context.mounted) {
           Navigator.of(context).pushNamedAndRemoveUntil(
             '/login',
             (route) => false,
@@ -204,36 +204,6 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
       }
     }
   }
-
-  void _showComingSoon(BuildContext context, String feature) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Row(
-          children: [
-            Icon(Icons.info_outline, color: Colors.blue.shade700),
-            const SizedBox(width: 12),
-            const Text('Coming Soon'),
-          ],
-        ),
-        content: Text(
-          '$feature feature is under development and will be available soon.',
-          style: const TextStyle(fontSize: 16),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('OK'),
-          ),
-        ],
-      ),
-    );
-  }
-
-// This fixes:
-// 1. Moves drawer and profile icons up aligned with logo
-// 2. Fixes status badge overlap on profile icon
-// 3. Adds Pharmaish disclaimer text in footer
 
   @override
   Widget build(BuildContext context) {
@@ -451,8 +421,12 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
                           ),
                         ),
                         TextSpan(
-                          text: 'is a technology facilitation platform. '
-                              'Medicines are sold, billed, and delivered by licensed retail pharmacies.',
+                          text: 'is a technology platform that facilitates '
+                              'digital communication between users and '
+                              'licensed pharmacies. All medicines are sold, '
+                              'billed, and delivered directly by the '
+                              'respective pharmacy. Pharmaish does not sell, '
+                              'stock, dispense, or deliver medicine.',
                         ),
                       ],
                     ),

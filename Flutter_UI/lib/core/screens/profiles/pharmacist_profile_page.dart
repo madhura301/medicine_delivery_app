@@ -414,34 +414,30 @@ class _PharmacistProfilePageState extends State<PharmacistProfilePage> {
                                         Border.all(color: Colors.grey.shade300),
                                     borderRadius: BorderRadius.circular(12),
                                   ),
-                                  child: Column(
-                                    children: [
-                                      RadioListTile<bool>(
-                                        title: const Text('GST Registered'),
-                                        value: true,
-                                        groupValue: _isGstRegistered,
-                                        activeColor: AppTheme.primaryColor,
-                                        onChanged: (value) {
-                                          setState(() {
-                                            _isGstRegistered = value!;
-                                          });
-                                        },
-                                      ),
-                                      RadioListTile<bool>(
-                                        title: const Text('GST Un-Registered'),
-                                        value: false,
-                                        groupValue: _isGstRegistered,
-                                        activeColor: AppTheme.primaryColor,
-                                        onChanged: (value) {
-                                          setState(() {
-                                            _isGstRegistered = value!;
-                                            if (!_isGstRegistered) {
-                                              _gstNumberController.clear();
-                                            }
-                                          });
-                                        },
-                                      ),
-                                    ],
+                                  child: RadioGroup<bool>(
+                                    groupValue: _isGstRegistered,
+                                    onChanged: (value) {
+                                      setState(() {
+                                        _isGstRegistered = value!;
+                                        if (!_isGstRegistered) {
+                                          _gstNumberController.clear();
+                                        }
+                                      });
+                                    },
+                                    child: const Column(
+                                      children: [
+                                        RadioListTile<bool>(
+                                          title: Text('GST Registered'),
+                                          value: true,
+                                          activeColor: AppTheme.primaryColor,
+                                        ),
+                                        RadioListTile<bool>(
+                                          title: Text('GST Un-Registered'),
+                                          value: false,
+                                          activeColor: AppTheme.primaryColor,
+                                        ),
+                                      ],
+                                    ),
                                   ),
                                 ),
                                 const SizedBox(height: 16),

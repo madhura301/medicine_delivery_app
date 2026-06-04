@@ -225,7 +225,7 @@ class _AssignDeliveryBoyScreenState extends State<AssignDeliveryBoyScreen> {
               color: Colors.black,
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.1),
+                  color: Colors.black.withValues(alpha: 0.1),
                   blurRadius: 4,
                   offset: const Offset(0, 2),
                 ),
@@ -252,7 +252,7 @@ class _AssignDeliveryBoyScreenState extends State<AssignDeliveryBoyScreen> {
                 Text(
                   'Customer: ${widget.customerName}',
                   style: TextStyle(
-                    color: Colors.white.withOpacity(0.9),
+                    color: Colors.white.withValues(alpha: 0.9),
                     fontSize: 14,
                   ),
                 ),
@@ -261,7 +261,7 @@ class _AssignDeliveryBoyScreenState extends State<AssignDeliveryBoyScreen> {
                   Text(
                     'Amount: ₹${widget.order.totalAmount!.toStringAsFixed(2)}',
                     style: TextStyle(
-                      color: Colors.white.withOpacity(0.9),
+                      color: Colors.white.withValues(alpha: 0.9),
                       fontSize: 14,
                     ),
                   ),
@@ -283,7 +283,7 @@ class _AssignDeliveryBoyScreenState extends State<AssignDeliveryBoyScreen> {
                 color: Colors.white,
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.1),
+                    color: Colors.black.withValues(alpha: 0.1),
                     blurRadius: 4,
                     offset: const Offset(0, -2),
                   ),
@@ -421,7 +421,7 @@ class _AssignDeliveryBoyScreenState extends State<AssignDeliveryBoyScreen> {
               boxShadow: isSelected
                   ? [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.1),
+                        color: Colors.black.withValues(alpha: 0.1),
                         blurRadius: 8,
                         offset: const Offset(0, 4),
                       ),
@@ -435,7 +435,7 @@ class _AssignDeliveryBoyScreenState extends State<AssignDeliveryBoyScreen> {
                   height: 50,
                   decoration: BoxDecoration(
                     color: isSelected
-                        ? Colors.white.withOpacity(0.2)
+                        ? Colors.white.withValues(alpha: 0.2)
                         : Colors.grey.shade200,
                     shape: BoxShape.circle,
                   ),
@@ -464,7 +464,7 @@ class _AssignDeliveryBoyScreenState extends State<AssignDeliveryBoyScreen> {
                         style: TextStyle(
                           fontSize: 14,
                           color: isSelected
-                              ? Colors.white.withOpacity(0.9)
+                              ? Colors.white.withValues(alpha: 0.9)
                               : Colors.grey.shade700,
                         ),
                       ),
@@ -475,7 +475,7 @@ class _AssignDeliveryBoyScreenState extends State<AssignDeliveryBoyScreen> {
                           style: TextStyle(
                             fontSize: 12,
                             color: isSelected
-                                ? Colors.white.withOpacity(0.8)
+                                ? Colors.white.withValues(alpha: 0.8)
                                 : Colors.grey.shade600,
                           ),
                         ),

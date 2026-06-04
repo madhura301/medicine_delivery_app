@@ -146,7 +146,7 @@ class _DeliveryDashboardState extends State<DeliveryDashboard> {
                 Text(
                   'Delivery Boy',
                   style: TextStyle(
-                      color: Colors.white.withOpacity(0.9), fontSize: 14),
+                      color: Colors.white.withValues(alpha: 0.9), fontSize: 14),
                 ),
               ],
             ),
@@ -174,7 +174,7 @@ class _DeliveryDashboardState extends State<DeliveryDashboard> {
                   leading: const Icon(Icons.local_shipping, color: Colors.purple),
                   title: const Text('My Deliveries'),
                   selected: _selectedIndex == 0,
-                  selectedTileColor: Colors.black.withOpacity(0.08),
+                  selectedTileColor: Colors.black.withValues(alpha: 0.08),
                   onTap: () {
                     setState(() => _selectedIndex = 0);
                     Navigator.of(context).pop();
@@ -185,7 +185,7 @@ class _DeliveryDashboardState extends State<DeliveryDashboard> {
                       color: Colors.green),
                   title: const Text('Completed Deliveries'),
                   selected: _selectedIndex == 1,
-                  selectedTileColor: Colors.black.withOpacity(0.08),
+                  selectedTileColor: Colors.black.withValues(alpha: 0.08),
                   onTap: () {
                     setState(() => _selectedIndex = 1);
                     Navigator.of(context).pop();
@@ -451,7 +451,7 @@ class _DeliveryActiveOrdersPageState extends State<_DeliveryActiveOrdersPage>
               Text(
                 '${_orders.length} order${_orders.length != 1 ? 's' : ''} to deliver',
                 style: TextStyle(
-                    color: Colors.white.withOpacity(0.85), fontSize: 14),
+                    color: Colors.white.withValues(alpha: 0.85), fontSize: 14),
               ),
             ],
           ),

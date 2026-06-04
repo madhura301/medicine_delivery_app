@@ -272,7 +272,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                 Text(
                   'System Administrator',
                   style: TextStyle(
-                    color: Colors.white.withOpacity(0.9),
+                    color: Colors.white.withValues(alpha: 0.9),
                     fontSize: 14,
                   ),
                 ),
@@ -289,7 +289,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                   leading: const Icon(Icons.dashboard, color: Colors.black),
                   title: const Text('Dashboard'),
                   selected: true,
-                  selectedTileColor: Colors.black.withOpacity(0.1),
+                  selectedTileColor: Colors.black.withValues(alpha: 0.1),
                   onTap: () => Navigator.of(context).pop(),
                 ),
                 ListTile(
@@ -456,7 +456,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
         gradient: LinearGradient(
           colors: [
             Colors.black,
-            Colors.black.withOpacity(0.8),
+            Colors.black.withValues(alpha: 0.8),
           ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
@@ -464,7 +464,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.2),
+            color: Colors.black.withValues(alpha: 0.2),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -499,7 +499,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                   'Manage your system efficiently',
                   style: TextStyle(
                     fontSize: 14,
-                    color: Colors.white.withOpacity(0.9),
+                    color: Colors.white.withValues(alpha: 0.9),
                   ),
                 ),
               ],
@@ -569,9 +569,9 @@ class _AdminDashboardState extends State<AdminDashboard> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withOpacity(0.3)),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
       ),
       child: Column(
         children: [
@@ -654,7 +654,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: color.withOpacity(0.15),
+                  color: color.withValues(alpha: 0.15),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(

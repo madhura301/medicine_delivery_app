@@ -7,6 +7,7 @@ import 'package:intl/intl.dart';
 import 'package:pharmaish/shared/models/order_assignment_history_model.dart';
 import 'package:pharmaish/shared/widgets/app_button.dart';
 import 'package:pharmaish/shared/widgets/order_assignment_history_widget.dart';
+import 'package:pharmaish/shared/widgets/order_payments_dialog.dart';
 import 'package:pharmaish/utils/app_logger.dart';
 import 'package:pharmaish/utils/storage.dart';
 import 'package:pharmaish/shared/models/order_model.dart';
@@ -37,7 +38,6 @@ class _AdminOrderDetailsPageState extends State<AdminOrderDetailsPage> {
   Map<String, dynamic>? _chemistData;
   Map<String, dynamic>? _addressData;
   bool _isLoadingAddress = false;
-  Map<String, dynamic>? _deliveryData;
 
   late OrderModel _currentOrder;
 
@@ -302,6 +302,14 @@ class _AdminOrderDetailsPageState extends State<AdminOrderDetailsPage> {
             _buildCustomerInfo(),
           ),
 
+          // Payments Section
+          _buildSection(
+            'Payments',
+            Icons.payments,
+            Colors.indigo,
+            _buildPaymentsButton(),
+          ),
+
           // Chemist Information Section (if assigned)
           if (_currentOrder.medicalStoreId != null)
             _buildSection(
@@ -493,7 +501,7 @@ class _AdminOrderDetailsPageState extends State<AdminOrderDetailsPage> {
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [statusColor, statusColor.withOpacity(0.7)],
+          colors: [statusColor, statusColor.withValues(alpha: 0.7)],
         ),
       ),
       child: Row(
@@ -538,7 +546,7 @@ class _AdminOrderDetailsPageState extends State<AdminOrderDetailsPage> {
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -550,7 +558,7 @@ class _AdminOrderDetailsPageState extends State<AdminOrderDetailsPage> {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: color.withOpacity(0.1),
+              color: color.withValues(alpha: 0.1),
               borderRadius: const BorderRadius.only(
                 topLeft: Radius.circular(12),
                 topRight: Radius.circular(12),
@@ -583,7 +591,7 @@ class _AdminOrderDetailsPageState extends State<AdminOrderDetailsPage> {
   Widget _buildOrderInfo() {
     return Column(
       children: [
-        _buildDetailRow('Order ID', _currentOrder.orderId),
+        _buildDetailRow('Pharmacy Reference ID', _currentOrder.orderId),
         if (_currentOrder.orderNumber != null)
           _buildDetailRow('Order Number', _currentOrder.orderNumber!),
         _buildDetailRow(
@@ -592,7 +600,7 @@ class _AdminOrderDetailsPageState extends State<AdminOrderDetailsPage> {
         ),
         _buildDetailRow(
           'Order Type',
-          _currentOrder.orderInputTypeDisplayName ?? 'N/A',
+          _currentOrder.orderInputTypeDisplayName,
         ),
         if (_currentOrder.totalAmount != null)
           _buildDetailRow(
@@ -828,18 +836,6 @@ class _AdminOrderDetailsPageState extends State<AdminOrderDetailsPage> {
             ),
           ),
         ),
-        const SizedBox(height: 8),
-        Center(
-          child: TextButton.icon(
-            onPressed: () => downloadPrescriptionImage(
-              context,
-              orderId: _currentOrder.orderId,
-              prescriptionFileUrl: _currentOrder.prescriptionFileUrl,
-            ),
-            icon: const Icon(Icons.download),
-            label: const Text('Download'),
-          ),
-        ),
       ],
     );
   }
@@ -900,18 +896,6 @@ class _AdminOrderDetailsPageState extends State<AdminOrderDetailsPage> {
             ),
           ),
         ),
-        const SizedBox(height: 8),
-        Center(
-          child: TextButton.icon(
-            onPressed: () => downloadBillFile(
-              context,
-              orderId: _currentOrder.orderId,
-              billFileUrl: _currentOrder.billFileUrl,
-            ),
-            icon: const Icon(Icons.download),
-            label: const Text('Download'),
-          ),
-        ),
       ],
     );
   }
@@ -922,6 +906,26 @@ class _AdminOrderDetailsPageState extends State<AdminOrderDetailsPage> {
       child: OrderAssignmentHistoryWidget(
         order: _currentOrder,
         isAdminView: true, // Admin sees full details
+      ),
+    );
+  }
+
+  Widget _buildPaymentsButton() {
+    return SizedBox(
+      width: double.infinity,
+      child: OutlinedButton.icon(
+        onPressed: () => OrderPaymentsDialog.show(
+          context,
+          orderId: int.tryParse(_currentOrder.orderId) ?? 0,
+          orderNumber: _currentOrder.orderNumber,
+        ),
+        icon: const Icon(Icons.receipt_long),
+        label: const Text('View All Payments'),
+        style: OutlinedButton.styleFrom(
+          foregroundColor: Colors.indigo,
+          side: const BorderSide(color: Colors.indigo),
+          padding: const EdgeInsets.symmetric(vertical: 12),
+        ),
       ),
     );
   }
@@ -1013,8 +1017,8 @@ class _FullScreenImagePageState extends State<_FullScreenImagePage>
     final Matrix4 end = isZoomedIn
         ? Matrix4.identity()
         : (Matrix4.identity()
-          ..translate(-position.dx * 2, -position.dy * 2)
-          ..scale(3.0));
+          ..translateByDouble(-position.dx * 2, -position.dy * 2, 0, 1)
+          ..scaleByDouble(3.0, 3.0, 3.0, 1));
 
     _animation = Matrix4Tween(
       begin: _transformCtrl.value,

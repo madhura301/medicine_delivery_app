@@ -16,6 +16,7 @@ class StorageService {
   static const String _userFirstNameKey = 'user_first_name';
   static const String _userLastNameKey = 'user_last_name';
   static const String _userIdKey = 'user_id';
+  static const String _pharmacyNameKey = 'pharmacy_name';
   //static const String _userRoleKey = 'user_role';
 
   // Authentication Token Methods
@@ -272,6 +273,27 @@ class StorageService {
       return await _storage.read(key: _userFirstNameKey);
     } catch (e) {
       AppLogger.error('Error retrieving user first name: $e');
+      return null;
+    }
+  }
+
+  /// Store the logged-in chemist's pharmacy (medical store) name.
+  static Future<void> storePharmacyName(String pharmacyName) async {
+    try {
+      await _storage.write(key: _pharmacyNameKey, value: pharmacyName);
+      AppLogger.info('Pharmacy name stored successfully');
+    } catch (e) {
+      AppLogger.error('Error storing pharmacy name: $e');
+      rethrow;
+    }
+  }
+
+  /// Retrieve the cached pharmacy (medical store) name, if any.
+  static Future<String?> getPharmacyName() async {
+    try {
+      return await _storage.read(key: _pharmacyNameKey);
+    } catch (e) {
+      AppLogger.error('Error retrieving pharmacy name: $e');
       return null;
     }
   }

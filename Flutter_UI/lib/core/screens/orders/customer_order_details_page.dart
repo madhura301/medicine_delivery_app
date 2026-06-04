@@ -11,6 +11,7 @@ import 'package:pharmaish/shared/models/order_model.dart';
 import 'package:pharmaish/shared/widgets/app_button.dart';
 import 'package:pharmaish/shared/widgets/authenticated_image.dart';
 import 'package:pharmaish/shared/widgets/order_assignment_history_widget.dart';
+import 'package:pharmaish/shared/widgets/order_payments_dialog.dart';
 import 'package:pharmaish/core/services/dio_client.dart';
 import 'package:pharmaish/core/services/order_service.dart';
 
@@ -36,7 +37,8 @@ class _CustomerOrderDetailsPageState extends State<CustomerOrderDetailsPage> {
   Map<String, dynamic>? _chemistData;
   Map<String, dynamic>? _addressData;
   bool _isLoadingAddress = false;
-  Map<String, dynamic>? _deliveryData;
+  bool _isLoadingChemist = false;
+  bool _chemistLoadFailed = false;
 
   late OrderModel _currentOrder;
 
@@ -59,7 +61,7 @@ class _CustomerOrderDetailsPageState extends State<CustomerOrderDetailsPage> {
         // Check if already shown for this order
         final hasAccepted =
             await PharmacistConsentManager.hasAcceptedOrderDisclaimer(
-                _currentOrder.orderId ?? '');
+                _currentOrder.orderId);
 
         if (!hasAccepted && mounted) {
           // Show Data Handling & Liability Disclaimer
@@ -123,19 +125,28 @@ class _CustomerOrderDetailsPageState extends State<CustomerOrderDetailsPage> {
     }
   }
 
-// REPLACE WITH:
   Future<void> _loadChemistDetails() async {
+    setState(() {
+      _isLoadingChemist = true;
+      _chemistLoadFailed = false;
+    });
     try {
       final response =
           await _dio.get('/MedicalStores/${_currentOrder.medicalStoreId}');
       if (response.statusCode == 200) {
+        if (!mounted) return;
         setState(() {
           _chemistData =
               _normaliseCasing(response.data as Map<String, dynamic>);
         });
+      } else {
+        if (mounted) setState(() => _chemistLoadFailed = true);
       }
     } catch (e) {
       AppLogger.error('Error loading chemist details: $e');
+      if (mounted) setState(() => _chemistLoadFailed = true);
+    } finally {
+      if (mounted) setState(() => _isLoadingChemist = false);
     }
   }
 
@@ -397,6 +408,14 @@ class _CustomerOrderDetailsPageState extends State<CustomerOrderDetailsPage> {
             _buildOrderInfo(),
           ),
 
+          // Payments Section
+          _buildSection(
+            'Payments',
+            Icons.payments,
+            Colors.indigo,
+            _buildPaymentsButton(),
+          ),
+
           // Delivery Address Section
           _buildSection(
             'Delivery Address',
@@ -496,7 +515,7 @@ class _CustomerOrderDetailsPageState extends State<CustomerOrderDetailsPage> {
       width: double.infinity,
       padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
       decoration: BoxDecoration(
-        color: statusColor.withOpacity(0.15),
+        color: statusColor.withValues(alpha: 0.15),
         border: Border(
           bottom: BorderSide(color: statusColor, width: 2),
         ),
@@ -550,7 +569,7 @@ class _CustomerOrderDetailsPageState extends State<CustomerOrderDetailsPage> {
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),
@@ -562,7 +581,7 @@ class _CustomerOrderDetailsPageState extends State<CustomerOrderDetailsPage> {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: color.withOpacity(0.1),
+              color: color.withValues(alpha: 0.1),
               borderRadius:
                   const BorderRadius.vertical(top: Radius.circular(12)),
             ),
@@ -593,7 +612,7 @@ class _CustomerOrderDetailsPageState extends State<CustomerOrderDetailsPage> {
   Widget _buildOrderInfo() {
     return Column(
       children: [
-        _buildDetailRow('Order ID', _currentOrder.orderId),
+        _buildDetailRow('Pharmacy Reference ID', _currentOrder.orderId),
         if (_currentOrder.orderNumber != null)
           _buildDetailRow('Order Number', _currentOrder.orderNumber!),
         _buildDetailRow('Order Type', _currentOrder.orderTypeDisplayName),
@@ -669,9 +688,8 @@ class _CustomerOrderDetailsPageState extends State<CustomerOrderDetailsPage> {
     );
   }
 
-  // REPLACE WITH:
   Widget _buildChemistInfo() {
-    if (_chemistData == null) {
+    if (_isLoadingChemist) {
       return const Row(children: [
         SizedBox(
             width: 16,
@@ -679,6 +697,21 @@ class _CustomerOrderDetailsPageState extends State<CustomerOrderDetailsPage> {
             child: CircularProgressIndicator(strokeWidth: 2)),
         SizedBox(width: 8),
         Text('Loading pharmacy details...'),
+      ]);
+    }
+
+    if (_chemistData == null) {
+      return Row(children: [
+        Icon(Icons.info_outline, size: 18, color: Colors.grey[600]),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            _chemistLoadFailed
+                ? 'Pharmacy details are not available right now.'
+                : 'A pharmacy will be assigned shortly.',
+            style: TextStyle(color: Colors.grey[700], fontSize: 14),
+          ),
+        ),
       ]);
     }
 
@@ -741,18 +774,6 @@ class _CustomerOrderDetailsPageState extends State<CustomerOrderDetailsPage> {
               },
             ),
           ),
-          const SizedBox(height: 8),
-          Center(
-            child: TextButton.icon(
-              onPressed: () => downloadPrescriptionImage(
-                context,
-                orderId: _currentOrder.orderId,
-                prescriptionFileUrl: _currentOrder.prescriptionFileUrl,
-              ),
-              icon: const Icon(Icons.download),
-              label: const Text('Download'),
-            ),
-          ),
         ] else
           const Text('No prescription uploaded'),
       ],
@@ -788,16 +809,24 @@ class _CustomerOrderDetailsPageState extends State<CustomerOrderDetailsPage> {
             ),
           ),
           const SizedBox(height: 8),
-          Center(
-            child: TextButton.icon(
-              onPressed: () => downloadBillFile(
-                context,
-                orderId: _currentOrder.orderId,
-                billFileUrl: _currentOrder.billFileUrl,
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(Icons.info_outline, size: 14, color: Colors.grey[600]),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  'Invoice generated and issued by the pharmacy. '
+                  'Pharmaish only displays a copy for convenience and '
+                  'record access.',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: Colors.grey[600],
+                    height: 1.3,
+                  ),
+                ),
               ),
-              icon: const Icon(Icons.download),
-              label: const Text('Download'),
-            ),
+            ],
           ),
         ] else
           const Text('Bill not yet uploaded'),
@@ -833,6 +862,26 @@ class _CustomerOrderDetailsPageState extends State<CustomerOrderDetailsPage> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildPaymentsButton() {
+    return SizedBox(
+      width: double.infinity,
+      child: OutlinedButton.icon(
+        onPressed: () => OrderPaymentsDialog.show(
+          context,
+          orderId: int.tryParse(_currentOrder.orderId) ?? 0,
+          orderNumber: _currentOrder.orderNumber,
+        ),
+        icon: const Icon(Icons.receipt_long),
+        label: const Text('View All Payments'),
+        style: OutlinedButton.styleFrom(
+          foregroundColor: Colors.indigo,
+          side: const BorderSide(color: Colors.indigo),
+          padding: const EdgeInsets.symmetric(vertical: 12),
+        ),
       ),
     );
   }

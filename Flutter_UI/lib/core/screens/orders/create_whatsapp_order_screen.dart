@@ -218,7 +218,7 @@ class _CreateWhatsAppOrderScreenState extends State<CreateWhatsAppOrderScreen> {
 
       if (response.statusCode == 201 || response.statusCode == 200) {
         if (mounted) {
-          AppSnackBar.success(context, 'WhatsApp order created successfully!');
+          AppSnackBar.success(context, 'Request Shared with Nearby Licensed Pharmacies');
           Navigator.pop(context);
         }
       }
@@ -304,7 +304,7 @@ class _CreateWhatsAppOrderScreenState extends State<CreateWhatsAppOrderScreen> {
                             return ListTile(
                               selected: isSelected,
                               selectedTileColor:
-                                  AppTheme.primaryColor.withOpacity(0.1),
+                                  AppTheme.primaryColor.withValues(alpha: 0.1),
                               leading: CircleAvatar(
                                 backgroundColor: isSelected
                                     ? AppTheme.primaryColor

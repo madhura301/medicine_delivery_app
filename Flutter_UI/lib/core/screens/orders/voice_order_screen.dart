@@ -1,10 +1,10 @@
 import 'dart:io';
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_sound/flutter_sound.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:pharmaish/core/services/order_service.dart';
+import 'package:pharmaish/core/services/customer_service.dart';
 import 'package:pharmaish/shared/models/order_enums.dart';
 import 'package:pharmaish/shared/models/order_model.dart';
 import 'package:pharmaish/utils/app_logger.dart';
@@ -63,6 +63,29 @@ class _VoiceOrderScreenState extends State<VoiceOrderScreen> {
   void initState() {
     super.initState();
     _initializeRecorder();
+    _prefillPatientDetails();
+  }
+
+  /// Pre-fills the patient name and phone from the logged-in customer's profile.
+  /// The fields stay editable (e.g. ordering for a family member).
+  Future<void> _prefillPatientDetails() async {
+    try {
+      final data = await CustomerService.getCustomer(widget.customerId);
+      final first = (data['customerFirstName'] ?? '').toString().trim();
+      final last = (data['customerLastName'] ?? '').toString().trim();
+      final mobile = (data['mobileNumber'] ?? '').toString().trim();
+      if (!mounted) return;
+      setState(() {
+        if (_patientNameController.text.trim().isEmpty) {
+          _patientNameController.text = '$first $last'.trim();
+        }
+        if (_phoneController.text.trim().isEmpty) {
+          _phoneController.text = mobile;
+        }
+      });
+    } catch (e) {
+      AppLogger.error('Error pre-filling patient details', e);
+    }
   }
 
   Future<void> _initializeRecorder() async {
@@ -261,18 +284,6 @@ class _VoiceOrderScreenState extends State<VoiceOrderScreen> {
     });
   }
 
-  Future<String> _convertAudioToBase64() async {
-    if (_audioPath == null) return '';
-    try {
-      File audioFile = File(_audioPath!);
-      List<int> audioBytes = await audioFile.readAsBytes();
-      return base64Encode(audioBytes);
-    } catch (e) {
-      AppLogger.error('Error converting audio to base64: $e');
-      return '';
-    }
-  }
-
   void _nextStep() {
     if (_currentStep == 0) {
       if (_audioPath == null) {
@@ -348,10 +359,10 @@ class _VoiceOrderScreenState extends State<VoiceOrderScreen> {
 
       final createdOrder = await OrderService.createOrder(orderRequest);
 
-      AppLogger.info('✅ Order created! ID: ${createdOrder.orderId}');
+      AppLogger.info('✅ Request Shared with Nearby Licensed Pharmacies. ID: ${createdOrder.orderId}');
 
       if (mounted) {
-        AppSnackBar.success(context, 'Voice order submitted successfully!');
+        AppSnackBar.success(context, 'Your request has been shared with nearby licensed pharmacies.');
         Navigator.of(context).pop(true);
       }
     } on OrderValidationException catch (e) {
@@ -480,7 +491,7 @@ class _VoiceOrderScreenState extends State<VoiceOrderScreen> {
                     boxShadow: _isRecording
                         ? [
                             BoxShadow(
-                              color: Colors.red.withOpacity(0.3),
+                              color: Colors.red.withValues(alpha: 0.3),
                               blurRadius: 20,
                               spreadRadius: 5,
                             ),
@@ -626,7 +637,7 @@ class _VoiceOrderScreenState extends State<VoiceOrderScreen> {
                           activeTrackColor: Colors.orange,
                           inactiveTrackColor: Colors.orange.shade100,
                           thumbColor: Colors.orange,
-                          overlayColor: Colors.orange.withOpacity(0.2),
+                          overlayColor: Colors.orange.withValues(alpha: 0.2),
                         ),
                         child: Slider(
                           value: _totalDuration.inMilliseconds > 0
@@ -801,33 +812,33 @@ class _VoiceOrderScreenState extends State<VoiceOrderScreen> {
             style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 12),
-          RadioListTile<String>(
-            title: const Text('Prescription Medicines'),
-            subtitle: const Text('Medicines requiring prescription'),
-            value: 'prescription',
+          RadioGroup<String>(
             groupValue: _orderType,
-            activeColor: Colors.black,
-            onChanged: (value) {
-              setState(() => _orderType = value!);
-            },
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-              side: BorderSide(color: Colors.grey.shade300),
-            ),
-          ),
-          const SizedBox(height: 8),
-          RadioListTile<String>(
-            title: const Text('OTC Medicines'),
-            subtitle: const Text('Over-the-counter medicines'),
-            value: 'otc',
-            groupValue: _orderType,
-            activeColor: Colors.black,
-            onChanged: (value) {
-              setState(() => _orderType = value!);
-            },
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-              side: BorderSide(color: Colors.grey.shade300),
+            onChanged: (value) => setState(() => _orderType = value!),
+            child: Column(
+              children: [
+                RadioListTile<String>(
+                  title: const Text('Prescription Medicines'),
+                  subtitle: const Text('Medicines requiring prescription'),
+                  value: 'prescription',
+                  activeColor: Colors.black,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    side: BorderSide(color: Colors.grey.shade300),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                RadioListTile<String>(
+                  title: const Text('OTC Medicines'),
+                  subtitle: const Text('Over-the-counter medicines'),
+                  value: 'otc',
+                  activeColor: Colors.black,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    side: BorderSide(color: Colors.grey.shade300),
+                  ),
+                ),
+              ],
             ),
           ),
           const SizedBox(height: 24),
@@ -927,42 +938,38 @@ class _VoiceOrderScreenState extends State<VoiceOrderScreen> {
             style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: RadioListTile<String>(
-                  title: const Text('Home'),
-                  subtitle: const Text('Deliver to home'),
-                  value: 'home',
-                  groupValue: _deliveryType,
-                  activeColor: Colors.black,
-                  onChanged: (value) {
-                    setState(() => _deliveryType = value!);
-                  },
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    side: BorderSide(color: Colors.grey.shade300),
+          RadioGroup<String>(
+            groupValue: _deliveryType,
+            onChanged: (value) => setState(() => _deliveryType = value!),
+            child: Row(
+              children: [
+                Expanded(
+                  child: RadioListTile<String>(
+                    title: const Text('Home'),
+                    subtitle: const Text('Deliver to home'),
+                    value: 'home',
+                    activeColor: Colors.black,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      side: BorderSide(color: Colors.grey.shade300),
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: RadioListTile<String>(
-                  title: const Text('Pickup'),
-                  subtitle: const Text('Store pickup'),
-                  value: 'pickup',
-                  groupValue: _deliveryType,
-                  activeColor: Colors.black,
-                  onChanged: (value) {
-                    setState(() => _deliveryType = value!);
-                  },
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    side: BorderSide(color: Colors.grey.shade300),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: RadioListTile<String>(
+                    title: const Text('Pickup'),
+                    subtitle: const Text('Store pickup'),
+                    value: 'pickup',
+                    activeColor: Colors.black,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      side: BorderSide(color: Colors.grey.shade300),
+                    ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
           const SizedBox(height: 24),
 
@@ -972,42 +979,38 @@ class _VoiceOrderScreenState extends State<VoiceOrderScreen> {
             style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: RadioListTile<String>(
-                  title: const Text('Regular'),
-                  subtitle: const Text('1-2 days'),
-                  value: 'regular',
-                  groupValue: _urgency,
-                  activeColor: Colors.black,
-                  onChanged: (value) {
-                    setState(() => _urgency = value!);
-                  },
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    side: BorderSide(color: Colors.grey.shade300),
+          RadioGroup<String>(
+            groupValue: _urgency,
+            onChanged: (value) => setState(() => _urgency = value!),
+            child: Row(
+              children: [
+                Expanded(
+                  child: RadioListTile<String>(
+                    title: const Text('Regular'),
+                    subtitle: const Text('1-2 days'),
+                    value: 'regular',
+                    activeColor: Colors.black,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      side: BorderSide(color: Colors.grey.shade300),
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: RadioListTile<String>(
-                  title: const Text('Urgent'),
-                  subtitle: const Text('Same day'),
-                  value: 'urgent',
-                  groupValue: _urgency,
-                  activeColor: Colors.black,
-                  onChanged: (value) {
-                    setState(() => _urgency = value!);
-                  },
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    side: BorderSide(color: Colors.grey.shade300),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: RadioListTile<String>(
+                    title: const Text('Urgent'),
+                    subtitle: const Text('Same day'),
+                    value: 'urgent',
+                    activeColor: Colors.black,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      side: BorderSide(color: Colors.grey.shade300),
+                    ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ],
       ),

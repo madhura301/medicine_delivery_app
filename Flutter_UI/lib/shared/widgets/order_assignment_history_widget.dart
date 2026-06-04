@@ -135,10 +135,10 @@ class OrderAssignmentHistoryWidget extends StatelessWidget {
               margin: const EdgeInsets.only(bottom: 16),
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: _getStatusColor(history.status).withOpacity(0.05),
+                color: _getStatusColor(history.status).withValues(alpha: 0.05),
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
-                  color: _getStatusColor(history.status).withOpacity(0.3),
+                  color: _getStatusColor(history.status).withValues(alpha: 0.3),
                   width: 1,
                 ),
               ),
@@ -346,7 +346,7 @@ class OrderAssignmentHistoryWidget extends StatelessWidget {
         border: Border.all(color: Colors.white, width: 2),
         boxShadow: [
           BoxShadow(
-            color: color.withOpacity(0.3),
+            color: color.withValues(alpha: 0.3),
             blurRadius: 4,
             offset: const Offset(0, 2),
           ),

@@ -383,11 +383,11 @@ class _DeliveryLocationSelectorState extends State<DeliveryLocationSelector> {
                 ],
               ),
             ),
-            Radio<bool>(
-              value: true,
-              groupValue: isSelected,
-              onChanged: (_) => onTap(),
-              activeColor: iconColor,
+            Icon(
+              isSelected
+                  ? Icons.radio_button_checked
+                  : Icons.radio_button_off,
+              color: iconColor,
             ),
           ],
         ),

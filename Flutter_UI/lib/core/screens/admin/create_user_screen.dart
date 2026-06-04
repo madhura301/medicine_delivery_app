@@ -589,7 +589,7 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
                 decoration: BoxDecoration(
                   color: _roles
                       .firstWhere((r) => r['value'] == _selectedRole)['color']
-                      .withOpacity(0.1),
+                      .withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Row(

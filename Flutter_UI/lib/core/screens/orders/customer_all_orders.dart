@@ -258,7 +258,7 @@ class _CustomerAllOrdersState extends State<CustomerAllOrders> {
         color: Colors.white,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 4,
             offset: const Offset(0, 2),
           ),
@@ -865,7 +865,10 @@ class _CustomerAllOrdersState extends State<CustomerAllOrders> {
 
   void _goToPayment(OrderModel order) {
     final amount = order.totalAmount!;
-    final fee = (amount * 0.025) < 20 ? 20.0 : amount * 0.025;
+    // Convenience fee is currently a flat ₹20. The percentage-based logic
+    // (2.5%, min ₹20) is retained for future use:
+    //   final fee = (amount * 0.025) < 20 ? 20.0 : amount * 0.025;
+    const double fee = 20.0;
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -888,51 +891,4 @@ class _CustomerAllOrdersState extends State<CustomerAllOrders> {
     );
   }
 
-  Widget _buildDetailSection(String title, List<Widget> children) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          title,
-          style: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        const SizedBox(height: 12),
-        ...children,
-      ],
-    );
-  }
-
-  Widget _buildDetailRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 120,
-            child: Text(
-              label,
-              style: TextStyle(
-                fontSize: 14,
-                color: Colors.grey[600],
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ),
-          Expanded(
-            child: Text(
-              value,
-              style: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 }

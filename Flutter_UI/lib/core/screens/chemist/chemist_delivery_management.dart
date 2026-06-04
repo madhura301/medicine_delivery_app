@@ -29,8 +29,6 @@ class _ChemistDeliveryManagementState extends State<ChemistDeliveryManagement> {
 
   // Customer cache
   final Map<String, Map<String, String>> _customerCache = {};
-  // Delivery boy cache
-  final Map<int, String> _deliveryBoyCache = {};
 
   @override
   void initState() {
@@ -210,7 +208,7 @@ class _ChemistDeliveryManagementState extends State<ChemistDeliveryManagement> {
               color: Colors.black,
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.1),
+                  color: Colors.black.withValues(alpha: 0.1),
                   blurRadius: 4,
                   offset: const Offset(0, 2),
                 ),
@@ -235,7 +233,7 @@ class _ChemistDeliveryManagementState extends State<ChemistDeliveryManagement> {
                       Text(
                         '${_outForDeliveryOrders.length} active deliveries',
                         style: TextStyle(
-                          color: Colors.white.withOpacity(0.9),
+                          color: Colors.white.withValues(alpha: 0.9),
                           fontSize: 13,
                         ),
                       ),

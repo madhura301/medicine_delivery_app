@@ -443,7 +443,7 @@ class _ChooseLocationPageState extends State<ChooseLocationPage> {
             Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: _greenAccent.withOpacity(0.1),
+                color: _greenAccent.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(10),
               ),
               child: _isLocating
@@ -579,11 +579,11 @@ class _ChooseLocationPageState extends State<ChooseLocationPage> {
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
             color: isDefault
-                ? _greenAccent.withOpacity(0.04)
+                ? _greenAccent.withValues(alpha: 0.04)
                 : Colors.grey.shade50,
             borderRadius: BorderRadius.circular(14),
             border: Border.all(
-              color: isDefault ? _greenAccent.withOpacity(0.4) : Colors.grey.shade200,
+              color: isDefault ? _greenAccent.withValues(alpha: 0.4) : Colors.grey.shade200,
               width: isDefault ? 1.5 : 1,
             ),
           ),
@@ -594,7 +594,7 @@ class _ChooseLocationPageState extends State<ChooseLocationPage> {
                 margin: const EdgeInsets.only(top: 2),
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: _greenAccent.withOpacity(0.1),
+                  color: _greenAccent.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: const Icon(Icons.location_on,
@@ -621,7 +621,7 @@ class _ChooseLocationPageState extends State<ChooseLocationPage> {
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 6, vertical: 2),
                             decoration: BoxDecoration(
-                              color: _greenAccent.withOpacity(0.1),
+                              color: _greenAccent.withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(4),
                             ),
                             child: const Text(
@@ -689,7 +689,7 @@ class _ChooseLocationPageState extends State<ChooseLocationPage> {
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: _greenAccent.withOpacity(0.08),
+                  color: _greenAccent.withValues(alpha: 0.08),
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(Icons.add, color: _greenAccent, size: 26),

@@ -148,7 +148,7 @@ class _ManagerDashboardState extends State<ManagerDashboard> {
                 const SizedBox(height: 4),
                 Text('Manager',
                     style: TextStyle(
-                        color: Colors.white.withOpacity(0.9), fontSize: 14)),
+                        color: Colors.white.withValues(alpha: 0.9), fontSize: 14)),
               ],
             ),
           ),
@@ -200,7 +200,7 @@ class _ManagerDashboardState extends State<ManagerDashboard> {
       leading: Icon(icon, color: color),
       title: Text(label),
       selected: _selectedIndex == index,
-      selectedTileColor: AppTheme.primaryColor.withOpacity(0.08),
+      selectedTileColor: AppTheme.primaryColor.withValues(alpha: 0.08),
       onTap: () {
         setState(() => _selectedIndex = index);
         Navigator.of(context).pop();
@@ -378,9 +378,9 @@ class _ManagerHomePageState extends State<_ManagerHomePage>
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.08),
+        color: color.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withOpacity(0.25)),
+        border: Border.all(color: color.withValues(alpha: 0.25)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -421,9 +421,9 @@ class _ManagerHomePageState extends State<_ManagerHomePage>
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: color.withOpacity(0.07),
+          color: color.withValues(alpha: 0.07),
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: color.withOpacity(0.25)),
+          border: Border.all(color: color.withValues(alpha: 0.25)),
         ),
         child: Row(
           children: [
@@ -753,7 +753,7 @@ class _ManagerAllOrdersPageState extends State<_ManagerAllOrdersPage>
                   padding: const EdgeInsets.symmetric(
                       horizontal: 10, vertical: 5),
                   decoration: BoxDecoration(
-                    color: statusColor.withOpacity(0.1),
+                    color: statusColor.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(20),
                     border:
                         Border.all(color: statusColor, width: 1),
