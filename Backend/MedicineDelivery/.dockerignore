@@ -1,0 +1,33 @@
+# Build artifacts
+**/bin/
+**/obj/
+**/out/
+**/publish/
+
+# IDE / VS
+**/.vs/
+**/.vscode/
+**/.idea/
+*.user
+*.suo
+
+# Local logs and temp
+**/Logs/
+*.log
+
+# Git
+**/.git/
+**/.gitignore
+
+# Docs and scripts not needed in the image
+**/*.md
+**/MigrationScript/
+**/*.postman_collection.json
+
+# Tests are not part of the API image
+MedicineDelivery.IntegrationTests/
+MedicineDelivery.IntegrationTests.sln
+
+# Docker
+Dockerfile
+.dockerignore
