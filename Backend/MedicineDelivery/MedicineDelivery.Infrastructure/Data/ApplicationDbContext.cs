@@ -34,6 +34,7 @@ namespace MedicineDelivery.Infrastructure.Data
         public DbSet<RazorpayOrder> RazorpayOrders { get; set; }
         public DbSet<ChemistPayoutAccount> ChemistPayoutAccounts { get; set; }
         public DbSet<ChemistActivationPayment> ChemistActivationPayments { get; set; }
+        public DbSet<PaymentSplit> PaymentSplits { get; set; }
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
@@ -458,6 +459,12 @@ namespace MedicineDelivery.Infrastructure.Data
                 entity.Property(o => o.TotalAmount)
                     .HasColumnType("decimal(10,2)");
 
+                entity.Property(o => o.BillAmount)
+                    .HasColumnType("decimal(10,2)");
+
+                entity.Property(o => o.ConvenienceFee)
+                    .HasColumnType("decimal(10,2)");
+
                 entity.HasOne(o => o.Customer)
                     .WithMany()
                     .HasForeignKey(o => o.CustomerId)
@@ -776,6 +783,35 @@ namespace MedicineDelivery.Infrastructure.Data
                     .OnDelete(DeleteBehavior.Cascade);
             });
 
+            // Configure PaymentSplit entity
+            builder.Entity<PaymentSplit>(entity =>
+            {
+                entity.HasKey(p => p.Id);
+
+                entity.Property(p => p.RazorpayPaymentId).HasMaxLength(100).IsRequired();
+                entity.Property(p => p.RazorpayTransferId).HasMaxLength(50);
+                entity.Property(p => p.ChemistLinkedAccountId).HasMaxLength(50);
+
+                entity.Property(p => p.TotalCaptured).HasColumnType("decimal(10,2)");
+                entity.Property(p => p.BillAmount).HasColumnType("decimal(10,2)");
+                entity.Property(p => p.ConvenienceFee).HasColumnType("decimal(10,2)");
+                entity.Property(p => p.PlatformFee).HasColumnType("decimal(10,2)");
+                entity.Property(p => p.ChemistAmount).HasColumnType("decimal(10,2)");
+                entity.Property(p => p.PharmaishAmount).HasColumnType("decimal(10,2)");
+
+                entity.Property(p => p.TransferStatus)
+                    .HasConversion<string>()
+                    .HasMaxLength(20);
+
+                entity.HasIndex(p => p.OrderId);
+                entity.HasIndex(p => p.RazorpayPaymentId);
+
+                entity.HasOne(p => p.Order)
+                    .WithMany(o => o.PaymentSplits)
+                    .HasForeignKey(p => p.OrderId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
             // Configure ChemistActivationPayment entity
             builder.Entity<ChemistActivationPayment>(entity =>
             {
@@ -969,6 +1005,14 @@ namespace MedicineDelivery.Infrastructure.Data
                 .Property(o => o.TotalAmount)
                 .HasColumnType("numeric(10,2)");
 
+            builder.Entity<Order>()
+                .Property(o => o.BillAmount)
+                .HasColumnType("numeric(10,2)");
+
+            builder.Entity<Order>()
+                .Property(o => o.ConvenienceFee)
+                .HasColumnType("numeric(10,2)");
+
             builder.Entity<OrderAssignmentHistory>()
                 .Property(oah => oah.AssignedOn)
                 .HasColumnType("timestamp with time zone")
@@ -1098,6 +1142,22 @@ namespace MedicineDelivery.Infrastructure.Data
             builder.Entity<ChemistActivationPayment>()
                 .Property(c => c.PaidOn)
                 .HasColumnType("timestamp with time zone");
+
+            // Configure PaymentSplit for PostgreSQL
+            builder.Entity<PaymentSplit>()
+                .Property(p => p.TotalCaptured).HasColumnType("numeric(10,2)");
+            builder.Entity<PaymentSplit>()
+                .Property(p => p.BillAmount).HasColumnType("numeric(10,2)");
+            builder.Entity<PaymentSplit>()
+                .Property(p => p.ConvenienceFee).HasColumnType("numeric(10,2)");
+            builder.Entity<PaymentSplit>()
+                .Property(p => p.PlatformFee).HasColumnType("numeric(10,2)");
+            builder.Entity<PaymentSplit>()
+                .Property(p => p.ChemistAmount).HasColumnType("numeric(10,2)");
+            builder.Entity<PaymentSplit>()
+                .Property(p => p.PharmaishAmount).HasColumnType("numeric(10,2)");
+            builder.Entity<PaymentSplit>()
+                .Property(p => p.CreatedAt).HasColumnType("timestamp with time zone");
 
         }
     }

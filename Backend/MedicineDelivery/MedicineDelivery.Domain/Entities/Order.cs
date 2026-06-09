@@ -22,6 +22,13 @@ namespace MedicineDelivery.Domain.Entities
         public string? OrderNumber { get; set; }
         public string? OTP { get; set; }
         public decimal? TotalAmount { get; set; }
+
+        /// <summary>The medicine/bill value (slab is applied to this). Set at payment time.</summary>
+        public decimal? BillAmount { get; set; }
+
+        /// <summary>Convenience / payment-processing fee added on top of the bill.</summary>
+        public decimal? ConvenienceFee { get; set; }
+
         public DateTime CreatedOn { get; set; } = DateTime.UtcNow;
         public DateTime? UpdatedOn { get; set; }
 
@@ -31,6 +38,7 @@ namespace MedicineDelivery.Domain.Entities
         public CustomerSupport? CustomerSupport { get; set; }
         public ICollection<OrderAssignmentHistory> AssignmentHistory { get; set; } = new List<OrderAssignmentHistory>();
         public ICollection<Payment> Payments { get; set; } = new List<Payment>();
+        public ICollection<PaymentSplit> PaymentSplits { get; set; } = new List<PaymentSplit>();
     }
 }
 

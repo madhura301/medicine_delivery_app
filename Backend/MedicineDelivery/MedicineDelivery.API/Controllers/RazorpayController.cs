@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using MedicineDelivery.Application.DTOs;
+using MedicineDelivery.Application.Interfaces;
 using MedicineDelivery.Domain.Interfaces;
 
 namespace MedicineDelivery.API.Controllers
@@ -10,11 +11,13 @@ namespace MedicineDelivery.API.Controllers
     public class RazorpayController : ControllerBase
     {
         private readonly IRazorpayService _razorpayService;
+        private readonly IPaymentService _paymentService;
         private readonly ILogger<RazorpayController> _logger;
 
-        public RazorpayController(IRazorpayService razorpayService, ILogger<RazorpayController> logger)
+        public RazorpayController(IRazorpayService razorpayService, IPaymentService paymentService, ILogger<RazorpayController> logger)
         {
             _razorpayService = razorpayService;
+            _paymentService = paymentService;
             _logger = logger;
         }
 
@@ -36,7 +39,8 @@ namespace MedicineDelivery.API.Controllers
             _logger.LogInformation("Create Razorpay order request. OrderId={OrderId}, Amount={Amount}",
                 request.OrderId, request.Amount);
 
-            var result = await _razorpayService.CreateOrderAsync(request.OrderId, request.Amount);
+            var result = await _razorpayService.CreateOrderAsync(
+                request.OrderId, request.Amount, request.BillAmount, request.ConvenienceFee);
 
             if (!result.Success)
             {
@@ -94,6 +98,20 @@ namespace MedicineDelivery.API.Controllers
                 request.RazorpayPaymentId);
 
             return Ok(new { message = "Payment verified and recorded successfully." });
+        }
+
+        /// <summary>
+        /// Returns how the captured payment for an order was split between the chemist and Pharmaish.
+        /// </summary>
+        [HttpGet("payment-split/{orderId:int}")]
+        [Authorize]
+        public async Task<IActionResult> GetPaymentSplit(int orderId, CancellationToken ct)
+        {
+            var split = await _paymentService.GetPaymentSplitAsync(orderId, ct);
+            if (split == null)
+                return NotFound(new { message = "No payment split found for this order." });
+
+            return Ok(split);
         }
     }
 }

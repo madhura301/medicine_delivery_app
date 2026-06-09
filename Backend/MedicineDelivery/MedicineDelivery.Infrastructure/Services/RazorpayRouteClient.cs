@@ -154,6 +154,56 @@ namespace MedicineDelivery.Infrastructure.Services
             }
         }
 
+        public async Task<RazorpayTransferResult> CreateTransferOnPaymentAsync(RazorpayTransferRequest request, CancellationToken ct = default)
+        {
+            // POST /v1/payments/{paymentId}/transfers  with a transfers[] array.
+            var body = new Dictionary<string, object?>
+            {
+                ["transfers"] = new[]
+                {
+                    new Dictionary<string, object?>
+                    {
+                        ["account"] = request.LinkedAccountId,
+                        ["amount"] = request.AmountInPaise,
+                        ["currency"] = request.Currency,
+                        ["on_hold"] = request.OnHold
+                    }
+                }
+            };
+
+            try
+            {
+                using var response = await SendAsync(HttpMethod.Post, $"v1/payments/{request.PaymentId}/transfers", body, ct);
+                var json = await response.Content.ReadAsStringAsync(ct);
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    var error = ExtractError(json);
+                    _logger.LogWarning("Razorpay CreateTransfer failed for Payment={PaymentId}: {Error}",
+                        request.PaymentId, error);
+                    return new RazorpayTransferResult { Success = false, Error = error };
+                }
+
+                // Response is { "items": [ { "id": "trf_XXXX", ... } ] } (or an array).
+                using var doc = JsonDocument.Parse(json);
+                var root = doc.RootElement;
+                var first = root.ValueKind == JsonValueKind.Array
+                    ? (root.GetArrayLength() > 0 ? root[0] : default)
+                    : (root.TryGetProperty("items", out var items) && items.GetArrayLength() > 0 ? items[0] : default);
+
+                var transferId = first.ValueKind == JsonValueKind.Object && first.TryGetProperty("id", out var id)
+                    ? id.GetString()
+                    : null;
+
+                return new RazorpayTransferResult { Success = true, TransferId = transferId };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error calling Razorpay CreateTransfer for Payment={PaymentId}", request.PaymentId);
+                return new RazorpayTransferResult { Success = false, Error = "Network error while creating the transfer." };
+            }
+        }
+
         private static Dictionary<string, object?>? BuildLegalInfo(RazorpayOnboardingRequest request)
         {
             var legal = new Dictionary<string, object?>();

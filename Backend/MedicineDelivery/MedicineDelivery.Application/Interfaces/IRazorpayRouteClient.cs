@@ -19,6 +19,31 @@ namespace MedicineDelivery.Application.Interfaces
         /// for an already-created linked account.
         /// </summary>
         Task<RazorpayOnboardingResult> UpdateBankConfigurationAsync(string linkedAccountId, string? productConfigurationId, RazorpayBankDetails bank, CancellationToken ct = default);
+
+        /// <summary>
+        /// Transfers a portion of a captured payment to a chemist's linked account
+        /// (Razorpay Route "transfer from payment").
+        /// </summary>
+        Task<RazorpayTransferResult> CreateTransferOnPaymentAsync(RazorpayTransferRequest request, CancellationToken ct = default);
+    }
+
+    public class RazorpayTransferRequest
+    {
+        /// <summary>The captured payment id (pay_XXXX) to transfer from.</summary>
+        public string PaymentId { get; set; } = string.Empty;
+        /// <summary>Destination linked account id (acc_XXXX).</summary>
+        public string LinkedAccountId { get; set; } = string.Empty;
+        public int AmountInPaise { get; set; }
+        public string Currency { get; set; } = "INR";
+        /// <summary>Hold the transfer (e.g. until delivery) instead of settling immediately.</summary>
+        public bool OnHold { get; set; }
+    }
+
+    public class RazorpayTransferResult
+    {
+        public bool Success { get; set; }
+        public string? TransferId { get; set; }
+        public string? Error { get; set; }
     }
 
     /// <summary>Input for creating a linked account (mapped from MedicalStore + bank details).</summary>

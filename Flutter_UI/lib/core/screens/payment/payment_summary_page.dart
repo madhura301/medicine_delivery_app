@@ -773,6 +773,8 @@ class _PaymentSummaryPageState extends State<PaymentSummaryPage> {
       final rzpOrder = await PaymentService.createRazorpayOrder(
         orderId: widget.orderId,
         amount: totalAmount,
+        billAmount: widget.medicinesTotal,
+        convenienceFee: widget.convenienceFee,
       );
 
       _currentRazorpayOrderId = rzpOrder.razorpayOrderId;

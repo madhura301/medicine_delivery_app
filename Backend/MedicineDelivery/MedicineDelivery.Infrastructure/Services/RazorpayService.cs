@@ -15,22 +15,28 @@ namespace MedicineDelivery.Infrastructure.Services
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly IPaymentService _paymentService;
+        private readonly IRazorpayRouteClient _routeClient;
+        private readonly IPlatformFeeCalculator _feeCalculator;
         private readonly IConfiguration _configuration;
         private readonly ILogger<RazorpayService> _logger;
 
         public RazorpayService(
             IUnitOfWork unitOfWork,
             IPaymentService paymentService,
+            IRazorpayRouteClient routeClient,
+            IPlatformFeeCalculator feeCalculator,
             IConfiguration configuration,
             ILogger<RazorpayService> logger)
         {
             _unitOfWork = unitOfWork;
             _paymentService = paymentService;
+            _routeClient = routeClient;
+            _feeCalculator = feeCalculator;
             _configuration = configuration;
             _logger = logger;
         }
 
-        public async Task<RazorpayOrderResult> CreateOrderAsync(int orderId, decimal amount)
+        public async Task<RazorpayOrderResult> CreateOrderAsync(int orderId, decimal amount, decimal? billAmount = null, decimal? convenienceFee = null)
         {
             try
             {
@@ -65,6 +71,20 @@ namespace MedicineDelivery.Infrastructure.Services
                 };
 
                 await _unitOfWork.RazorpayOrders.AddAsync(record);
+
+                // Persist the bill / convenience-fee breakdown on the order (used for the split).
+                if (billAmount.HasValue || convenienceFee.HasValue)
+                {
+                    var order = await _unitOfWork.Orders.FirstOrDefaultAsync(o => o.OrderId == orderId);
+                    if (order != null)
+                    {
+                        if (billAmount.HasValue) order.BillAmount = billAmount;
+                        if (convenienceFee.HasValue) order.ConvenienceFee = convenienceFee;
+                        order.UpdatedOn = DateTime.UtcNow;
+                        _unitOfWork.Orders.Update(order);
+                    }
+                }
+
                 await _unitOfWork.SaveChangesAsync();
 
                 _logger.LogInformation(
@@ -143,6 +163,9 @@ namespace MedicineDelivery.Infrastructure.Services
                     "Razorpay payment captured. RazorpayPaymentId={RazorpayPaymentId}, OrderId={OrderId}",
                     request.RazorpayPaymentId, request.OrderId);
 
+                // Split the captured funds (chemist transfer + Pharmaish retention).
+                await SplitCapturedPaymentAsync(request, razorpayRecord.Amount);
+
                 return true;
             }
             catch (Exception ex)
@@ -150,6 +173,110 @@ namespace MedicineDelivery.Infrastructure.Services
                 _logger.LogError(ex, "Error verifying Razorpay payment for RazorpayOrderId={RazorpayOrderId}", request.RazorpayOrderId);
                 return false;
             }
+        }
+
+        /// <summary>
+        /// Computes the bill/fee split and (when possible) transfers the chemist's share to
+        /// their Route linked account. Always records a <see cref="PaymentSplit"/> audit row.
+        /// Never throws — a split failure must not fail the already-captured payment.
+        /// </summary>
+        private async Task SplitCapturedPaymentAsync(RazorpayVerifyRequest request, decimal capturedTotal)
+        {
+            try
+            {
+                var order = await _unitOfWork.Orders.FirstOrDefaultAsync(o => o.OrderId == request.OrderId);
+
+                // Resolve the slab base (bill) and the convenience fee.
+                var billAmount = order?.BillAmount ?? order?.TotalAmount ?? capturedTotal;
+                if (billAmount > capturedTotal) billAmount = capturedTotal;
+                var convenienceFee = order?.ConvenienceFee ?? Math.Max(0m, capturedTotal - billAmount);
+
+                // Resolve the store + payout account.
+                MedicalStore? store = null;
+                ChemistPayoutAccount? payout = null;
+                if (order?.MedicalStoreId is Guid storeId)
+                {
+                    store = await _unitOfWork.MedicalStores.FirstOrDefaultAsync(s => s.MedicalStoreId == storeId);
+                    payout = await _unitOfWork.ChemistPayoutAccounts.FirstOrDefaultAsync(a => a.MedicalStoreId == storeId);
+                }
+
+                var platformFee = _feeCalculator.CalculateFee(billAmount, store?.ActivatedOn);
+                var chemistAmount = Math.Max(0m, billAmount - platformFee);
+                var pharmaishAmount = capturedTotal - chemistAmount;
+
+                var split = new PaymentSplit
+                {
+                    OrderId = request.OrderId,
+                    RazorpayPaymentId = request.RazorpayPaymentId,
+                    TotalCaptured = capturedTotal,
+                    BillAmount = billAmount,
+                    ConvenienceFee = convenienceFee,
+                    PlatformFee = platformFee,
+                    ChemistAmount = chemistAmount,
+                    PharmaishAmount = pharmaishAmount,
+                    TransferStatus = TransferStatus.Skipped,
+                    CreatedAt = DateTime.UtcNow
+                };
+
+                var routeEnabled = GetBool("RazorpaySettings:RouteEnabled", false);
+                var canTransfer = routeEnabled
+                    && chemistAmount > 0
+                    && payout != null
+                    && payout.OnboardingStatus == ChemistPayoutStatus.Active
+                    && !string.IsNullOrWhiteSpace(payout.RazorpayLinkedAccountId);
+
+                if (canTransfer)
+                {
+                    var onHold = GetBool("RazorpaySettings:TransferOnHold", false);
+                    var currency = _configuration["RazorpaySettings:Currency"] ?? "INR";
+
+                    var transfer = await _routeClient.CreateTransferOnPaymentAsync(new RazorpayTransferRequest
+                    {
+                        PaymentId = request.RazorpayPaymentId,
+                        LinkedAccountId = payout!.RazorpayLinkedAccountId!,
+                        AmountInPaise = (int)(chemistAmount * 100),
+                        Currency = currency,
+                        OnHold = onHold
+                    });
+
+                    split.ChemistLinkedAccountId = payout.RazorpayLinkedAccountId;
+                    if (transfer.Success)
+                    {
+                        split.TransferStatus = TransferStatus.Completed;
+                        split.RazorpayTransferId = transfer.TransferId;
+                        _logger.LogInformation(
+                            "Route transfer completed. OrderId={OrderId}, TransferId={TransferId}, ChemistAmount={ChemistAmount}",
+                            request.OrderId, transfer.TransferId, chemistAmount);
+                    }
+                    else
+                    {
+                        split.TransferStatus = TransferStatus.Failed;
+                        _logger.LogWarning(
+                            "Route transfer failed. OrderId={OrderId}, Error={Error}. Recorded as Failed for later settlement.",
+                            request.OrderId, transfer.Error);
+                    }
+                }
+                else
+                {
+                    _logger.LogWarning(
+                        "Route transfer skipped for OrderId={OrderId} (RouteEnabled={RouteEnabled}, chemist onboarded={Onboarded}). " +
+                        "Recorded chemist amount {ChemistAmount} owed for later settlement.",
+                        request.OrderId, routeEnabled, payout?.OnboardingStatus == ChemistPayoutStatus.Active, chemistAmount);
+                }
+
+                await _unitOfWork.PaymentSplits.AddAsync(split);
+                await _unitOfWork.SaveChangesAsync();
+            }
+            catch (Exception ex)
+            {
+                // The payment is already captured & recorded; never fail it because of the split.
+                _logger.LogError(ex, "Error splitting captured payment for OrderId={OrderId}", request.OrderId);
+            }
+        }
+
+        private bool GetBool(string key, bool fallback)
+        {
+            return bool.TryParse(_configuration[key], out var value) ? value : fallback;
         }
 
         private static string ComputeHmacSha256(string payload, string secret)

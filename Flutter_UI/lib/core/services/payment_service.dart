@@ -17,15 +17,23 @@ class PaymentService {
   static Dio get _dio => DioClient.instance;
 
   /// POST /Razorpay/create-order — server creates a Razorpay order.
+  ///
+  /// [amount] is the full amount the customer pays. Pass [billAmount] (the medicine
+  /// total) and [convenienceFee] so the server can record the breakdown used for the
+  /// chemist/Pharmaish payment split.
   static Future<RazorpayOrderResponse> createRazorpayOrder({
     required int orderId,
     required double amount,
+    double? billAmount,
+    double? convenienceFee,
   }) async {
     final response = await _dio.post(
       '/Razorpay/create-order',
       data: {
         'orderId': orderId,
         'amount': amount,
+        if (billAmount != null) 'billAmount': billAmount,
+        if (convenienceFee != null) 'convenienceFee': convenienceFee,
       },
     );
     return RazorpayOrderResponse.fromJson(

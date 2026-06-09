@@ -28,6 +28,7 @@ namespace MedicineDelivery.Infrastructure.Repositories
         private IRepository<RazorpayOrder>? _razorpayOrders;
         private IRepository<ChemistPayoutAccount>? _chemistPayoutAccounts;
         private IRepository<ChemistActivationPayment>? _chemistActivationPayments;
+        private IRepository<PaymentSplit>? _paymentSplits;
 
         public UnitOfWork(ApplicationDbContext context)
         {
@@ -54,6 +55,7 @@ namespace MedicineDelivery.Infrastructure.Repositories
         public IRepository<RazorpayOrder> RazorpayOrders => _razorpayOrders ??= new Repository<RazorpayOrder>(_context);
         public IRepository<ChemistPayoutAccount> ChemistPayoutAccounts => _chemistPayoutAccounts ??= new Repository<ChemistPayoutAccount>(_context);
         public IRepository<ChemistActivationPayment> ChemistActivationPayments => _chemistActivationPayments ??= new Repository<ChemistActivationPayment>(_context);
+        public IRepository<PaymentSplit> PaymentSplits => _paymentSplits ??= new Repository<PaymentSplit>(_context);
 
         public async Task<int> SaveChangesAsync()
         {

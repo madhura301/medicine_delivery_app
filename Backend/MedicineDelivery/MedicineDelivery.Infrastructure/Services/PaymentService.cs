@@ -72,11 +72,37 @@ namespace MedicineDelivery.Infrastructure.Services
         {
             ct.ThrowIfCancellationRequested();
 
-            var payments = await _unitOfWork.Payments.FindAsync(p => 
-                p.OrderId == orderId && 
+            var payments = await _unitOfWork.Payments.FindAsync(p =>
+                p.OrderId == orderId &&
                 p.PaymentStatus == PaymentStatus.Success);
 
             return payments.Sum(p => p.Amount);
+        }
+
+        public async Task<PaymentSplitDto?> GetPaymentSplitAsync(int orderId, CancellationToken ct = default)
+        {
+            ct.ThrowIfCancellationRequested();
+
+            var splits = await _unitOfWork.PaymentSplits.FindAsync(p => p.OrderId == orderId);
+            var split = splits.OrderByDescending(p => p.CreatedAt).FirstOrDefault();
+            if (split == null) return null;
+
+            return new PaymentSplitDto
+            {
+                Id = split.Id,
+                OrderId = split.OrderId,
+                RazorpayPaymentId = split.RazorpayPaymentId,
+                TotalCaptured = split.TotalCaptured,
+                BillAmount = split.BillAmount,
+                ConvenienceFee = split.ConvenienceFee,
+                PlatformFee = split.PlatformFee,
+                ChemistAmount = split.ChemistAmount,
+                PharmaishAmount = split.PharmaishAmount,
+                RazorpayTransferId = split.RazorpayTransferId,
+                ChemistLinkedAccountId = split.ChemistLinkedAccountId,
+                TransferStatus = split.TransferStatus,
+                CreatedAt = split.CreatedAt
+            };
         }
 
         private async Task UpdateOrderPaymentStatusAsync(Order order)

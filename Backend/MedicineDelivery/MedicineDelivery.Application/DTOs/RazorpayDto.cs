@@ -4,7 +4,12 @@ namespace MedicineDelivery.Application.DTOs
     public class RazorpayCreateOrderDto
     {
         public int OrderId { get; set; }
+        /// <summary>Total amount the customer pays (bill + convenience fee).</summary>
         public decimal Amount { get; set; }
+        /// <summary>Optional medicine/bill value — the slab base for the platform fee split.</summary>
+        public decimal? BillAmount { get; set; }
+        /// <summary>Optional convenience fee added on top of the bill.</summary>
+        public decimal? ConvenienceFee { get; set; }
     }
 
     /// <summary>Response returned to the client so it can open the Razorpay checkout widget.</summary>
