@@ -126,6 +126,14 @@ class _ChemistPayoutOnboardingPageState
   Future<void> _payActivationFee() async {
     final storeId = _storeId;
     if (storeId == null) return;
+
+    // If we already have a link (reopen), just relaunch it — no API call.
+    final existingUrl = _activation?.paymentLinkUrl;
+    if (existingUrl != null && existingUrl.isNotEmpty) {
+      await _openLink(existingUrl);
+      return;
+    }
+
     setState(() => _creatingLink = true);
     try {
       final activation =
@@ -135,9 +143,7 @@ class _ChemistPayoutOnboardingPageState
 
       final url = activation.paymentLinkUrl;
       if (url != null && url.isNotEmpty) {
-        final uri = Uri.parse(url);
-        final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
-        if (mounted) setState(() => _linkOpened = ok);
+        await _openLink(url);
       } else {
         if (mounted) {
           AppSnackBar.error(context, 'Payment link unavailable. Try again.');
@@ -151,6 +157,17 @@ class _ChemistPayoutOnboardingPageState
       }
     } finally {
       if (mounted) setState(() => _creatingLink = false);
+    }
+  }
+
+  Future<void> _openLink(String url) async {
+    try {
+      final ok =
+          await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+      if (mounted) setState(() => _linkOpened = ok);
+    } catch (e) {
+      AppLogger.error('Failed to open payment link', e);
+      if (mounted) AppSnackBar.error(context, 'Unable to open the payment link.');
     }
   }
 

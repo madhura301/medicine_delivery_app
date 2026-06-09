@@ -58,21 +58,15 @@ namespace MedicineDelivery.Infrastructure.Services
             account.BankIfscCode = request.BankIfscCode.Trim().ToUpperInvariant();
             account.BankAccountHolderName = request.BankAccountHolderName.Trim();
 
-            RazorpayOnboardingResult onboarding;
-            if (string.IsNullOrWhiteSpace(account.RazorpayLinkedAccountId))
-            {
-                // Fresh onboarding — run the full create sequence.
-                onboarding = await _routeClient.CreateLinkedAccountAsync(BuildRequest(store, account), ct);
-            }
-            else
-            {
-                // Linked account already exists — just (re)submit bank config.
-                onboarding = await _routeClient.UpdateBankConfigurationAsync(
-                    account.RazorpayLinkedAccountId,
-                    account.RazorpayProductConfigurationId,
-                    BuildBank(account),
-                    ct);
-            }
+            // Resumable: passes any ids from a previous (partial) attempt so completed
+            // steps are skipped and a failure (e.g. stakeholder) can be retried.
+            _logger.LogInformation(
+                "Onboarding store {StoreId}: ExistingLinkedAccountId={Acc}, ExistingStakeholderId={Sth}, " +
+                "ExistingProductConfigurationId={Prod}, StorePAN={Pan}, StoreGST={Gst}",
+                medicalStoreId, account.RazorpayLinkedAccountId ?? "(none)", account.RazorpayStakeholderId ?? "(none)",
+                account.RazorpayProductConfigurationId ?? "(none)", store.PAN, store.GSTIN ?? "(none)");
+
+            var onboarding = await _routeClient.CreateLinkedAccountAsync(BuildRequest(store, account), ct);
 
             ApplyOnboardingResult(account, onboarding);
 
@@ -203,7 +197,10 @@ namespace MedicineDelivery.Infrastructure.Services
             Country = "IN",
             Pan = string.IsNullOrWhiteSpace(store.PAN) ? null : store.PAN,
             Gst = string.IsNullOrWhiteSpace(store.GSTIN) ? null : store.GSTIN,
-            Bank = BuildBank(account)
+            Bank = BuildBank(account),
+            ExistingLinkedAccountId = account.RazorpayLinkedAccountId,
+            ExistingStakeholderId = account.RazorpayStakeholderId,
+            ExistingProductConfigurationId = account.RazorpayProductConfigurationId
         };
 
         private static RazorpayBankDetails BuildBank(ChemistPayoutAccount account) => new()

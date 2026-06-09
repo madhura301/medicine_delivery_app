@@ -87,6 +87,7 @@ namespace MedicineDelivery.Infrastructure.Services
             }
 
             record.RazorpayPaymentLinkId = linkResult.PaymentLinkId;
+            record.PaymentLinkShortUrl = linkResult.ShortUrl;
 
             await _unitOfWork.ChemistActivationPayments.AddAsync(record);
             await _unitOfWork.SaveChangesAsync();
@@ -94,9 +95,7 @@ namespace MedicineDelivery.Infrastructure.Services
             _logger.LogInformation("Activation link created for store {StoreId}. PaymentLinkId={LinkId}",
                 medicalStoreId, linkResult.PaymentLinkId);
 
-            var dto = ToDto(record, store);
-            dto.PaymentLinkUrl = linkResult.ShortUrl;
-            return ChemistActivationResult.Ok(dto);
+            return ChemistActivationResult.Ok(ToDto(record, store));
         }
 
         public async Task<ChemistActivationResult> GetActivationStatusAsync(Guid medicalStoreId, CancellationToken ct = default)
@@ -179,6 +178,7 @@ namespace MedicineDelivery.Infrastructure.Services
             Total = a.Total,
             Status = a.Status,
             PaymentLinkId = a.RazorpayPaymentLinkId,
+            PaymentLinkUrl = a.PaymentLinkShortUrl,
             IsActivated = store.ActivatedOn != null,
             CreatedOn = a.CreatedOn,
             PaidOn = a.PaidOn

@@ -823,6 +823,7 @@ namespace MedicineDelivery.Infrastructure.Data
                 entity.Property(c => c.Gst).HasColumnType("decimal(10,2)");
                 entity.Property(c => c.GatewayCharges).HasColumnType("decimal(10,2)");
                 entity.Property(c => c.RazorpayPaymentLinkId).HasMaxLength(50);
+                entity.Property(c => c.PaymentLinkShortUrl).HasMaxLength(500);
                 entity.Property(c => c.RazorpayPaymentId).HasMaxLength(100);
 
                 entity.Property(c => c.Status)

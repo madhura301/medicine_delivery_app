@@ -67,6 +67,12 @@ namespace MedicineDelivery.Application.Interfaces
         public string? Gst { get; set; }
 
         public RazorpayBankDetails Bank { get; set; } = new();
+
+        // Resume support: ids from a previous (partial) onboarding attempt.
+        // When present, the matching creation step is skipped.
+        public string? ExistingLinkedAccountId { get; set; }
+        public string? ExistingStakeholderId { get; set; }
+        public string? ExistingProductConfigurationId { get; set; }
     }
 
     public class RazorpayBankDetails

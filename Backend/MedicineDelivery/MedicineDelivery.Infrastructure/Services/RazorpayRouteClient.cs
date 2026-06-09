@@ -37,9 +37,20 @@ namespace MedicineDelivery.Infrastructure.Services
 
         public async Task<RazorpayOnboardingResult> CreateLinkedAccountAsync(RazorpayOnboardingRequest request, CancellationToken ct = default)
         {
-            var result = new RazorpayOnboardingResult();
+            // Resume from any ids already obtained in a previous (partial) attempt.
+            var result = new RazorpayOnboardingResult
+            {
+                LinkedAccountId = request.ExistingLinkedAccountId,
+                StakeholderId = request.ExistingStakeholderId,
+                ProductConfigurationId = request.ExistingProductConfigurationId
+            };
 
-            // Step 1 — create linked account
+            // Step 1 — create linked account (skip if we already have one)
+            if (!string.IsNullOrWhiteSpace(result.LinkedAccountId))
+            {
+                return await ContinueOnboardingAsync(request, result, ct);
+            }
+
             var accountBody = new Dictionary<string, object?>
             {
                 ["email"] = request.Email,
@@ -72,33 +83,51 @@ namespace MedicineDelivery.Infrastructure.Services
             if (accountId is null) return result;
             result.LinkedAccountId = accountId;
 
-            // Step 2 — create stakeholder
-            var stakeholderBody = new Dictionary<string, object?>
+            return await ContinueOnboardingAsync(request, result, ct);
+        }
+
+        /// <summary>
+        /// Runs the remaining onboarding steps (stakeholder → product → bank), skipping any
+        /// already completed in a previous attempt. Resumable after a partial failure.
+        /// </summary>
+        private async Task<RazorpayOnboardingResult> ContinueOnboardingAsync(
+            RazorpayOnboardingRequest request, RazorpayOnboardingResult result, CancellationToken ct)
+        {
+            var accountId = result.LinkedAccountId!;
+
+            // Step 2 — create stakeholder (skip if present)
+            if (string.IsNullOrWhiteSpace(result.StakeholderId))
             {
-                ["name"] = request.ContactName,
-                ["email"] = request.Email,
-                ["kyc"] = string.IsNullOrWhiteSpace(request.Pan)
-                    ? null
-                    : new Dictionary<string, object?> { ["pan"] = request.Pan }
-            };
+                var stakeholderBody = new Dictionary<string, object?>
+                {
+                    ["name"] = request.ContactName,
+                    ["email"] = request.Email,
+                    ["kyc"] = string.IsNullOrWhiteSpace(request.Pan)
+                        ? null
+                        : new Dictionary<string, object?> { ["pan"] = request.Pan }
+                };
 
-            var stakeholderId = await PostForIdAsync($"v2/accounts/{accountId}/stakeholders", stakeholderBody, "CreateStakeholder", result, ct);
-            if (stakeholderId is null) return result;
-            result.StakeholderId = stakeholderId;
+                var stakeholderId = await PostForIdAsync($"v2/accounts/{accountId}/stakeholders", stakeholderBody, "CreateStakeholder", result, ct);
+                if (stakeholderId is null) return result;
+                result.StakeholderId = stakeholderId;
+            }
 
-            // Step 3 — request the Route product configuration
-            var productBody = new Dictionary<string, object?>
+            // Step 3 — request the Route product configuration (skip if present)
+            if (string.IsNullOrWhiteSpace(result.ProductConfigurationId))
             {
-                ["product_name"] = "route",
-                ["tnc_accepted"] = true
-            };
+                var productBody = new Dictionary<string, object?>
+                {
+                    ["product_name"] = "route",
+                    ["tnc_accepted"] = true
+                };
 
-            var productId = await PostForIdAsync($"v2/accounts/{accountId}/products", productBody, "RequestRouteProduct", result, ct);
-            if (productId is null) return result;
-            result.ProductConfigurationId = productId;
+                var productId = await PostForIdAsync($"v2/accounts/{accountId}/products", productBody, "RequestRouteProduct", result, ct);
+                if (productId is null) return result;
+                result.ProductConfigurationId = productId;
+            }
 
             // Step 4 — submit bank settlement details
-            return await UpdateBankConfigurationAsync(accountId, productId, request.Bank, ct, result);
+            return await UpdateBankConfigurationAsync(accountId, result.ProductConfigurationId, request.Bank, ct, result);
         }
 
         public Task<RazorpayOnboardingResult> UpdateBankConfigurationAsync(string linkedAccountId, string? productConfigurationId, RazorpayBankDetails bank, CancellationToken ct = default)
@@ -128,6 +157,10 @@ namespace MedicineDelivery.Infrastructure.Services
 
             try
             {
+                // NOTE: verbose request logging for test debugging — includes bank details. Mask before production.
+                _logger.LogInformation("Razorpay request UpdateBankConfiguration PATCH /v2/accounts/{AccountId}/products/{ProductId} body={Body}",
+                    linkedAccountId, productConfigurationId, SafeJson(body));
+
                 using var response = await SendAsync(HttpMethod.Patch, $"v2/accounts/{linkedAccountId}/products/{productConfigurationId}", body, ct);
                 var json = await response.Content.ReadAsStringAsync(ct);
 
@@ -136,7 +169,7 @@ namespace MedicineDelivery.Infrastructure.Services
                     result.Success = false;
                     result.FailedStep = "UpdateBankConfiguration";
                     result.Error = ExtractError(json);
-                    _logger.LogWarning("Razorpay UpdateBankConfiguration failed for {AccountId}: {Error}", linkedAccountId, result.Error);
+                    _logger.LogWarning("Razorpay UpdateBankConfiguration failed for {AccountId}: {Error}. Response={Response}", linkedAccountId, result.Error, json);
                     return result;
                 }
 
@@ -204,6 +237,12 @@ namespace MedicineDelivery.Infrastructure.Services
             }
         }
 
+        private static string SafeJson(object body)
+        {
+            try { return JsonSerializer.Serialize(body); }
+            catch { return "<unserializable>"; }
+        }
+
         private static Dictionary<string, object?>? BuildLegalInfo(RazorpayOnboardingRequest request)
         {
             var legal = new Dictionary<string, object?>();
@@ -216,6 +255,11 @@ namespace MedicineDelivery.Infrastructure.Services
         {
             try
             {
+                // NOTE: verbose request logging for test debugging — includes PAN/GST.
+                // Mask or remove before production (PII).
+                _logger.LogInformation("Razorpay request {Step} POST /{Path} body={Body}",
+                    step, path, SafeJson(body));
+
                 using var response = await SendAsync(HttpMethod.Post, path, body, ct);
                 var json = await response.Content.ReadAsStringAsync(ct);
 
@@ -224,7 +268,7 @@ namespace MedicineDelivery.Infrastructure.Services
                     result.Success = false;
                     result.FailedStep = step;
                     result.Error = ExtractError(json);
-                    _logger.LogWarning("Razorpay {Step} failed: {Error}", step, result.Error);
+                    _logger.LogWarning("Razorpay {Step} failed: {Error}. Response={Response}", step, result.Error, json);
                     return null;
                 }
 

@@ -633,6 +633,7 @@ CREATE TABLE IF NOT EXISTS "ChemistActivationPayments" (
     "Gst" numeric(10,2) NOT NULL,
     "GatewayCharges" numeric(10,2) NULL,
     "RazorpayPaymentLinkId" character varying(50) NULL,
+    "PaymentLinkShortUrl" character varying(500) NULL,
     "RazorpayPaymentId" character varying(100) NULL,
     "Status" character varying(20) NOT NULL,
     "CreatedOn" timestamp with time zone NOT NULL,
@@ -640,6 +641,10 @@ CREATE TABLE IF NOT EXISTS "ChemistActivationPayments" (
     CONSTRAINT "PK_ChemistActivationPayments" PRIMARY KEY ("Id"),
     CONSTRAINT "FK_ChemistActivationPayments_MedicalStores_MedicalStoreId" FOREIGN KEY ("MedicalStoreId") REFERENCES "MedicalStores" ("MedicalStoreId") ON DELETE CASCADE
 );
+
+-- For existing deployments: add the payment-link URL column if missing
+-- (EF migration: 20260609xxxxxx_AddActivationPaymentLinkUrl)
+ALTER TABLE "ChemistActivationPayments" ADD COLUMN IF NOT EXISTS "PaymentLinkShortUrl" character varying(500) NULL;
 
 -- Indexes for ChemistActivationPayments
 CREATE INDEX IF NOT EXISTS "IX_ChemistActivationPayments_MedicalStoreId" ON "ChemistActivationPayments" ("MedicalStoreId");

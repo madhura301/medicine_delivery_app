@@ -25,6 +25,9 @@ namespace MedicineDelivery.Domain.Entities
         /// <summary>Razorpay Payment Link id (plink_XXXX).</summary>
         public string? RazorpayPaymentLinkId { get; set; }
 
+        /// <summary>The short URL the chemist opens to pay (returned by Razorpay at creation).</summary>
+        public string? PaymentLinkShortUrl { get; set; }
+
         /// <summary>Razorpay payment id (pay_XXXX) once the link is paid.</summary>
         public string? RazorpayPaymentId { get; set; }
 
