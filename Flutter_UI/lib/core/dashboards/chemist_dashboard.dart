@@ -283,6 +283,8 @@ class _ChemistDashboardState extends State<ChemistDashboard> {
             onSelected: (value) {
               if (value == 'profile') {
                 _navigateToChemistProfile(context);
+              } else if (value == 'payout') {
+                Navigator.pushNamed(context, '/chemist-payout');
               } else if (value == 'logout') {
                 _handleLogout();
               }
@@ -295,6 +297,16 @@ class _ChemistDashboardState extends State<ChemistDashboard> {
                     Icon(Icons.person, color: Colors.black),
                     SizedBox(width: 8),
                     Text('Profile'),
+                  ],
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'payout',
+                child: Row(
+                  children: [
+                    Icon(Icons.account_balance_wallet, color: Colors.black),
+                    SizedBox(width: 8),
+                    Text('Payout & Activation'),
                   ],
                 ),
               ),

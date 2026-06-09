@@ -32,6 +32,8 @@ namespace MedicineDelivery.Infrastructure.Data
         public DbSet<ConsentLog> ConsentLogs { get; set; }
         public DbSet<UserOtp> UserOtps { get; set; }
         public DbSet<RazorpayOrder> RazorpayOrders { get; set; }
+        public DbSet<ChemistPayoutAccount> ChemistPayoutAccounts { get; set; }
+        public DbSet<ChemistActivationPayment> ChemistActivationPayments { get; set; }
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
@@ -748,6 +750,58 @@ namespace MedicineDelivery.Infrastructure.Data
                     .OnDelete(DeleteBehavior.Restrict);
             });
 
+            // Configure ChemistPayoutAccount entity
+            builder.Entity<ChemistPayoutAccount>(entity =>
+            {
+                entity.HasKey(c => c.Id);
+
+                entity.Property(c => c.RazorpayLinkedAccountId).HasMaxLength(50);
+                entity.Property(c => c.RazorpayStakeholderId).HasMaxLength(50);
+                entity.Property(c => c.RazorpayProductConfigurationId).HasMaxLength(50);
+                entity.Property(c => c.BankAccountNumber).HasMaxLength(50);
+                entity.Property(c => c.BankIfscCode).HasMaxLength(20);
+                entity.Property(c => c.BankAccountHolderName).HasMaxLength(150);
+                entity.Property(c => c.OnboardingError).HasMaxLength(1000);
+
+                entity.Property(c => c.OnboardingStatus)
+                    .HasConversion<string>()
+                    .HasMaxLength(30);
+
+                entity.HasIndex(c => c.MedicalStoreId).IsUnique();
+                entity.HasIndex(c => c.RazorpayLinkedAccountId);
+
+                entity.HasOne(c => c.MedicalStore)
+                    .WithMany()
+                    .HasForeignKey(c => c.MedicalStoreId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // Configure ChemistActivationPayment entity
+            builder.Entity<ChemistActivationPayment>(entity =>
+            {
+                entity.HasKey(c => c.Id);
+
+                entity.Ignore(c => c.Total);
+
+                entity.Property(c => c.Amount).HasColumnType("decimal(10,2)");
+                entity.Property(c => c.Gst).HasColumnType("decimal(10,2)");
+                entity.Property(c => c.GatewayCharges).HasColumnType("decimal(10,2)");
+                entity.Property(c => c.RazorpayPaymentLinkId).HasMaxLength(50);
+                entity.Property(c => c.RazorpayPaymentId).HasMaxLength(100);
+
+                entity.Property(c => c.Status)
+                    .HasConversion<string>()
+                    .HasMaxLength(20);
+
+                entity.HasIndex(c => c.MedicalStoreId);
+                entity.HasIndex(c => c.RazorpayPaymentLinkId);
+
+                entity.HasOne(c => c.MedicalStore)
+                    .WithMany()
+                    .HasForeignKey(c => c.MedicalStoreId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
             // Configure ConsentLog entity
             builder.Entity<ConsentLog>(entity =>
             {
@@ -856,6 +910,10 @@ namespace MedicineDelivery.Infrastructure.Data
 
             builder.Entity<MedicalStore>()
                 .Property(ms => ms.UpdatedOn)
+                .HasColumnType("timestamp with time zone");
+
+            builder.Entity<MedicalStore>()
+                .Property(ms => ms.ActivatedOn)
                 .HasColumnType("timestamp with time zone");
 
             builder.Entity<CustomerSupport>()
@@ -1006,6 +1064,40 @@ namespace MedicineDelivery.Infrastructure.Data
             builder.Entity<RazorpayOrder>()
                 .Property(r => r.Amount)
                 .HasColumnType("numeric(10,2)");
+
+            // Configure ChemistPayoutAccount DateTime properties for PostgreSQL
+            builder.Entity<ChemistPayoutAccount>()
+                .Property(c => c.CreatedOn)
+                .HasColumnType("timestamp with time zone");
+
+            builder.Entity<ChemistPayoutAccount>()
+                .Property(c => c.UpdatedOn)
+                .HasColumnType("timestamp with time zone");
+
+            builder.Entity<ChemistPayoutAccount>()
+                .Property(c => c.ActivatedOn)
+                .HasColumnType("timestamp with time zone");
+
+            // Configure ChemistActivationPayment for PostgreSQL
+            builder.Entity<ChemistActivationPayment>()
+                .Property(c => c.Amount)
+                .HasColumnType("numeric(10,2)");
+
+            builder.Entity<ChemistActivationPayment>()
+                .Property(c => c.Gst)
+                .HasColumnType("numeric(10,2)");
+
+            builder.Entity<ChemistActivationPayment>()
+                .Property(c => c.GatewayCharges)
+                .HasColumnType("numeric(10,2)");
+
+            builder.Entity<ChemistActivationPayment>()
+                .Property(c => c.CreatedOn)
+                .HasColumnType("timestamp with time zone");
+
+            builder.Entity<ChemistActivationPayment>()
+                .Property(c => c.PaidOn)
+                .HasColumnType("timestamp with time zone");
 
         }
     }

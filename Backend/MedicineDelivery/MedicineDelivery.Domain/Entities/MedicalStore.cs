@@ -36,6 +36,13 @@ namespace MedicineDelivery.Domain.Entities
         
         public bool IsActive { get; set; } = true;
         public bool IsDeleted { get; set; } = false;
+
+        /// <summary>
+        /// When the store completed activation (paid the one-time onboarding fee).
+        /// Anchors the first-30-days-free platform-fee window. Null until activated.
+        /// </summary>
+        public DateTime? ActivatedOn { get; set; }
+
         public DateTime CreatedOn { get; set; } = DateTime.UtcNow;
         public Guid? CreatedBy { get; set; }
         public DateTime? UpdatedOn { get; set; }

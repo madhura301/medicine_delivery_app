@@ -22,6 +22,8 @@ namespace MedicineDelivery.Domain.Interfaces
         IRepository<ConsentLog> ConsentLogs { get; }
         IRepository<UserOtp> UserOtps { get; }
         IRepository<RazorpayOrder> RazorpayOrders { get; }
+        IRepository<ChemistPayoutAccount> ChemistPayoutAccounts { get; }
+        IRepository<ChemistActivationPayment> ChemistActivationPayments { get; }
 
         Task<int> SaveChangesAsync();
         Task BeginTransactionAsync();

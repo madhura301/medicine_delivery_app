@@ -378,6 +378,13 @@ builder.Services.AddScoped<MedicineDelivery.Application.Interfaces.IPaymentServi
 builder.Services.AddScoped<MedicineDelivery.Infrastructure.Services.IBrowserInfoService, MedicineDelivery.Infrastructure.Services.BrowserInfoService>();
 builder.Services.AddScoped<MedicineDelivery.Domain.Interfaces.ISmsService, MedicineDelivery.Infrastructure.Services.ConsoleSmsService>();
 builder.Services.AddScoped<MedicineDelivery.Domain.Interfaces.IRazorpayService, MedicineDelivery.Infrastructure.Services.RazorpayService>();
+builder.Services.AddScoped<MedicineDelivery.Application.Interfaces.IChemistPayoutService, MedicineDelivery.Infrastructure.Services.ChemistPayoutService>();
+builder.Services.AddScoped<MedicineDelivery.Application.Interfaces.IChemistActivationService, MedicineDelivery.Infrastructure.Services.ChemistActivationService>();
+
+// Razorpay Route onboarding client (typed HttpClient hitting the v2 Accounts API)
+builder.Services.AddHttpClient<MedicineDelivery.Application.Interfaces.IRazorpayRouteClient, MedicineDelivery.Infrastructure.Services.RazorpayRouteClient>();
+// Razorpay Payment Links client (typed HttpClient) for the chemist activation fee
+builder.Services.AddHttpClient<MedicineDelivery.Application.Interfaces.IRazorpayPaymentLinkClient, MedicineDelivery.Infrastructure.Services.RazorpayPaymentLinkClient>();
 
 // Add SignInManager explicitly (not automatically registered with AddIdentity)
 builder.Services.AddScoped<SignInManager<MedicineDelivery.Domain.Entities.ApplicationUser>>();

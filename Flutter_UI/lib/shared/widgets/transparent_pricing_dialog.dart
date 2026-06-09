@@ -453,19 +453,19 @@ class TransparentPricingDialogState extends State<TransparentPricingDialog> {
             const TableRow(
               decoration: BoxDecoration(color: _indigo),
               children: [
-                _HeaderCell('Monthly Successfully Completed Orders'),
+                _HeaderCell('Order Value (₹)'),
                 _HeaderCell('Platform Technology Fee Per Order'),
               ],
             ),
             _feeRow(Icons.card_giftcard, _orange,
-                'First Month After Activation', '₹0'),
-            _feeRow(Icons.bar_chart, _indigo, '0 – 200 Orders', '₹5'),
-            _feeRow(Icons.bar_chart, _indigo, '201 – 500 Orders', '₹10'),
-            _feeRow(Icons.bar_chart, _green, '501 – 1,500 Orders', '₹15'),
-            _feeRow(Icons.bar_chart, _green, '1,501 – 3,000 Orders', '₹20'),
-            _feeRow(Icons.bar_chart, _orange, '3,001 – 5,000 Orders', '₹50'),
+                'First 30 Days After Activation', '₹0'),
+            _feeRow(Icons.bar_chart, _indigo, '₹0 – 200', '₹5'),
+            _feeRow(Icons.bar_chart, _indigo, '₹201 – 500', '₹10'),
+            _feeRow(Icons.bar_chart, _green, '₹501 – 1,500', '₹15'),
+            _feeRow(Icons.bar_chart, _green, '₹1,501 – 3,000', '₹20'),
+            _feeRow(Icons.bar_chart, _orange, '₹3,001 – 5,000', '₹50'),
             _feeRow(Icons.workspace_premium, Colors.pink,
-                'Above 5,000 Orders', '₹100'),
+                'Above ₹5,000', '₹100'),
           ],
         ),
         Container(
@@ -481,8 +481,8 @@ class TransparentPricingDialogState extends State<TransparentPricingDialog> {
               const SizedBox(width: 6),
               Expanded(
                 child: Text(
-                  'Slab is auto-applied based on your monthly successfully '
-                  'completed orders.',
+                  'Slab is auto-applied based on the order value. '
+                  'First 30 days after activation are free.',
                   style:
                       TextStyle(fontSize: 10.5, color: Colors.grey.shade700),
                 ),

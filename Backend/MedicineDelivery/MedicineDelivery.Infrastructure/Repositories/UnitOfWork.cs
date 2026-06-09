@@ -26,6 +26,8 @@ namespace MedicineDelivery.Infrastructure.Repositories
         private IRepository<ConsentLog>? _consentLogs;
         private IRepository<UserOtp>? _userOtps;
         private IRepository<RazorpayOrder>? _razorpayOrders;
+        private IRepository<ChemistPayoutAccount>? _chemistPayoutAccounts;
+        private IRepository<ChemistActivationPayment>? _chemistActivationPayments;
 
         public UnitOfWork(ApplicationDbContext context)
         {
@@ -50,6 +52,8 @@ namespace MedicineDelivery.Infrastructure.Repositories
         public IRepository<ConsentLog> ConsentLogs => _consentLogs ??= new Repository<ConsentLog>(_context);
         public IRepository<UserOtp> UserOtps => _userOtps ??= new Repository<UserOtp>(_context);
         public IRepository<RazorpayOrder> RazorpayOrders => _razorpayOrders ??= new Repository<RazorpayOrder>(_context);
+        public IRepository<ChemistPayoutAccount> ChemistPayoutAccounts => _chemistPayoutAccounts ??= new Repository<ChemistPayoutAccount>(_context);
+        public IRepository<ChemistActivationPayment> ChemistActivationPayments => _chemistActivationPayments ??= new Repository<ChemistActivationPayment>(_context);
 
         public async Task<int> SaveChangesAsync()
         {

@@ -57,7 +57,30 @@
       "Bash(pip install *)",
       "Bash(python -c \"import pypdf; r=pypdf.PdfReader\\(r'C:\\\\Users\\\\Admin\\\\Downloads\\\\Razorpay Route Marketplace Integration Wireframe.pdf'\\); print\\('PAGES',len\\(r.pages\\)\\); [print\\('==== PAGE',i+1,'====\\\\n', p.extract_text\\(\\)\\) for i,p in enumerate\\(r.pages\\)]\")",
       "Bash(python -c \"import pypdf,io; r=pypdf.PdfReader\\(r'C:\\\\Users\\\\Admin\\\\Downloads\\\\Razorpay Route Marketplace Integration Wireframe.pdf'\\); open\\(r'C:\\\\Users\\\\Admin\\\\Downloads\\\\_route_wireframe.txt','w',encoding='utf-8'\\).write\\('\\\\n'.join\\('==== PAGE %d ====\\\\n%s'%\\(i+1,p.extract_text\\(\\)\\) for i,p in enumerate\\(r.pages\\)\\)\\)\")",
-      "Bash(python -c \"import os; os.remove\\(r'C:\\\\Users\\\\Admin\\\\Downloads\\\\_route_wireframe.txt'\\)\")"
+      "Bash(python -c \"import os; os.remove\\(r'C:\\\\Users\\\\Admin\\\\Downloads\\\\_route_wireframe.txt'\\)\")",
+      "Bash(dotnet --list-sdks)",
+      "Bash(rm -f global.json)",
+      "Bash(dotnet tool *)",
+      "Bash(./.eftool/dotnet-ef migrations *)",
+      "Read(//c/Users/Admin/AppData/Roaming/Claude/local-agent-mode-sessions/skills-plugin/2894bd4a-528c-415d-bfc9-ad172f26e06d/795ee5e6-b414-4254-802b-2b9beebca850/skills/xlsx/**)",
+      "Bash(python -c \"import sys; print\\(sys.version\\)\")",
+      "Bash(python -c \"import pandas as pd; xl = pd.ExcelFile\\(r'C:\\\\Users\\\\Admin\\\\Downloads\\\\Pharmaish_Cyber_Questionnaire_Suggested - Copy.xlsx'\\); print\\(xl.sheet_names\\)\")",
+      "Bash(npx --version)",
+      "Bash(pandoc --version)",
+      "Bash(wkhtmltopdf --version)",
+      "Bash(node -e \"fetch\\('https://registry.npmjs.org/marked/latest'\\).then\\(r=>console.log\\('net OK',r.status\\)\\).catch\\(e=>console.log\\('net FAIL',e.message\\)\\)\")",
+      "Bash(mkdir -p /tmp/pdfbuild)",
+      "Bash(npm init *)",
+      "Bash(node build.js \"J:/Projects/MedicineDeliveryRepo/medicine_delivery_app/Documents/paymentDiagrams.md\" \"/tmp/pdfbuild/paymentDiagrams.html\" \"Razorpay Route Split Payment - Diagrams\")",
+      "Bash(node build.js \"J:/Projects/MedicineDeliveryRepo/medicine_delivery_app/Documents/paymentDiagrams.md\" \"/tmp/pdfbuild/paymentDiagrams.html\" \"test\")",
+      "Bash(pwd -W)",
+      "Bash(cmd //c cd)",
+      "Bash(node build.js \"J:/Projects/MedicineDeliveryRepo/medicine_delivery_app/Documents/paymentDiagrams.md\" \"C:/Users/Admin/AppData/Local/Temp/pdfbuild/paymentDiagrams.html\" \"Razorpay Route Split Payment - Diagrams\")",
+      "Bash('/c/Program Files/Google/Chrome/Application/chrome.exe' --headless --disable-gpu --no-sandbox --run-all-compositor-stages-before-draw --virtual-time-budget=40000 --print-to-pdf=J:/Projects/MedicineDeliveryRepo/medicine_delivery_app/Documents/paymentDiagrams.pdf file:///C:/Users/Admin/AppData/Local/Temp/pdfbuild/paymentDiagrams.html)",
+      "Bash(\"/c/Program Files/Google/Chrome/Application/chrome.exe\" --headless --disable-gpu --no-sandbox --run-all-compositor-stages-before-draw --virtual-time-budget=40000 --window-size=1200,1700 --screenshot=\"C:/Users/Admin/AppData/Local/Temp/pdfbuild/verify.png\" \"file:///C:/Users/Admin/AppData/Local/Temp/pdfbuild/paymentDiagrams.html\")",
+      "Bash(rm -rf /tmp/pdfbuild2 && echo cleaned)",
+      "Bash(flutter analyze *)",
+      "PowerShell($f = \\(Get-Command flutter -ErrorAction SilentlyContinue\\); if \\($f\\) { $f.Source } else { \"not on PATH\" }; if \\(Test-Path \"$env:LOCALAPPDATA\\\\flutter\\\\bin\\\\flutter.bat\"\\) { \"LOCALAPPDATA flutter found\" }; if \\(Test-Path \"C:\\\\flutter\\\\bin\\\\flutter.bat\"\\) { \"C:\\\\flutter found\" }; if \\(Test-Path \"C:\\\\src\\\\flutter\\\\bin\\\\flutter.bat\"\\) { \"C:\\\\src\\\\flutter found\" })"
     ]
   }
 }

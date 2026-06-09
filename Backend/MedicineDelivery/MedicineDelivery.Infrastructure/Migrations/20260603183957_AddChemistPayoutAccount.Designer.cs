@@ -3,6 +3,7 @@ using System;
 using MedicineDelivery.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace MedicineDelivery.Infrastructure.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260603183957_AddChemistPayoutAccount")]
+    partial class AddChemistPayoutAccount
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -103,54 +106,6 @@ namespace MedicineDelivery.Infrastructure.Migrations
                         .HasDatabaseName("UserNameIndex");
 
                     b.ToTable("AspNetUsers", (string)null);
-                });
-
-            modelBuilder.Entity("MedicineDelivery.Domain.Entities.ChemistActivationPayment", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<decimal>("Amount")
-                        .HasColumnType("decimal(10,2)");
-
-                    b.Property<DateTime>("CreatedOn")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<decimal?>("GatewayCharges")
-                        .HasColumnType("decimal(10,2)");
-
-                    b.Property<decimal>("Gst")
-                        .HasColumnType("decimal(10,2)");
-
-                    b.Property<Guid>("MedicalStoreId")
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime?>("PaidOn")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("RazorpayPaymentId")
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
-
-                    b.Property<string>("RazorpayPaymentLinkId")
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("MedicalStoreId");
-
-                    b.HasIndex("RazorpayPaymentLinkId");
-
-                    b.ToTable("ChemistActivationPayments");
                 });
 
             modelBuilder.Entity("MedicineDelivery.Domain.Entities.ChemistPayoutAccount", b =>
@@ -710,9 +665,6 @@ namespace MedicineDelivery.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
                         .HasDefaultValueSql("gen_random_uuid()");
-
-                    b.Property<DateTime?>("ActivatedOn")
-                        .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("AddressLine1")
                         .IsRequired()
@@ -1447,17 +1399,6 @@ namespace MedicineDelivery.Infrastructure.Migrations
                     b.HasKey("UserId", "LoginProvider", "Name");
 
                     b.ToTable("AspNetUserTokens", (string)null);
-                });
-
-            modelBuilder.Entity("MedicineDelivery.Domain.Entities.ChemistActivationPayment", b =>
-                {
-                    b.HasOne("MedicineDelivery.Domain.Entities.MedicalStore", "MedicalStore")
-                        .WithMany()
-                        .HasForeignKey("MedicalStoreId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("MedicalStore");
                 });
 
             modelBuilder.Entity("MedicineDelivery.Domain.Entities.ChemistPayoutAccount", b =>
