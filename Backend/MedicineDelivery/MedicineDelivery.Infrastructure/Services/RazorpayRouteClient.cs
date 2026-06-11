@@ -243,6 +243,47 @@ namespace MedicineDelivery.Infrastructure.Services
             }
         }
 
+        public async Task<RazorpayAccountStatusResult> GetAccountStatusAsync(string linkedAccountId, CancellationToken ct = default)
+        {
+            try
+            {
+                using var response = await _httpClient.GetAsync($"v2/accounts/{linkedAccountId}", ct);
+                var json = await response.Content.ReadAsStringAsync(ct);
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    var error = ExtractError(json);
+                    _logger.LogWarning("Razorpay GetAccountStatus failed for {AccountId}: {Error}", linkedAccountId, error);
+                    return new RazorpayAccountStatusResult { Success = false, Error = error };
+                }
+
+                using var doc = JsonDocument.Parse(json);
+                var rawStatus = doc.RootElement.TryGetProperty("status", out var st) ? st.GetString() : null;
+
+                return new RazorpayAccountStatusResult
+                {
+                    Success = true,
+                    RawStatus = rawStatus,
+                    State = MapAccountState(rawStatus)
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error calling Razorpay GetAccountStatus for {AccountId}", linkedAccountId);
+                return new RazorpayAccountStatusResult { Success = false, Error = "Network error while fetching account status." };
+            }
+        }
+
+        private static RazorpayActivationState MapAccountState(string? status) =>
+            (status ?? string.Empty).ToLowerInvariant() switch
+            {
+                "activated" => RazorpayActivationState.Activated,
+                "rejected" => RazorpayActivationState.Rejected,
+                "suspended" => RazorpayActivationState.Suspended,
+                "needs_clarification" => RazorpayActivationState.NeedsClarification,
+                _ => RazorpayActivationState.Pending // created / under_review / etc.
+            };
+
         private static string SafeJson(object body)
         {
             try { return JsonSerializer.Serialize(body); }

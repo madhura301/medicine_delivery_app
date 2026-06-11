@@ -99,5 +99,20 @@ namespace MedicineDelivery.API.Controllers
 
             return Ok(result.Data);
         }
+
+        /// <summary>
+        /// Refreshes every payout account still awaiting activation (Pending / NeedsClarification):
+        /// fetches each linked account's live status from Razorpay and updates the database.
+        /// Returns a summary of what was checked and changed.
+        /// </summary>
+        [HttpPost("refresh-pending")]
+        [Authorize(Policy = "RequireChemistUpdatePermission")]
+        public async Task<IActionResult> RefreshPending(CancellationToken ct)
+        {
+            _logger.LogInformation("Chemist payout refresh-pending requested.");
+
+            var result = await _chemistPayoutService.RefreshPendingStatusesAsync(ct);
+            return Ok(result);
+        }
     }
 }

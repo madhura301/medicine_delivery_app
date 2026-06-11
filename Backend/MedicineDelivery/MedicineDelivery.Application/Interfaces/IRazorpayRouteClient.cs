@@ -25,6 +25,21 @@ namespace MedicineDelivery.Application.Interfaces
         /// (Razorpay Route "transfer from payment").
         /// </summary>
         Task<RazorpayTransferResult> CreateTransferOnPaymentAsync(RazorpayTransferRequest request, CancellationToken ct = default);
+
+        /// <summary>
+        /// Fetches the live activation status of a linked account from Razorpay
+        /// (GET /v2/accounts/{id}).
+        /// </summary>
+        Task<RazorpayAccountStatusResult> GetAccountStatusAsync(string linkedAccountId, CancellationToken ct = default);
+    }
+
+    public class RazorpayAccountStatusResult
+    {
+        public bool Success { get; set; }
+        public RazorpayActivationState State { get; set; } = RazorpayActivationState.Pending;
+        /// <summary>The raw status string returned by Razorpay (e.g. "created", "activated").</summary>
+        public string? RawStatus { get; set; }
+        public string? Error { get; set; }
     }
 
     public class RazorpayTransferRequest

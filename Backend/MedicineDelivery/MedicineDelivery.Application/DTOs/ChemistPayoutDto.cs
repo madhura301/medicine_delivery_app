@@ -38,6 +38,27 @@ namespace MedicineDelivery.Application.DTOs
         public DateTime? UpdatedOn { get; set; }
     }
 
+    /// <summary>Summary returned by the "refresh pending statuses" job.</summary>
+    public class ChemistPayoutRefreshResultDto
+    {
+        public int Checked { get; set; }
+        public int Updated { get; set; }
+        public int Activated { get; set; }
+        public List<ChemistPayoutRefreshItemDto> Items { get; set; } = new();
+    }
+
+    /// <summary>Per-account outcome of a status refresh.</summary>
+    public class ChemistPayoutRefreshItemDto
+    {
+        public Guid MedicalStoreId { get; set; }
+        public string? RazorpayLinkedAccountId { get; set; }
+        public string PreviousStatus { get; set; } = string.Empty;
+        public string NewStatus { get; set; } = string.Empty;
+        public bool Changed { get; set; }
+        public string? RazorpayRawStatus { get; set; }
+        public string? Error { get; set; }
+    }
+
     /// <summary>Result wrapper for chemist-payout operations (service → controller).</summary>
     public class ChemistPayoutResult
     {

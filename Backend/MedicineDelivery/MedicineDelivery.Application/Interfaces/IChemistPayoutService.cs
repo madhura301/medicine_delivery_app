@@ -20,5 +20,11 @@ namespace MedicineDelivery.Application.Interfaces
 
         /// <summary>Updates the chemist's bank details and re-submits the Route product configuration.</summary>
         Task<ChemistPayoutResult> UpdateBankDetailsAsync(Guid medicalStoreId, UpdateChemistBankDto request, CancellationToken ct = default);
+
+        /// <summary>
+        /// Pulls every payout account still awaiting activation (Pending / NeedsClarification),
+        /// fetches its live status from Razorpay, and writes any changes back to the database.
+        /// </summary>
+        Task<ChemistPayoutRefreshResultDto> RefreshPendingStatusesAsync(CancellationToken ct = default);
     }
 }

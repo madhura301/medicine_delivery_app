@@ -137,7 +137,86 @@ namespace MedicineDelivery.Infrastructure.Services
             return ChemistPayoutResult.Ok(ToDto(account));
         }
 
+        public async Task<ChemistPayoutRefreshResultDto> RefreshPendingStatusesAsync(CancellationToken ct = default)
+        {
+            ct.ThrowIfCancellationRequested();
+
+            // Pull every account still awaiting activation that has a linked account to query.
+            var pending = await _unitOfWork.ChemistPayoutAccounts.FindAsync(a =>
+                a.OnboardingStatus == ChemistPayoutStatus.Pending ||
+                a.OnboardingStatus == ChemistPayoutStatus.NeedsClarification);
+
+            var candidates = pending
+                .Where(a => !string.IsNullOrWhiteSpace(a.RazorpayLinkedAccountId))
+                .ToList();
+
+            var result = new ChemistPayoutRefreshResultDto { Checked = candidates.Count };
+
+            foreach (var account in candidates)
+            {
+                ct.ThrowIfCancellationRequested();
+
+                var previous = account.OnboardingStatus;
+                var item = new ChemistPayoutRefreshItemDto
+                {
+                    MedicalStoreId = account.MedicalStoreId,
+                    RazorpayLinkedAccountId = account.RazorpayLinkedAccountId,
+                    PreviousStatus = previous.ToString(),
+                    NewStatus = previous.ToString()
+                };
+
+                var statusResult = await _routeClient.GetAccountStatusAsync(account.RazorpayLinkedAccountId!, ct);
+                item.RazorpayRawStatus = statusResult.RawStatus;
+
+                if (!statusResult.Success)
+                {
+                    item.Error = statusResult.Error;
+                    result.Items.Add(item);
+                    continue;
+                }
+
+                var newStatus = MapState(statusResult.State);
+                item.NewStatus = newStatus.ToString();
+
+                if (newStatus != previous)
+                {
+                    account.OnboardingStatus = newStatus;
+                    if (newStatus == ChemistPayoutStatus.Active)
+                    {
+                        account.OnboardingError = null;
+                        account.ActivatedOn ??= DateTime.UtcNow;
+                    }
+                    account.UpdatedOn = DateTime.UtcNow;
+                    _unitOfWork.ChemistPayoutAccounts.Update(account);
+
+                    item.Changed = true;
+                    result.Updated++;
+                    if (newStatus == ChemistPayoutStatus.Active) result.Activated++;
+                }
+
+                result.Items.Add(item);
+            }
+
+            if (result.Updated > 0)
+                await _unitOfWork.SaveChangesAsync();
+
+            _logger.LogInformation(
+                "Chemist payout refresh: checked={Checked}, updated={Updated}, activated={Activated}",
+                result.Checked, result.Updated, result.Activated);
+
+            return result;
+        }
+
         // ----- helpers -----
+
+        private static ChemistPayoutStatus MapState(RazorpayActivationState state) => state switch
+        {
+            RazorpayActivationState.Activated => ChemistPayoutStatus.Active,
+            RazorpayActivationState.Rejected => ChemistPayoutStatus.Rejected,
+            RazorpayActivationState.Suspended => ChemistPayoutStatus.Suspended,
+            RazorpayActivationState.NeedsClarification => ChemistPayoutStatus.NeedsClarification,
+            _ => ChemistPayoutStatus.Pending
+        };
 
         private async Task PersistAsync(ChemistPayoutAccount account, bool isNew)
         {
