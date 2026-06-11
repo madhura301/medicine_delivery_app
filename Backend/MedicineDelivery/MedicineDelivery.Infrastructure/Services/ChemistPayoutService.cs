@@ -185,23 +185,27 @@ namespace MedicineDelivery.Infrastructure.Services
 
         private static RazorpayOnboardingRequest BuildRequest(MedicalStore store, ChemistPayoutAccount account) => new()
         {
-            BusinessName = store.MedicalName,
-            ContactName = $"{store.OwnerFirstName} {store.OwnerLastName}".Trim(),
-            Email = store.EmailId,
-            Phone = store.MobileNumber,
-            Street1 = store.AddressLine1,
-            Street2 = store.AddressLine2,
-            City = store.City,
-            State = store.State,
-            PostalCode = store.PostalCode,
+            BusinessName = Clean(store.MedicalName),
+            ContactName = $"{Clean(store.OwnerFirstName)} {Clean(store.OwnerLastName)}".Trim(),
+            Email = Clean(store.EmailId),
+            Phone = Clean(store.MobileNumber),
+            Street1 = Clean(store.AddressLine1),
+            Street2 = Clean(store.AddressLine2),
+            City = Clean(store.City),
+            State = Clean(store.State),
+            PostalCode = Clean(store.PostalCode),
             Country = "IN",
-            Pan = string.IsNullOrWhiteSpace(store.PAN) ? null : store.PAN,
-            Gst = string.IsNullOrWhiteSpace(store.GSTIN) ? null : store.GSTIN,
+            // PAN/GST must be uppercase and whitespace-free or Razorpay rejects them.
+            Pan = string.IsNullOrWhiteSpace(store.PAN) ? null : store.PAN.Trim().ToUpperInvariant(),
+            Gst = string.IsNullOrWhiteSpace(store.GSTIN) ? null : store.GSTIN.Trim().ToUpperInvariant(),
             Bank = BuildBank(account),
             ExistingLinkedAccountId = account.RazorpayLinkedAccountId,
             ExistingStakeholderId = account.RazorpayStakeholderId,
             ExistingProductConfigurationId = account.RazorpayProductConfigurationId
         };
+
+        /// <summary>Trims whitespace from a value sent to Razorpay (null-safe).</summary>
+        private static string Clean(string? value) => (value ?? string.Empty).Trim();
 
         private static RazorpayBankDetails BuildBank(ChemistPayoutAccount account) => new()
         {
