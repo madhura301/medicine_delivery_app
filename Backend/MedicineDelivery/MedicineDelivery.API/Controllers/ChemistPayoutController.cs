@@ -114,5 +114,23 @@ namespace MedicineDelivery.API.Controllers
             var result = await _chemistPayoutService.RefreshPendingStatusesAsync(ct);
             return Ok(result);
         }
+
+        /// <summary>
+        /// Chemist-facing "refresh payment status": pulls this one chemist's live status from
+        /// Razorpay, updates the database, and returns the current status.
+        /// <paramref name="chemistId"/> may be the MedicalStoreId or the chemist's UserId.
+        /// </summary>
+        [HttpPost("refresh/{chemistId:guid}")]
+        [Authorize(Policy = "RequireChemistReadPermission")]
+        public async Task<IActionResult> RefreshStatus(Guid chemistId, CancellationToken ct)
+        {
+            _logger.LogInformation("Chemist payout refresh requested for {ChemistId}", chemistId);
+
+            var result = await _chemistPayoutService.RefreshStatusAsync(chemistId, ct);
+            if (!result.Success)
+                return NotFound(new { errors = result.Errors });
+
+            return Ok(result.Data);
+        }
     }
 }

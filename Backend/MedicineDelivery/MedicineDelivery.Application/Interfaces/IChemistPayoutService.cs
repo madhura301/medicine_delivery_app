@@ -26,5 +26,11 @@ namespace MedicineDelivery.Application.Interfaces
         /// fetches its live status from Razorpay, and writes any changes back to the database.
         /// </summary>
         Task<ChemistPayoutRefreshResultDto> RefreshPendingStatusesAsync(CancellationToken ct = default);
+
+        /// <summary>
+        /// Refreshes a single chemist's payout status from Razorpay and returns the updated status.
+        /// <paramref name="chemistId"/> may be the MedicalStoreId or the chemist's UserId.
+        /// </summary>
+        Task<ChemistPayoutResult> RefreshStatusAsync(Guid chemistId, CancellationToken ct = default);
     }
 }

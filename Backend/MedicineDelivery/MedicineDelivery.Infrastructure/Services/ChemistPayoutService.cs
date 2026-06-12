@@ -207,6 +207,56 @@ namespace MedicineDelivery.Infrastructure.Services
             return result;
         }
 
+        public async Task<ChemistPayoutResult> RefreshStatusAsync(Guid chemistId, CancellationToken ct = default)
+        {
+            ct.ThrowIfCancellationRequested();
+
+            // Resolve the store by its id, or by the logged-in chemist's UserId.
+            var idText = chemistId.ToString();
+            var store = await _unitOfWork.MedicalStores.FirstOrDefaultAsync(s =>
+                s.MedicalStoreId == chemistId || s.UserId == idText);
+            if (store == null)
+                return ChemistPayoutResult.Fail($"No chemist found for id {chemistId}.");
+
+            var account = await _unitOfWork.ChemistPayoutAccounts
+                .FirstOrDefaultAsync(a => a.MedicalStoreId == store.MedicalStoreId);
+            if (account == null)
+                return ChemistPayoutResult.Fail("This chemist has no payout account yet. Complete onboarding first.");
+
+            // Nothing to pull from Razorpay until a linked account exists.
+            if (string.IsNullOrWhiteSpace(account.RazorpayLinkedAccountId))
+                return ChemistPayoutResult.Ok(ToDto(account));
+
+            var statusResult = await _routeClient.GetAccountStatusAsync(account.RazorpayLinkedAccountId!, ct);
+            if (!statusResult.Success)
+            {
+                _logger.LogWarning("Refresh status: Razorpay lookup failed for store {StoreId}: {Error}",
+                    store.MedicalStoreId, statusResult.Error);
+                // Return the current (unchanged) status rather than failing the button.
+                return ChemistPayoutResult.Ok(ToDto(account));
+            }
+
+            var newStatus = MapState(statusResult.State);
+            if (newStatus != account.OnboardingStatus)
+            {
+                var previous = account.OnboardingStatus;
+                account.OnboardingStatus = newStatus;
+                if (newStatus == ChemistPayoutStatus.Active)
+                {
+                    account.OnboardingError = null;
+                    account.ActivatedOn ??= DateTime.UtcNow;
+                }
+                account.UpdatedOn = DateTime.UtcNow;
+                _unitOfWork.ChemistPayoutAccounts.Update(account);
+                await _unitOfWork.SaveChangesAsync();
+
+                _logger.LogInformation("Refresh status: store {StoreId} {Old} -> {New} (razorpay={Raw})",
+                    store.MedicalStoreId, previous, newStatus, statusResult.RawStatus);
+            }
+
+            return ChemistPayoutResult.Ok(ToDto(account));
+        }
+
         // ----- helpers -----
 
         private static ChemistPayoutStatus MapState(RazorpayActivationState state) => state switch
