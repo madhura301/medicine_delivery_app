@@ -9,6 +9,10 @@ namespace MedicineDelivery.Application.Interfaces
         Task<MedicalStoreDto?> GetMedicalStoreByEmailAsync(string email);
         Task<List<MedicalStoreDto>> GetAllMedicalStoresAsync();
         Task<MedicalStoreDto?> UpdateMedicalStoreAsync(Guid id, MedicalStoreRegistrationDto updateDto);
+
+        /// <summary>Activates / deactivates a medical store. Returns false if not found or deleted.</summary>
+        Task<bool> SetActiveStatusAsync(Guid id, bool isActive);
+
         Task<bool> DeleteMedicalStoreAsync(Guid id);
         Task<bool> CheckChemistAvailabilityAsync(Guid customerId, CancellationToken cancellationToken = default);
     }

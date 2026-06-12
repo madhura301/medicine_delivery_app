@@ -235,6 +235,62 @@ namespace MedicineDelivery.API.Controllers
         }
 
         /// <summary>
+        /// Activate a medical store (chemist). Allowed for Admin / Manager / CustomerSupport.
+        /// New chemists are inactive until activated here.
+        /// </summary>
+        [HttpPost("{id:guid}/activate")]
+        [Authorize(Policy = "RequireChemistUpdatePermission")]
+        public async Task<IActionResult> ActivateMedicalStore(Guid id)
+        {
+            try
+            {
+                // Only Admin / Manager / CustomerSupport (AllChemistUpdate) may activate a chemist —
+                // a chemist must not activate their own (or anyone's) store.
+                if (!await _permissionCheckerService.HasPermissionAsync(User, "AllChemistUpdate"))
+                    return Forbid();
+
+                var ok = await _medicalStoreService.SetActiveStatusAsync(id, true);
+                if (!ok)
+                    return NotFound(new { error = "Chemist not found or has been deleted." });
+
+                _logger.LogInformation("Medical store {Id} activated", id);
+                return Ok(new { id, isActive = true, message = "Chemist activated successfully." });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error activating medical store {Id}", id);
+                return StatusCode(500, new { error = "An error occurred while activating the chemist." });
+            }
+        }
+
+        /// <summary>
+        /// Deactivate a medical store (chemist). Allowed for Admin / Manager / CustomerSupport.
+        /// </summary>
+        [HttpPost("{id:guid}/deactivate")]
+        [Authorize(Policy = "RequireChemistUpdatePermission")]
+        public async Task<IActionResult> DeactivateMedicalStore(Guid id)
+        {
+            try
+            {
+                // Only Admin / Manager / CustomerSupport (AllChemistUpdate) may deactivate a chemist.
+                if (!await _permissionCheckerService.HasPermissionAsync(User, "AllChemistUpdate"))
+                    return Forbid();
+
+                var ok = await _medicalStoreService.SetActiveStatusAsync(id, false);
+                if (!ok)
+                    return NotFound(new { error = "Chemist not found or has been deleted." });
+
+                _logger.LogInformation("Medical store {Id} deactivated", id);
+                return Ok(new { id, isActive = false, message = "Chemist deactivated successfully." });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error deactivating medical store {Id}", id);
+                return StatusCode(500, new { error = "An error occurred while deactivating the chemist." });
+            }
+        }
+
+        /// <summary>
         /// Delete medical store (soft delete)
         /// </summary>
         /// <param name="id">Medical store ID</param>

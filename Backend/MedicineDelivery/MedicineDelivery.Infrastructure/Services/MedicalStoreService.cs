@@ -122,7 +122,8 @@ namespace MedicineDelivery.Infrastructure.Services
                         UserId = identityUser.Id,
                         CreatedOn = DateTime.UtcNow,
                         UpdatedOn = DateTime.UtcNow,
-                        IsActive = true,
+                        // New chemists start INACTIVE — an Admin/Manager/CustomerSupport must activate them.
+                        IsActive = false,
                         IsDeleted = false
                     };
 
@@ -281,6 +282,26 @@ namespace MedicineDelivery.Infrastructure.Services
             await _unitOfWork.SaveChangesAsync();
 
             _logger.LogInformation("Medical store soft-deleted successfully with MedicalStoreId {MedicalStoreId}", id);
+            return true;
+        }
+
+        public async Task<bool> SetActiveStatusAsync(Guid id, bool isActive)
+        {
+            var medicalStore = await _unitOfWork.MedicalStores.FirstOrDefaultAsync(ms => ms.MedicalStoreId == id);
+            if (medicalStore == null || medicalStore.IsDeleted)
+            {
+                _logger.LogWarning("Set active status failed: store {MedicalStoreId} not found or deleted", id);
+                return false;
+            }
+
+            if (medicalStore.IsActive != isActive)
+            {
+                medicalStore.IsActive = isActive;
+                medicalStore.UpdatedOn = DateTime.UtcNow;
+                await _unitOfWork.SaveChangesAsync();
+                _logger.LogInformation("Medical store {MedicalStoreId} IsActive set to {IsActive}", id, isActive);
+            }
+
             return true;
         }
 
