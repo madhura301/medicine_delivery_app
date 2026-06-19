@@ -5,7 +5,9 @@
 
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
+import 'package:pharmaish/core/services/chemist_payout_service.dart';
 import 'package:pharmaish/shared/widgets/app_button.dart';
+import 'package:pharmaish/shared/widgets/app_snackbar.dart';
 import 'package:pharmaish/utils/app_logger.dart';
 import 'package:pharmaish/utils/role_entity_manager.dart';
 import 'package:pharmaish/core/screens/admin/create_user_screen.dart';
@@ -94,6 +96,31 @@ class _AdminUserManagementPageState extends State<AdminUserManagementPage> {
   // ==========================================================================
   // DATA LOADING
   // ==========================================================================
+
+  /// Refreshes the Razorpay payout/onboarding status of ALL pending chemists in
+  /// one shot (admin action on the Chemists tab), then reloads the list.
+  Future<void> _refreshAllChemistPayouts() async {
+    setState(() => _isLoading = true);
+    final summary = await ChemistPayoutService.refreshPending();
+    if (!mounted) return;
+
+    // Reload so any newly activated/updated chemists are reflected.
+    await _loadAllData();
+    if (!mounted) return;
+
+    if (summary == null) {
+      AppSnackBar.error(context, 'Failed to refresh chemist payout statuses.');
+    } else {
+      final checked = summary['checked'] ?? 0;
+      final updated = summary['updated'] ?? 0;
+      final activated = summary['activated'] ?? 0;
+      AppSnackBar.success(
+        context,
+        'Payout statuses refreshed — checked $checked, updated $updated, '
+        'activated $activated.',
+      );
+    }
+  }
 
   Future<void> _loadAllData() async {
     setState(() {
@@ -515,6 +542,275 @@ class _AdminUserManagementPageState extends State<AdminUserManagementPage> {
   }
 
   // ==========================================================================
+  // ACTIVATE / DEACTIVATE CHEMIST
+  // ==========================================================================
+
+  /// Activates or deactivates a chemist (medical store) via
+  /// POST /MedicalStores/{id}/activate | /deactivate.
+  Future<void> _setChemistActive(
+      Map<String, dynamic> store, bool activate) async {
+    final id = store['medicalStoreId'];
+    final name = (store['medicalName'] ?? 'this chemist').toString().trim();
+    final action = activate ? 'activate' : 'deactivate';
+
+    if (id == null) {
+      _showError('Medical store ID not found for this record');
+      return;
+    }
+
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('${activate ? 'Activate' : 'Deactivate'} Chemist'),
+        content: Text('Are you sure you want to $action $name?'),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancel')),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: activate ? Colors.green : Colors.orange,
+              foregroundColor: Colors.white,
+            ),
+            child: Text(activate ? 'Activate' : 'Deactivate'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
+    if (!mounted) return;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => AlertDialog(
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const CircularProgressIndicator(),
+            const SizedBox(height: 16),
+            Text('${activate ? 'Activating' : 'Deactivating'}...'),
+          ],
+        ),
+      ),
+    );
+
+    try {
+      final r = await widget.dio.post('/MedicalStores/$id/$action');
+      final ok = r.statusCode == 200 || r.statusCode == 204;
+
+      if (mounted) Navigator.pop(context); // close progress
+
+      if (ok) {
+        if (mounted) {
+          _showSuccess('Chemist ${activate ? 'activated' : 'deactivated'} successfully');
+          await _loadAllData();
+        }
+      } else {
+        if (mounted) _showError('Failed to $action chemist');
+      }
+    } on DioException catch (e) {
+      if (mounted) Navigator.pop(context);
+      String msg = 'Failed to $action chemist';
+      final data = e.response?.data;
+      if (data is Map && data['error'] != null) msg = data['error'].toString();
+      if (mounted) _showError(msg);
+    } catch (e) {
+      if (mounted) Navigator.pop(context);
+      if (mounted) _showError('Error: $e');
+    }
+  }
+
+  // ==========================================================================
+  // EDIT – CUSTOMER SUPPORT
+  // ==========================================================================
+
+  Future<void> _editCustomerSupport(Map<String, dynamic> support) async {
+    final formKey    = GlobalKey<FormState>();
+    final firstCtrl  = TextEditingController(text: support['customerSupportFirstName']  ?? '');
+    final middleCtrl = TextEditingController(text: support['customerSupportMiddleName'] ?? '');
+    final lastCtrl   = TextEditingController(text: support['customerSupportLastName']   ?? '');
+    final mobileCtrl = TextEditingController(text: support['mobileNumber']            ?? '');
+    final altCtrl    = TextEditingController(text: support['alternativeMobileNumber'] ?? '');
+    final emailCtrl  = TextEditingController(text: support['emailId']                 ?? '');
+    final empCtrl    = TextEditingController(text: support['employeeId']              ?? '');
+    final addrCtrl   = TextEditingController(text: support['address']                 ?? '');
+    final cityCtrl   = TextEditingController(text: support['city']                    ?? '');
+    final stateCtrl  = TextEditingController(text: support['state']                   ?? '');
+
+    final result = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _EditSheet(
+        title: 'Edit Customer Support',
+        formKey: formKey,
+        onSave: () async {
+          if (!formKey.currentState!.validate()) return false;
+          final id = support['customerSupportId'];
+          final body = <String, dynamic>{
+            'customerSupportFirstName':  firstCtrl.text.trim(),
+            'customerSupportMiddleName': middleCtrl.text.trim(),
+            'customerSupportLastName':   lastCtrl.text.trim(),
+            'mobileNumber':              mobileCtrl.text.trim(),
+            'alternativeMobileNumber':   altCtrl.text.trim(),
+            'emailId':                   emailCtrl.text.trim(),
+            'employeeId':                empCtrl.text.trim(),
+            'address':                   addrCtrl.text.trim(),
+            'city':                      cityCtrl.text.trim(),
+            'state':                     stateCtrl.text.trim(),
+            if (support['serviceRegionId'] != null)
+              'serviceRegionId': support['serviceRegionId'],
+          };
+          final r = await widget.dio.put('/CustomerSupports/$id', data: body);
+          return r.statusCode == 200;
+        },
+        fields: [
+          _EditSheet.row([
+            _EditSheet.field(firstCtrl,  'First Name *',  required: true),
+            _EditSheet.field(middleCtrl, 'Middle Name'),
+          ]),
+          _EditSheet.field(lastCtrl,  'Last Name *',  required: true),
+          _EditSheet.field(empCtrl,   'Employee ID'),
+          _EditSheet.field(mobileCtrl,'Mobile *', required: true,
+              keyboard: TextInputType.phone,
+              validator: (v) => (v??'').length == 10 ? null : 'Enter 10-digit mobile'),
+          _EditSheet.field(altCtrl,   'Alt. Mobile', keyboard: TextInputType.phone),
+          _EditSheet.field(emailCtrl, 'Email', keyboard: TextInputType.emailAddress),
+          _EditSheet.field(addrCtrl,  'Address', maxLines: 2),
+          _EditSheet.row([
+            _EditSheet.field(cityCtrl,  'City'),
+            _EditSheet.field(stateCtrl, 'State'),
+          ]),
+        ],
+      ),
+    );
+
+    for (final c in [firstCtrl,middleCtrl,lastCtrl,mobileCtrl,altCtrl,
+                      emailCtrl,empCtrl,addrCtrl,cityCtrl,stateCtrl]) {
+      c.dispose();
+    }
+
+    if (result == true) {
+      _showSuccess('Customer support updated successfully');
+      await _loadCustomerSupports();
+    }
+  }
+
+  // ==========================================================================
+  // EDIT – CHEMIST
+  // ==========================================================================
+
+  Future<void> _editChemist(Map<String, dynamic> store) async {
+    final formKey         = GlobalKey<FormState>();
+    final medNameCtrl     = TextEditingController(text: store['medicalName']     ?? '');
+    final ownerFirstCtrl  = TextEditingController(text: store['ownerFirstName']  ?? '');
+    final ownerMiddleCtrl = TextEditingController(text: store['ownerMiddleName'] ?? '');
+    final ownerLastCtrl   = TextEditingController(text: store['ownerLastName']   ?? '');
+    final mobileCtrl      = TextEditingController(text: store['mobileNumber']            ?? '');
+    final altCtrl         = TextEditingController(text: store['alternativeMobileNumber'] ?? '');
+    final emailCtrl       = TextEditingController(text: store['emailId']                 ?? '');
+    final addr1Ctrl       = TextEditingController(text: store['addressLine1']  ?? '');
+    final addr2Ctrl       = TextEditingController(text: store['addressLine2']  ?? '');
+    final cityCtrl        = TextEditingController(text: store['city']          ?? '');
+    final stateCtrl       = TextEditingController(text: store['state']         ?? '');
+    final postalCtrl      = TextEditingController(text: store['postalCode']    ?? '');
+    final gstinCtrl       = TextEditingController(text: store['gstin']  ?? '');
+    final panCtrl         = TextEditingController(text: store['pan']    ?? '');
+    final fssaiCtrl       = TextEditingController(text: store['fssaiNo'] ?? '');
+    final dlCtrl          = TextEditingController(text: store['dlNo']    ?? '');
+    final pharmFirstCtrl  = TextEditingController(text: store['pharmacistFirstName'] ?? '');
+    final pharmLastCtrl   = TextEditingController(text: store['pharmacistLastName']  ?? '');
+    final pharmRegCtrl    = TextEditingController(text: store['pharmacistRegistrationNumber'] ?? '');
+    final pharmMobileCtrl = TextEditingController(text: store['pharmacistMobileNumber'] ?? '');
+
+    final result = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _EditSheet(
+        title: 'Edit Chemist',
+        formKey: formKey,
+        onSave: () async {
+          if (!formKey.currentState!.validate()) return false;
+          final id = store['medicalStoreId'];
+          final body = <String, dynamic>{
+            'medicalName':             medNameCtrl.text.trim(),
+            'ownerFirstName':          ownerFirstCtrl.text.trim(),
+            'ownerMiddleName':         ownerMiddleCtrl.text.trim(),
+            'ownerLastName':           ownerLastCtrl.text.trim(),
+            'addressLine1':            addr1Ctrl.text.trim(),
+            'addressLine2':            addr2Ctrl.text.trim(),
+            'city':                    cityCtrl.text.trim(),
+            'state':                   stateCtrl.text.trim(),
+            'postalCode':              postalCtrl.text.trim(),
+            'mobileNumber':            mobileCtrl.text.trim(),
+            'alternativeMobileNumber': altCtrl.text.trim(),
+            'emailId':                 emailCtrl.text.trim(),
+            'gstin':                   gstinCtrl.text.trim().isNotEmpty ? gstinCtrl.text.trim() : null,
+            'pan':                     panCtrl.text.trim(),
+            'fssaiNo':                 fssaiCtrl.text.trim(),
+            'dlNo':                    dlCtrl.text.trim(),
+            'pharmacistFirstName':          pharmFirstCtrl.text.trim(),
+            'pharmacistLastName':           pharmLastCtrl.text.trim(),
+            'pharmacistRegistrationNumber': pharmRegCtrl.text.trim(),
+            'pharmacistMobileNumber':       pharmMobileCtrl.text.trim(),
+          };
+          final r = await widget.dio.put('/MedicalStores/$id', data: body);
+          return r.statusCode == 200;
+        },
+        fields: [
+          _EditSheet.field(medNameCtrl, 'Medical Store Name *', required: true),
+          _EditSheet.row([
+            _EditSheet.field(ownerFirstCtrl,  'Owner First Name *', required: true),
+            _EditSheet.field(ownerMiddleCtrl, 'Middle Name'),
+          ]),
+          _EditSheet.field(ownerLastCtrl, 'Owner Last Name *', required: true),
+          _EditSheet.field(mobileCtrl, 'Mobile *', required: true,
+              keyboard: TextInputType.phone,
+              validator: (v) => (v??'').length == 10 ? null : 'Enter 10-digit mobile'),
+          _EditSheet.field(altCtrl, 'Alt. Mobile', keyboard: TextInputType.phone),
+          _EditSheet.field(emailCtrl, 'Email *', required: true,
+              keyboard: TextInputType.emailAddress),
+          _EditSheet.field(addr1Ctrl, 'Address Line 1 *', required: true),
+          _EditSheet.field(addr2Ctrl, 'Address Line 2'),
+          _EditSheet.row([
+            _EditSheet.field(cityCtrl,  'City *',  required: true),
+            _EditSheet.field(stateCtrl, 'State *', required: true),
+          ]),
+          _EditSheet.field(postalCtrl, 'Postal Code *', required: true,
+              keyboard: TextInputType.number),
+          _EditSheet.field(gstinCtrl, 'GSTIN'),
+          _EditSheet.field(panCtrl,   'PAN *',      required: true),
+          _EditSheet.field(fssaiCtrl, 'FSSAI No *', required: true),
+          _EditSheet.field(dlCtrl,    'DL No *',    required: true),
+          _EditSheet.row([
+            _EditSheet.field(pharmFirstCtrl, 'Pharmacist First Name *', required: true),
+            _EditSheet.field(pharmLastCtrl,  'Last Name *',             required: true),
+          ]),
+          _EditSheet.field(pharmRegCtrl, 'Pharmacist Reg. Number *', required: true),
+          _EditSheet.field(pharmMobileCtrl, 'Pharmacist Mobile *', required: true,
+              keyboard: TextInputType.phone),
+        ],
+      ),
+    );
+
+    for (final c in [medNameCtrl,ownerFirstCtrl,ownerMiddleCtrl,ownerLastCtrl,mobileCtrl,
+                      altCtrl,emailCtrl,addr1Ctrl,addr2Ctrl,cityCtrl,stateCtrl,postalCtrl,
+                      gstinCtrl,panCtrl,fssaiCtrl,dlCtrl,pharmFirstCtrl,pharmLastCtrl,
+                      pharmRegCtrl,pharmMobileCtrl]) {
+      c.dispose();
+    }
+
+    if (result == true) {
+      _showSuccess('Chemist updated successfully');
+      await _loadMedicalStores();
+    }
+  }
+
+  // ==========================================================================
   // EDIT – MANAGER
   // ==========================================================================
 
@@ -702,6 +998,13 @@ class _AdminUserManagementPageState extends State<AdminUserManagementPage> {
       appBar: AppBar(
         title: const Text('User Management'),
         actions: [
+          // Chemists tab only: refresh payout/onboarding status of all chemists.
+          if (_selectedTabIndex == 2)
+            IconButton(
+              icon: const Icon(Icons.sync),
+              onPressed: _isLoading ? null : _refreshAllChemistPayouts,
+              tooltip: 'Refresh all payout statuses',
+            ),
           IconButton(
             icon: const Icon(Icons.person_add),
             onPressed: _navigateToCreateUser,
@@ -728,12 +1031,28 @@ class _AdminUserManagementPageState extends State<AdminUserManagementPage> {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _navigateToCreateUser,
-        icon: const Icon(Icons.add),
-        label: const Text('Create User'),
-        backgroundColor: Colors.black,
-        foregroundColor: Colors.white,
+      // A persistent bottom bar (instead of a floating button) so it never
+      // overlaps the per-card action menus on the right edge of the list.
+      bottomNavigationBar: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+          child: SizedBox(
+            width: double.infinity,
+            height: 52,
+            child: ElevatedButton.icon(
+              onPressed: _navigateToCreateUser,
+              icon: const Icon(Icons.add),
+              label: const Text('Create User',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.black,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -1119,9 +1438,11 @@ class _AdminUserManagementPageState extends State<AdminUserManagementPage> {
             ? const Icon(Icons.delete_forever, color: Colors.red)
             : PopupMenuButton(
                 itemBuilder: (_) => [
+                  _menuItem('edit',   Icons.edit,   'Edit',   Colors.blue),
                   _menuItem('delete', Icons.delete, 'Delete', Colors.red),
                 ],
                 onSelected: (v) {
+                  if (v == 'edit')   _editCustomerSupport(support);
                   if (v == 'delete') _deleteUser(support, 'CustomerSupport');
                 },
               ),
@@ -1165,10 +1486,18 @@ class _AdminUserManagementPageState extends State<AdminUserManagementPage> {
             ? const Icon(Icons.delete_forever, color: Colors.red)
             : PopupMenuButton(
                 itemBuilder: (_) => [
-                  _menuItem('delete', Icons.delete, 'Delete', Colors.red),
+                  _menuItem('edit', Icons.edit, 'Edit', Colors.blue),
+                  _menuItem('activate', Icons.check_circle, 'Activate',
+                      Colors.green,
+                      enabled: !isActive),
+                  _menuItem('deactivate', Icons.block, 'Deactivate',
+                      Colors.orange,
+                      enabled: isActive),
                 ],
                 onSelected: (v) {
-                  if (v == 'delete') _deleteUser(store, 'MedicalStore');
+                  if (v == 'edit') _editChemist(store);
+                  if (v == 'activate') _setChemistActive(store, true);
+                  if (v == 'deactivate') _setChemistActive(store, false);
                 },
               ),
       ),
@@ -1289,13 +1618,16 @@ class _AdminUserManagementPageState extends State<AdminUserManagementPage> {
   }
 
   // ── Shared popup menu item ─────────────────────────────────────────────────
-  PopupMenuItem _menuItem(String value, IconData icon, String label, Color color) {
+  PopupMenuItem _menuItem(String value, IconData icon, String label, Color color,
+      {bool enabled = true}) {
+    final effectiveColor = enabled ? color : Colors.grey;
     return PopupMenuItem(
       value: value,
+      enabled: enabled,
       child: Row(children: [
-        Icon(icon, size: 20, color: color),
+        Icon(icon, size: 20, color: effectiveColor),
         const SizedBox(width: 8),
-        Text(label, style: TextStyle(color: color)),
+        Text(label, style: TextStyle(color: effectiveColor)),
       ]),
     );
   }

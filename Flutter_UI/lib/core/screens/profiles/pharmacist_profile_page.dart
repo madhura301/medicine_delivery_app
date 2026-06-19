@@ -6,7 +6,9 @@ import 'package:pharmaish/utils/app_logger.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'package:pharmaish/core/services/chemist_payout_service.dart';
 import 'package:pharmaish/core/services/location_service.dart';
+import 'package:pharmaish/shared/models/chemist_payout_models.dart';
 import 'package:pharmaish/utils/constants.dart';
 import 'package:pharmaish/utils/storage.dart';
 
@@ -37,6 +39,7 @@ class _PharmacistProfilePageState extends State<PharmacistProfilePage> {
   final _addressLine1Controller = TextEditingController();
   final _addressLine2Controller = TextEditingController();
   final _cityController = TextEditingController();
+  final _postalCodeController = TextEditingController();
   final _pharmacistFirstNameController = TextEditingController();
   final _pharmacistLastNameController = TextEditingController();
   final _pharmacistRegNumberController = TextEditingController();
@@ -54,6 +57,11 @@ class _PharmacistProfilePageState extends State<PharmacistProfilePage> {
   String _locationText = 'No location selected';
   String? _selectedState;
   String _userName = ''; // Store username (cannot be edited)
+
+  // Bank details + payout/activation status (read-only).
+  ChemistPayoutStatusModel? _payout;
+  ChemistActivationModel? _activation;
+  bool _isLoadingPayout = false;
 
   final List<String> _states = [
     'Andhra Pradesh',
@@ -141,6 +149,7 @@ class _PharmacistProfilePageState extends State<PharmacistProfilePage> {
         try {
           final profileData = jsonDecode(response.body);
           _populateFormFields(profileData);
+          _loadPayoutInfo(); // fetch bank + payout/activation status
         } catch (e) {
           AppLogger.error('JSON parse error: $e');
           setState(() {
@@ -169,6 +178,25 @@ class _PharmacistProfilePageState extends State<PharmacistProfilePage> {
     }
   }
 
+  Future<void> _loadPayoutInfo() async {
+    final storeId = _pharmacistId;
+    if (storeId.isEmpty) return;
+    setState(() => _isLoadingPayout = true);
+    try {
+      final payout = await ChemistPayoutService.getPayoutStatus(storeId);
+      final activation = await ChemistPayoutService.getActivationStatus(storeId);
+      if (!mounted) return;
+      setState(() {
+        _payout = payout;
+        _activation = activation;
+        _isLoadingPayout = false;
+      });
+    } catch (e) {
+      AppLogger.error('Failed to load payout info: $e');
+      if (mounted) setState(() => _isLoadingPayout = false);
+    }
+  }
+
   void _populateFormFields(Map<String, dynamic> data) {
     setState(() {
       _pharmacistId = data['medicalStoreId'] ?? '';
@@ -187,6 +215,7 @@ class _PharmacistProfilePageState extends State<PharmacistProfilePage> {
       _addressLine1Controller.text = data['addressLine1'] ?? '';
       _addressLine2Controller.text = data['addressLine2'] ?? '';
       _cityController.text = data['city'] ?? '';
+      _postalCodeController.text = data['postalCode']?.toString() ?? '';
       _selectedState = data['state'];
       AppLogger.info('State from API: "$_selectedState"'); // ADD THIS LINE
 
@@ -601,6 +630,22 @@ class _PharmacistProfilePageState extends State<PharmacistProfilePage> {
                                   ),
                                 ],
                               ),
+                              const SizedBox(height: 16),
+                              _buildTextField(
+                                controller: _postalCodeController,
+                                label: 'Postal Code',
+                                icon: Icons.local_post_office,
+                                enabled: _isEditMode,
+                                keyboardType: TextInputType.number,
+                                maxLength: 6,
+                                validator: (value) {
+                                  if (value?.isEmpty ?? true) return 'Required';
+                                  final pinRegex = RegExp(r'^\d{6}$');
+                                  return pinRegex.hasMatch(value!)
+                                      ? null
+                                      : 'Enter a valid 6-digit postal code';
+                                },
+                              ),
                               if (_isEditMode) ...[
                                 const SizedBox(height: 20),
                                 Container(
@@ -713,8 +758,14 @@ class _PharmacistProfilePageState extends State<PharmacistProfilePage> {
 
                           if (_isEditMode) const SizedBox(height: 32),
 
+                          // ── Bank & Payout (read-only) ──────────────────
+                          if (!_isEditMode) ...[
+                            const SizedBox(height: 24),
+                            _buildBankPayoutSection(),
+                          ],
+
                           // ── Security / Change Password ─────────────────
-                          const SizedBox(height: 8),
+                          const SizedBox(height: 24),
                           _buildSecuritySection(),
                           const SizedBox(height: 24),
                         ],
@@ -767,6 +818,126 @@ class _PharmacistProfilePageState extends State<PharmacistProfilePage> {
                   ),
               ],
             ),
+    );
+  }
+
+  // ── Bank & Payout Section ───────────────────────────────────────────────
+
+  Widget _buildBankPayoutSection() {
+    final activationActivated = _activation?.isActivated == true;
+    final activationLabel = _activation == null
+        ? 'Not started'
+        : (activationActivated ? 'Activated' : _activation!.status);
+
+    final payoutActive = _payout?.isActive == true;
+    final payoutLabel = _payout?.onboardingStatus ?? 'Not started';
+    final onboardingError = _payout?.onboardingError ?? '';
+
+    return _buildSection(
+      title: 'Bank & Payout',
+      icon: Icons.account_balance,
+      children: [
+        if (_isLoadingPayout) ...[
+          const Center(
+            child: Padding(
+              padding: EdgeInsets.all(12),
+              child: CircularProgressIndicator(color: AppTheme.primaryColor),
+            ),
+          ),
+        ] else ...[
+          _buildStatusChipRow(
+              'Account Activation', activationLabel, activationActivated),
+          const SizedBox(height: 16),
+          _buildStatusChipRow('Payout Onboarding', payoutLabel, payoutActive),
+          if (onboardingError.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.red.shade50,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.red.shade200),
+              ),
+              child: Text(
+                onboardingError,
+                style: TextStyle(color: Colors.red.shade700, fontSize: 13),
+              ),
+            ),
+          ],
+          const SizedBox(height: 16),
+          _buildReadOnlyField(
+              'Account Holder Name', _payout?.bankAccountHolderName ?? ''),
+          const SizedBox(height: 16),
+          _buildReadOnlyField(
+              'Bank Account Number', _payout?.bankAccountNumberMasked ?? ''),
+          const SizedBox(height: 16),
+          _buildReadOnlyField('IFSC Code', _payout?.bankIfscCode ?? ''),
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: () async {
+                await Navigator.pushNamed(context, '/chemist-payout');
+                _loadPayoutInfo(); // refresh after returning
+              },
+              icon: const Icon(Icons.account_balance_wallet, size: 18),
+              label: const Text('Manage Payout & Activation',
+                  style:
+                      TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppTheme.primaryColor,
+                side: const BorderSide(
+                    color: AppTheme.primaryColor, width: 1.5),
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10)),
+              ),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildStatusChipRow(String label, String value, bool ok) {
+    final color = ok ? Colors.green : Colors.orange;
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 14,
+            color: Colors.grey.shade700,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: color.withValues(alpha: 0.4)),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(ok ? Icons.check_circle : Icons.hourglass_top,
+                  size: 14, color: color.shade700),
+              const SizedBox(width: 6),
+              Text(
+                value,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: color.shade700,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 
@@ -1196,6 +1367,7 @@ class _PharmacistProfilePageState extends State<PharmacistProfilePage> {
         'addressLine1': _addressLine1Controller.text.trim(),
         'addressLine2': _addressLine2Controller.text.trim(),
         'city': _cityController.text.trim(),
+        'postalCode': _postalCodeController.text.trim(),
         'state': _selectedState ?? '',
         'latitude': _latitude,
         'longitude': _longitude,
@@ -1329,6 +1501,7 @@ class _PharmacistProfilePageState extends State<PharmacistProfilePage> {
     _addressLine1Controller.dispose();
     _addressLine2Controller.dispose();
     _cityController.dispose();
+    _postalCodeController.dispose();
     _pharmacistFirstNameController.dispose();
     _pharmacistLastNameController.dispose();
     _pharmacistRegNumberController.dispose();

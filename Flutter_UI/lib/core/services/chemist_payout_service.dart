@@ -27,6 +27,37 @@ class ChemistPayoutService {
     }
   }
 
+  /// POST /chemist-payout/refresh-pending — pulls the live Razorpay status for
+  /// EVERY payout account still awaiting activation (Pending / NeedsClarification)
+  /// and updates the database. Returns the summary
+  /// `{checked, updated, activated, items}`, or null on failure.
+  static Future<Map<String, dynamic>?> refreshPending() async {
+    try {
+      final res = await _dio.post('/chemist-payout/refresh-pending');
+      return res.data is Map
+          ? Map<String, dynamic>.from(res.data as Map)
+          : <String, dynamic>{};
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// POST /chemist-payout/refresh/{chemistId} — pulls THIS chemist's live status
+  /// from Razorpay, updates the DB, and returns the refreshed status. [chemistId]
+  /// may be the MedicalStoreId or the chemist's UserId. Returns null on failure
+  /// or when no record exists.
+  static Future<ChemistPayoutStatusModel?> refreshStatus(
+      String chemistId) async {
+    try {
+      final res = await _dio.post('/chemist-payout/refresh/$chemistId');
+      return ChemistPayoutStatusModel.fromJson(
+        Map<String, dynamic>.from(res.data as Map),
+      );
+    } catch (_) {
+      return null;
+    }
+  }
+
   /// POST /chemist-payout/{storeId}/onboard — create/resume the linked account.
   static Future<ChemistPayoutStatusModel> onboard({
     required String storeId,

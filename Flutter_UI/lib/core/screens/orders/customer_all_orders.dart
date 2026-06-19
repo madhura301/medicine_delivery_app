@@ -7,6 +7,7 @@ import 'package:pharmaish/utils/app_logger.dart';
 import 'package:pharmaish/utils/storage.dart';
 import 'package:pharmaish/shared/models/order_model.dart';
 import 'package:pharmaish/shared/widgets/app_snackbar.dart';
+import 'package:pharmaish/shared/widgets/order_payments_dialog.dart';
 import 'package:pharmaish/core/theme/app_theme.dart';
 import 'package:pharmaish/core/services/dio_client.dart';
 import 'package:pharmaish/core/services/order_service.dart';
@@ -534,6 +535,10 @@ class _CustomerAllOrdersState extends State<CustomerAllOrders> {
                       '₹${order.totalAmount!.toStringAsFixed(2)}',
                     ),
                   ],
+                  if (order.isFullyPaid) ...[
+                    const SizedBox(height: 10),
+                    _buildPaidBadge(),
+                  ],
                   if (getChemistPhone(order) != null) ...[
                     const SizedBox(height: 8),
                     _buildInfoRow(
@@ -562,6 +567,17 @@ class _CustomerAllOrdersState extends State<CustomerAllOrders> {
 
   // ─── Smart action buttons based on order status ─────────────────────────────
 
+  /// Opens the payment-history dialog for an order that has been paid.
+  void _showPaymentHistory(OrderModel order) {
+    final id = int.tryParse(order.orderId);
+    if (id == null) return;
+    OrderPaymentsDialog.show(
+      context,
+      orderId: id,
+      orderNumber: order.orderNumber,
+    );
+  }
+
   Widget _buildActionButtons(OrderModel order) {
     final statusLower = order.status.toLowerCase();
     final isOutForDelivery = statusLower.contains('outfordelivery') ||
@@ -588,7 +604,9 @@ class _CustomerAllOrdersState extends State<CustomerAllOrders> {
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    'Your order is out for delivery! Please pay to complete.',
+                    order.isFullyPaid
+                        ? 'Payment received. Your order is on its way.'
+                        : 'Your order is out for delivery! Please pay to complete.',
                     style: TextStyle(
                       fontSize: 12,
                       color: Colors.deepPurple.shade800,
@@ -625,24 +643,44 @@ class _CustomerAllOrdersState extends State<CustomerAllOrders> {
                 ),
               ),
               const SizedBox(width: 10),
-              // Pay Now button
+              // Pay Now button — replaced by Payment History once fully paid
               Expanded(
                 flex: 3,
-                child: ElevatedButton.icon(
-                  onPressed: isRejecting ? null : () => _goToPayment(order),
-                  icon: const Icon(Icons.payment, size: 16),
-                  label: Text(
-                    'Pay ₹${order.totalAmount!.toStringAsFixed(0)}',
-                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.green,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 10),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                    elevation: 2,
-                  ),
-                ),
+                child: order.isFullyPaid
+                    ? ElevatedButton.icon(
+                        onPressed: () => _showPaymentHistory(order),
+                        icon: const Icon(Icons.receipt_long, size: 16),
+                        label: const Text(
+                          'Payment History',
+                          style:
+                              TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppTheme.primaryColor,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 10),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8)),
+                          elevation: 2,
+                        ),
+                      )
+                    : ElevatedButton.icon(
+                        onPressed: isRejecting ? null : () => _goToPayment(order),
+                        icon: const Icon(Icons.payment, size: 16),
+                        label: Text(
+                          'Pay ₹${order.totalAmount!.toStringAsFixed(0)}',
+                          style: const TextStyle(
+                              fontSize: 13, fontWeight: FontWeight.bold),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.green,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 10),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8)),
+                          elevation: 2,
+                        ),
+                      ),
               ),
             ],
           ),
@@ -661,20 +699,39 @@ class _CustomerAllOrdersState extends State<CustomerAllOrders> {
             label: const Text('View Details'),
             style: TextButton.styleFrom(foregroundColor: AppTheme.primaryColor),
           ),
-          ElevatedButton.icon(
-            onPressed: () => _goToPayment(order),
-            icon: const Icon(Icons.payment, size: 16),
-            label: Text(
-              'Pay ₹${order.totalAmount!.toStringAsFixed(0)}',
-              style: const TextStyle(fontSize: 13),
-            ),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.green,
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-            ),
-          ),
+          order.isFullyPaid
+              ? ElevatedButton.icon(
+                  onPressed: () => _showPaymentHistory(order),
+                  icon: const Icon(Icons.receipt_long, size: 16),
+                  label: const Text(
+                    'Payment History',
+                    style: TextStyle(fontSize: 13),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.primaryColor,
+                    foregroundColor: Colors.white,
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8)),
+                  ),
+                )
+              : ElevatedButton.icon(
+                  onPressed: () => _goToPayment(order),
+                  icon: const Icon(Icons.payment, size: 16),
+                  label: Text(
+                    'Pay ₹${order.totalAmount!.toStringAsFixed(0)}',
+                    style: const TextStyle(fontSize: 13),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green,
+                    foregroundColor: Colors.white,
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8)),
+                  ),
+                ),
         ],
       );
     }
@@ -711,6 +768,33 @@ class _CustomerAllOrdersState extends State<CustomerAllOrders> {
           ),
         ),
       ],
+    );
+  }
+
+  /// Green "Payment Completed" pill shown on the tile once the order is fully paid.
+  Widget _buildPaidBadge() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: Colors.green.shade50,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.green.shade300),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.verified, size: 16, color: Colors.green.shade700),
+          const SizedBox(width: 6),
+          Text(
+            'Payment Completed',
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: Colors.green.shade800,
+            ),
+          ),
+        ],
+      ),
     );
   }
 

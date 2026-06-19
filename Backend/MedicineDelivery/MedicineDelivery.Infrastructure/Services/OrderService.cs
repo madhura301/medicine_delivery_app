@@ -1136,8 +1136,30 @@ namespace MedicineDelivery.Infrastructure.Services
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            var orders = await _unitOfWork.Orders.FindAsync(o => o.DeliveryId == deliveryId);
-            return _mapper.Map<IEnumerable<OrderDto>>(orders);
+            var orders = (await _unitOfWork.Orders.FindAsync(o => o.DeliveryId == deliveryId)).ToList();
+            var dtos = _mapper.Map<List<OrderDto>>(orders);
+
+            // Delivery boys can't read customer records directly (CustomerRead is
+            // scoped to their own record), so resolve the customer name here and
+            // embed it in the order payload.
+            var customerIds = orders.Select(o => o.CustomerId).Distinct().ToList();
+            if (customerIds.Count > 0)
+            {
+                var customers = await _unitOfWork.Customers.FindAsync(c => customerIds.Contains(c.CustomerId));
+                var nameByCustomerId = customers.ToDictionary(
+                    c => c.CustomerId,
+                    c => $"{c.CustomerFirstName} {c.CustomerLastName}".Trim());
+
+                foreach (var dto in dtos)
+                {
+                    if (nameByCustomerId.TryGetValue(dto.CustomerId, out var name) && !string.IsNullOrWhiteSpace(name))
+                    {
+                        dto.CustomerName = name;
+                    }
+                }
+            }
+
+            return dtos;
         }
 
         public async Task<IEnumerable<MedicalStoreBasicDto>> GetMedicalStoresByOrderPinCodeAsync(int orderId, CancellationToken cancellationToken = default)

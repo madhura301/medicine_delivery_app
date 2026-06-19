@@ -659,6 +659,13 @@ class _PaymentSummaryPageState extends State<PaymentSummaryPage> {
                   recognizer: TapGestureRecognizer()
                     ..onTap = () => _openPolicy(AppConstants.privacyPolicyUrl),
                 ),
+                const TextSpan(text: ' and '),
+                TextSpan(
+                  text: 'Payment Policy',
+                  style: linkStyle,
+                  recognizer: TapGestureRecognizer()
+                    ..onTap = () => _openPolicy(AppConstants.paymentPolicyUrl),
+                ),
                 const TextSpan(text: '.'),
               ],
             ),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:pharmaish/core/theme/app_theme.dart';
+import 'package:pharmaish/utils/constants.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class ContactUsPage extends StatelessWidget {
@@ -7,6 +8,13 @@ class ContactUsPage extends StatelessWidget {
 
   Future<void> _launchEmail(String email) async {
     final uri = Uri(scheme: 'mailto', path: email);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri);
+    }
+  }
+
+  Future<void> _launchPhone(String number) async {
+    final uri = Uri(scheme: 'tel', path: number);
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri);
     }
@@ -51,11 +59,22 @@ class ContactUsPage extends StatelessWidget {
 
             // Contact cards
             _ContactCard(
+              icon: Icons.phone_in_talk,
+              iconColor: Colors.teal,
+              title: 'Support Phone',
+              subtitle: 'Call us for help',
+              detail: AppConstants.supportPhoneNumber,
+              trailingIcon: Icons.call,
+              onTap: () =>
+                  _launchPhone(AppConstants.supportPhoneNumberWithCountryCode),
+            ),
+
+            _ContactCard(
               icon: Icons.headset_mic,
               iconColor: Colors.blue,
               title: 'Support',
               subtitle: 'For general help and queries',
-              email: 'support@pharmaish.com',
+              detail: 'support@pharmaish.com',
               onTap: () => _launchEmail('support@pharmaish.com'),
             ),
 
@@ -64,7 +83,7 @@ class ContactUsPage extends StatelessWidget {
               iconColor: Colors.orange,
               title: 'Grievance',
               subtitle: 'Report issues or complaints',
-              email: 'grievance@pharmaish.com',
+              detail: 'grievance@pharmaish.com',
               onTap: () => _launchEmail('grievance@pharmaish.com'),
             ),
 
@@ -73,7 +92,7 @@ class ContactUsPage extends StatelessWidget {
               iconColor: Colors.green,
               title: 'Accounts',
               subtitle: 'Billing and payment related',
-              email: 'accounts@pharmaish.com',
+              detail: 'accounts@pharmaish.com',
               onTap: () => _launchEmail('accounts@pharmaish.com'),
             ),
 
@@ -82,7 +101,7 @@ class ContactUsPage extends StatelessWidget {
               iconColor: Colors.purple,
               title: 'Admin',
               subtitle: 'Business and partnership enquiries',
-              email: 'admin@pharmaish.com',
+              detail: 'admin@pharmaish.com',
               onTap: () => _launchEmail('admin@pharmaish.com'),
             ),
           ],
@@ -97,7 +116,8 @@ class _ContactCard extends StatelessWidget {
   final Color iconColor;
   final String title;
   final String subtitle;
-  final String email;
+  final String detail;
+  final IconData trailingIcon;
   final VoidCallback onTap;
 
   const _ContactCard({
@@ -105,8 +125,9 @@ class _ContactCard extends StatelessWidget {
     required this.iconColor,
     required this.title,
     required this.subtitle,
-    required this.email,
+    required this.detail,
     required this.onTap,
+    this.trailingIcon = Icons.email_outlined,
   });
 
   @override
@@ -127,10 +148,10 @@ class _ContactCard extends StatelessWidget {
           children: [
             Text(subtitle, style: TextStyle(color: Colors.grey.shade600, fontSize: 12)),
             const SizedBox(height: 4),
-            Text(email, style: TextStyle(color: iconColor, fontSize: 13)),
+            Text(detail, style: TextStyle(color: iconColor, fontSize: 13)),
           ],
         ),
-        trailing: const Icon(Icons.email_outlined, color: Colors.grey),
+        trailing: Icon(trailingIcon, color: Colors.grey),
         onTap: onTap,
       ),
     );
