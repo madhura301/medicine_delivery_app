@@ -6,7 +6,6 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:pharmaish/utils/constants.dart';
-import 'package:pharmaish/core/services/auth_service.dart';
 
 class CustomerRegisterPage extends StatefulWidget {
   const CustomerRegisterPage({super.key});
@@ -37,7 +36,7 @@ class _RegisterPageState extends State<CustomerRegisterPage> {
 
   String _selectedAddressType = 'Home'; // Default value
   final List<String> _addressTypes = ['Home', 'Office', 'Other'];
-  
+
   // Other Form Data
   DateTime? _selectedDate;
   String? _selectedState;
@@ -148,17 +147,16 @@ class _RegisterPageState extends State<CustomerRegisterPage> {
     );
   }
 
-  
-Widget _buildProgressIndicator() {
-  return StepProgressIndicator(
-    currentStep: _currentStep,
-    steps: const [
-      StepItem(label: 'Basic', icon: Icons.person),
-      StepItem(label: 'Details', icon: Icons.info),
-      StepItem(label: 'Address', icon: Icons.location_on),
-    ],
-  );
-}
+  Widget _buildProgressIndicator() {
+    return StepProgressIndicator(
+      currentStep: _currentStep,
+      steps: const [
+        StepItem(label: 'Basic', icon: Icons.person),
+        StepItem(label: 'Details', icon: Icons.info),
+        StepItem(label: 'Address', icon: Icons.location_on),
+      ],
+    );
+  }
 
   Widget _buildStep1() {
     return SingleChildScrollView(
@@ -839,105 +837,92 @@ Widget _buildProgressIndicator() {
     });
 
     try {
-      final token = await AuthService.invokeLogin(
-          mobileNumber: AppConstants.adminMobileNumber,
-          password: AppConstants.adminPassword,
-          stayLoggedIn: false);
+      // Registration endpoint is public ([AllowAnonymous]) — no auth token needed.
+      // Prepare registration data
+      final Map<String, dynamic> registrationData = {
+        'customerFirstName': _firstNameController.text.trim(),
+        'customerLastName': _lastNameController.text.trim(),
+        'mobileNumber': _mobileController.text.trim(),
+        'password': _passwordController.text.trim(),
+        'dateOfBirth': _selectedDate!.toIso8601String(),
+      };
 
-      if (token != null) {
-        // Prepare registration data
-        final Map<String, dynamic> registrationData = {
-          'customerFirstName': _firstNameController.text.trim(),
-          'customerLastName': _lastNameController.text.trim(),
-          'mobileNumber': _mobileController.text.trim(),
-          'password': _passwordController.text.trim(),
-          'dateOfBirth': _selectedDate!.toIso8601String(),
-        };
+      // Add optional fields
+      if (_middleNameController.text.trim().isNotEmpty) {
+        registrationData['customerMiddleName'] =
+            _middleNameController.text.trim();
+      }
 
-        // Add optional fields
-        if (_middleNameController.text.trim().isNotEmpty) {
-          registrationData['customerMiddleName'] =
-              _middleNameController.text.trim();
-        }
+      if (_emailController.text.trim().isNotEmpty) {
+        registrationData['emailId'] = _emailController.text.trim();
+      }
 
-        if (_emailController.text.trim().isNotEmpty) {
-          registrationData['emailId'] = _emailController.text.trim();
-        }
+      if (_selectedGender != null) {
+        registrationData['gender'] = _selectedGender;
+      }
 
-        if (_selectedGender != null) {
-          registrationData['gender'] = _selectedGender;
-        }
+      // Build address object matching DTO structure
+      Map<String, dynamic> addressData = {
+        'address': _selectedAddressType, // Home/Office/Other
+        'addressLine1': _addressController.text.trim(),
+        'city': _cityController.text.trim(),
+        'state': _selectedState!,
+        'postalCode': _postalCodeController.text.trim(),
+        'isDefault': true,
+      };
 
-        // Build address object matching DTO structure
-        Map<String, dynamic> addressData = {
-          'address': _selectedAddressType, // Home/Office/Other
-          'addressLine1': _addressController.text.trim(),
-          'city': _cityController.text.trim(),
-          'state': _selectedState!,
-          'postalCode': _postalCodeController.text.trim(),
-          'isDefault': true,
-        };
+      registrationData['addresses'] = [addressData];
 
-        registrationData['addresses'] = [addressData];
+      AppLogger.info('Registration Data: ${jsonEncode(registrationData)}');
 
-        AppLogger.info('Registration Data: ${jsonEncode(registrationData)}');
+      // Make API call
+      final response = await http.post(
+        Uri.parse('${AppConstants.apiBaseUrl}/Customers/register'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: jsonEncode(registrationData),
+      );
 
-        // Make API call
-        final response = await http.post(
-          Uri.parse('${AppConstants.apiBaseUrl}/Customers/register'),
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-            'Authorization': 'Bearer $token',
-          },
-          body: jsonEncode(registrationData),
-        );
+      setState(() {
+        _isLoading = false;
+      });
 
-        setState(() {
-          _isLoading = false;
-        });
+      AppLogger.info('Response status: ${response.statusCode}');
+      AppLogger.info('Response body: ${response.body}');
 
-        AppLogger.info('Response status: ${response.statusCode}');
-        AppLogger.info('Response body: ${response.body}');
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final responseData = jsonDecode(response.body);
 
-        if (response.statusCode == 200 || response.statusCode == 201) {
-          final responseData = jsonDecode(response.body);
-
-          if (responseData['success'] == true) {
-            _showSuccessDialog();
-          } else {
-            setState(() {
-              _errorMessage = _extractErrorMessages(
-                  responseData, 'Registration failed. Please try again.');
-            });
-          }
-        } else if (response.statusCode == 400) {
-          try {
-            final errorData = jsonDecode(response.body);
-            setState(() {
-              _errorMessage = _extractErrorMessages(
-                  errorData, 'Invalid registration data. Please check your inputs.');
-            });
-          } catch (e) {
-            setState(() {
-              _errorMessage =
-                  'Invalid registration data. Please check your inputs.';
-            });
-          }
-        } else if (response.statusCode == 409) {
-          setState(() {
-            _errorMessage =
-                'A customer with this mobile number already exists.';
-          });
+        if (responseData['success'] == true) {
+          _showSuccessDialog();
         } else {
           setState(() {
-            _errorMessage = 'Server error. Please try again later.';
+            _errorMessage = _extractErrorMessages(
+                responseData, 'Registration failed. Please try again.');
           });
         }
+      } else if (response.statusCode == 400) {
+        try {
+          final errorData = jsonDecode(response.body);
+          setState(() {
+            _errorMessage = _extractErrorMessages(errorData,
+                'Invalid registration data. Please check your inputs.');
+          });
+        } catch (e) {
+          setState(() {
+            _errorMessage =
+                'Invalid registration data. Please check your inputs.';
+          });
+        }
+      } else if (response.statusCode == 409) {
+        setState(() {
+          _errorMessage = 'A customer with this mobile number already exists.';
+        });
       } else {
         setState(() {
-          _isLoading = false;
-          _errorMessage = 'Authentication token not found. Please try again.';
+          _errorMessage = 'Server error. Please try again later.';
         });
       }
     } catch (e) {

@@ -322,6 +322,17 @@ class _DeliveryActiveOrdersPageState extends State<_DeliveryActiveOrdersPage>
   Future<void> _loadCustomerInfo(List<OrderModel> orders) async {
     for (final order in orders) {
       if (_customerCache.containsKey(order.customerId)) continue;
+
+      // The order payload carries the customer name (delivery boys aren't allowed
+      // to read other customers' records via /Customers/{id}), so use it directly.
+      if (order.customerName != null && order.customerName!.trim().isNotEmpty) {
+        _customerCache[order.customerId] = {
+          'name': order.customerName!.trim(),
+          'phone': '',
+        };
+        continue;
+      }
+
       try {
         final r = await widget.dio.get('/Customers/${order.customerId}');
         if (r.statusCode == 200) {

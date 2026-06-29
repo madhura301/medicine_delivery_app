@@ -22,15 +22,21 @@ class AppConstants {
   static bool get isDevelopment => EnvironmentConfig.isDevelopment;
   static bool get isStaging => EnvironmentConfig.isStaging;
 
-  // Admin Credentials for Testing
-  static const String adminMobileNumber = '9999999999';
-  static const String adminPassword = 'Admin@123';
-
   // Public web pages for legal policies
   static const String termsAndConditionsUrl =
       'https://pharmaish.com/terms-condition.html';
   static const String privacyPolicyUrl =
       'https://pharmaish.com/privacy-policy.html';
+  static const String retailerOnboardingPolicyUrl =
+      'https://pharmaish.com/retailer-onboarding-policy.html';
+  static const String paymentPolicyUrl =
+      'https://pharmaish.com/payment-policy.html';
+
+  // Customer support contact
+  /// Support phone number (10-digit, for display).
+  static const String supportPhoneNumber = '9028056076';
+  /// Support phone number in E.164 form (with +91), for tel:/WhatsApp links.
+  static const String supportPhoneNumberWithCountryCode = '+919028056076';
 
   // Document URLs
   /// Base URL for policy/legal documents served by the API

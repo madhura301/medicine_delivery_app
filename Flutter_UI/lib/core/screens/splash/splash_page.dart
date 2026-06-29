@@ -219,7 +219,7 @@ class _SplashPageState extends State<SplashPage> {
             ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 280, maxHeight: 150),
               child: Image.asset(
-                'assets/images/full_logo_animated.png',
+                'assets/images/full_logo_animated.jpeg',
                 fit: BoxFit.contain,
                 width: 280,
                 height: 150,

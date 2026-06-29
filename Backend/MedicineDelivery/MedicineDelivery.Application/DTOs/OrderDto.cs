@@ -6,6 +6,11 @@ namespace MedicineDelivery.Application.DTOs
     {
         public int OrderId { get; set; }
         public Guid CustomerId { get; set; }
+        /// <summary>
+        /// Customer's full name, populated for endpoints whose callers (e.g. delivery
+        /// boys) are not permitted to read the customer record directly.
+        /// </summary>
+        public string? CustomerName { get; set; }
         public Guid CustomerAddressId { get; set; }
         public Guid? MedicalStoreId { get; set; }
         public AssignedByType AssignedByType { get; set; }

@@ -3,13 +3,14 @@ import 'package:flutter/material.dart';
 import 'package:pharmaish/shared/widgets/app_snackbar.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:pharmaish/utils/app_logger.dart';
+import 'package:pharmaish/utils/constants.dart';
 import 'package:pharmaish/utils/helpers.dart';
 
 /// Utility class for common order-related widgets and functions
 class OrderWidgets {
   /// Opens WhatsApp with a predefined message
   static Future<void> openWhatsApp(BuildContext context,String message) async {
-    const String phoneNumber = '+919226737083';
+    const String phoneNumber = AppConstants.supportPhoneNumberWithCountryCode;
     // Create WhatsApp URL
     final String whatsappUrl =
         'https://wa.me/$phoneNumber?text=${Uri.encodeComponent(message)}';

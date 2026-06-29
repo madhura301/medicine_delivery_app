@@ -3,9 +3,12 @@ import 'package:dio/dio.dart';
 import 'package:pharmaish/core/dashboards/chemist/customer_orders_page.dart';
 import 'package:pharmaish/core/dashboards/chemist/order_details_page.dart';
 import 'package:pharmaish/core/dashboards/chemist/widgets/reject_order_dialog.dart';
+import 'package:pharmaish/core/services/chemist_payout_service.dart';
 import 'package:pharmaish/core/services/consent_service.dart';
 import 'package:pharmaish/core/services/customer_service.dart';
+import 'package:pharmaish/core/services/medical_store_service.dart';
 import 'package:pharmaish/core/services/order_service.dart';
+import 'package:pharmaish/shared/models/chemist_payout_models.dart';
 import 'package:pharmaish/shared/models/order_model.dart';
 import 'package:pharmaish/shared/widgets/app_snackbar.dart';
 import 'package:pharmaish/shared/widgets/order_tile_with_bill.dart';
@@ -39,10 +42,119 @@ class _ChemistDashboardState extends State<ChemistDashboard> {
   // Customer info cache (customerId -> customer data)
   final Map<String, Map<String, String>> _customerCache = {};
 
+  // Payout gating: the chemist's full dashboard is only unlocked once the
+  // Razorpay Route payout onboarding reaches a success state. Until then the
+  // only thing they can do is complete Payout & Account Activation.
+  ChemistPayoutStatusModel? _payoutStatus;
+  bool _isCheckingPayout = true;
+  String? _storeId;
+
+  /// A payout onboarding status counts as "unlocked" only when it succeeded.
+  static bool _isUnlockedStatus(String? status) {
+    final s = (status ?? '').toLowerCase();
+    return s == 'active' || s == 'processed' || s == 'success';
+  }
+
+  /// Unlocked only when payout onboarding succeeded (Active/Processed/Success).
+  /// Any other state (NotStarted, Pending, NeedsClarification, Rejected,
+  /// Suspended) — or no record at all — keeps the dashboard locked.
+  bool get _isPayoutUnlocked =>
+      _isUnlockedStatus(_payoutStatus?.onboardingStatus);
+
   @override
   void initState() {
     super.initState();
-    _loadDashboardData();
+    _init();
+  }
+
+  Future<void> _init() async {
+    await _checkPayoutGate();
+    // Only fetch orders/stats when the chemist is allowed in.
+    if (mounted && _isPayoutUnlocked) {
+      await _loadDashboardData();
+    }
+  }
+
+  /// Resolves the chemist's medical store and fetches the payout onboarding
+  /// status used to gate the dashboard.
+  Future<void> _checkPayoutGate() async {
+    if (mounted) setState(() => _isCheckingPayout = true);
+    try {
+      final email = await StorageService.getUserEmail();
+      if (email != null && email.isNotEmpty) {
+        final store =
+            await MedicalStoreService.getMedicalStoreByEmail(email: email);
+        final storeId = store?['medicalStoreId']?.toString();
+        if (storeId != null && storeId.isNotEmpty) {
+          _storeId = storeId;
+          // Pull this chemist's latest Razorpay status into the DB and read it,
+          // so a freshly activated account unlocks the dashboard on this login.
+          // Falls back to a plain status read if the refresh endpoint is absent.
+          final payout = await ChemistPayoutService.refreshStatus(storeId) ??
+              await ChemistPayoutService.getPayoutStatus(storeId);
+          if (mounted) setState(() => _payoutStatus = payout);
+        }
+      }
+    } catch (e) {
+      AppLogger.error('Payout gate check failed', e);
+    } finally {
+      if (mounted) setState(() => _isCheckingPayout = false);
+    }
+  }
+
+  /// Manually refreshes this chemist's payout status and reports the outcome in
+  /// a snackbar (checked / updated / activated), mirroring the admin action.
+  Future<void> _refreshPayoutWithFeedback() async {
+    var storeId = _storeId;
+
+    // Resolve the store id if we don't have it yet.
+    if (storeId == null || storeId.isEmpty) {
+      final email = await StorageService.getUserEmail();
+      if (email != null && email.isNotEmpty) {
+        final store =
+            await MedicalStoreService.getMedicalStoreByEmail(email: email);
+        storeId = store?['medicalStoreId']?.toString();
+        _storeId = storeId;
+      }
+    }
+    if (storeId == null || storeId.isEmpty) {
+      if (mounted) {
+        AppSnackBar.error(context, 'Could not determine your pharmacy.');
+      }
+      return;
+    }
+
+    final prevStatus = _payoutStatus?.onboardingStatus;
+    final wasUnlocked = _isUnlockedStatus(prevStatus);
+
+    setState(() => _isCheckingPayout = true);
+    final refreshed = await ChemistPayoutService.refreshStatus(storeId);
+    if (!mounted) return;
+    setState(() {
+      if (refreshed != null) _payoutStatus = refreshed;
+      _isCheckingPayout = false;
+    });
+
+    if (refreshed == null) {
+      AppSnackBar.error(context, 'Failed to refresh payout status.');
+      return;
+    }
+
+    // Single-chemist equivalent of the admin "checked/updated/activated" stats.
+    final updated = (prevStatus ?? '') != refreshed.onboardingStatus ? 1 : 0;
+    final activated =
+        (!wasUnlocked && _isUnlockedStatus(refreshed.onboardingStatus)) ? 1 : 0;
+
+    if (_isPayoutUnlocked) {
+      await _loadDashboardData();
+      if (!mounted) return;
+    }
+
+    AppSnackBar.success(
+      context,
+      'Payout status refreshed — checked 1, updated $updated, '
+      'activated $activated.',
+    );
   }
 
   Future<void> _navigateToChemistProfile(BuildContext context) async {
@@ -260,6 +372,27 @@ class _ChemistDashboardState extends State<ChemistDashboard> {
 
   @override
   Widget build(BuildContext context) {
+    // While we determine the payout status, show a neutral loader.
+    if (_isCheckingPayout) {
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text('Chemist Dashboard',
+              style: TextStyle(color: Colors.white)),
+          backgroundColor: Colors.black,
+          foregroundColor: Colors.white,
+          elevation: 0,
+        ),
+        body:
+            const Center(child: CircularProgressIndicator(color: Colors.black)),
+      );
+    }
+
+    // Payout onboarding not yet successful → lock everything except the
+    // Payout & Account Activation entry point.
+    if (!_isPayoutUnlocked) {
+      return _buildPayoutLockedScaffold();
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Chemist Dashboard',
@@ -329,6 +462,149 @@ class _ChemistDashboardState extends State<ChemistDashboard> {
     );
   }
 
+  /// Restricted view shown until payout onboarding succeeds. The only action
+  /// available is to open Payout & Account Activation (plus Logout / Refresh).
+  Widget _buildPayoutLockedScaffold() {
+    final status = _payoutStatus?.onboardingStatus ?? 'Not started';
+    final error = _payoutStatus?.onboardingError ?? '';
+
+    Future<void> openPayoutThenRefresh() async {
+      await Navigator.pushNamed(context, '/chemist-payout');
+      await _refreshPayoutWithFeedback();
+    }
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Chemist Dashboard',
+            style: TextStyle(color: Colors.white)),
+        backgroundColor: Colors.black,
+        foregroundColor: Colors.white,
+        iconTheme: const IconThemeData(color: Colors.white),
+        elevation: 0,
+        actions: [
+          PopupMenuButton<String>(
+            onSelected: (value) {
+              if (value == 'profile') {
+                _navigateToChemistProfile(context);
+              } else if (value == 'payout') {
+                openPayoutThenRefresh();
+              } else if (value == 'logout') {
+                _handleLogout();
+              }
+            },
+            itemBuilder: (context) => [
+              const PopupMenuItem(
+                value: 'profile',
+                child: Row(
+                  children: [
+                    Icon(Icons.person, color: Colors.black),
+                    SizedBox(width: 8),
+                    Text('Profile'),
+                  ],
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'payout',
+                child: Row(
+                  children: [
+                    Icon(Icons.account_balance_wallet, color: Colors.black),
+                    SizedBox(width: 8),
+                    Text('Payout & Activation'),
+                  ],
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'logout',
+                child: Row(
+                  children: [
+                    Icon(Icons.logout, color: Colors.red),
+                    SizedBox(width: 8),
+                    Text('Logout'),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+      drawer: _buildDrawer(),
+      body: Center(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.lock_clock, size: 72, color: Colors.orange.shade400),
+              const SizedBox(height: 24),
+              const Text(
+                'Complete Your Onboarding',
+                style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'Your account is not active yet. Please pay the activation '
+                'fee and finish your payout (bank) setup before you can use '
+                'the dashboard.',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 14, color: Colors.grey[700]),
+              ),
+              const SizedBox(height: 16),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: Colors.orange.shade50,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.orange.shade200),
+                ),
+                child: Text(
+                  'Payout status: $status',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.orange.shade900,
+                  ),
+                ),
+              ),
+              if (error.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                Text(
+                  error,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 13, color: Colors.red.shade600),
+                ),
+              ],
+              const SizedBox(height: 28),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: openPayoutThenRefresh,
+                  icon: const Icon(Icons.account_balance_wallet),
+                  label: const Text('Payout & Account Activation'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.black,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextButton.icon(
+                onPressed: _refreshPayoutWithFeedback,
+                icon: const Icon(Icons.refresh, color: Colors.black),
+                label: const Text('Refresh status',
+                    style: TextStyle(color: Colors.black)),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildBody() {
     if (_isLoading) {
       return const Center(
@@ -392,6 +668,7 @@ class _ChemistDashboardState extends State<ChemistDashboard> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _buildStatsSection(),
+            _buildPayoutActivationCard(),
             _buildRecentOrdersSection(),
             const SizedBox(height: 20),
           ],
@@ -453,41 +730,44 @@ class _ChemistDashboardState extends State<ChemistDashboard> {
                   selectedTileColor: Colors.black.withValues(alpha: 0.1),
                   onTap: () => Navigator.of(context).pop(),
                 ),
-                ListTile(
-                  leading: const Icon(Icons.shopping_cart, color: Colors.black),
-                  title: const Text('Customer Orders'),
-                  trailing: _orderCounts['pending'] != null &&
-                          _orderCounts['pending']! > 0
-                      ? Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: Colors.orange,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Text(
-                            '${_orderCounts['pending']}',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
+                // Customer Orders stays hidden until payout onboarding is done.
+                if (_isPayoutUnlocked)
+                  ListTile(
+                    leading:
+                        const Icon(Icons.shopping_cart, color: Colors.black),
+                    title: const Text('Customer Orders'),
+                    trailing: _orderCounts['pending'] != null &&
+                            _orderCounts['pending']! > 0
+                        ? Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: Colors.orange,
+                              borderRadius: BorderRadius.circular(12),
                             ),
+                            child: Text(
+                              '${_orderCounts['pending']}',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          )
+                        : null,
+                    onTap: () {
+                      Navigator.of(context).pop();
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (context) => CustomerOrdersPage(
+                            allOrders: _allOrders,
+                            customerCache: _customerCache,
+                            onRefresh: _loadDashboardData,
                           ),
-                        )
-                      : null,
-                  onTap: () {
-                    Navigator.of(context).pop();
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (context) => CustomerOrdersPage(
-                          allOrders: _allOrders,
-                          customerCache: _customerCache,
-                          onRefresh: _loadDashboardData,
                         ),
-                      ),
-                    );
-                  },
-                ),
+                      );
+                    },
+                  ),
                 // ListTile(
                 //   leading: Icon(Icons.location_city),
                 //   title: Text('Service Regions'),
@@ -502,6 +782,16 @@ class _ChemistDashboardState extends State<ChemistDashboard> {
                     leading: const Icon(Icons.person, color: Colors.black),
                     title: const Text('Profile'),
                     onTap: () => _navigateToChemistProfile(context)),
+
+                ListTile(
+                  leading: const Icon(Icons.account_balance_wallet,
+                      color: Colors.black),
+                  title: const Text('Payout & Activation'),
+                  onTap: () {
+                    Navigator.of(context).pop();
+                    Navigator.pushNamed(context, '/chemist-payout');
+                  },
+                ),
 
                 // ✅ FIXED: Reduced spacing before Deliveries section
                 const Divider(height: 1), // Changed from default height
@@ -571,6 +861,58 @@ class _ChemistDashboardState extends State<ChemistDashboard> {
     }
   }
 
+  Widget _buildPayoutActivationCard() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
+      child: Card(
+        elevation: 2,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: () => Navigator.pushNamed(context, '/chemist-payout'),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(Icons.account_balance_wallet,
+                      color: Colors.black),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Payout & Activation',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Pay the activation fee and add bank details to receive payouts',
+                        style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+                      ),
+                    ],
+                  ),
+                ),
+                const Icon(Icons.chevron_right, color: Colors.black),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildStatsSection() {
     return Container(
       padding: const EdgeInsets.all(16),
@@ -588,7 +930,8 @@ class _ChemistDashboardState extends State<ChemistDashboard> {
                     '${_orderCounts['pending'] ?? 0}',
                     Icons.pending_actions,
                     Colors.orange,
-                    onTap: () => _openFilteredOrders('pending', 'Pending Orders')),
+                    onTap: () =>
+                        _openFilteredOrders('pending', 'Pending Orders')),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -655,8 +998,7 @@ class _ChemistDashboardState extends State<ChemistDashboard> {
     );
   }
 
-  Widget _buildStatCard(
-      String label, String value, IconData icon, Color color,
+  Widget _buildStatCard(String label, String value, IconData icon, Color color,
       {VoidCallback? onTap}) {
     return InkWell(
       onTap: onTap,

@@ -82,8 +82,11 @@ flutter:
 flutter_launcher_icons:
   android: "launcher_icon"
   ios: true
-  image_path: "assets/images/full_logo_animated.png"
+  image_path: "assets/images/full_logo_animated.jpeg"
   min_sdk_android: 21
+  # iOS app icons must be opaque (no alpha) for the App Store.
+  remove_alpha_ios: true
+  background_color_ios: "#ffffff"
   web:
     generate: true
-    image_path: "assets/images/full_logo_animated.png"
+    image_path: "assets/images/full_logo_animated.jpeg"

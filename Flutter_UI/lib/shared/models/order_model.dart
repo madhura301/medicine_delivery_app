@@ -7,6 +7,11 @@ import 'order_enums.dart';
 class OrderModel {
   final String orderId;
   final String customerId;
+
+  /// Customer's full name, supplied by endpoints whose callers can't read the
+  /// customer record directly (e.g. the delivery boy's order list). May be null
+  /// on payloads that don't include it.
+  final String? customerName;
   final String? medicalStoreId;
   final OrderType orderType;
   final OrderInputType orderInputType;
@@ -15,6 +20,10 @@ class OrderModel {
   final String? voiceNoteUrl;
   final String status;
   final double? totalAmount;
+
+  /// Payment status (separate from order [status]): 0=NotPaid, 1=PartiallyPaid,
+  /// 2=FullyPaid. Mirrors the backend OrderPaymentStatus enum.
+  final int orderPaymentStatus;
   final String? billFileUrl;
   final String? completionOtp;
   final DateTime? completedOn;
@@ -42,6 +51,7 @@ class OrderModel {
   OrderModel({
     required this.orderId,
     required this.customerId,
+    this.customerName,
     this.medicalStoreId,
     required this.orderType,
     required this.orderInputType,
@@ -50,6 +60,7 @@ class OrderModel {
     this.voiceNoteUrl,
     required this.status,
     this.totalAmount,
+    this.orderPaymentStatus = 0,
     this.billFileUrl,
     this.completionOtp,
     this.completedOn,
@@ -140,6 +151,7 @@ class OrderModel {
       // ✅ FIXED: Use _toString to handle if these come as int
       orderId: _toString(json['orderId'] ?? json['id'], ''),
       customerId: _toString(json['customerId'], ''),
+      customerName: _toStringOrNull(json['customerName']),
       medicalStoreId: _toStringOrNull(json['medicalStoreId']),
 
       // Parse enums
@@ -155,6 +167,7 @@ class OrderModel {
       status: _parseOrderStatus(json['orderStatus']),
 
       totalAmount: json['totalAmount']?.toDouble(),
+      orderPaymentStatus: _parseOrderPaymentStatus(json['orderPaymentStatus']),
       billFileUrl: _toStringOrNull(json['billFileUrl']),
 
       // Handle completionOtp as int or string
@@ -295,6 +308,28 @@ class OrderModel {
     }
   }
 
+  /// True when the order has been fully paid (OrderPaymentStatus.FullyPaid).
+  bool get isFullyPaid => orderPaymentStatus == 2;
+
+  /// Parse the backend OrderPaymentStatus (int enum, or its name) to an int.
+  static int _parseOrderPaymentStatus(dynamic value) {
+    if (value == null) return 0;
+    if (value is int) return value;
+    final s = value.toString();
+    final asInt = int.tryParse(s);
+    if (asInt != null) return asInt;
+    switch (s.toLowerCase()) {
+      case 'notpaid':
+        return 0;
+      case 'partiallypaid':
+        return 1;
+      case 'fullypaid':
+        return 2;
+      default:
+        return 0;
+    }
+  }
+
   /// Parse orderStatus integer to readable string
   static String _parseOrderStatus(dynamic value) {
     if (value == null) return 'Pending';
@@ -344,6 +379,7 @@ class OrderModel {
     return {
       'orderId': orderId,
       'customerId': customerId,
+      'customerName': customerName,
       // ✨ NEW: Include assignment history
       'assignmentHistory': assignmentHistory.map((h) => h.toJson()).toList(),
       'medicalStoreId': medicalStoreId,
@@ -354,6 +390,7 @@ class OrderModel {
       'voiceNoteUrl': voiceNoteUrl,
       'status': status,
       'totalAmount': totalAmount,
+      'orderPaymentStatus': orderPaymentStatus,
       'billFileUrl': billFileUrl,
       'completionOtp': completionOtp,
       'completedOn': completedOn?.toIso8601String(),

@@ -876,7 +876,7 @@ class _CustomerOrderDetailsPageState extends State<CustomerOrderDetailsPage> {
           orderNumber: _currentOrder.orderNumber,
         ),
         icon: const Icon(Icons.receipt_long),
-        label: const Text('View All Payments'),
+        label: const Text('Payment History'),
         style: OutlinedButton.styleFrom(
           foregroundColor: Colors.indigo,
           side: const BorderSide(color: Colors.indigo),

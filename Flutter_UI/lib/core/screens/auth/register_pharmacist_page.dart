@@ -7,7 +7,6 @@ import 'package:pharmaish/utils/app_logger.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import 'package:pharmaish/core/services/auth_service.dart';
 import 'package:pharmaish/core/services/location_service.dart';
 import 'package:pharmaish/utils/consent_manager.dart';
 import 'package:pharmaish/utils/constants.dart';
@@ -677,8 +676,8 @@ class _PharmacistRegistrationPageState
               decoration: BoxDecoration(
                 color: AppTheme.primaryColor.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(12),
-                border:
-                    Border.all(color: AppTheme.primaryColor.withValues(alpha: 0.3)),
+                border: Border.all(
+                    color: AppTheme.primaryColor.withValues(alpha: 0.3)),
               ),
               child: const Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -1352,11 +1351,12 @@ class _PharmacistRegistrationPageState
     if (!consentAccepted) {
       if (mounted) {
         Navigator.of(context).pop(); // Exit if declined
-        AppSnackBar.error(context, 'Registration consent is required to proceed');
+        AppSnackBar.error(
+            context, 'Registration consent is required to proceed');
       }
       return; // Stop registration
     }
-    
+
     if (!_validateCurrentStep()) return;
 
     setState(() {
@@ -1364,105 +1364,92 @@ class _PharmacistRegistrationPageState
       _errorMessage = '';
     });
 
-    final token = await AuthService.invokeLogin(
-        mobileNumber: AppConstants.adminMobileNumber,
-        password: AppConstants.adminPassword,
-        stayLoggedIn: false);
+    // Registration endpoint is public ([AllowAnonymous]) — no auth token needed.
+    try {
+      final registrationData = {
+        'businessType': _businessType,
+        'medicalName': _firmNameController.text.trim(),
+        'ownerFirstName': _ownerFirstNameController.text.trim(),
+        'ownerLastName': _ownerLastNameController.text.trim(),
+        'ownerMiddleName': _ownerMiddleNameController.text.trim(),
+        'dlRetailer': _dlRetailerController.text.trim(),
+        'dlWholesaler': _dlWholesalerController.text.trim(),
+        'registrationStatus': _isGstRegistered,
+        'gSTIN': _isGstRegistered ? _gstNumberController.text.trim() : null,
+        'fSSAINo': _fssaiController.text.trim(),
+        'addressLine1': _addressLine1Controller.text.trim(),
+        'addressLine2': _addressLine2Controller.text.trim(),
+        'city': _cityController.text.trim(),
+        'state': _selectedState,
+        'postalCode': _postalCodeController.text.trim(),
+        'mobileNumber': _contactNumberController.text.trim(),
+        'pAN': _panController.text.trim(),
+        'pharmacistFirstName': _pharmacistFirstNameController.text.trim(),
+        'pharmacistLastName': _pharmacistLastNameController.text.trim(),
+        'pharmacistRegistrationNumber':
+            _pharmacistRegNumberController.text.trim(),
+        'singlePointOfContact': _spcController.text.trim(),
+        'userName': _userNameController.text.trim(),
+        'emailId': _emailController.text.trim().isNotEmpty
+            ? _emailController.text.trim()
+            : null,
+        'password': _passwordController.text,
+        'latitude': _latitude,
+        'longitude': _longitude,
+      };
 
-    if (token != null) {
-      try {
-        final registrationData = {
-          'businessType': _businessType,
-          'medicalName': _firmNameController.text.trim(),
-          'ownerFirstName': _ownerFirstNameController.text.trim(),
-          'ownerLastName': _ownerLastNameController.text.trim(),
-          'ownerMiddleName': _ownerMiddleNameController.text.trim(),
-          'dlRetailer': _dlRetailerController.text.trim(),
-          'dlWholesaler': _dlWholesalerController.text.trim(),
-          'registrationStatus': _isGstRegistered,
-          'gSTIN': _isGstRegistered ? _gstNumberController.text.trim() : null,
-          'fSSAINo': _fssaiController.text.trim(),
-          'addressLine1': _addressLine1Controller.text.trim(),
-          'addressLine2': _addressLine2Controller.text.trim(),
-          'city': _cityController.text.trim(),
-          'state': _selectedState,
-          'postalCode': _postalCodeController.text.trim(),
-          'mobileNumber': _contactNumberController.text.trim(),
-          'pAN': _panController.text.trim(),
-          'pharmacistFirstName': _pharmacistFirstNameController.text.trim(),
-          'pharmacistLastName': _pharmacistLastNameController.text.trim(),
-          'pharmacistRegistrationNumber':
-              _pharmacistRegNumberController.text.trim(),
-          'singlePointOfContact': _spcController.text.trim(),
-          'userName': _userNameController.text.trim(),
-          'emailId': _emailController.text.trim().isNotEmpty
-              ? _emailController.text.trim()
-              : null,
-          'password': _passwordController.text,
-          'latitude': _latitude,
-          'longitude': _longitude,
-        };
+      AppLogger.info('Registration Data: ${jsonEncode(registrationData)}');
 
-        AppLogger.info('Registration Data: ${jsonEncode(registrationData)}');
-        
-        final response = await http.post(
-          Uri.parse('${AppConstants.apiBaseUrl}/MedicalStores/register'),
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-            'Authorization': 'Bearer $token',
-          },
-          body: jsonEncode(registrationData),
-        );
+      final response = await http.post(
+        Uri.parse('${AppConstants.apiBaseUrl}/MedicalStores/register'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: jsonEncode(registrationData),
+      );
 
-        setState(() => _isLoading = false);
+      setState(() => _isLoading = false);
 
-        AppLogger.info('Response status: ${response.statusCode}');
+      AppLogger.info('Response status: ${response.statusCode}');
 
-        if (response.statusCode == 200 || response.statusCode == 201) {
-          final responseData = jsonDecode(response.body);
-          if (responseData['success'] == true) {
-            _showSuccessDialog();
-          } else {
-            setState(() {
-              _errorMessage = _extractErrorMessages(
-                  responseData, 'Registration failed. Please try again.');
-            });
-          }
-        } else if (response.statusCode == 400) {
-          try {
-            final errorData = jsonDecode(response.body);
-            setState(() {
-              _errorMessage = _extractErrorMessages(
-                  errorData, 'Invalid registration data. Please check your inputs.');
-            });
-          } catch (e) {
-            setState(() {
-              _errorMessage =
-                  'Invalid registration data. Please check your inputs.';
-            });
-          }
-        } else if (response.statusCode == 409) {
-          setState(() {
-            _errorMessage =
-                'A pharmacy with this mobile number already exists.';
-          });
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final responseData = jsonDecode(response.body);
+        if (responseData['success'] == true) {
+          _showSuccessDialog();
         } else {
           setState(() {
-            _errorMessage = 'Server error. Please try again later.';
+            _errorMessage = _extractErrorMessages(
+                responseData, 'Registration failed. Please try again.');
           });
         }
-      } catch (e) {
-        AppLogger.error('Error during registration: $e');
+      } else if (response.statusCode == 400) {
+        try {
+          final errorData = jsonDecode(response.body);
+          setState(() {
+            _errorMessage = _extractErrorMessages(errorData,
+                'Invalid registration data. Please check your inputs.');
+          });
+        } catch (e) {
+          setState(() {
+            _errorMessage =
+                'Invalid registration data. Please check your inputs.';
+          });
+        }
+      } else if (response.statusCode == 409) {
         setState(() {
-          _isLoading = false;
-          _errorMessage = 'Network error. Please check your connection.';
+          _errorMessage = 'A pharmacy with this mobile number already exists.';
+        });
+      } else {
+        setState(() {
+          _errorMessage = 'Server error. Please try again later.';
         });
       }
-    } else {
+    } catch (e) {
+      AppLogger.error('Error during registration: $e');
       setState(() {
         _isLoading = false;
-        _errorMessage = 'Authentication token not found. Please log in again.';
+        _errorMessage = 'Network error. Please check your connection.';
       });
     }
   }

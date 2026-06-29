@@ -46,9 +46,11 @@ class TransparentPricingDialogState extends State<TransparentPricingDialog> {
                 const SizedBox(height: 12),
                 _buildIndependentlySection(),
                 const SizedBox(height: 12),
-                _buildGatewayBanner(),
+                _buildOnboardingPolicySection(),
                 const SizedBox(height: 12),
-                _buildFeeSchedule(),
+                _buildNotesSection(),
+                const SizedBox(height: 12),
+                _buildGatewayBanner(),
                 const SizedBox(height: 16),
                 _buildAgreeCheckbox(),
                 const SizedBox(height: 10),
@@ -139,16 +141,37 @@ class TransparentPricingDialogState extends State<TransparentPricingDialog> {
               icon: Icons.desktop_windows,
               iconColor: _green,
               iconBg: const Color(0xFFE6F6EC),
-              title: 'Platform Technology Fee '
+              title: 'Platform Technology Fee Schedule '
                   '(Per Successfully Completed Order)',
-              value: const Text(
-                'As per slab',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: _green,
+              value: InkWell(
+                onTap: () => _openUrl(AppConstants.paymentPolicyUrl),
+                child: const Text.rich(
+                  TextSpan(
+                    children: [
+                      TextSpan(
+                        text: 'Payment Policy',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: _green,
+                          decoration: TextDecoration.underline,
+                        ),
+                      ),
+                      WidgetSpan(
+                        alignment: PlaceholderAlignment.middle,
+                        child: Padding(
+                          padding: EdgeInsets.only(left: 4),
+                          child:
+                              Icon(Icons.open_in_new, size: 14, color: _green),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
+              subtitle:
+                  'The Platform Technology Fee is charged slab-wise on each '
+                  'successfully completed order, and the minimum order value is Rs.200/-',
             ),
           ),
         ],
@@ -373,6 +396,69 @@ class TransparentPricingDialogState extends State<TransparentPricingDialog> {
     );
   }
 
+  // ── Notes ─────────────────────────────────────────────────────────────────
+  Widget _buildNotesSection() {
+    const notes = [
+      'Applicable fee is charged on each successfully completed order.',
+      'Fee is automatically deducted through the settlement mechanism.',
+      "Applicable slab is determined based on the pharmacy's order volume.",
+      'Pharmaish reserves the right to revise, modify, introduce, withdraw, '
+          'or restructure the fee schedule from time to time.',
+      '18% Taxes (GST) and applicable gateway charges are additional where '
+          'applicable.',
+    ];
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF1F0FB),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFD9D6F5)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            children: [
+              Icon(Icons.description_outlined, size: 16, color: _indigo),
+              SizedBox(width: 6),
+              Text(
+                'Notes',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.bold,
+                  color: _indigoDark,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          for (final note in notes)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Icon(Icons.check_circle, size: 15, color: _indigo),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      note,
+                      style: TextStyle(
+                        fontSize: 11.5,
+                        color: Colors.grey.shade800,
+                        height: 1.35,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
   // ── Gateway / bank charges ────────────────────────────────────────────────
   Widget _buildGatewayBanner() {
     return Container(
@@ -425,99 +511,52 @@ class TransparentPricingDialogState extends State<TransparentPricingDialog> {
     );
   }
 
-  // ── Fee schedule table ────────────────────────────────────────────────────
-  Widget _buildFeeSchedule() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Row(
-          children: [
-            Flexible(
-              child: Text(
-                'Platform Technology Fee Schedule (Slab-wise)',
-                style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+  // ── Onboarding policy link (replaces the slab-wise fee table) ─────────────
+  Widget _buildOnboardingPolicySection() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF1F0FB),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFD9D6F5)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'To view the detailed slab-wise rates, please refer to our '
+            'Retailer Onboarding Policy.',
+            style: TextStyle(
+                fontSize: 11.5, color: Colors.grey.shade700, height: 1.35),
+          ),
+          const SizedBox(height: 10),
+          InkWell(
+            onTap: () => _openUrl(AppConstants.retailerOnboardingPolicyUrl),
+            borderRadius: BorderRadius.circular(6),
+            child: const Padding(
+              padding: EdgeInsets.symmetric(vertical: 4),
+              child: Row(
+                children: [
+                  Icon(Icons.open_in_new, size: 16, color: _indigo),
+                  SizedBox(width: 6),
+                  Flexible(
+                    child: Text(
+                      'View Retailer Onboarding Policy',
+                      style: TextStyle(
+                        fontSize: 12.5,
+                        color: _indigo,
+                        fontWeight: FontWeight.w600,
+                        decoration: TextDecoration.underline,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
-            SizedBox(width: 4),
-            Icon(Icons.info_outline, size: 14, color: _indigo),
-          ],
-        ),
-        const SizedBox(height: 8),
-        Table(
-          border: TableBorder.all(color: Colors.grey.shade300),
-          columnWidths: const {
-            0: FlexColumnWidth(2.3),
-            1: FlexColumnWidth(1),
-          },
-          children: [
-            const TableRow(
-              decoration: BoxDecoration(color: _indigo),
-              children: [
-                _HeaderCell('Order Value (₹)'),
-                _HeaderCell('Platform Technology Fee Per Order'),
-              ],
-            ),
-            _feeRow(Icons.card_giftcard, _orange,
-                'First 30 Days After Activation', '₹0'),
-            _feeRow(Icons.bar_chart, _indigo, '₹0 – 200', '₹5'),
-            _feeRow(Icons.bar_chart, _indigo, '₹201 – 500', '₹10'),
-            _feeRow(Icons.bar_chart, _green, '₹501 – 1,500', '₹15'),
-            _feeRow(Icons.bar_chart, _green, '₹1,501 – 3,000', '₹20'),
-            _feeRow(Icons.bar_chart, _orange, '₹3,001 – 5,000', '₹50'),
-            _feeRow(Icons.workspace_premium, Colors.pink,
-                'Above ₹5,000', '₹100'),
-          ],
-        ),
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(10),
-          decoration: const BoxDecoration(
-            color: Color(0xFFF1F0FB),
-            borderRadius: BorderRadius.vertical(bottom: Radius.circular(8)),
           ),
-          child: Row(
-            children: [
-              const Icon(Icons.info, size: 14, color: _indigo),
-              const SizedBox(width: 6),
-              Expanded(
-                child: Text(
-                  'Slab is auto-applied based on the order value. '
-                  'First 30 days after activation are free.',
-                  style:
-                      TextStyle(fontSize: 10.5, color: Colors.grey.shade700),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  TableRow _feeRow(IconData icon, Color iconColor, String label, String fee) {
-    return TableRow(
-      children: [
-        Padding(
-          padding: const EdgeInsets.all(10),
-          child: Row(
-            children: [
-              Icon(icon, size: 18, color: iconColor),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(label, style: const TextStyle(fontSize: 12)),
-              ),
-            ],
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.all(10),
-          child: Center(
-            child: Text(fee,
-                style: const TextStyle(
-                    fontSize: 12.5, fontWeight: FontWeight.w600)),
-          ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
@@ -634,25 +673,5 @@ class TransparentPricingDialogState extends State<TransparentPricingDialog> {
         );
       }
     }
-  }
-}
-
-class _HeaderCell extends StatelessWidget {
-  final String text;
-  const _HeaderCell(this.text);
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(10),
-      child: Text(
-        text,
-        style: const TextStyle(
-          fontSize: 11.5,
-          fontWeight: FontWeight.bold,
-          color: Colors.white,
-        ),
-      ),
-    );
   }
 }
