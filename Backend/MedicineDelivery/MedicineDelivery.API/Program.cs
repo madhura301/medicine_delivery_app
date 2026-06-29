@@ -16,6 +16,7 @@ using MedicineDelivery.API.Middleware;
 using System.Reflection;
 using Microsoft.AspNetCore.Authorization;
 using Serilog;
+using Microsoft.ApplicationInsights.Extensibility;
 
 // Bootstrap logger (before config is available) so early log messages are not lost
 Log.Logger = new LoggerConfiguration()
@@ -29,10 +30,34 @@ try
 
     var builder = WebApplication.CreateBuilder(args);
 
+    // Application Insights: enabled only when a connection string is supplied
+    // (e.g. env var ApplicationInsights__ConnectionString on Azure). Locally it
+    // stays off, so the console/file sinks behave exactly as before.
+    var appInsightsConnectionString = builder.Configuration["ApplicationInsights:ConnectionString"];
+    var appInsightsEnabled = !string.IsNullOrWhiteSpace(appInsightsConnectionString);
+
+    if (appInsightsEnabled)
+    {
+        // Captures requests, dependencies (DB/HTTP), and exceptions automatically.
+        builder.Services.AddApplicationInsightsTelemetry(options =>
+        {
+            options.ConnectionString = appInsightsConnectionString;
+        });
+    }
+
     // Replace bootstrap logger with fully configured logger from appsettings
-    Log.Logger = new LoggerConfiguration()
-        .ReadFrom.Configuration(builder.Configuration)
-        .CreateLogger();
+    var loggerConfiguration = new LoggerConfiguration()
+        .ReadFrom.Configuration(builder.Configuration);
+
+    // Ship structured logs to Application Insights when configured.
+    if (appInsightsEnabled)
+    {
+        loggerConfiguration.WriteTo.ApplicationInsights(
+            new TelemetryConfiguration { ConnectionString = appInsightsConnectionString },
+            TelemetryConverter.Traces);
+    }
+
+    Log.Logger = loggerConfiguration.CreateLogger();
 
     // Add Serilog as the logging provider
     builder.Host.UseSerilog();
@@ -376,7 +401,16 @@ builder.Services.AddScoped<MedicineDelivery.Application.Interfaces.IOrderService
 builder.Services.AddScoped<MedicineDelivery.Application.Interfaces.IConsentService, MedicineDelivery.Infrastructure.Services.ConsentService>();
 builder.Services.AddScoped<MedicineDelivery.Application.Interfaces.IPaymentService, MedicineDelivery.Infrastructure.Services.PaymentService>();
 builder.Services.AddScoped<MedicineDelivery.Infrastructure.Services.IBrowserInfoService, MedicineDelivery.Infrastructure.Services.BrowserInfoService>();
-builder.Services.AddScoped<MedicineDelivery.Domain.Interfaces.ISmsService, MedicineDelivery.Infrastructure.Services.ConsoleSmsService>();
+// SMS provider: driven by SmsSettings:Provider in appsettings.json ("Console" or "Msg91")
+var smsProvider = builder.Configuration["SmsSettings:Provider"] ?? "Console";
+if (smsProvider.Equals("Msg91", StringComparison.OrdinalIgnoreCase))
+{
+    builder.Services.AddHttpClient<MedicineDelivery.Domain.Interfaces.ISmsService, MedicineDelivery.Infrastructure.Services.Msg91SmsService>();
+}
+else
+{
+    builder.Services.AddScoped<MedicineDelivery.Domain.Interfaces.ISmsService, MedicineDelivery.Infrastructure.Services.ConsoleSmsService>();
+}
 builder.Services.AddScoped<MedicineDelivery.Domain.Interfaces.IRazorpayService, MedicineDelivery.Infrastructure.Services.RazorpayService>();
 builder.Services.AddScoped<MedicineDelivery.Application.Interfaces.IChemistPayoutService, MedicineDelivery.Infrastructure.Services.ChemistPayoutService>();
 builder.Services.AddScoped<MedicineDelivery.Application.Interfaces.IChemistActivationService, MedicineDelivery.Infrastructure.Services.ChemistActivationService>();

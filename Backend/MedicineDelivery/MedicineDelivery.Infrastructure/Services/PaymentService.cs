@@ -13,12 +13,14 @@ namespace MedicineDelivery.Infrastructure.Services
         private readonly IUnitOfWork _unitOfWork;
         private readonly IMapper _mapper;
         private readonly ILogger<PaymentService> _logger;
+        private readonly ISmsService _smsService;
 
-        public PaymentService(IUnitOfWork unitOfWork, IMapper mapper, ILogger<PaymentService> logger)
+        public PaymentService(IUnitOfWork unitOfWork, IMapper mapper, ILogger<PaymentService> logger, ISmsService smsService)
         {
             _unitOfWork = unitOfWork;
             _mapper = mapper;
             _logger = logger;
+            _smsService = smsService;
         }
 
         public async Task<PaymentDto> RecordPaymentAsync(RecordPaymentDto paymentDto, CancellationToken ct = default)
@@ -129,13 +131,55 @@ namespace MedicineDelivery.Infrastructure.Services
             // Update order if status changed
             if (order.OrderPaymentStatus != newStatus)
             {
+                var previousStatus = order.OrderPaymentStatus;
+
                 _logger.LogInformation("Order {OrderId} payment status changed from {OldStatus} to {NewStatus}. TotalPaid={TotalPaid}, TotalAmount={TotalAmount}",
-                    order.OrderId, order.OrderPaymentStatus, newStatus, totalPaid, totalAmount);
+                    order.OrderId, previousStatus, newStatus, totalPaid, totalAmount);
 
                 order.OrderPaymentStatus = newStatus;
                 order.UpdatedOn = DateTime.UtcNow;
                 _unitOfWork.Orders.Update(order);
                 await _unitOfWork.SaveChangesAsync();
+
+                // Notify the customer once, on the transition into FullyPaid.
+                if (newStatus == OrderPaymentStatus.FullyPaid && previousStatus != OrderPaymentStatus.FullyPaid)
+                {
+                    await SendPaymentConfirmationSmsAsync(order);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Sends the payment-confirmation SMS to the customer. Best-effort: failures are logged
+        /// but never block the payment flow.
+        /// </summary>
+        private async Task SendPaymentConfirmationSmsAsync(Order order)
+        {
+            try
+            {
+                var customer = await _unitOfWork.Customers.FirstOrDefaultAsync(c => c.CustomerId == order.CustomerId);
+                if (customer == null || string.IsNullOrWhiteSpace(customer.MobileNumber))
+                {
+                    _logger.LogWarning("Skipping payment-confirmation SMS for Order {OrderId}: customer or mobile number missing.", order.OrderId);
+                    return;
+                }
+
+                var storeName = string.Empty;
+                if (order.MedicalStoreId.HasValue)
+                {
+                    var store = await _unitOfWork.MedicalStores.FirstOrDefaultAsync(s => s.MedicalStoreId == order.MedicalStoreId.Value);
+                    storeName = store?.MedicalName ?? string.Empty;
+                }
+
+                await _smsService.SendPaymentConfirmationAsync(
+                    customer.MobileNumber,
+                    customer.CustomerFirstName,
+                    order.OrderNumber ?? order.OrderId.ToString(),
+                    storeName);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to send payment-confirmation SMS for Order {OrderId}.", order.OrderId);
             }
         }
     }

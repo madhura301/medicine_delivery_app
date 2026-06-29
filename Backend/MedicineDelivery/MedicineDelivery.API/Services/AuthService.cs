@@ -451,7 +451,7 @@ namespace MedicineDelivery.API.Services
                 await _unitOfWork.UserOtps.AddAsync(otpRecord);
                 await _unitOfWork.SaveChangesAsync();
 
-                await _smsService.SendOtpAsync(phoneNumber, otpCode);
+                await _smsService.SendOtpAsync(phoneNumber, otpCode, user.FirstName);
 
                 _logger.LogInformation("Forgot-password OTP sent for phone: {PhoneNumber}", phoneNumber);
                 return new Domain.Interfaces.AuthResult { Success = true };
