@@ -223,6 +223,11 @@ namespace MedicineDelivery.Infrastructure.Services
             if (account == null)
                 return ChemistPayoutResult.Fail("This chemist has no payout account yet. Complete onboarding first.");
 
+            // Need to remove code
+            if(account.OnboardingStatus == ChemistPayoutStatus.Active)
+                return ChemistPayoutResult.Ok(ToDto(account));
+
+
             // Nothing to pull from Razorpay until a linked account exists.
             if (string.IsNullOrWhiteSpace(account.RazorpayLinkedAccountId))
                 return ChemistPayoutResult.Ok(ToDto(account));
