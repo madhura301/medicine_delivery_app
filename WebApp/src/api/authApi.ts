@@ -23,7 +23,7 @@ export const authApi = {
     api.post<LoginResponse>('/Auth/login', data),
 
   forgotPassword: (mobileNumber: string) =>
-    api.post('/Auth/forgot-password', { mobileNumber }),
+    api.post('/Auth/forgot-password', { phoneNumber: mobileNumber }),
 
   resetPassword: (data: { mobileNumber: string; otp: string; newPassword: string }) =>
     api.post('/Auth/reset-password', data),
