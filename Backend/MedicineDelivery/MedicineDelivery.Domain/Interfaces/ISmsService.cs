@@ -9,9 +9,16 @@ namespace MedicineDelivery.Domain.Interfaces
         Task<bool> SendOtpAsync(string phoneNumber, string otpCode, string? recipientName = null);
 
         /// <summary>
-        /// Sends the order payment-confirmation SMS to the customer.
-        /// Maps to template variables Name (customer), Number (order number) and Retailer (store name).
+        /// Sends the order OTP to the customer once payment is confirmed, so they can share it
+        /// with the delivery boy on handover. Maps to template variables "Order ID" and "OTP".
         /// </summary>
-        Task<bool> SendPaymentConfirmationAsync(string phoneNumber, string customerName, string orderNumber, string storeName);
+        Task<bool> SendOrderOtpAsync(string phoneNumber, string orderNumber, string otpCode);
+
+        /// <summary>
+        /// Sends the order-delivered confirmation SMS to the customer once the delivery boy
+        /// verifies the order OTP. Maps to template variables Name (customer), Number (order number)
+        /// and Retailer (store name).
+        /// </summary>
+        Task<bool> SendOrderDeliveredAsync(string phoneNumber, string customerName, string orderNumber, string storeName);
     }
 }

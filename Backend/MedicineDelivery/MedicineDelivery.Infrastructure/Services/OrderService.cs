@@ -31,17 +31,19 @@ namespace MedicineDelivery.Infrastructure.Services
         private readonly IFileStorageService _fileStorageService;
         private readonly ApplicationDbContext _context;
         private readonly ILogger<OrderService> _logger;
+        private readonly ISmsService _smsService;
         private static readonly string[] AllowedImageExtensions = { ".jpg", ".jpeg", ".png", ".gif", ".bmp" };
         private static readonly string[] AllowedVoiceExtensions = { ".mp3", ".wav", ".m4a", ".aac", ".ogg" };
         private static readonly string[] AllowedPdfExtensions = { ".pdf" };
 
-        public OrderService(IUnitOfWork unitOfWork, IMapper mapper, IFileStorageService fileStorageService, ApplicationDbContext context, ILogger<OrderService> logger)
+        public OrderService(IUnitOfWork unitOfWork, IMapper mapper, IFileStorageService fileStorageService, ApplicationDbContext context, ILogger<OrderService> logger, ISmsService smsService)
         {
             _unitOfWork = unitOfWork;
             _mapper = mapper;
             _fileStorageService = fileStorageService;
             _context = context;
             _logger = logger;
+            _smsService = smsService;
         }
 
         public async Task<OrderDto> CreateOrderAsync(CreateOrderDto createDto, CancellationToken cancellationToken = default)
@@ -753,7 +755,43 @@ namespace MedicineDelivery.Infrastructure.Services
 
             _logger.LogInformation("Order {OrderId} completed successfully for Customer {CustomerId}", orderId, order.CustomerId);
 
+            await SendOrderDeliveredSmsAsync(order);
+
             return _mapper.Map<OrderDto>(order);
+        }
+
+        /// <summary>
+        /// Sends the order-delivered confirmation SMS to the customer once the delivery boy
+        /// verifies the order OTP. Best-effort: failures are logged but never block order completion.
+        /// </summary>
+        private async Task SendOrderDeliveredSmsAsync(Order order)
+        {
+            try
+            {
+                var customer = await _unitOfWork.Customers.FirstOrDefaultAsync(c => c.CustomerId == order.CustomerId);
+                if (customer == null || string.IsNullOrWhiteSpace(customer.MobileNumber))
+                {
+                    _logger.LogWarning("Skipping order-delivered SMS for Order {OrderId}: customer or mobile number missing.", order.OrderId);
+                    return;
+                }
+
+                var storeName = string.Empty;
+                if (order.MedicalStoreId.HasValue)
+                {
+                    var store = await _unitOfWork.MedicalStores.FirstOrDefaultAsync(s => s.MedicalStoreId == order.MedicalStoreId.Value);
+                    storeName = store?.MedicalName ?? string.Empty;
+                }
+
+                await _smsService.SendOrderDeliveredAsync(
+                    customer.MobileNumber,
+                    customer.CustomerFirstName,
+                    order.OrderNumber ?? order.OrderId.ToString(),
+                    storeName);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to send order-delivered SMS for Order {OrderId}.", order.OrderId);
+            }
         }
 
         public async Task<OrderDto> AssignOrderToMedicalStoreAsync(AssignOrderDto assignDto, CancellationToken cancellationToken = default)

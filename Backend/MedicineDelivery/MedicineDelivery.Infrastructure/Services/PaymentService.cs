@@ -141,45 +141,44 @@ namespace MedicineDelivery.Infrastructure.Services
                 _unitOfWork.Orders.Update(order);
                 await _unitOfWork.SaveChangesAsync();
 
-                // Notify the customer once, on the transition into FullyPaid.
+                // Share the order OTP with the customer once, on the transition into FullyPaid,
+                // so they can hand it to the delivery boy on delivery.
                 if (newStatus == OrderPaymentStatus.FullyPaid && previousStatus != OrderPaymentStatus.FullyPaid)
                 {
-                    await SendPaymentConfirmationSmsAsync(order);
+                    await SendOrderOtpSmsAsync(order);
                 }
             }
         }
 
         /// <summary>
-        /// Sends the payment-confirmation SMS to the customer. Best-effort: failures are logged
-        /// but never block the payment flow.
+        /// Sends the order OTP to the customer so they can share it with the delivery boy.
+        /// Best-effort: failures are logged but never block the payment flow.
         /// </summary>
-        private async Task SendPaymentConfirmationSmsAsync(Order order)
+        private async Task SendOrderOtpSmsAsync(Order order)
         {
             try
             {
                 var customer = await _unitOfWork.Customers.FirstOrDefaultAsync(c => c.CustomerId == order.CustomerId);
                 if (customer == null || string.IsNullOrWhiteSpace(customer.MobileNumber))
                 {
-                    _logger.LogWarning("Skipping payment-confirmation SMS for Order {OrderId}: customer or mobile number missing.", order.OrderId);
+                    _logger.LogWarning("Skipping order-OTP SMS for Order {OrderId}: customer or mobile number missing.", order.OrderId);
                     return;
                 }
 
-                var storeName = string.Empty;
-                if (order.MedicalStoreId.HasValue)
+                if (string.IsNullOrWhiteSpace(order.OTP))
                 {
-                    var store = await _unitOfWork.MedicalStores.FirstOrDefaultAsync(s => s.MedicalStoreId == order.MedicalStoreId.Value);
-                    storeName = store?.MedicalName ?? string.Empty;
+                    _logger.LogWarning("Skipping order-OTP SMS for Order {OrderId}: order has no OTP set.", order.OrderId);
+                    return;
                 }
 
-                await _smsService.SendPaymentConfirmationAsync(
+                await _smsService.SendOrderOtpAsync(
                     customer.MobileNumber,
-                    customer.CustomerFirstName,
                     order.OrderNumber ?? order.OrderId.ToString(),
-                    storeName);
+                    order.OTP);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to send payment-confirmation SMS for Order {OrderId}.", order.OrderId);
+                _logger.LogError(ex, "Failed to send order-OTP SMS for Order {OrderId}.", order.OrderId);
             }
         }
     }

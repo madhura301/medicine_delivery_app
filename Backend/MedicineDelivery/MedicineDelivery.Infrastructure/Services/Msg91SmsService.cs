@@ -10,7 +10,7 @@ namespace MedicineDelivery.Infrastructure.Services
     /// MSG91 Flow API implementation of <see cref="ISmsService"/>.
     /// Sends the forgot-password OTP using a DLT-approved template where
     /// var1 = recipient name and var2 = the OTP code.
-    /// Configured via the SmsSettings section (AuthKey, OtpTemplateId).
+    /// Configured via the SmsSettings section (AuthKey, OtpTemplateId, OrderOtpTemplateId, PaymentTemplateId).
     /// </summary>
     public class Msg91SmsService : ISmsService
     {
@@ -20,6 +20,7 @@ namespace MedicineDelivery.Infrastructure.Services
         private readonly ILogger<Msg91SmsService> _logger;
         private readonly string _authKey;
         private readonly string _otpTemplateId;
+        private readonly string _orderOtpTemplateId;
         private readonly string _paymentTemplateId;
 
         public Msg91SmsService(HttpClient httpClient, IConfiguration configuration, ILogger<Msg91SmsService> logger)
@@ -28,6 +29,7 @@ namespace MedicineDelivery.Infrastructure.Services
             _logger = logger;
             _authKey = configuration["SmsSettings:AuthKey"] ?? string.Empty;
             _otpTemplateId = configuration["SmsSettings:OtpTemplateId"] ?? string.Empty;
+            _orderOtpTemplateId = configuration["SmsSettings:OrderOtpTemplateId"] ?? string.Empty;
             _paymentTemplateId = configuration["SmsSettings:PaymentTemplateId"] ?? string.Empty;
         }
 
@@ -43,7 +45,19 @@ namespace MedicineDelivery.Infrastructure.Services
             return SendFlowAsync(_otpTemplateId, recipient, phoneNumber, "OTP");
         }
 
-        public Task<bool> SendPaymentConfirmationAsync(string phoneNumber, string customerName, string orderNumber, string storeName)
+        public Task<bool> SendOrderOtpAsync(string phoneNumber, string orderNumber, string otpCode)
+        {
+            var recipient = new Dictionary<string, string>
+            {
+                ["mobiles"] = NormalizeMobile(phoneNumber),
+                ["Order ID"] = orderNumber ?? string.Empty,
+                ["OTP"] = otpCode ?? string.Empty
+            };
+
+            return SendFlowAsync(_orderOtpTemplateId, recipient, phoneNumber, "OrderOtp");
+        }
+
+        public Task<bool> SendOrderDeliveredAsync(string phoneNumber, string customerName, string orderNumber, string storeName)
         {
             var recipient = new Dictionary<string, string>
             {
@@ -53,7 +67,7 @@ namespace MedicineDelivery.Infrastructure.Services
                 ["Retailer"] = storeName ?? string.Empty
             };
 
-            return SendFlowAsync(_paymentTemplateId, recipient, phoneNumber, "PaymentConfirmation");
+            return SendFlowAsync(_paymentTemplateId, recipient, phoneNumber, "OrderDelivered");
         }
 
         /// <summary>

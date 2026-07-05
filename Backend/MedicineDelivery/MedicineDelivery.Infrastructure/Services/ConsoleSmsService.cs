@@ -27,10 +27,19 @@ namespace MedicineDelivery.Infrastructure.Services
             return Task.FromResult(true);
         }
 
-        public Task<bool> SendPaymentConfirmationAsync(string phoneNumber, string customerName, string orderNumber, string storeName)
+        public Task<bool> SendOrderOtpAsync(string phoneNumber, string orderNumber, string otpCode)
         {
             _logger.LogWarning(
-                "[DEV ONLY] Payment confirmation SMS for {PhoneNumber}: Name={CustomerName}, Order={OrderNumber}, Store={StoreName} — replace ConsoleSmsService with a real provider before going live.",
+                "[DEV ONLY] Order OTP SMS for {PhoneNumber}: Order={OrderNumber}, OTP={OtpCode} — replace ConsoleSmsService with a real provider before going live.",
+                phoneNumber, orderNumber, otpCode);
+
+            return Task.FromResult(true);
+        }
+
+        public Task<bool> SendOrderDeliveredAsync(string phoneNumber, string customerName, string orderNumber, string storeName)
+        {
+            _logger.LogWarning(
+                "[DEV ONLY] Order delivered SMS for {PhoneNumber}: Name={CustomerName}, Order={OrderNumber}, Store={StoreName} — replace ConsoleSmsService with a real provider before going live.",
                 phoneNumber, customerName, orderNumber, storeName);
 
             return Task.FromResult(true);
