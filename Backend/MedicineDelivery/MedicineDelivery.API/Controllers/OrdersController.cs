@@ -584,7 +584,16 @@ namespace MedicineDelivery.API.Controllers
                 }
 
                 var fileName = Path.GetFileName(order.OrderBillFileLocation);
-                var contentType = "application/pdf";
+                var fileExtension = Path.GetExtension(order.OrderBillFileLocation).ToLowerInvariant();
+                var contentType = fileExtension switch
+                {
+                    ".pdf" => "application/pdf",
+                    ".jpg" or ".jpeg" => "image/jpeg",
+                    ".png" => "image/png",
+                    ".gif" => "image/gif",
+                    ".bmp" => "image/bmp",
+                    _ => "application/octet-stream"
+                };
 
                 return File(stream, contentType, fileName);
             }

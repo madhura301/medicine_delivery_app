@@ -923,12 +923,12 @@ namespace MedicineDelivery.Infrastructure.Services
                 throw new ArgumentException("Bill file is required.", nameof(uploadDto.BillFile));
             }
 
-            // Validate PDF file
+            // Validate file type: PDF or image
             var extension = Path.GetExtension(uploadDto.BillFile.FileName).ToLowerInvariant();
-            if (string.IsNullOrEmpty(extension) || !AllowedPdfExtensions.Contains(extension))
+            if (string.IsNullOrEmpty(extension) || !(AllowedPdfExtensions.Contains(extension) || AllowedImageExtensions.Contains(extension)))
             {
-                _logger.LogWarning("UploadOrderBillAsync failed: Non-PDF file uploaded for Order {OrderId}, extension: {Extension}", uploadDto.OrderId, extension);
-                throw new ArgumentException("Only PDF files are allowed for order bills.", nameof(uploadDto.BillFile));
+                _logger.LogWarning("UploadOrderBillAsync failed: Unsupported file type uploaded for Order {OrderId}, extension: {Extension}", uploadDto.OrderId, extension);
+                throw new ArgumentException("Only PDF or image files (jpg, jpeg, png, gif, bmp) are allowed for order bills.", nameof(uploadDto.BillFile));
             }
 
             // Find the order
