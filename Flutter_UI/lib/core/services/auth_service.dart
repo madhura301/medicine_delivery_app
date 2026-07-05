@@ -93,6 +93,29 @@ class AuthService {
     return _parse(response, '/Auth/reset-password');
   }
 
+  /// POST /Auth/change-password — directly updates the password for an
+  /// authenticated user. Requires the current password and a bearer [authToken].
+  static Future<AuthResponse> changePassword({
+    required String mobileNumber,
+    required String currentPassword,
+    required String newPassword,
+    required String authToken,
+  }) async {
+    final response = await http.post(
+      Uri.parse('${AppConstants.apiBaseUrl}/Auth/change-password'),
+      headers: {
+        ..._jsonHeaders,
+        'Authorization': 'Bearer $authToken',
+      },
+      body: jsonEncode({
+        'mobileNumber': mobileNumber,
+        'currentPassword': currentPassword,
+        'newPassword': newPassword,
+      }),
+    );
+    return _parse(response, '/Auth/change-password');
+  }
+
   /// POST /Auth/verify-otp-login — exchanges an OTP for an auth token.
   static Future<AuthResponse> verifyOtpLogin({
     required String phoneNumber,
