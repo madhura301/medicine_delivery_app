@@ -49,6 +49,12 @@ class _ChemistDashboardState extends State<ChemistDashboard> {
   bool _isCheckingPayout = true;
   String? _storeId;
 
+  /// Whether the admin has activated this chemist's medical store
+  /// (the `isActive` flag toggled via /MedicalStores/{id}/activate). Until this
+  /// is true the chemist's account is still under verification and they cannot
+  /// yet pay the activation fee.
+  bool _isStoreActivated = false;
+
   /// A payout onboarding status counts as "unlocked" only when it succeeded.
   static bool _isUnlockedStatus(String? status) {
     final s = (status ?? '').toLowerCase();
@@ -84,6 +90,7 @@ class _ChemistDashboardState extends State<ChemistDashboard> {
       if (email != null && email.isNotEmpty) {
         final store =
             await MedicalStoreService.getMedicalStoreByEmail(email: email);
+        final storeActivated = store?['isActive'] == true;
         final storeId = store?['medicalStoreId']?.toString();
         if (storeId != null && storeId.isNotEmpty) {
           _storeId = storeId;
@@ -92,7 +99,14 @@ class _ChemistDashboardState extends State<ChemistDashboard> {
           // Falls back to a plain status read if the refresh endpoint is absent.
           final payout = await ChemistPayoutService.refreshStatus(storeId) ??
               await ChemistPayoutService.getPayoutStatus(storeId);
-          if (mounted) setState(() => _payoutStatus = payout);
+          if (mounted) {
+            setState(() {
+              _payoutStatus = payout;
+              _isStoreActivated = storeActivated;
+            });
+          }
+        } else if (mounted) {
+          setState(() => _isStoreActivated = storeActivated);
         }
       }
     } catch (e) {
@@ -155,6 +169,25 @@ class _ChemistDashboardState extends State<ChemistDashboard> {
       'Payout status refreshed — checked 1, updated $updated, '
       'activated $activated.',
     );
+  }
+
+  /// Re-checks whether the admin has activated this chemist's store yet, used
+  /// from the "verification under process" screen. Re-runs the payout gate
+  /// (which also refreshes [_isStoreActivated]) and reports the outcome.
+  Future<void> _recheckActivationStatus() async {
+    await _checkPayoutGate();
+    if (!mounted) return;
+    if (_isPayoutUnlocked) {
+      await _loadDashboardData();
+      return;
+    }
+    if (_isStoreActivated) {
+      AppSnackBar.success(
+          context, 'Verification complete. Please complete your onboarding.');
+    } else {
+      AppSnackBar.warning(
+          context, 'Your account verification is still under process.');
+    }
   }
 
   Future<void> _navigateToChemistProfile(BuildContext context) async {
@@ -462,12 +495,12 @@ class _ChemistDashboardState extends State<ChemistDashboard> {
     );
   }
 
-  /// Restricted view shown until payout onboarding succeeds. The only action
-  /// available is to open Payout & Account Activation (plus Logout / Refresh).
+  /// Restricted view shown until payout onboarding succeeds. Two sub-states:
+  ///  • Store not yet activated by admin → "verification under process".
+  ///  • Store activated but payout not done → "Complete Your Onboarding".
+  /// The only actions available are Payout & Account Activation (once
+  /// activated), plus Logout / Refresh.
   Widget _buildPayoutLockedScaffold() {
-    final status = _payoutStatus?.onboardingStatus ?? 'Not started';
-    final error = _payoutStatus?.onboardingError ?? '';
-
     Future<void> openPayoutThenRefresh() async {
       await Navigator.pushNamed(context, '/chemist-payout');
       await _refreshPayoutWithFeedback();
@@ -503,16 +536,18 @@ class _ChemistDashboardState extends State<ChemistDashboard> {
                   ],
                 ),
               ),
-              const PopupMenuItem(
-                value: 'payout',
-                child: Row(
-                  children: [
-                    Icon(Icons.account_balance_wallet, color: Colors.black),
-                    SizedBox(width: 8),
-                    Text('Payout & Activation'),
-                  ],
+              // Payment is only possible once the store is activated by admin.
+              if (_isStoreActivated)
+                const PopupMenuItem(
+                  value: 'payout',
+                  child: Row(
+                    children: [
+                      Icon(Icons.account_balance_wallet, color: Colors.black),
+                      SizedBox(width: 8),
+                      Text('Payout & Activation'),
+                    ],
+                  ),
                 ),
-              ),
               const PopupMenuItem(
                 value: 'logout',
                 child: Row(
@@ -531,77 +566,120 @@ class _ChemistDashboardState extends State<ChemistDashboard> {
       body: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.lock_clock, size: 72, color: Colors.orange.shade400),
-              const SizedBox(height: 24),
-              const Text(
-                'Complete Your Onboarding',
-                style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 12),
-              Text(
-                'Your account is not active yet. Please pay the activation '
-                'fee and finish your payout (bank) setup before you can use '
-                'the dashboard.',
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 14, color: Colors.grey[700]),
-              ),
-              const SizedBox(height: 16),
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                decoration: BoxDecoration(
-                  color: Colors.orange.shade50,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.orange.shade200),
-                ),
-                child: Text(
-                  'Payout status: $status',
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.orange.shade900,
-                  ),
-                ),
-              ),
-              if (error.isNotEmpty) ...[
-                const SizedBox(height: 12),
-                Text(
-                  error,
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 13, color: Colors.red.shade600),
-                ),
-              ],
-              const SizedBox(height: 28),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  onPressed: openPayoutThenRefresh,
-                  icon: const Icon(Icons.account_balance_wallet),
-                  label: const Text('Payout & Account Activation'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.black,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12)),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 12),
-              TextButton.icon(
-                onPressed: _refreshPayoutWithFeedback,
-                icon: const Icon(Icons.refresh, color: Colors.black),
-                label: const Text('Refresh status',
-                    style: TextStyle(color: Colors.black)),
-              ),
-            ],
-          ),
+          child: _isStoreActivated
+              ? _completeOnboardingContent(openPayoutThenRefresh)
+              : _verificationPendingContent(),
         ),
       ),
+    );
+  }
+
+  /// Shown when the chemist's store has NOT been activated by admin yet — their
+  /// account is still under verification, so payment is not yet possible.
+  Widget _verificationPendingContent() {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Icon(Icons.verified_user_outlined,
+            size: 72, color: Colors.blue.shade400),
+        const SizedBox(height: 24),
+        const Text(
+          'Verification In Progress',
+          style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+          textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: 12),
+        Text(
+          'Your retailer account verification is currently under process. '
+          'Once the verification is successfully completed, you will be able '
+          'to proceed with the payment and activate your Pharmaish account.',
+          textAlign: TextAlign.center,
+          style: TextStyle(fontSize: 14, color: Colors.grey[700]),
+        ),
+        const SizedBox(height: 28),
+        TextButton.icon(
+          onPressed: _recheckActivationStatus,
+          icon: const Icon(Icons.refresh, color: Colors.black),
+          label: const Text('Refresh status',
+              style: TextStyle(color: Colors.black)),
+        ),
+      ],
+    );
+  }
+
+  /// Shown when the store IS activated but payout onboarding / activation-fee
+  /// payment is not yet complete (e.g. payout status is "Not started").
+  Widget _completeOnboardingContent(Future<void> Function() openPayout) {
+    final status = _payoutStatus?.onboardingStatus ?? 'Not started';
+    final error = _payoutStatus?.onboardingError ?? '';
+
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Icon(Icons.lock_clock, size: 72, color: Colors.orange.shade400),
+        const SizedBox(height: 24),
+        const Text(
+          'Complete Your Onboarding',
+          style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+          textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: 12),
+        Text(
+          'Your account is not active yet. Please pay the activation '
+          'fee and finish your payout (bank) setup before you can use '
+          'the dashboard.',
+          textAlign: TextAlign.center,
+          style: TextStyle(fontSize: 14, color: Colors.grey[700]),
+        ),
+        const SizedBox(height: 16),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: BoxDecoration(
+            color: Colors.orange.shade50,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: Colors.orange.shade200),
+          ),
+          child: Text(
+            'Payout status: $status',
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: Colors.orange.shade900,
+            ),
+          ),
+        ),
+        if (error.isNotEmpty) ...[
+          const SizedBox(height: 12),
+          Text(
+            error,
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 13, color: Colors.red.shade600),
+          ),
+        ],
+        const SizedBox(height: 28),
+        SizedBox(
+          width: double.infinity,
+          child: ElevatedButton.icon(
+            onPressed: openPayout,
+            icon: const Icon(Icons.account_balance_wallet),
+            label: const Text('Payout & Account Activation'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.black,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12)),
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        TextButton.icon(
+          onPressed: _refreshPayoutWithFeedback,
+          icon: const Icon(Icons.refresh, color: Colors.black),
+          label: const Text('Refresh status',
+              style: TextStyle(color: Colors.black)),
+        ),
+      ],
     );
   }
 
@@ -783,15 +861,18 @@ class _ChemistDashboardState extends State<ChemistDashboard> {
                     title: const Text('Profile'),
                     onTap: () => _navigateToChemistProfile(context)),
 
-                ListTile(
-                  leading: const Icon(Icons.account_balance_wallet,
-                      color: Colors.black),
-                  title: const Text('Payout & Activation'),
-                  onTap: () {
-                    Navigator.of(context).pop();
-                    Navigator.pushNamed(context, '/chemist-payout');
-                  },
-                ),
+                // Payout & Activation stays hidden while the account is still
+                // under verification (store not yet activated by admin).
+                if (_isStoreActivated)
+                  ListTile(
+                    leading: const Icon(Icons.account_balance_wallet,
+                        color: Colors.black),
+                    title: const Text('Payout & Activation'),
+                    onTap: () {
+                      Navigator.of(context).pop();
+                      Navigator.pushNamed(context, '/chemist-payout');
+                    },
+                  ),
 
                 // ✅ FIXED: Reduced spacing before Deliveries section
                 const Divider(height: 1), // Changed from default height

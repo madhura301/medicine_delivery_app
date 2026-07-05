@@ -63,6 +63,10 @@ class _PharmacistProfilePageState extends State<PharmacistProfilePage> {
   ChemistActivationModel? _activation;
   bool _isLoadingPayout = false;
 
+  // Whether the admin has activated this chemist's store (`isActive`). The
+  // Bank & Payout section is hidden until this is true.
+  bool _isStoreActivated = false;
+
   final List<String> _states = [
     'Andhra Pradesh',
     'Arunachal Pradesh',
@@ -200,6 +204,7 @@ class _PharmacistProfilePageState extends State<PharmacistProfilePage> {
   void _populateFormFields(Map<String, dynamic> data) {
     setState(() {
       _pharmacistId = data['medicalStoreId'] ?? '';
+      _isStoreActivated = data['isActive'] == true;
       _pharmacyNameController.text = data['medicalName'] ?? '';
       _ownerFirstNameController.text = data['ownerFirstName'] ?? '';
       _ownerLastNameController.text = data['ownerLastName'] ?? '';
@@ -759,7 +764,8 @@ class _PharmacistProfilePageState extends State<PharmacistProfilePage> {
                           if (_isEditMode) const SizedBox(height: 32),
 
                           // ── Bank & Payout (read-only) ──────────────────
-                          if (!_isEditMode) ...[
+                          // Hidden until the store is activated by admin.
+                          if (!_isEditMode && _isStoreActivated) ...[
                             const SizedBox(height: 24),
                             _buildBankPayoutSection(),
                           ],
