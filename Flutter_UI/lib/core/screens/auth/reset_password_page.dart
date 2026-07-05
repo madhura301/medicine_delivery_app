@@ -385,45 +385,33 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
 
     try {
       final mobileNumber = widget.mobileNumber;
-      final token = _tokenController.text.trim();
+      final otpCode = _tokenController.text.trim();
       final newPassword = _passwordController.text.trim();
 
-      // Make API call to reset password endpoint
-      final response = await AuthService.resetPassword(
+      // Verify the SMS OTP and set the new password in one call.
+      final response = await AuthService.verifyOtpResetPassword(
         mobileNumber: mobileNumber,
-        token: token,
+        otpCode: otpCode,
         newPassword: newPassword,
+        confirmPassword: _confirmPasswordController.text.trim(),
       );
 
-      if (response.success) {
-        setState(() {
-          _isLoading = false;
-        });
+      setState(() {
+        _isLoading = false;
+      });
 
+      // Backend returns 200 { message } on success, 400 { message } otherwise.
+      if (response.isHttpSuccess) {
         if (mounted) {
           _showSuccessDialog();
         }
         return;
       }
 
-      // Handle error responses
-      setState(() {
-        _isLoading = false;
-      });
-
-      if (response.isHttpSuccess) {
+      if (response.statusCode == 400) {
         setState(() {
-          _errorMessage = response.firstError ??
-              'Failed to reset password. Please try again.';
-        });
-      } else if (response.statusCode == 400) {
-        setState(() {
-          _errorMessage =
-              response.firstError ?? 'Invalid reset token or password';
-        });
-      } else if (response.statusCode == 404) {
-        setState(() {
-          _errorMessage = 'Mobile number not found';
+          _errorMessage = response.message ??
+              'Invalid or expired token. Please try again.';
         });
       } else {
         setState(() {

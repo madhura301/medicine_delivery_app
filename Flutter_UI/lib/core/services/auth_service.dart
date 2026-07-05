@@ -29,6 +29,10 @@ class AuthResponse {
     if (errors is List && errors.isNotEmpty) return errors.first.toString();
     return null;
   }
+
+  /// Human-readable `data['message']`, used by endpoints that return a plain
+  /// `{ message }` body (forgot-password, verify-otp-reset-password).
+  String? get message => data['message'] as String?;
 }
 
 /// Authentication endpoints. Uses `package:http` directly because these calls
@@ -63,34 +67,42 @@ class AuthService {
     return _parse(response, '/Auth/login');
   }
 
-  /// POST /Auth/forgot-password — sends an OTP/reset token to [mobileNumber].
+  /// POST /Auth/forgot-password — sends an OTP to [mobileNumber] via SMS.
+  ///
+  /// The backend keys this body `phoneNumber` and always responds `200` with a
+  /// generic `{ message }` (it never reveals whether the number is registered),
+  /// so callers should treat any HTTP-success as "OTP sent".
   static Future<AuthResponse> forgotPassword({
     required String mobileNumber,
   }) async {
     final response = await http.post(
       Uri.parse('${AppConstants.apiBaseUrl}/Auth/forgot-password'),
       headers: _jsonHeaders,
-      body: jsonEncode({'mobileNumber': mobileNumber}),
+      body: jsonEncode({'phoneNumber': mobileNumber}),
     );
     return _parse(response, '/Auth/forgot-password');
   }
 
-  /// POST /Auth/reset-password — completes a password reset with the OTP token.
-  static Future<AuthResponse> resetPassword({
+  /// POST /Auth/verify-otp-reset-password — verifies the SMS OTP and sets the
+  /// new password. Returns `200 { message }` on success or `400 { message }`
+  /// on failure (wrong/expired OTP, weak password, mismatch).
+  static Future<AuthResponse> verifyOtpResetPassword({
     required String mobileNumber,
-    required String token,
+    required String otpCode,
     required String newPassword,
+    required String confirmPassword,
   }) async {
     final response = await http.post(
-      Uri.parse('${AppConstants.apiBaseUrl}/Auth/reset-password'),
+      Uri.parse('${AppConstants.apiBaseUrl}/Auth/verify-otp-reset-password'),
       headers: _jsonHeaders,
       body: jsonEncode({
-        'mobileNumber': mobileNumber,
-        'token': token,
+        'phoneNumber': mobileNumber,
+        'otpCode': otpCode,
         'newPassword': newPassword,
+        'confirmPassword': confirmPassword,
       }),
     );
-    return _parse(response, '/Auth/reset-password');
+    return _parse(response, '/Auth/verify-otp-reset-password');
   }
 
   /// POST /Auth/change-password — directly updates the password for an

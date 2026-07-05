@@ -219,30 +219,32 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
     try {
       final mobileNumber = _mobileNumberController.text.trim();
 
-      // Make API call to forgot password endpoint
+      // Make API call to forgot password endpoint.
+      // The backend always returns 200 (it never reveals whether the number is
+      // registered) and sends the OTP via SMS — so any HTTP-success means the
+      // OTP has been dispatched. The token is NOT returned; the user enters the
+      // OTP received via SMS on the next screen.
       final response =
           await AuthService.forgotPassword(mobileNumber: mobileNumber);
 
-      if (response.success) {
-        setState(() {
-          _isLoading = false;
-        });
+      setState(() {
+        _isLoading = false;
+      });
 
-        // Extract the reset token from response
-        final token = response.token ?? '';
-
+      if (response.isHttpSuccess) {
         if (mounted) {
           // Show success dialog
           await _showSuccessDialog();
           if (!mounted) return;
 
-          // Navigate to Reset Password page with mobile number and token
+          // Navigate to Reset Password page; token left empty so the user can
+          // enter the OTP they received via SMS.
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(
               builder: (context) => ResetPasswordPage(
                 mobileNumber: mobileNumber,
-                token: token,
+                token: '',
               ),
             ),
           );
@@ -251,22 +253,10 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
       }
 
       // Handle error responses
-      setState(() {
-        _isLoading = false;
-      });
-
-      if (response.isHttpSuccess) {
+      if (response.statusCode == 400) {
         setState(() {
-          _errorMessage = response.firstError ??
-              'Failed to send reset token. Please try again.';
-        });
-      } else if (response.statusCode == 404) {
-        setState(() {
-          _errorMessage = 'Mobile number not found. Please check and try again.';
-        });
-      } else if (response.statusCode == 400) {
-        setState(() {
-          _errorMessage = response.firstError ?? 'Invalid mobile number';
+          _errorMessage = response.message ??
+              'Please enter a valid mobile number.';
         });
       } else {
         setState(() {
