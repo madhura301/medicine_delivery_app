@@ -1,8 +1,11 @@
+using MedicineDelivery.Domain.Enums;
+
 namespace MedicineDelivery.Application.DTOs
 {
     public class MedicalStoreRegistrationDto
     {
         public string MedicalName { get; set; } = string.Empty;
+        public BusinessType BusinessType { get; set; } = BusinessType.PrivateLimited;
         public string OwnerFirstName { get; set; } = string.Empty;
         public string OwnerLastName { get; set; } = string.Empty;
         public string OwnerMiddleName { get; set; } = string.Empty;
@@ -39,6 +42,7 @@ namespace MedicineDelivery.Application.DTOs
     {
         public Guid MedicalStoreId { get; set; }
         public string MedicalName { get; set; } = string.Empty;
+        public BusinessType BusinessType { get; set; }
         public string OwnerFirstName { get; set; } = string.Empty;
         public string OwnerLastName { get; set; } = string.Empty;
         public string OwnerMiddleName { get; set; } = string.Empty;
@@ -83,6 +87,7 @@ namespace MedicineDelivery.Application.DTOs
     {
         public Guid MedicalStoreId { get; set; }
         public string MedicalName { get; set; } = string.Empty;
+        public BusinessType BusinessType { get; set; }
         public string OwnerFirstName { get; set; } = string.Empty;
         public string OwnerLastName { get; set; } = string.Empty;
         public string OwnerMiddleName { get; set; } = string.Empty;

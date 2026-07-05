@@ -683,6 +683,16 @@ CREATE INDEX IF NOT EXISTS "IX_PaymentSplits_OrderId" ON "PaymentSplits" ("Order
 CREATE INDEX IF NOT EXISTS "IX_PaymentSplits_RazorpayPaymentId" ON "PaymentSplits" ("RazorpayPaymentId");
 
 -- =====================================================
+-- SECTION 6.5: BUSINESS TYPE FOR CHEMIST KYC
+-- (EF migration: 20260705095605_AddBusinessTypeToMedicalStore)
+-- Legal business type collected as part of chemist KYC
+-- (combined Business Details + Bank Account form). Defaults to
+-- Private Limited (4) to match existing rows and new registrations.
+-- =====================================================
+
+ALTER TABLE "MedicalStores" ADD COLUMN IF NOT EXISTS "BusinessType" integer NOT NULL DEFAULT 4;
+
+-- =====================================================
 -- SECTION 7: VERIFICATION
 -- =====================================================
 

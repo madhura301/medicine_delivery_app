@@ -53,6 +53,37 @@ class MedicalStoreService {
     }
   }
 
+  /// PUT /MedicalStores/{id} — update a pharmacy's details.
+  ///
+  /// The backend overwrites every field on the entity from [data], so callers
+  /// must pass the full record (fetch it first, then merge in the edited
+  /// fields) rather than a partial payload. Returns the updated store, or
+  /// throws a [DioException] on failure.
+  static Future<Map<String, dynamic>> updateMedicalStore({
+    required String medicalStoreId,
+    required Map<String, dynamic> data,
+  }) async {
+    final response =
+        await DioClient.instance.put('/MedicalStores/$medicalStoreId', data: data);
+    return Map<String, dynamic>.from(response.data as Map);
+  }
+
+  /// GET /MedicalStores/{id} — fetch a pharmacy's full record by its id.
+  ///
+  /// Returns `null` when the id is empty or any failure occurs.
+  static Future<Map<String, dynamic>?> getMedicalStoreById(
+      String medicalStoreId) async {
+    if (medicalStoreId.isEmpty) return null;
+    try {
+      final response =
+          await DioClient.instance.get('/MedicalStores/$medicalStoreId');
+      return Map<String, dynamic>.from(response.data as Map);
+    } catch (e) {
+      AppLogger.error('MedicalStores/{id} API error: $e');
+      return null;
+    }
+  }
+
   /// GET /MedicalStores/{id} — resolve a pharmacy's display name by its id.
   ///
   /// Returns the `medicalName`, or `null` when the id is empty or any

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:pharmaish/core/services/chemist_payout_service.dart';
 import 'package:pharmaish/core/services/medical_store_service.dart';
+import 'package:pharmaish/shared/models/business_type.dart';
 import 'package:pharmaish/shared/models/chemist_payout_models.dart';
 import 'package:pharmaish/shared/widgets/app_snackbar.dart';
 import 'package:pharmaish/utils/app_logger.dart';
@@ -30,11 +31,15 @@ class _ChemistPayoutOnboardingPageState
   static const Color _green = Color(0xFF16A34A);
 
   final _bankFormKey = GlobalKey<FormState>();
+  final _businessNameController = TextEditingController();
   final _accountController = TextEditingController();
+  final _reenterAccountController = TextEditingController();
   final _ifscController = TextEditingController();
   final _holderController = TextEditingController();
+  BusinessType _selectedBusinessType = BusinessType.privateLimited;
 
   String? _storeId;
+  Map<String, dynamic>? _storeData;
   bool _loading = true;
   String? _error;
 
@@ -56,7 +61,9 @@ class _ChemistPayoutOnboardingPageState
 
   @override
   void dispose() {
+    _businessNameController.dispose();
     _accountController.dispose();
+    _reenterAccountController.dispose();
     _ifscController.dispose();
     _holderController.dispose();
     super.dispose();
@@ -78,6 +85,8 @@ class _ChemistPayoutOnboardingPageState
         return;
       }
       _storeId = storeId;
+      _storeData ??= await MedicalStoreService.getMedicalStoreById(storeId);
+      _prefillBusinessFields();
       await _refresh();
     } catch (e) {
       AppLogger.error('Payout bootstrap failed', e);
@@ -92,7 +101,15 @@ class _ChemistPayoutOnboardingPageState
     final email = await StorageService.getUserEmail();
     if (email == null || email.isEmpty) return null;
     final store = await MedicalStoreService.getMedicalStoreByEmail(email: email);
+    _storeData = store;
     return store?['medicalStoreId']?.toString();
+  }
+
+  void _prefillBusinessFields() {
+    final data = _storeData;
+    if (data == null) return;
+    _businessNameController.text = (data['medicalName'] ?? '').toString();
+    _selectedBusinessType = BusinessType.fromValue(data['businessType'] as int?);
   }
 
   Future<void> _refresh() async {
@@ -171,17 +188,29 @@ class _ChemistPayoutOnboardingPageState
     }
   }
 
-  // ── Bank / payout submission ────────────────────────────────────────────
-  Future<void> _submitBank() async {
+  // ── Business + bank / payout submission ─────────────────────────────────
+  Future<void> _submitBusinessAndBank() async {
     if (!_bankFormKey.currentState!.validate()) return;
     final storeId = _storeId;
     if (storeId == null) return;
 
     setState(() => _submittingBank = true);
     try {
+      final businessName = _businessNameController.text.trim();
       final account = _accountController.text.trim();
       final ifsc = _ifscController.text.trim().toUpperCase();
       final holder = _holderController.text.trim();
+
+      // The update endpoint overwrites every field, so start from the full
+      // fetched record and only override the two fields this form owns.
+      final storePayload = Map<String, dynamic>.from(_storeData ?? {});
+      storePayload['medicalName'] = businessName;
+      storePayload['businessType'] = _selectedBusinessType.value;
+      final updatedStore = await MedicalStoreService.updateMedicalStore(
+        medicalStoreId: storeId,
+        data: storePayload,
+      );
+      _storeData = updatedStore;
 
       final result = _payout?.isActive == true
           ? await ChemistPayoutService.updateBank(
@@ -199,12 +228,12 @@ class _ChemistPayoutOnboardingPageState
 
       if (!mounted) return;
       setState(() => _payout = result);
-      AppSnackBar.success(context, 'Bank details submitted successfully.');
+      AppSnackBar.success(context, 'Business and bank details submitted successfully.');
     } on DioException catch (e) {
-      AppLogger.error('Failed to submit bank details', e);
+      AppLogger.error('Failed to submit business/bank details', e);
       if (mounted) {
         AppSnackBar.error(
-            context, _dioMessage(e, 'Could not submit bank details.'));
+            context, _dioMessage(e, 'Could not submit business/bank details.'));
       }
     } finally {
       if (mounted) setState(() => _submittingBank = false);
@@ -264,7 +293,7 @@ class _ChemistPayoutOnboardingPageState
         children: [
           _buildActivationCard(),
           const SizedBox(height: 16),
-          _buildBankCard(),
+          _buildBusinessAndBankCard(),
           const SizedBox(height: 24),
         ],
       ),
@@ -331,15 +360,15 @@ class _ChemistPayoutOnboardingPageState
     );
   }
 
-  // ── Bank / payout card ──────────────────────────────────────────────────
-  Widget _buildBankCard() {
+  // ── Business + bank / payout card ───────────────────────────────────────
+  Widget _buildBusinessAndBankCard() {
     return _card(
       child: Form(
         key: _bankFormKey,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _sectionHeader(Icons.account_balance, 'Step 2 · Payout Bank Account'),
+            _sectionHeader(Icons.assignment_ind, 'Step 2 · Business & Bank Details'),
             const SizedBox(height: 4),
             Text(
               'We create a Razorpay linked account so your medicine sales are '
@@ -350,10 +379,40 @@ class _ChemistPayoutOnboardingPageState
             if (_payout != null) _payoutStatusBadge(_payout!),
             const SizedBox(height: 12),
             TextFormField(
+              controller: _businessNameController,
+              decoration: _inputDecoration('Business Name'),
+              validator: (v) => (v ?? '').trim().isEmpty ? 'Required' : null,
+            ),
+            const SizedBox(height: 12),
+            DropdownButtonFormField<BusinessType>(
+              initialValue: _selectedBusinessType,
+              decoration: _inputDecoration('Business Type'),
+              items: BusinessType.values
+                  .map((t) => DropdownMenuItem(value: t, child: Text(t.label)))
+                  .toList(),
+              onChanged: (v) {
+                if (v != null) setState(() => _selectedBusinessType = v);
+              },
+              validator: (v) => v == null ? 'Required' : null,
+            ),
+            const SizedBox(height: 12),
+            TextFormField(
+              controller: _ifscController,
+              textCapitalization: TextCapitalization.characters,
+              decoration:
+                  _inputDecoration('Branch IFSC Code', hint: 'e.g. HDFC0001234'),
+              validator: (v) {
+                final t = (v ?? '').trim().toUpperCase();
+                final ok = RegExp(r'^[A-Z]{4}0[A-Z0-9]{6}$').hasMatch(t);
+                return ok ? null : 'Enter a valid IFSC code';
+              },
+            ),
+            const SizedBox(height: 12),
+            TextFormField(
               controller: _accountController,
               keyboardType: TextInputType.number,
               decoration: _inputDecoration(
-                'Bank Account Number',
+                'Account Number',
                 hint: _payout?.bankAccountNumberMasked,
               ),
               validator: (v) {
@@ -364,20 +423,21 @@ class _ChemistPayoutOnboardingPageState
             ),
             const SizedBox(height: 12),
             TextFormField(
-              controller: _ifscController,
-              textCapitalization: TextCapitalization.characters,
-              decoration: _inputDecoration('IFSC Code', hint: 'e.g. HDFC0001234'),
+              controller: _reenterAccountController,
+              keyboardType: TextInputType.number,
+              decoration: _inputDecoration('Re-Enter Account Number'),
               validator: (v) {
-                final t = (v ?? '').trim().toUpperCase();
-                final ok = RegExp(r'^[A-Z]{4}0[A-Z0-9]{6}$').hasMatch(t);
-                return ok ? null : 'Enter a valid IFSC code';
+                if ((v ?? '').trim() != _accountController.text.trim()) {
+                  return 'Account numbers do not match';
+                }
+                return null;
               },
             ),
             const SizedBox(height: 12),
             TextFormField(
               controller: _holderController,
               textCapitalization: TextCapitalization.words,
-              decoration: _inputDecoration('Account Holder Name'),
+              decoration: _inputDecoration('Beneficiary Name'),
               validator: (v) =>
                   (v ?? '').trim().isEmpty ? 'Required' : null,
             ),
@@ -385,7 +445,7 @@ class _ChemistPayoutOnboardingPageState
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: _submittingBank ? null : _submitBank,
+                onPressed: _submittingBank ? null : _submitBusinessAndBank,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: _green,
                   foregroundColor: Colors.white,
@@ -399,7 +459,7 @@ class _ChemistPayoutOnboardingPageState
                             color: Colors.white, strokeWidth: 2),
                       )
                     : Text(_payout?.hasLinkedAccount == true
-                        ? 'Update Bank Details'
+                        ? 'Update Details'
                         : 'Submit & Create Payout Account'),
               ),
             ),
