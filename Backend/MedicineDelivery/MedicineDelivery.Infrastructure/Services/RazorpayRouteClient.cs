@@ -3,6 +3,7 @@ using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
 using MedicineDelivery.Application.Interfaces;
+using MedicineDelivery.Domain.Enums;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
@@ -19,17 +20,11 @@ namespace MedicineDelivery.Infrastructure.Services
 
         private readonly HttpClient _httpClient;
         private readonly ILogger<RazorpayRouteClient> _logger;
-        private readonly string _businessType;
 
         public RazorpayRouteClient(HttpClient httpClient, IConfiguration configuration, ILogger<RazorpayRouteClient> logger)
         {
             _httpClient = httpClient;
             _logger = logger;
-
-            // Razorpay linked-account business_type. For sole-proprietor pharmacies use
-            // "individual" so the owner's individual PAN is accepted (proprietorship validates
-            // legal_info.pan as a company PAN). Configurable per environment.
-            _businessType = configuration["RazorpaySettings:BusinessType"] ?? "individual";
 
             var keyId = configuration["RazorpaySettings:KeyId"] ?? string.Empty;
             var keySecret = configuration["RazorpaySettings:KeySecret"] ?? string.Empty;
@@ -63,7 +58,7 @@ namespace MedicineDelivery.Infrastructure.Services
                 ["phone"] = request.Phone,
                 ["type"] = "route",
                 ["legal_business_name"] = request.BusinessName,
-                ["business_type"] = _businessType,
+                ["business_type"] = MapBusinessType(request.BusinessType),
                 ["contact_name"] = request.ContactName,
                 ["profile"] = new Dictionary<string, object?>
                 {
@@ -296,15 +291,30 @@ namespace MedicineDelivery.Infrastructure.Services
         /// "The company pan field is invalid for business type: ...". The owner's individual
         /// PAN is submitted via the stakeholder's kyc.pan instead.
         /// </summary>
-        private static readonly HashSet<string> UnregisteredBusinessTypes =
-            new(StringComparer.OrdinalIgnoreCase) { "individual", "proprietorship", "not_yet_registered" };
+        private static readonly HashSet<BusinessType> UnregisteredBusinessTypes =
+            new() { BusinessType.Individual, BusinessType.Proprietorship };
+
+        /// <summary>Maps our BusinessType enum to Razorpay's Route `business_type` values.</summary>
+        private static string MapBusinessType(BusinessType type) => type switch
+        {
+            BusinessType.Proprietorship => "proprietorship",
+            BusinessType.Partnership => "partnership",
+            BusinessType.PrivateLimited => "private_limited",
+            BusinessType.PublicLimited => "public_limited",
+            BusinessType.LLP => "llp",
+            BusinessType.NGO => "ngo",
+            BusinessType.Trust => "trust",
+            BusinessType.Society => "society",
+            BusinessType.Individual => "individual",
+            _ => "individual"
+        };
 
         private Dictionary<string, object?>? BuildLegalInfo(RazorpayOnboardingRequest request)
         {
             var legal = new Dictionary<string, object?>();
 
             // legal_info.pan is the COMPANY pan — only valid for registered entities.
-            if (!UnregisteredBusinessTypes.Contains(_businessType) &&
+            if (!UnregisteredBusinessTypes.Contains(request.BusinessType) &&
                 !string.IsNullOrWhiteSpace(request.Pan))
             {
                 legal["pan"] = request.Pan;

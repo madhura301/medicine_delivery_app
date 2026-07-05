@@ -97,7 +97,6 @@ namespace MedicineDelivery.Infrastructure.Services
                     {
                         MedicalStoreId = Guid.NewGuid(),
                         MedicalName = registrationDto.MedicalName,
-                        BusinessType = registrationDto.BusinessType,
                         OwnerFirstName = registrationDto.OwnerFirstName,
                         OwnerLastName = registrationDto.OwnerLastName,
                         OwnerMiddleName = registrationDto.OwnerMiddleName,
@@ -238,7 +237,6 @@ namespace MedicineDelivery.Infrastructure.Services
             }
 
             medicalStore.MedicalName = updateDto.MedicalName;
-            medicalStore.BusinessType = updateDto.BusinessType;
             medicalStore.OwnerFirstName = updateDto.OwnerFirstName;
             medicalStore.OwnerLastName = updateDto.OwnerLastName;
             medicalStore.OwnerMiddleName = updateDto.OwnerMiddleName;

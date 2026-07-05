@@ -35,6 +35,8 @@ namespace MedicineDelivery.Infrastructure.Services
             ct.ThrowIfCancellationRequested();
 
             var validationErrors = ValidateBank(request.BankAccountNumber, request.BankIfscCode, request.BankAccountHolderName);
+            if (string.IsNullOrWhiteSpace(request.BusinessName))
+                validationErrors.Add("Business name is required.");
             if (validationErrors.Count > 0)
                 return ChemistPayoutResult.Fail(validationErrors.ToArray());
 
@@ -54,6 +56,8 @@ namespace MedicineDelivery.Infrastructure.Services
                 CreatedOn = DateTime.UtcNow
             };
 
+            account.BusinessName = request.BusinessName.Trim();
+            account.RazorpayBusinessType = request.RazorpayBusinessType;
             account.BankAccountNumber = request.BankAccountNumber.Trim();
             account.BankIfscCode = request.BankIfscCode.Trim().ToUpperInvariant();
             account.BankAccountHolderName = request.BankAccountHolderName.Trim();
@@ -319,7 +323,8 @@ namespace MedicineDelivery.Infrastructure.Services
 
         private static RazorpayOnboardingRequest BuildRequest(MedicalStore store, ChemistPayoutAccount account) => new()
         {
-            BusinessName = Clean(store.MedicalName),
+            BusinessName = Clean(account.BusinessName),
+            BusinessType = account.RazorpayBusinessType,
             ContactName = $"{Clean(store.OwnerFirstName)} {Clean(store.OwnerLastName)}".Trim(),
             Email = Clean(store.EmailId),
             Phone = Clean(store.MobileNumber),
@@ -368,6 +373,8 @@ namespace MedicineDelivery.Infrastructure.Services
         {
             MedicalStoreId = a.MedicalStoreId,
             RazorpayLinkedAccountId = a.RazorpayLinkedAccountId,
+            BusinessName = a.BusinessName,
+            RazorpayBusinessType = a.RazorpayBusinessType,
             OnboardingStatus = a.OnboardingStatus,
             OnboardingError = a.OnboardingError,
             BankAccountNumberMasked = MaskAccount(a.BankAccountNumber),

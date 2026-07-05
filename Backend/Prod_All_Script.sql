@@ -683,14 +683,23 @@ CREATE INDEX IF NOT EXISTS "IX_PaymentSplits_OrderId" ON "PaymentSplits" ("Order
 CREATE INDEX IF NOT EXISTS "IX_PaymentSplits_RazorpayPaymentId" ON "PaymentSplits" ("RazorpayPaymentId");
 
 -- =====================================================
--- SECTION 6.5: BUSINESS TYPE FOR CHEMIST KYC
--- (EF migration: 20260705095605_AddBusinessTypeToMedicalStore)
--- Legal business type collected as part of chemist KYC
--- (combined Business Details + Bank Account form). Defaults to
--- Private Limited (4) to match existing rows and new registrations.
+-- SECTION 6.5: BUSINESS NAME + RAZORPAY BUSINESS TYPE ON CHEMIST PAYOUT ACCOUNTS
+-- (EF migrations: 20260705095605_AddBusinessTypeToMedicalStore [reverted, see
+--  RemoveBusinessTypeFromMedicalStore below] and
+--  AddBusinessNameAndRazorpayBusinessTypeToChemistPayoutAccounts)
+-- Business name + legal business type as submitted for Razorpay Route KYC.
+-- Named "RazorpayBusinessType" (not "BusinessType") to avoid colliding with
+-- the unrelated Retailer/Wholesaler/Both business type collected at chemist
+-- registration. Defaults to Private Limited (4).
 -- =====================================================
 
-ALTER TABLE "MedicalStores" ADD COLUMN IF NOT EXISTS "BusinessType" integer NOT NULL DEFAULT 4;
+-- Revert the earlier (incorrect) MedicalStores.BusinessType column — it collided
+-- with the pre-existing Retailer/Wholesaler/Both businessType field sent by the
+-- chemist registration screen.
+ALTER TABLE "MedicalStores" DROP COLUMN IF EXISTS "BusinessType";
+
+ALTER TABLE "ChemistPayoutAccounts" ADD COLUMN IF NOT EXISTS "BusinessName" character varying(100) NULL;
+ALTER TABLE "ChemistPayoutAccounts" ADD COLUMN IF NOT EXISTS "RazorpayBusinessType" integer NOT NULL DEFAULT 4;
 
 -- =====================================================
 -- SECTION 7: VERIFICATION

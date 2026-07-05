@@ -39,7 +39,6 @@ class _ChemistPayoutOnboardingPageState
   BusinessType _selectedBusinessType = BusinessType.privateLimited;
 
   String? _storeId;
-  Map<String, dynamic>? _storeData;
   bool _loading = true;
   String? _error;
 
@@ -85,8 +84,6 @@ class _ChemistPayoutOnboardingPageState
         return;
       }
       _storeId = storeId;
-      _storeData ??= await MedicalStoreService.getMedicalStoreById(storeId);
-      _prefillBusinessFields();
       await _refresh();
     } catch (e) {
       AppLogger.error('Payout bootstrap failed', e);
@@ -101,15 +98,7 @@ class _ChemistPayoutOnboardingPageState
     final email = await StorageService.getUserEmail();
     if (email == null || email.isEmpty) return null;
     final store = await MedicalStoreService.getMedicalStoreByEmail(email: email);
-    _storeData = store;
     return store?['medicalStoreId']?.toString();
-  }
-
-  void _prefillBusinessFields() {
-    final data = _storeData;
-    if (data == null) return;
-    _businessNameController.text = (data['medicalName'] ?? '').toString();
-    _selectedBusinessType = BusinessType.fromValue(data['businessType'] as int?);
   }
 
   Future<void> _refresh() async {
@@ -124,6 +113,9 @@ class _ChemistPayoutOnboardingPageState
         _activation = activation;
         _payout = payout;
         if (payout != null) {
+          _businessNameController.text =
+              payout.businessName ?? _businessNameController.text;
+          _selectedBusinessType = payout.razorpayBusinessType ?? _selectedBusinessType;
           _ifscController.text = payout.bankIfscCode ?? _ifscController.text;
           _holderController.text =
               payout.bankAccountHolderName ?? _holderController.text;
@@ -196,22 +188,13 @@ class _ChemistPayoutOnboardingPageState
 
     setState(() => _submittingBank = true);
     try {
-      final businessName = _businessNameController.text.trim();
       final account = _accountController.text.trim();
       final ifsc = _ifscController.text.trim().toUpperCase();
       final holder = _holderController.text.trim();
 
-      // The update endpoint overwrites every field, so start from the full
-      // fetched record and only override the two fields this form owns.
-      final storePayload = Map<String, dynamic>.from(_storeData ?? {});
-      storePayload['medicalName'] = businessName;
-      storePayload['businessType'] = _selectedBusinessType.value;
-      final updatedStore = await MedicalStoreService.updateMedicalStore(
-        medicalStoreId: storeId,
-        data: storePayload,
-      );
-      _storeData = updatedStore;
-
+      // Business name/type are KYC fields fixed at onboarding time — Razorpay
+      // doesn't support changing business_type after the linked account is
+      // created, so they're only sent on the initial onboard call.
       final result = _payout?.isActive == true
           ? await ChemistPayoutService.updateBank(
               storeId: storeId,
@@ -221,6 +204,8 @@ class _ChemistPayoutOnboardingPageState
             )
           : await ChemistPayoutService.onboard(
               storeId: storeId,
+              businessName: _businessNameController.text.trim(),
+              razorpayBusinessType: _selectedBusinessType.value,
               bankAccountNumber: account,
               bankIfscCode: ifsc,
               bankAccountHolderName: holder,
@@ -362,6 +347,10 @@ class _ChemistPayoutOnboardingPageState
 
   // ── Business + bank / payout card ───────────────────────────────────────
   Widget _buildBusinessAndBankCard() {
+    // Razorpay doesn't support changing business_type after the linked account
+    // is created, so these two fields become read-only once active.
+    final businessLocked = _payout?.isActive == true;
+
     return _card(
       child: Form(
         key: _bankFormKey,
@@ -380,6 +369,7 @@ class _ChemistPayoutOnboardingPageState
             const SizedBox(height: 12),
             TextFormField(
               controller: _businessNameController,
+              readOnly: businessLocked,
               decoration: _inputDecoration('Business Name'),
               validator: (v) => (v ?? '').trim().isEmpty ? 'Required' : null,
             ),
@@ -390,9 +380,11 @@ class _ChemistPayoutOnboardingPageState
               items: BusinessType.values
                   .map((t) => DropdownMenuItem(value: t, child: Text(t.label)))
                   .toList(),
-              onChanged: (v) {
-                if (v != null) setState(() => _selectedBusinessType = v);
-              },
+              onChanged: businessLocked
+                  ? null
+                  : (v) {
+                      if (v != null) setState(() => _selectedBusinessType = v);
+                    },
               validator: (v) => v == null ? 'Required' : null,
             ),
             const SizedBox(height: 12),

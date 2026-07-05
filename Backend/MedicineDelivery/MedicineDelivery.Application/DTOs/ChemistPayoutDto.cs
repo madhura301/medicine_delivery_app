@@ -4,11 +4,17 @@ namespace MedicineDelivery.Application.DTOs
 {
     /// <summary>
     /// Request to onboard a chemist (medical store) as a Razorpay Route linked account.
-    /// Most KYC details (name, email, PAN, GST, address) are pulled from the stored
-    /// MedicalStore; the client supplies the bank/settlement details here.
+    /// Contact/address/PAN/GST KYC details are pulled from the stored MedicalStore; the
+    /// client supplies the business name/type and bank/settlement details here.
     /// </summary>
     public class OnboardChemistPayoutDto
     {
+        /// <summary>Legal business name, sent to Razorpay as `legal_business_name`.</summary>
+        public string BusinessName { get; set; } = string.Empty;
+
+        /// <summary>Legal business type, sent to Razorpay as `business_type`.</summary>
+        public BusinessType RazorpayBusinessType { get; set; } = BusinessType.PrivateLimited;
+
         public string BankAccountNumber { get; set; } = string.Empty;
         public string BankIfscCode { get; set; } = string.Empty;
         public string BankAccountHolderName { get; set; } = string.Empty;
@@ -27,6 +33,9 @@ namespace MedicineDelivery.Application.DTOs
     {
         public Guid MedicalStoreId { get; set; }
         public string? RazorpayLinkedAccountId { get; set; }
+        public string? BusinessName { get; set; }
+        public BusinessType RazorpayBusinessType { get; set; }
+        public string RazorpayBusinessTypeName => RazorpayBusinessType.ToString();
         public ChemistPayoutStatus OnboardingStatus { get; set; }
         public string OnboardingStatusName => OnboardingStatus.ToString();
         public string? OnboardingError { get; set; }

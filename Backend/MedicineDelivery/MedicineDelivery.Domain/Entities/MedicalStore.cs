@@ -1,12 +1,9 @@
-using MedicineDelivery.Domain.Enums;
-
 namespace MedicineDelivery.Domain.Entities
 {
     public class MedicalStore
     {
         public Guid MedicalStoreId { get; set; } = Guid.NewGuid();
         public string MedicalName { get; set; } = string.Empty;
-        public BusinessType BusinessType { get; set; } = BusinessType.PrivateLimited;
         public string OwnerFirstName { get; set; } = string.Empty;
         public string OwnerLastName { get; set; } = string.Empty;
         public string OwnerMiddleName { get; set; } = string.Empty;

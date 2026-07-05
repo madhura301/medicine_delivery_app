@@ -61,6 +61,8 @@ class ChemistPayoutService {
   /// POST /chemist-payout/{storeId}/onboard — create/resume the linked account.
   static Future<ChemistPayoutStatusModel> onboard({
     required String storeId,
+    required String businessName,
+    required int razorpayBusinessType,
     required String bankAccountNumber,
     required String bankIfscCode,
     required String bankAccountHolderName,
@@ -68,6 +70,8 @@ class ChemistPayoutService {
     final res = await _dio.post(
       '/chemist-payout/$storeId/onboard',
       data: {
+        'businessName': businessName,
+        'razorpayBusinessType': razorpayBusinessType,
         'bankAccountNumber': bankAccountNumber,
         'bankIfscCode': bankIfscCode,
         'bankAccountHolderName': bankAccountHolderName,

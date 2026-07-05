@@ -1,3 +1,5 @@
+using MedicineDelivery.Domain.Enums;
+
 namespace MedicineDelivery.Application.Interfaces
 {
     /// <summary>
@@ -65,6 +67,7 @@ namespace MedicineDelivery.Application.Interfaces
     public class RazorpayOnboardingRequest
     {
         public string BusinessName { get; set; } = string.Empty;
+        public BusinessType BusinessType { get; set; } = BusinessType.PrivateLimited;
         public string ContactName { get; set; } = string.Empty;
         public string Email { get; set; } = string.Empty;
         public string Phone { get; set; } = string.Empty;

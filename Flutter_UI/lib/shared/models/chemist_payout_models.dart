@@ -1,10 +1,14 @@
 /// Models for the chemist payout-onboarding + activation-fee APIs
 /// (`/api/chemist-payout/...`). Field names match the backend's camelCase JSON.
 
+import 'package:pharmaish/shared/models/business_type.dart';
+
 /// Razorpay Route linked-account / payout onboarding status for a chemist.
 class ChemistPayoutStatusModel {
   final String medicalStoreId;
   final String? razorpayLinkedAccountId;
+  final String? businessName;
+  final BusinessType? razorpayBusinessType;
   final String onboardingStatus; // e.g. NotStarted / Pending / Active ...
   final String? onboardingError;
   final String? bankAccountNumberMasked;
@@ -16,6 +20,8 @@ class ChemistPayoutStatusModel {
     required this.medicalStoreId,
     required this.onboardingStatus,
     this.razorpayLinkedAccountId,
+    this.businessName,
+    this.razorpayBusinessType,
     this.onboardingError,
     this.bankAccountNumberMasked,
     this.bankIfscCode,
@@ -31,6 +37,10 @@ class ChemistPayoutStatusModel {
     return ChemistPayoutStatusModel(
       medicalStoreId: json['medicalStoreId']?.toString() ?? '',
       razorpayLinkedAccountId: json['razorpayLinkedAccountId']?.toString(),
+      businessName: json['businessName']?.toString(),
+      razorpayBusinessType: json['razorpayBusinessType'] == null
+          ? null
+          : BusinessType.fromValue(json['razorpayBusinessType'] as int?),
       onboardingStatus:
           json['onboardingStatusName']?.toString() ?? json['onboardingStatus']?.toString() ?? 'NotStarted',
       onboardingError: json['onboardingError']?.toString(),

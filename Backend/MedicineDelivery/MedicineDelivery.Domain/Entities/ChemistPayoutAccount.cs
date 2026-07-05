@@ -26,7 +26,20 @@ namespace MedicineDelivery.Domain.Entities
         /// <summary>Razorpay product configuration id (acc_prod_XXXX) for the "route" product.</summary>
         public string? RazorpayProductConfigurationId { get; set; }
 
+        // ----- Business KYC details submitted to Razorpay -----
+
+        /// <summary>Legal business name sent to Razorpay as `legal_business_name`.</summary>
+        public string? BusinessName { get; set; }
+
+        /// <summary>
+        /// Legal business type sent to Razorpay as `business_type`. Named "Razorpay"
+        /// (not "BusinessType") to avoid colliding with the unrelated
+        /// Retailer/Wholesaler/Both business type collected at chemist registration.
+        /// </summary>
+        public BusinessType RazorpayBusinessType { get; set; } = BusinessType.PrivateLimited;
+
         // ----- Bank / settlement details -----
+        // Benificier name what we see in Rout Account
 
         public string? BankAccountNumber { get; set; }
         public string? BankIfscCode { get; set; }
