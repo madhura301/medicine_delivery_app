@@ -54,6 +54,13 @@ namespace MedicineDelivery.Infrastructure.Services
                 ["OTP"] = otpCode ?? string.Empty
             };
 
+            // Log the request shape (not the OTP value itself) so a future "OTP came through blank"
+            // report can be checked against what we actually sent without re-deriving it from
+            // the DB/App Insights traces by hand.
+            _logger.LogInformation(
+                "MSG91 request OrderOtp template={TemplateId} mobile={Mobile} orderId={OrderId} otpLength={OtpLength}",
+                _orderOtpTemplateId, NormalizeMobile(phoneNumber), orderNumber, (otpCode ?? string.Empty).Length);
+
             return SendFlowAsync(_orderOtpTemplateId, recipient, phoneNumber, "OrderOtp");
         }
 
