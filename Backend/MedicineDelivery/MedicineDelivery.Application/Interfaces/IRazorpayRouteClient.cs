@@ -81,7 +81,10 @@ namespace MedicineDelivery.Application.Interfaces
         public string Country { get; set; } = "IN";
 
         // KYC
-        public string? Pan { get; set; }
+        /// <summary>Company-level PAN, sent as `legal_info.pan` (skipped for Individual/Proprietorship).</summary>
+        public string? CompanyPan { get; set; }
+        /// <summary>Individual owner/stakeholder's personal PAN, sent as the stakeholder's `kyc.pan`. Always required.</summary>
+        public string OwnerPan { get; set; } = string.Empty;
         public string? Gst { get; set; }
 
         public RazorpayBankDetails Bank { get; set; } = new();

@@ -38,6 +38,13 @@ namespace MedicineDelivery.Domain.Entities
         /// </summary>
         public BusinessType RazorpayBusinessType { get; set; } = BusinessType.PrivateLimited;
 
+        /// <summary>
+        /// Individual owner/stakeholder's personal PAN, sent to Razorpay as the
+        /// stakeholder's `kyc.pan` (always required — distinct from MedicalStore.PAN,
+        /// which is the company-level PAN used only for legal_info.pan).
+        /// </summary>
+        public string? OwnerPan { get; set; }
+
         // ----- Bank / settlement details -----
         // Benificier name what we see in Rout Account
 

@@ -341,5 +341,46 @@ namespace MedicineDelivery.API.Controllers
                 return StatusCode(500, new { error = "An error occurred while deleting the chemist." });
             }
         }
+
+        /// <summary>
+        /// Permanently deletes a medical store — its payout/activation records cascade,
+        /// and the associated login account is removed. Refuses if the chemist has any
+        /// order history. Admin-only (AllChemistDelete); intended for cleaning up
+        /// test/junk chemist registrations, not for real chemists with order history.
+        /// </summary>
+        /// <param name="id">Medical store ID</param>
+        [HttpDelete("{id:guid}/hard")]
+        [Authorize(Policy = "RequireChemistDeletePermission")]
+        public async Task<IActionResult> HardDeleteMedicalStore(Guid id)
+        {
+            _logger.LogInformation("HardDeleteMedicalStore requested for {Id}", id);
+            try
+            {
+                if (!await _permissionCheckerService.HasPermissionAsync(User, "AllChemistDelete"))
+                {
+                    return Forbid();
+                }
+
+                var result = await _medicalStoreService.HardDeleteMedicalStoreAsync(id);
+
+                if (result.NotFound)
+                {
+                    return NotFound(new { error = "Chemist not found." });
+                }
+
+                if (!result.Success)
+                {
+                    return Conflict(new { error = result.Error });
+                }
+
+                _logger.LogInformation("Medical store {Id} hard-deleted", id);
+                return Ok(new { id, message = "Chemist permanently deleted." });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error in HardDeleteMedicalStore for {Id}", id);
+                return StatusCode(500, new { error = "An error occurred while hard-deleting the chemist." });
+            }
+        }
     }
 }

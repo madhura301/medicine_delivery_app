@@ -766,6 +766,7 @@ namespace MedicineDelivery.Infrastructure.Data
                 entity.Property(c => c.RazorpayStakeholderId).HasMaxLength(50);
                 entity.Property(c => c.RazorpayProductConfigurationId).HasMaxLength(50);
                 entity.Property(c => c.BusinessName).HasMaxLength(100);
+                entity.Property(c => c.OwnerPan).HasMaxLength(10);
                 entity.Property(c => c.BankAccountNumber).HasMaxLength(50);
                 entity.Property(c => c.BankIfscCode).HasMaxLength(20);
                 entity.Property(c => c.BankAccountHolderName).HasMaxLength(150);

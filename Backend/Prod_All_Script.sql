@@ -702,6 +702,17 @@ ALTER TABLE "ChemistPayoutAccounts" ADD COLUMN IF NOT EXISTS "BusinessName" char
 ALTER TABLE "ChemistPayoutAccounts" ADD COLUMN IF NOT EXISTS "RazorpayBusinessType" integer NOT NULL DEFAULT 4;
 
 -- =====================================================
+-- SECTION 6.6: OWNER PAN ON CHEMIST PAYOUT ACCOUNTS
+-- (EF migration: AddOwnerPanToChemistPayoutAccounts)
+-- Individual owner/stakeholder's personal PAN, sent to Razorpay as the
+-- stakeholder's kyc.pan. Distinct from MedicalStores.PAN (the company-level
+-- PAN used only for legal_info.pan) — using one PAN for both caused
+-- Razorpay's "The pan field is invalid" stakeholder KYC error.
+-- =====================================================
+
+ALTER TABLE "ChemistPayoutAccounts" ADD COLUMN IF NOT EXISTS "OwnerPan" character varying(10) NULL;
+
+-- =====================================================
 -- SECTION 7: VERIFICATION
 -- =====================================================
 

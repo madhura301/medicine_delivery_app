@@ -32,6 +32,7 @@ class _ChemistPayoutOnboardingPageState
 
   final _bankFormKey = GlobalKey<FormState>();
   final _businessNameController = TextEditingController();
+  final _ownerPanController = TextEditingController();
   final _accountController = TextEditingController();
   final _reenterAccountController = TextEditingController();
   final _ifscController = TextEditingController();
@@ -61,6 +62,7 @@ class _ChemistPayoutOnboardingPageState
   @override
   void dispose() {
     _businessNameController.dispose();
+    _ownerPanController.dispose();
     _accountController.dispose();
     _reenterAccountController.dispose();
     _ifscController.dispose();
@@ -116,6 +118,7 @@ class _ChemistPayoutOnboardingPageState
           _businessNameController.text =
               payout.businessName ?? _businessNameController.text;
           _selectedBusinessType = payout.razorpayBusinessType ?? _selectedBusinessType;
+          _ownerPanController.text = payout.ownerPanMasked ?? _ownerPanController.text;
           _ifscController.text = payout.bankIfscCode ?? _ifscController.text;
           _holderController.text =
               payout.bankAccountHolderName ?? _holderController.text;
@@ -206,6 +209,7 @@ class _ChemistPayoutOnboardingPageState
               storeId: storeId,
               businessName: _businessNameController.text.trim(),
               razorpayBusinessType: _selectedBusinessType.value,
+              ownerPan: _ownerPanController.text.trim().toUpperCase(),
               bankAccountNumber: account,
               bankIfscCode: ifsc,
               bankAccountHolderName: holder,
@@ -386,6 +390,28 @@ class _ChemistPayoutOnboardingPageState
                       if (v != null) setState(() => _selectedBusinessType = v);
                     },
               validator: (v) => v == null ? 'Required' : null,
+            ),
+            const SizedBox(height: 12),
+            TextFormField(
+              controller: _ownerPanController,
+              readOnly: businessLocked,
+              textCapitalization: TextCapitalization.characters,
+              decoration: _inputDecoration('Owner PAN',
+                  hint: 'Individual PAN of the owner, e.g. AAAPA1234A'),
+              validator: (v) {
+                // Once locked, the field shows the masked value from the server
+                // (e.g. XXXXXX234F) rather than a fresh entry — nothing new is
+                // being submitted here, so skip format validation.
+                if (businessLocked) return null;
+                final t = (v ?? '').trim().toUpperCase();
+                if (!RegExp(r'^[A-Z]{5}[0-9]{4}[A-Z]$').hasMatch(t)) {
+                  return 'Enter a valid PAN';
+                }
+                if (t[3] != 'P') {
+                  return "Must be the owner's individual PAN (4th letter 'P')";
+                }
+                return null;
+              },
             ),
             const SizedBox(height: 12),
             TextFormField(

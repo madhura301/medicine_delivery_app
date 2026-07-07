@@ -63,6 +63,7 @@ class ChemistPayoutService {
     required String storeId,
     required String businessName,
     required int razorpayBusinessType,
+    required String ownerPan,
     required String bankAccountNumber,
     required String bankIfscCode,
     required String bankAccountHolderName,
@@ -72,6 +73,7 @@ class ChemistPayoutService {
       data: {
         'businessName': businessName,
         'razorpayBusinessType': razorpayBusinessType,
+        'ownerPan': ownerPan,
         'bankAccountNumber': bankAccountNumber,
         'bankIfscCode': bankIfscCode,
         'bankAccountHolderName': bankAccountHolderName,

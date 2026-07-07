@@ -287,6 +287,50 @@ namespace MedicineDelivery.Infrastructure.Services
             return true;
         }
 
+        public async Task<MedicalStoreHardDeleteResult> HardDeleteMedicalStoreAsync(Guid id)
+        {
+            var medicalStore = await _unitOfWork.MedicalStores.FirstOrDefaultAsync(ms => ms.MedicalStoreId == id);
+            if (medicalStore == null)
+            {
+                _logger.LogWarning("Medical store hard-delete failed: store with ID {MedicalStoreId} not found", id);
+                return MedicalStoreHardDeleteResult.NotFoundResult();
+            }
+
+            // Refuse if this chemist has any real order activity — hard delete is only
+            // safe for test/junk registrations. ChemistPayoutAccounts/ChemistActivationPayments
+            // cascade-delete automatically at the DB level; Orders/Deliveries referencing this
+            // store get their MedicalStoreId set to null (also DB-level), so those don't block.
+            var hasOrderHistory = await _unitOfWork.OrderAssignmentHistories.AnyAsync(h => h.MedicalStoreId == id);
+            if (hasOrderHistory)
+            {
+                _logger.LogWarning("Medical store hard-delete blocked: store {MedicalStoreId} has order history", id);
+                return MedicalStoreHardDeleteResult.BlockedByHistory();
+            }
+
+            var userId = medicalStore.UserId;
+
+            _unitOfWork.MedicalStores.Remove(medicalStore);
+            await _unitOfWork.SaveChangesAsync();
+
+            if (!string.IsNullOrWhiteSpace(userId))
+            {
+                var identityUser = await _userManager.FindByIdAsync(userId);
+                if (identityUser != null)
+                {
+                    var result = await _userManager.DeleteAsync(identityUser);
+                    if (!result.Succeeded)
+                    {
+                        _logger.LogError(
+                            "Medical store {MedicalStoreId} hard-deleted, but failed to delete Identity user {UserId}: {Errors}",
+                            id, userId, string.Join(", ", result.Errors.Select(e => e.Description)));
+                    }
+                }
+            }
+
+            _logger.LogInformation("Medical store {MedicalStoreId} hard-deleted successfully (UserId={UserId})", id, userId ?? "(none)");
+            return MedicalStoreHardDeleteResult.Ok();
+        }
+
         public async Task<bool> SetActiveStatusAsync(Guid id, bool isActive)
         {
             var medicalStore = await _unitOfWork.MedicalStores.FirstOrDefaultAsync(ms => ms.MedicalStoreId == id);

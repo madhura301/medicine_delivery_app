@@ -15,6 +15,9 @@ namespace MedicineDelivery.Application.DTOs
         /// <summary>Legal business type, sent to Razorpay as `business_type`.</summary>
         public BusinessType RazorpayBusinessType { get; set; } = BusinessType.PrivateLimited;
 
+        /// <summary>Individual owner/stakeholder's personal PAN, sent to Razorpay as the stakeholder's `kyc.pan`.</summary>
+        public string OwnerPan { get; set; } = string.Empty;
+
         public string BankAccountNumber { get; set; } = string.Empty;
         public string BankIfscCode { get; set; } = string.Empty;
         public string BankAccountHolderName { get; set; } = string.Empty;
@@ -36,6 +39,7 @@ namespace MedicineDelivery.Application.DTOs
         public string? BusinessName { get; set; }
         public BusinessType RazorpayBusinessType { get; set; }
         public string RazorpayBusinessTypeName => RazorpayBusinessType.ToString();
+        public string? OwnerPanMasked { get; set; }
         public ChemistPayoutStatus OnboardingStatus { get; set; }
         public string OnboardingStatusName => OnboardingStatus.ToString();
         public string? OnboardingError { get; set; }

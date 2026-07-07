@@ -15,6 +15,7 @@ namespace MedicineDelivery.Infrastructure.Services
     public class ChemistPayoutService : IChemistPayoutService
     {
         private static readonly Regex IfscRegex = new("^[A-Z]{4}0[A-Z0-9]{6}$", RegexOptions.Compiled);
+        private static readonly Regex PanRegex = new("^[A-Z]{5}[0-9]{4}[A-Z]$", RegexOptions.Compiled);
 
         private readonly IUnitOfWork _unitOfWork;
         private readonly IRazorpayRouteClient _routeClient;
@@ -37,6 +38,7 @@ namespace MedicineDelivery.Infrastructure.Services
             var validationErrors = ValidateBank(request.BankAccountNumber, request.BankIfscCode, request.BankAccountHolderName);
             if (string.IsNullOrWhiteSpace(request.BusinessName))
                 validationErrors.Add("Business name is required.");
+            validationErrors.AddRange(ValidateOwnerPan(request.OwnerPan));
             if (validationErrors.Count > 0)
                 return ChemistPayoutResult.Fail(validationErrors.ToArray());
 
@@ -58,6 +60,7 @@ namespace MedicineDelivery.Infrastructure.Services
 
             account.BusinessName = request.BusinessName.Trim();
             account.RazorpayBusinessType = request.RazorpayBusinessType;
+            account.OwnerPan = request.OwnerPan.Trim().ToUpperInvariant();
             account.BankAccountNumber = request.BankAccountNumber.Trim();
             account.BankIfscCode = request.BankIfscCode.Trim().ToUpperInvariant();
             account.BankAccountHolderName = request.BankAccountHolderName.Trim();
@@ -335,7 +338,8 @@ namespace MedicineDelivery.Infrastructure.Services
             PostalCode = Clean(store.PostalCode),
             Country = "IN",
             // PAN/GST must be uppercase and whitespace-free or Razorpay rejects them.
-            Pan = string.IsNullOrWhiteSpace(store.PAN) ? null : store.PAN.Trim().ToUpperInvariant(),
+            CompanyPan = string.IsNullOrWhiteSpace(store.PAN) ? null : store.PAN.Trim().ToUpperInvariant(),
+            OwnerPan = Clean(account.OwnerPan),
             Gst = string.IsNullOrWhiteSpace(store.GSTIN) ? null : store.GSTIN.Trim().ToUpperInvariant(),
             Bank = BuildBank(account),
             ExistingLinkedAccountId = account.RazorpayLinkedAccountId,
@@ -352,6 +356,28 @@ namespace MedicineDelivery.Infrastructure.Services
             IfscCode = account.BankIfscCode ?? string.Empty,
             BeneficiaryName = account.BankAccountHolderName ?? string.Empty
         };
+
+        /// <summary>
+        /// The stakeholder PAN must be the individual owner's personal PAN (4th character
+        /// 'P'), never a company PAN — submitting a company PAN here is exactly what
+        /// caused "The pan field is invalid" from Razorpay's stakeholder KYC step.
+        /// </summary>
+        private static List<string> ValidateOwnerPan(string ownerPan)
+        {
+            var errors = new List<string>();
+            var trimmed = (ownerPan ?? string.Empty).Trim().ToUpperInvariant();
+
+            if (string.IsNullOrWhiteSpace(trimmed) || !PanRegex.IsMatch(trimmed))
+            {
+                errors.Add("A valid Owner PAN is required (e.g. AAAPA1234A).");
+            }
+            else if (trimmed[3] != 'P')
+            {
+                errors.Add("Owner PAN must be an individual's personal PAN (4th character should be 'P'), not a company PAN.");
+            }
+
+            return errors;
+        }
 
         private static List<string> ValidateBank(string accountNumber, string ifsc, string holder)
         {
@@ -375,6 +401,7 @@ namespace MedicineDelivery.Infrastructure.Services
             RazorpayLinkedAccountId = a.RazorpayLinkedAccountId,
             BusinessName = a.BusinessName,
             RazorpayBusinessType = a.RazorpayBusinessType,
+            OwnerPanMasked = MaskAccount(a.OwnerPan),
             OnboardingStatus = a.OnboardingStatus,
             OnboardingError = a.OnboardingError,
             BankAccountNumberMasked = MaskAccount(a.BankAccountNumber),

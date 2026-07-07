@@ -9,6 +9,7 @@ class ChemistPayoutStatusModel {
   final String? razorpayLinkedAccountId;
   final String? businessName;
   final BusinessType? razorpayBusinessType;
+  final String? ownerPanMasked;
   final String onboardingStatus; // e.g. NotStarted / Pending / Active ...
   final String? onboardingError;
   final String? bankAccountNumberMasked;
@@ -22,6 +23,7 @@ class ChemistPayoutStatusModel {
     this.razorpayLinkedAccountId,
     this.businessName,
     this.razorpayBusinessType,
+    this.ownerPanMasked,
     this.onboardingError,
     this.bankAccountNumberMasked,
     this.bankIfscCode,
@@ -41,6 +43,7 @@ class ChemistPayoutStatusModel {
       razorpayBusinessType: json['razorpayBusinessType'] == null
           ? null
           : BusinessType.fromValue(json['razorpayBusinessType'] as int?),
+      ownerPanMasked: json['ownerPanMasked']?.toString(),
       onboardingStatus:
           json['onboardingStatusName']?.toString() ?? json['onboardingStatus']?.toString() ?? 'NotStarted',
       onboardingError: json['onboardingError']?.toString(),

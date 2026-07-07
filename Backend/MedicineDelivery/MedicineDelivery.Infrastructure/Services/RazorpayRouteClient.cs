@@ -103,9 +103,7 @@ namespace MedicineDelivery.Infrastructure.Services
                 {
                     ["name"] = request.ContactName,
                     ["email"] = request.Email,
-                    ["kyc"] = string.IsNullOrWhiteSpace(request.Pan)
-                        ? null
-                        : new Dictionary<string, object?> { ["pan"] = request.Pan }
+                    ["kyc"] = new Dictionary<string, object?> { ["pan"] = request.OwnerPan }
                 };
 
                 var stakeholderId = await PostForIdAsync($"v2/accounts/{accountId}/stakeholders", stakeholderBody, "CreateStakeholder", result, ct);
@@ -327,9 +325,9 @@ namespace MedicineDelivery.Infrastructure.Services
 
             // legal_info.pan is the COMPANY pan — only valid for registered entities.
             if (!UnregisteredBusinessTypes.Contains(request.BusinessType) &&
-                !string.IsNullOrWhiteSpace(request.Pan))
+                !string.IsNullOrWhiteSpace(request.CompanyPan))
             {
-                legal["pan"] = request.Pan;
+                legal["pan"] = request.CompanyPan;
             }
 
             if (!string.IsNullOrWhiteSpace(request.Gst)) legal["gst"] = request.Gst;
