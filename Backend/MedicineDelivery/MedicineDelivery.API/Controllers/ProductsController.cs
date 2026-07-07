@@ -64,6 +64,7 @@ namespace MedicineDelivery.API.Controllers
         [Authorize(Policy = "RequireCreateProductsPermission")]
         public IActionResult CreateProduct([FromBody] CreateProductRequest request)
         {
+            _logger.LogInformation("CreateProduct requested for Name={Name}", request.Name);
             try
             {
                 var product = new Product
@@ -75,6 +76,7 @@ namespace MedicineDelivery.API.Controllers
                 };
 
                 _products.Add(product);
+                _logger.LogInformation("Product {ProductId} created successfully", product.Id);
                 return CreatedAtAction(nameof(GetProduct), new { id = product.Id }, product);
             }
             catch (Exception ex)
@@ -88,11 +90,13 @@ namespace MedicineDelivery.API.Controllers
         [Authorize(Policy = "RequireUpdateProductsPermission")]
         public IActionResult UpdateProduct(int id, [FromBody] UpdateProductRequest request)
         {
+            _logger.LogInformation("UpdateProduct requested for {ProductId}", id);
             try
             {
                 var product = _products.FirstOrDefault(p => p.Id == id);
                 if (product == null)
                 {
+                    _logger.LogWarning("UpdateProduct: Product {ProductId} not found", id);
                     return NotFound();
                 }
 
@@ -100,6 +104,7 @@ namespace MedicineDelivery.API.Controllers
                 product.Price = request.Price;
                 product.Category = request.Category;
 
+                _logger.LogInformation("Product {ProductId} updated successfully", id);
                 return Ok(product);
             }
             catch (Exception ex)
@@ -113,15 +118,18 @@ namespace MedicineDelivery.API.Controllers
         [Authorize(Policy = "RequireDeleteProductsPermission")]
         public IActionResult DeleteProduct(int id)
         {
+            _logger.LogInformation("DeleteProduct requested for {ProductId}", id);
             try
             {
                 var product = _products.FirstOrDefault(p => p.Id == id);
                 if (product == null)
                 {
+                    _logger.LogWarning("DeleteProduct: Product {ProductId} not found", id);
                     return NotFound();
                 }
 
                 _products.Remove(product);
+                _logger.LogInformation("Product {ProductId} deleted successfully", id);
                 return NoContent();
             }
             catch (Exception ex)

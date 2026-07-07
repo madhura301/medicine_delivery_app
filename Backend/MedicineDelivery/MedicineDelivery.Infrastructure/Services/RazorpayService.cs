@@ -57,6 +57,10 @@ namespace MedicineDelivery.Infrastructure.Services
                     { "payment_capture", 1 }
                 };
 
+                _logger.LogInformation(
+                    "Razorpay request CreateOrder (SDK) OrderId={OrderId}, AmountInPaise={AmountInPaise}, Currency={Currency}",
+                    orderId, amountInPaise, currency);
+
                 var razorpayOrder = client.Order.Create(options);
                 var razorpayOrderId = (string)razorpayOrder["id"].ToString();
 
@@ -229,6 +233,10 @@ namespace MedicineDelivery.Infrastructure.Services
                 {
                     var onHold = GetBool("RazorpaySettings:TransferOnHold", false);
                     var currency = _configuration["RazorpaySettings:Currency"] ?? "INR";
+
+                    _logger.LogInformation(
+                        "Splitting payment: attempting Route transfer for OrderId={OrderId}, ChemistAmount={ChemistAmount}, LinkedAccountId={LinkedAccountId}",
+                        request.OrderId, chemistAmount, payout!.RazorpayLinkedAccountId);
 
                     var transfer = await _routeClient.CreateTransferOnPaymentAsync(new RazorpayTransferRequest
                     {

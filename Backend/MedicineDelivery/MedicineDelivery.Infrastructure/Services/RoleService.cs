@@ -104,15 +104,27 @@ namespace MedicineDelivery.Infrastructure.Services
             {
                 _logger.LogWarning("AssignRoleToUserAsync: Failed to assign role {RoleName} to user {UserId}. Errors: {Errors}", roleName, userId, string.Join(", ", result.Errors.Select(e => e.Description)));
             }
+            else
+            {
+                _logger.LogInformation("Role {RoleName} assigned to user {UserId} by {AssignedBy}", roleName, userId, assignedBy);
+            }
             return result.Succeeded;
         }
 
         public async Task<bool> RemoveRoleFromUserAsync(string userId, string roleName)
         {
             var user = await _userManager.FindByIdAsync(userId);
-            if (user == null) return false;
+            if (user == null)
+            {
+                _logger.LogWarning("RemoveRoleFromUserAsync: User {UserId} not found when removing role {RoleName}", userId, roleName);
+                return false;
+            }
 
             var result = await _userManager.RemoveFromRoleAsync(user, roleName);
+            if (result.Succeeded)
+                _logger.LogInformation("Role {RoleName} removed from user {UserId}", roleName, userId);
+            else
+                _logger.LogWarning("RemoveRoleFromUserAsync: Failed to remove role {RoleName} from user {UserId}. Errors: {Errors}", roleName, userId, string.Join(", ", result.Errors.Select(e => e.Description)));
             return result.Succeeded;
         }
 
@@ -154,9 +166,11 @@ namespace MedicineDelivery.Infrastructure.Services
             {
                 rolePermission.IsActive = false;
                 await _unitOfWork.SaveChangesAsync();
+                _logger.LogInformation("Permission {PermissionId} removed from role {RoleId}", permissionId, roleId);
                 return true;
             }
 
+            _logger.LogWarning("RemovePermissionFromRoleAsync: No active permission {PermissionId} found for role {RoleId}", permissionId, roleId);
             return false;
         }
 

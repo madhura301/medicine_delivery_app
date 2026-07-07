@@ -30,10 +30,20 @@ namespace MedicineDelivery.Infrastructure.Services
             var blobPath = NormalizePath(relativePath);
             var blobClient = _containerClient.GetBlobClient(blobPath);
 
-            await blobClient.UploadAsync(fileStream, overwrite: true, cancellationToken);
-            _logger.LogInformation("File uploaded to blob {BlobPath}", blobPath);
+            _logger.LogInformation("Uploading file to blob {BlobPath}", blobPath);
 
-            return relativePath;
+            try
+            {
+                await blobClient.UploadAsync(fileStream, overwrite: true, cancellationToken);
+                _logger.LogInformation("File uploaded to blob {BlobPath}", blobPath);
+
+                return relativePath;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to upload file to blob {BlobPath}", blobPath);
+                throw;
+            }
         }
 
         public async Task<Stream?> OpenReadAsync(string relativePath, CancellationToken cancellationToken = default)
@@ -41,13 +51,24 @@ namespace MedicineDelivery.Infrastructure.Services
             var blobPath = NormalizePath(relativePath);
             var blobClient = _containerClient.GetBlobClient(blobPath);
 
-            if (!await blobClient.ExistsAsync(cancellationToken))
-                return null;
+            try
+            {
+                if (!await blobClient.ExistsAsync(cancellationToken))
+                {
+                    _logger.LogWarning("Blob not found at {BlobPath}", blobPath);
+                    return null;
+                }
 
-            var memoryStream = new MemoryStream();
-            await blobClient.DownloadToAsync(memoryStream, cancellationToken);
-            memoryStream.Position = 0;
-            return memoryStream;
+                var memoryStream = new MemoryStream();
+                await blobClient.DownloadToAsync(memoryStream, cancellationToken);
+                memoryStream.Position = 0;
+                return memoryStream;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to open blob {BlobPath}", blobPath);
+                throw;
+            }
         }
 
         public async Task<bool> DeleteAsync(string relativePath, CancellationToken cancellationToken = default)
@@ -67,8 +88,16 @@ namespace MedicineDelivery.Infrastructure.Services
             var blobPath = NormalizePath(relativePath);
             var blobClient = _containerClient.GetBlobClient(blobPath);
 
-            var response = await blobClient.ExistsAsync(cancellationToken);
-            return response.Value;
+            try
+            {
+                var response = await blobClient.ExistsAsync(cancellationToken);
+                return response.Value;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to check existence of blob {BlobPath}", blobPath);
+                throw;
+            }
         }
 
         public string GetPublicUrl(string relativePath)

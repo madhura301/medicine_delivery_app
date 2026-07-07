@@ -166,8 +166,10 @@ namespace MedicineDelivery.Infrastructure.Services
                         CustomerSupport = response
                     };
                 }
-                catch (Exception)
+                catch (Exception registrationEx)
                 {
+                    _logger.LogError(registrationEx, "Customer support registration failed for Email={Email}, rolling back transaction", registrationDto.EmailId);
+
                     // Rollback the transaction
                     await _unitOfWork.RollbackTransactionAsync();
                     

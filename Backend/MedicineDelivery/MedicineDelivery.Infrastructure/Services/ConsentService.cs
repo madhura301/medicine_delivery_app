@@ -87,6 +87,7 @@ namespace MedicineDelivery.Infrastructure.Services
             _unitOfWork.Consents.Update(consent);
             await _unitOfWork.SaveChangesAsync();
 
+            _logger.LogInformation("Consent {ConsentId} updated successfully", id);
             return _mapper.Map<ConsentDto>(consent);
         }
 

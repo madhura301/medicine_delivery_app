@@ -62,6 +62,10 @@ namespace MedicineDelivery.Infrastructure.Services
 
             try
             {
+                _logger.LogInformation(
+                    "Razorpay request CreatePaymentLink POST /v1/payment_links AmountInPaise={AmountInPaise}, Reference={ReferenceNote}",
+                    request.AmountInPaise, request.ReferenceNote);
+
                 using var httpRequest = new HttpRequestMessage(HttpMethod.Post, "v1/payment_links")
                 {
                     Content = JsonContent.Create(body)
@@ -78,13 +82,18 @@ namespace MedicineDelivery.Infrastructure.Services
 
                 using var doc = JsonDocument.Parse(json);
                 var root = doc.RootElement;
-                return new PaymentLinkResult
+                var result = new PaymentLinkResult
                 {
                     Success = true,
                     PaymentLinkId = root.TryGetProperty("id", out var id) ? id.GetString() : null,
                     ShortUrl = root.TryGetProperty("short_url", out var url) ? url.GetString() : null,
                     Status = root.TryGetProperty("status", out var st) ? st.GetString() : null
                 };
+
+                _logger.LogInformation("Razorpay CreatePaymentLink succeeded. PaymentLinkId={PaymentLinkId}, ShortUrl={ShortUrl}",
+                    result.PaymentLinkId, result.ShortUrl);
+
+                return result;
             }
             catch (Exception ex)
             {

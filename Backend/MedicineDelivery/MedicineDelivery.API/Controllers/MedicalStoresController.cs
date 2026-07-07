@@ -35,6 +35,7 @@ namespace MedicineDelivery.API.Controllers
         [AllowAnonymous]
         public async Task<ActionResult<MedicalStoreResponseDto>> RegisterMedicalStore([FromBody] MedicalStoreRegistrationDto registrationDto)
         {
+            _logger.LogInformation("RegisterMedicalStore requested for Email={Email}", registrationDto.EmailId);
             try
             {
                 if (!ModelState.IsValid)
@@ -156,6 +157,8 @@ namespace MedicineDelivery.API.Controllers
         [Authorize(Policy = "RequireChemistUpdatePermission")]
         public async Task<ActionResult<MedicalStoreDto>> UpdateMedicalStore(Guid id, [FromBody] MedicalStoreRegistrationDto updateDto)
         {
+            _logger.LogInformation("UpdateMedicalStore requested for {Id}", id);
+
             if (!ModelState.IsValid)
             {
                 return BadRequest(ModelState);
@@ -299,6 +302,7 @@ namespace MedicineDelivery.API.Controllers
         [Authorize(Policy = "RequireChemistDeletePermission")]
         public async Task<ActionResult> DeleteMedicalStore(Guid id)
         {
+            _logger.LogInformation("DeleteMedicalStore requested for {Id}", id);
             try
             {
                 // Check if chemist exists

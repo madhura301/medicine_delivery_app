@@ -465,7 +465,11 @@ app.MapGet("/test-logging", () =>
     return Results.Ok(new { message = "Test logs written successfully", timestamp = DateTime.UtcNow });
 });
 
-Log.Information("Medicine Delivery API is starting up");
+var assemblyLocation = Assembly.GetExecutingAssembly().Location;
+var buildTimeUtc = string.IsNullOrEmpty(assemblyLocation) ? (DateTime?)null : File.GetLastWriteTimeUtc(assemblyLocation);
+Log.Information(
+    "Medicine Delivery API is starting up. Environment={Environment}, BuildTimeUtc={BuildTimeUtc}",
+    builder.Environment.EnvironmentName, buildTimeUtc);
 app.Run();
 }
 catch (Exception ex)

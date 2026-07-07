@@ -1,4 +1,5 @@
 using MedicineDelivery.Application.Interfaces;
+using Microsoft.Extensions.Logging;
 
 namespace MedicineDelivery.Infrastructure.Services
 {
@@ -27,6 +28,13 @@ namespace MedicineDelivery.Infrastructure.Services
 
         private const decimal AboveTopSlabFee = 100m;
 
+        private readonly ILogger<PlatformFeeCalculator> _logger;
+
+        public PlatformFeeCalculator(ILogger<PlatformFeeCalculator> logger)
+        {
+            _logger = logger;
+        }
+
         public decimal CalculateFee(decimal billAmount, DateTime? storeActivatedOn, DateTime? asOfUtc = null)
         {
             if (billAmount <= 0)
@@ -36,14 +44,21 @@ namespace MedicineDelivery.Infrastructure.Services
 
             // First 30 days after activation are free.
             if (storeActivatedOn.HasValue && asOf <= storeActivatedOn.Value.AddDays(FreeWindowDays))
+            {
+                _logger.LogDebug("Platform fee waived (within free window) for BillAmount={BillAmount}, ActivatedOn={ActivatedOn}", billAmount, storeActivatedOn);
                 return 0m;
+            }
 
             foreach (var slab in Slabs)
             {
                 if (billAmount <= slab.UpperBoundInclusive)
+                {
+                    _logger.LogDebug("Platform fee calculated: BillAmount={BillAmount} -> Fee={Fee}", billAmount, slab.Fee);
                     return slab.Fee;
+                }
             }
 
+            _logger.LogDebug("Platform fee calculated: BillAmount={BillAmount} -> Fee={Fee} (above top slab)", billAmount, AboveTopSlabFee);
             return AboveTopSlabFee;
         }
     }

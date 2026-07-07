@@ -50,6 +50,8 @@ namespace MedicineDelivery.API.Controllers
         [Authorize(Policy = "RequireManageRolePermission")]
         public async Task<IActionResult> AddRolePermission([FromBody] AddRolePermissionDto request)
         {
+            _logger.LogInformation("AddRolePermission requested for Role={RoleId}, Permission={PermissionId}", request.RoleId, request.PermissionId);
+
             if (!ModelState.IsValid)
             {
                 return BadRequest(ModelState);
@@ -86,6 +88,8 @@ namespace MedicineDelivery.API.Controllers
         [Authorize(Policy = "RequireManageRolePermission")]
         public async Task<IActionResult> RemoveRolePermission([FromBody] RemoveRolePermissionDto request)
         {
+            _logger.LogInformation("RemoveRolePermission requested for Role={RoleId}, Permission={PermissionId}", request.RoleId, request.PermissionId);
+
             if (!ModelState.IsValid)
             {
                 return BadRequest(ModelState);

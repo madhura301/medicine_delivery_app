@@ -45,7 +45,13 @@ namespace MedicineDelivery.Infrastructure.Services
             }
 
             // Fallback to RemoteIpAddress
-            return httpContext.Connection.RemoteIpAddress?.ToString() ?? "Unknown";
+            var remoteIp = httpContext.Connection.RemoteIpAddress?.ToString();
+            if (string.IsNullOrEmpty(remoteIp))
+            {
+                _logger.LogDebug("Could not resolve client IP address from headers or connection for request {Path}", httpContext.Request.Path);
+                return "Unknown";
+            }
+            return remoteIp;
         }
 
         public string? GetDeviceInfo(HttpContext httpContext)

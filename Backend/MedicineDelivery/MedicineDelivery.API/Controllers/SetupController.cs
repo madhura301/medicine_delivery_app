@@ -42,6 +42,7 @@ namespace MedicineDelivery.API.Controllers
         [AllowAnonymous]
         public async Task<IActionResult> CreateRole([FromBody] CreateRoleRequest request)
         {
+            _logger.LogInformation("CreateRole requested for {RoleName}", request.Name);
             try
             {
                 if (!ModelState.IsValid)
@@ -90,6 +91,7 @@ namespace MedicineDelivery.API.Controllers
         [AllowAnonymous]
         public async Task<IActionResult> CreatePermission([FromBody] CreatePermissionRequest request)
         {
+            _logger.LogInformation("CreatePermission requested for {PermissionName}", request.Name);
             try
             {
                 if (!ModelState.IsValid)
@@ -154,6 +156,7 @@ namespace MedicineDelivery.API.Controllers
         [AllowAnonymous]
         public async Task<IActionResult> CreatePredefinedRoles()
         {
+            _logger.LogInformation("CreatePredefinedRoles requested");
             try
             {
                 var created = new List<string>();
@@ -187,6 +190,7 @@ namespace MedicineDelivery.API.Controllers
                     created.Add(role.Name);
                 }
 
+                _logger.LogInformation("CreatePredefinedRoles completed. Created={CreatedCount}, Skipped={SkippedCount}", created.Count, skipped.Count);
                 return Ok(new { Created = created, Skipped = skipped });
             }
             catch (Exception ex)
@@ -203,6 +207,7 @@ namespace MedicineDelivery.API.Controllers
         [AllowAnonymous]
         public async Task<IActionResult> CreatePredefinedPermissions()
         {
+            _logger.LogInformation("CreatePredefinedPermissions requested");
             try
             {
                 var created = new List<string>();
@@ -258,6 +263,7 @@ namespace MedicineDelivery.API.Controllers
                 }
 
                 await _context.SaveChangesAsync();
+                _logger.LogInformation("CreatePredefinedPermissions completed. Created={CreatedCount}, Updated={UpdatedCount}", created.Count, updated.Count);
                 return Ok(new { Created = created, Updated = updated });
             }
             catch (Exception ex)
@@ -274,6 +280,7 @@ namespace MedicineDelivery.API.Controllers
         [AllowAnonymous]
         public async Task<IActionResult> MapPredefinedRolePermissions()
         {
+            _logger.LogInformation("MapPredefinedRolePermissions requested");
             try
             {
                 var created = new List<string>();
@@ -330,6 +337,9 @@ namespace MedicineDelivery.API.Controllers
                 }
 
                 await _context.SaveChangesAsync();
+
+                _logger.LogInformation("MapPredefinedRolePermissions completed. Created={CreatedCount}, MissingRoles={MissingRolesCount}, MissingPermissions={MissingPermissionsCount}",
+                    created.Count, missingRoles.Distinct().Count(), missingPermissions.Distinct().Count());
 
                 return Ok(new
                 {
@@ -504,6 +514,7 @@ namespace MedicineDelivery.API.Controllers
         [AllowAnonymous]
         public async Task<IActionResult> FixMissingCustomerNumbers()
         {
+            _logger.LogInformation("FixMissingCustomerNumbers requested");
             try
             {
                 var customersWithoutNumber = await _context.Customers
@@ -589,6 +600,7 @@ namespace MedicineDelivery.API.Controllers
             string firstName,
             string lastName)
         {
+            _logger.LogInformation("CreateUserAsync (setup) requested for Role={RoleName}, Mobile={MobileNumber}", roleName, mobileNumber);
             try
             {
                 // Check if user already exists

@@ -21,25 +21,46 @@ namespace MedicineDelivery.Infrastructure.Services
         public async Task<string> UploadAsync(Stream fileStream, string relativePath, CancellationToken cancellationToken = default)
         {
             var fullPath = Path.Combine(_rootPath, relativePath);
-            var directory = Path.GetDirectoryName(fullPath);
-            if (!string.IsNullOrEmpty(directory))
-                Directory.CreateDirectory(directory);
+            _logger.LogInformation("Uploading file to local path {FilePath}", fullPath);
 
-            using var output = new FileStream(fullPath, FileMode.Create, FileAccess.Write, FileShare.None);
-            await fileStream.CopyToAsync(output, cancellationToken);
+            try
+            {
+                var directory = Path.GetDirectoryName(fullPath);
+                if (!string.IsNullOrEmpty(directory))
+                    Directory.CreateDirectory(directory);
 
-            _logger.LogInformation("File uploaded to local path {FilePath}", fullPath);
-            return relativePath;
+                using var output = new FileStream(fullPath, FileMode.Create, FileAccess.Write, FileShare.None);
+                await fileStream.CopyToAsync(output, cancellationToken);
+
+                _logger.LogInformation("File uploaded to local path {FilePath}", fullPath);
+                return relativePath;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to upload file to local path {FilePath}", fullPath);
+                throw;
+            }
         }
 
         public Task<Stream?> OpenReadAsync(string relativePath, CancellationToken cancellationToken = default)
         {
             var fullPath = Path.Combine(_rootPath, relativePath);
             if (!File.Exists(fullPath))
+            {
+                _logger.LogWarning("File not found at local path {FilePath}", fullPath);
                 return Task.FromResult<Stream?>(null);
+            }
 
-            Stream stream = new FileStream(fullPath, FileMode.Open, FileAccess.Read, FileShare.Read);
-            return Task.FromResult<Stream?>(stream);
+            try
+            {
+                Stream stream = new FileStream(fullPath, FileMode.Open, FileAccess.Read, FileShare.Read);
+                return Task.FromResult<Stream?>(stream);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to open file at local path {FilePath}", fullPath);
+                throw;
+            }
         }
 
         public Task<bool> DeleteAsync(string relativePath, CancellationToken cancellationToken = default)
@@ -64,7 +85,15 @@ namespace MedicineDelivery.Infrastructure.Services
         public Task<bool> ExistsAsync(string relativePath, CancellationToken cancellationToken = default)
         {
             var fullPath = Path.Combine(_rootPath, relativePath);
-            return Task.FromResult(File.Exists(fullPath));
+            try
+            {
+                return Task.FromResult(File.Exists(fullPath));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to check existence of local path {FilePath}", fullPath);
+                throw;
+            }
         }
 
         public string GetPublicUrl(string relativePath)

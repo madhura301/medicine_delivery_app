@@ -177,8 +177,10 @@ namespace MedicineDelivery.Infrastructure.Services
                         MedicalStore = response
                     };
                 }
-                catch (Exception)
+                catch (Exception registrationEx)
                 {
+                    _logger.LogError(registrationEx, "Medical store registration failed for Email={Email}, rolling back transaction", registrationDto.EmailId);
+
                     // Rollback the transaction
                     await _unitOfWork.RollbackTransactionAsync();
                     

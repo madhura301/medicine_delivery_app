@@ -90,6 +90,8 @@ namespace MedicineDelivery.API.Controllers
         [Authorize(Policy = "RequireCreateConsentsPermission")]
         public async Task<IActionResult> CreateConsent([FromBody] CreateConsentDto createDto)
         {
+            _logger.LogInformation("CreateConsent requested with title {Title}", createDto.Title);
+
             if (!ModelState.IsValid)
             {
                 return BadRequest(ModelState);
@@ -114,6 +116,8 @@ namespace MedicineDelivery.API.Controllers
         [Authorize(Policy = "RequireUpdateConsentsPermission")]
         public async Task<IActionResult> UpdateConsent(Guid id, [FromBody] UpdateConsentDto updateDto)
         {
+            _logger.LogInformation("UpdateConsent requested for {ConsentId}", id);
+
             if (!ModelState.IsValid)
             {
                 return BadRequest(ModelState);
@@ -143,6 +147,7 @@ namespace MedicineDelivery.API.Controllers
         [Authorize(Policy = "RequireDeleteConsentsPermission")]
         public async Task<IActionResult> DeleteConsent(Guid id)
         {
+            _logger.LogInformation("DeleteConsent requested for {ConsentId}", id);
             try
             {
                 var result = await _consentService.DeleteConsentAsync(id);

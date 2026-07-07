@@ -147,8 +147,10 @@ namespace MedicineDelivery.Infrastructure.Services
                         Manager = response
                     };
                 }
-                catch (Exception)
+                catch (Exception registrationEx)
                 {
+                    _logger.LogError(registrationEx, "Manager registration failed for Email={Email}, rolling back transaction", registrationDto.EmailId);
+
                     // Rollback the transaction
                     await _unitOfWork.RollbackTransactionAsync();
                     

@@ -74,7 +74,10 @@ namespace MedicineDelivery.Infrastructure.Services
             var relativePath = BuildRelativePath(safeFileName);
             var stream = await _fileStorage.OpenReadAsync(relativePath, cancellationToken);
             if (stream == null)
+            {
+                _logger.LogWarning("Policy document not found: {FileName}", safeFileName);
                 return null;
+            }
 
             return new PolicyDocumentFileDto
             {

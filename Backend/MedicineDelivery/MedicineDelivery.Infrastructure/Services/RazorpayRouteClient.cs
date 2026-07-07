@@ -176,6 +176,7 @@ namespace MedicineDelivery.Infrastructure.Services
 
                 result.Success = true;
                 result.State = MapActivationState(json);
+                _logger.LogInformation("Razorpay UpdateBankConfiguration succeeded for {AccountId}. State={State}", linkedAccountId, result.State);
                 return result;
             }
             catch (Exception ex)
@@ -207,6 +208,10 @@ namespace MedicineDelivery.Infrastructure.Services
 
             try
             {
+                _logger.LogInformation(
+                    "Razorpay request CreateTransfer POST /v1/payments/{PaymentId}/transfers LinkedAccount={LinkedAccountId}, AmountInPaise={AmountInPaise}, OnHold={OnHold}",
+                    request.PaymentId, request.LinkedAccountId, request.AmountInPaise, request.OnHold);
+
                 using var response = await SendAsync(HttpMethod.Post, $"v1/payments/{request.PaymentId}/transfers", body, ct);
                 var json = await response.Content.ReadAsStringAsync(ct);
 
@@ -229,6 +234,9 @@ namespace MedicineDelivery.Infrastructure.Services
                     ? id.GetString()
                     : null;
 
+                _logger.LogInformation("Razorpay CreateTransfer succeeded for Payment={PaymentId}. TransferId={TransferId}",
+                    request.PaymentId, transferId);
+
                 return new RazorpayTransferResult { Success = true, TransferId = transferId };
             }
             catch (Exception ex)
@@ -242,6 +250,8 @@ namespace MedicineDelivery.Infrastructure.Services
         {
             try
             {
+                _logger.LogInformation("Razorpay request GetAccountStatus GET /v2/accounts/{AccountId}", linkedAccountId);
+
                 using var response = await _httpClient.GetAsync($"v2/accounts/{linkedAccountId}", ct);
                 var json = await response.Content.ReadAsStringAsync(ct);
 
@@ -254,6 +264,8 @@ namespace MedicineDelivery.Infrastructure.Services
 
                 using var doc = JsonDocument.Parse(json);
                 var rawStatus = doc.RootElement.TryGetProperty("status", out var st) ? st.GetString() : null;
+
+                _logger.LogInformation("Razorpay GetAccountStatus succeeded for {AccountId}. RawStatus={RawStatus}", linkedAccountId, rawStatus);
 
                 return new RazorpayAccountStatusResult
                 {
@@ -347,7 +359,11 @@ namespace MedicineDelivery.Infrastructure.Services
 
                 using var doc = JsonDocument.Parse(json);
                 if (doc.RootElement.TryGetProperty("id", out var idElement))
-                    return idElement.GetString();
+                {
+                    var id = idElement.GetString();
+                    _logger.LogInformation("Razorpay {Step} succeeded. Id={Id}", step, id);
+                    return id;
+                }
 
                 result.Success = false;
                 result.FailedStep = step;

@@ -38,6 +38,8 @@ namespace MedicineDelivery.Infrastructure.Services
         {
             ct.ThrowIfCancellationRequested();
 
+            _logger.LogInformation("CreateActivationLinkAsync requested for store {StoreId}", medicalStoreId);
+
             var store = await _unitOfWork.MedicalStores.FirstOrDefaultAsync(s => s.MedicalStoreId == medicalStoreId);
             if (store == null)
                 return ChemistActivationResult.Fail($"Medical store {medicalStoreId} not found.");

@@ -167,8 +167,10 @@ namespace MedicineDelivery.Infrastructure.Services
                         Customer = response
                     };
                 }
-                catch (Exception)
+                catch (Exception registrationEx)
                 {
+                    _logger.LogError(registrationEx, "Customer registration failed for MobileNumber={MobileNumber}, rolling back transaction", registrationDto.MobileNumber);
+
                     // Rollback the transaction
                     await _unitOfWork.RollbackTransactionAsync();
                     
