@@ -172,7 +172,7 @@ namespace MedicineDelivery.Infrastructure.Services
                     NewStatus = previous.ToString()
                 };
 
-                var statusResult = await _routeClient.GetAccountStatusAsync(account.RazorpayLinkedAccountId!, ct);
+                var statusResult = await _routeClient.GetAccountStatusAsync(account.RazorpayLinkedAccountId!, account.RazorpayProductConfigurationId, ct);
                 item.RazorpayRawStatus = statusResult.RawStatus;
 
                 if (!statusResult.Success)
@@ -239,7 +239,7 @@ namespace MedicineDelivery.Infrastructure.Services
             if (string.IsNullOrWhiteSpace(account.RazorpayLinkedAccountId))
                 return ChemistPayoutResult.Ok(ToDto(account));
 
-            var statusResult = await _routeClient.GetAccountStatusAsync(account.RazorpayLinkedAccountId!, ct);
+            var statusResult = await _routeClient.GetAccountStatusAsync(account.RazorpayLinkedAccountId!, account.RazorpayProductConfigurationId, ct);
             if (!statusResult.Success)
             {
                 _logger.LogWarning("Refresh status: Razorpay lookup failed for store {StoreId}: {Error}",

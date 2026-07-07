@@ -244,8 +244,54 @@ namespace MedicineDelivery.Infrastructure.Services
             }
         }
 
-        public async Task<RazorpayAccountStatusResult> GetAccountStatusAsync(string linkedAccountId, CancellationToken ct = default)
+        public async Task<RazorpayAccountStatusResult> GetAccountStatusAsync(string linkedAccountId, string? productConfigurationId, CancellationToken ct = default)
         {
+            // The account-level `status` field (GET /v2/accounts/{id}) reflects account
+            // creation/KYC, not Route activation — it stays "created" indefinitely even after
+            // the Route product (and settlements) are fully active. The Razorpay dashboard's
+            // "Active" status comes from the product's `activation_status`, so once we have a
+            // product configuration id we must check that endpoint instead.
+            if (!string.IsNullOrWhiteSpace(productConfigurationId))
+            {
+                try
+                {
+                    _logger.LogInformation("Razorpay request GetAccountStatus GET /v2/accounts/{AccountId}/products/{ProductId}",
+                        linkedAccountId, productConfigurationId);
+
+                    using var response = await _httpClient.GetAsync($"v2/accounts/{linkedAccountId}/products/{productConfigurationId}", ct);
+                    var json = await response.Content.ReadAsStringAsync(ct);
+
+                    if (!response.IsSuccessStatusCode)
+                    {
+                        var error = ExtractError(json);
+                        _logger.LogWarning("Razorpay GetAccountStatus (product) failed for {AccountId}/{ProductId}: {Error}",
+                            linkedAccountId, productConfigurationId, error);
+                        return new RazorpayAccountStatusResult { Success = false, Error = error };
+                    }
+
+                    using var doc = JsonDocument.Parse(json);
+                    var rawStatus = doc.RootElement.TryGetProperty("activation_status", out var st) ? st.GetString() : null;
+
+                    _logger.LogInformation("Razorpay GetAccountStatus succeeded for {AccountId}/{ProductId}. RawStatus={RawStatus}",
+                        linkedAccountId, productConfigurationId, rawStatus);
+
+                    return new RazorpayAccountStatusResult
+                    {
+                        Success = true,
+                        RawStatus = rawStatus,
+                        State = MapActivationState(json)
+                    };
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error calling Razorpay GetAccountStatus (product) for {AccountId}/{ProductId}",
+                        linkedAccountId, productConfigurationId);
+                    return new RazorpayAccountStatusResult { Success = false, Error = "Network error while fetching account status." };
+                }
+            }
+
+            // No product configuration id yet — onboarding hasn't reached the product-request
+            // step, so it can't be active. Best-effort fall back to the account-level status.
             try
             {
                 _logger.LogInformation("Razorpay request GetAccountStatus GET /v2/accounts/{AccountId}", linkedAccountId);

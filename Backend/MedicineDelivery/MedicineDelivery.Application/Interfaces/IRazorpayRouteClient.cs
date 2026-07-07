@@ -29,10 +29,13 @@ namespace MedicineDelivery.Application.Interfaces
         Task<RazorpayTransferResult> CreateTransferOnPaymentAsync(RazorpayTransferRequest request, CancellationToken ct = default);
 
         /// <summary>
-        /// Fetches the live activation status of a linked account from Razorpay
-        /// (GET /v2/accounts/{id}).
+        /// Fetches the live activation status of a linked account's Route product from Razorpay
+        /// (GET /v2/accounts/{id}/products/{productConfigurationId}, reading `activation_status` —
+        /// this is what the Razorpay dashboard shows as the account's status). Falls back to the
+        /// account-level GET /v2/accounts/{id} `status` field when no product configuration id is
+        /// available yet (onboarding hasn't reached the product-request step, so it can't be active).
         /// </summary>
-        Task<RazorpayAccountStatusResult> GetAccountStatusAsync(string linkedAccountId, CancellationToken ct = default);
+        Task<RazorpayAccountStatusResult> GetAccountStatusAsync(string linkedAccountId, string? productConfigurationId, CancellationToken ct = default);
     }
 
     public class RazorpayAccountStatusResult
