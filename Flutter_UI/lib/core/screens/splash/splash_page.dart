@@ -217,12 +217,12 @@ class _SplashPageState extends State<SplashPage> {
             const SizedBox(height: 60),
             // App Logo with proper constraints to prevent stretching
             ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 280, maxHeight: 150),
+              constraints: const BoxConstraints(maxWidth: 400, maxHeight: 220),
               child: Image.asset(
                 'assets/images/full_logo_animated.jpeg',
                 fit: BoxFit.contain,
-                width: 280,
-                height: 150,
+                width: 400,
+                height: 220,
               ),
             ),
             const SizedBox(height: 50),
