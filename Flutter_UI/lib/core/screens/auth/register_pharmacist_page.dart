@@ -10,7 +10,7 @@ import 'dart:convert';
 import 'package:pharmaish/core/services/location_service.dart';
 import 'package:pharmaish/utils/consent_manager.dart';
 import 'package:pharmaish/utils/constants.dart';
-import 'package:pharmaish/utils/document_opener.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class PharmacistRegistrationPage extends StatefulWidget {
   const PharmacistRegistrationPage({super.key});
@@ -106,9 +106,18 @@ class _PharmacistRegistrationPageState
   ];
 
   Future<void> _openAreaRetailerPolicy() async {
-    final String pdfUrl =
-        AppConstants.policyDocumentUrl('AREA_RETAILER_POLICY.pdf');
-    await openAuthenticatedDocument(context, url: pdfUrl);
+    try {
+      await launchUrl(
+        Uri.parse(AppConstants.areaRetailerPolicyUrl),
+        mode: LaunchMode.externalApplication,
+      );
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Unable to open link')),
+        );
+      }
+    }
   }
 
   @override
@@ -751,13 +760,13 @@ class _PharmacistRegistrationPageState
 
             _buildTextField(
               controller: _emailController,
-              label: 'Email (Optional)',
+              label: 'Email*',
               hint: 'Enter email address',
               icon: Icons.email,
               keyboardType: TextInputType.emailAddress,
               validator: (value) {
                 if (value == null || value.isEmpty) {
-                  return null;
+                  return 'Email address is required';
                 }
                 final emailRegex =
                     RegExp(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$');
@@ -1241,19 +1250,20 @@ class _PharmacistRegistrationPageState
           'Password must contain 1 uppercase, 1 lowercase, 1 number, and 1 special character');
       return false;
     }
-    // Email validation (only if provided)
-    if (_emailController.text.isNotEmpty) {
-      final emailRegex =
-          RegExp(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$');
-      if (!emailRegex.hasMatch(_emailController.text)) {
-        setState(() => _errorMessage = 'Please enter a valid email address');
-        return false;
-      }
-      if (_emailController.text.length > 50) {
-        setState(() =>
-            _errorMessage = 'Email address must be less than 50 characters');
-        return false;
-      }
+    if (_emailController.text.trim().isEmpty) {
+      setState(() => _errorMessage = 'Email address is required');
+      return false;
+    }
+    final emailRegex =
+        RegExp(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$');
+    if (!emailRegex.hasMatch(_emailController.text)) {
+      setState(() => _errorMessage = 'Please enter a valid email address');
+      return false;
+    }
+    if (_emailController.text.length > 50) {
+      setState(() =>
+          _errorMessage = 'Email address must be less than 50 characters');
+      return false;
     }
     return true;
   }
@@ -1390,9 +1400,7 @@ class _PharmacistRegistrationPageState
             _pharmacistRegNumberController.text.trim(),
         'singlePointOfContact': _spcController.text.trim(),
         'userName': _userNameController.text.trim(),
-        'emailId': _emailController.text.trim().isNotEmpty
-            ? _emailController.text.trim()
-            : null,
+        'emailId': _emailController.text.trim(),
         'password': _passwordController.text,
         'latitude': _latitude,
         'longitude': _longitude,
