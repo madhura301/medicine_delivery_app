@@ -105,10 +105,10 @@ class _PharmacistRegistrationPageState
     'Puducherry'
   ];
 
-  Future<void> _openAreaRetailerPolicy() async {
+  Future<void> _openRetailerGuide() async {
     try {
       await launchUrl(
-        Uri.parse(AppConstants.areaRetailerPolicyUrl),
+        Uri.parse(AppConstants.retailerGuideUrl),
         mode: LaunchMode.externalApplication,
       );
     } catch (_) {
@@ -858,7 +858,7 @@ class _PharmacistRegistrationPageState
             ),
             const SizedBox(height: 24),
 
-            // Area Retailer Policy Link
+            // Retailer Guide Link
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(16),
@@ -891,9 +891,9 @@ class _PharmacistRegistrationPageState
                         ),
                         const SizedBox(height: 4),
                         GestureDetector(
-                          onTap: _openAreaRetailerPolicy,
+                          onTap: _openRetailerGuide,
                           child: const Text(
-                            'View Area Retailer Policy',
+                            'View Retailer Guide',
                             style: TextStyle(
                               color: Colors.blue,
                               decoration: TextDecoration.underline,
@@ -906,7 +906,7 @@ class _PharmacistRegistrationPageState
                     ),
                   ),
                   GestureDetector(
-                    onTap: _openAreaRetailerPolicy,
+                    onTap: _openRetailerGuide,
                     child: Container(
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(

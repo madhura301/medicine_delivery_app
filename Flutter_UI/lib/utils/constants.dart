@@ -31,8 +31,8 @@ class AppConstants {
       'https://pharmaish.com/retailer-onboarding-policy.html';
   static const String paymentPolicyUrl =
       'https://pharmaish.com/payment-policy.html';
-  static const String areaRetailerPolicyUrl =
-      'https://pharmaish.com/area-retailer-policy.html';
+  static const String retailerGuideUrl =
+      'https://pharmaish.com/retailer-guide.html';
 
   // Customer support contact
   /// Support phone number (10-digit, for display).
