@@ -77,12 +77,19 @@ namespace MedicineDelivery.API.Controllers
                     var accountId = ExtractAccountId(root);
                     if (!string.IsNullOrWhiteSpace(accountId))
                     {
+                        _logger.LogInformation("Account webhook {Event}: dispatching for linked account {AccountId}", eventType, accountId);
                         await _payoutService.ApplyAccountWebhookAsync(accountId!, eventType, ct);
                     }
                     else
                     {
-                        _logger.LogWarning("{Event} webhook missing account id.", eventType);
+                        // Extraction failed — the payload shape may differ from what we expect.
+                        // Log the raw body so the actual structure can be inspected.
+                        _logger.LogWarning("{Event} webhook missing account id. Raw payload: {RawBody}", eventType, rawBody);
                     }
+                }
+                else
+                {
+                    _logger.LogInformation("Razorpay webhook {Event} ignored (no handler).", eventType);
                 }
 
                 // Always 200 for accepted/ignored events so Razorpay stops retrying.

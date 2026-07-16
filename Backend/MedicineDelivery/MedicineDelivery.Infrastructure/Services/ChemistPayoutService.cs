@@ -293,7 +293,11 @@ namespace MedicineDelivery.Infrastructure.Services
             }
 
             if (account.OnboardingStatus == newStatus.Value)
+            {
+                _logger.LogInformation("Account webhook: store {StoreId} already at status {Status} for event {Event}; skipping (idempotent).",
+                    account.MedicalStoreId, newStatus.Value, eventType);
                 return true; // Idempotent: already at this status.
+            }
 
             var previous = account.OnboardingStatus;
             account.OnboardingStatus = newStatus.Value;
