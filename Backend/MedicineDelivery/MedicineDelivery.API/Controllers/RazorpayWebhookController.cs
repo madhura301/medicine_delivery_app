@@ -17,15 +17,18 @@ namespace MedicineDelivery.API.Controllers
     public class RazorpayWebhookController : ControllerBase
     {
         private readonly IChemistActivationService _activationService;
+        private readonly IChemistPayoutService _payoutService;
         private readonly IConfiguration _configuration;
         private readonly ILogger<RazorpayWebhookController> _logger;
 
         public RazorpayWebhookController(
             IChemistActivationService activationService,
+            IChemistPayoutService payoutService,
             IConfiguration configuration,
             ILogger<RazorpayWebhookController> logger)
         {
             _activationService = activationService;
+            _payoutService = payoutService;
             _configuration = configuration;
             _logger = logger;
         }
@@ -66,6 +69,19 @@ namespace MedicineDelivery.API.Controllers
                     else
                     {
                         _logger.LogWarning("payment_link.paid webhook missing payment_link id.");
+                    }
+                }
+                else if (eventType != null && eventType.StartsWith("account.", StringComparison.Ordinal))
+                {
+                    // Razorpay Route linked-account lifecycle events (activated/rejected/suspended/etc.).
+                    var accountId = ExtractAccountId(root);
+                    if (!string.IsNullOrWhiteSpace(accountId))
+                    {
+                        await _payoutService.ApplyAccountWebhookAsync(accountId!, eventType, ct);
+                    }
+                    else
+                    {
+                        _logger.LogWarning("{Event} webhook missing account id.", eventType);
                     }
                 }
 
@@ -123,6 +139,23 @@ namespace MedicineDelivery.API.Controllers
             }
 
             return (linkId, paymentId);
+        }
+
+        /// <summary>
+        /// Extracts the linked account id (acc_XXXX) from a Razorpay account.* webhook.
+        /// The id lives at payload.account.entity.id.
+        /// </summary>
+        private static string? ExtractAccountId(JsonElement root)
+        {
+            if (root.TryGetProperty("payload", out var payload) &&
+                payload.TryGetProperty("account", out var acc) &&
+                acc.TryGetProperty("entity", out var accEntity) &&
+                accEntity.TryGetProperty("id", out var accId))
+            {
+                return accId.GetString();
+            }
+
+            return null;
         }
 
         private static string ComputeHmacSha256(string payload, string secret)
