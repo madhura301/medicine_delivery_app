@@ -644,28 +644,29 @@ namespace MedicineDelivery.Infrastructure.Services
                 throw new InvalidOperationException("Customer address does not have a postal code.");
             }
 
-            // Find the ServiceRegion by postal code (only CustomerSupport type regions)
+            var postalCode = customerAddress.PostalCode.Trim();
+
+            // Find the CustomerSupport region serving this postal code. A pin code can be mapped to
+            // regions of different types (e.g. CustomerSupport and DeliveryBoy), so the region type
+            // must be part of the lookup — not validated after arbitrarily picking the first mapping.
+            var customerSupportRegionIds = (await _unitOfWork.ServiceRegions.FindAsync(
+                    r => r.RegionType == Domain.Enums.RegionType.CustomerSupport))
+                .Select(r => r.Id)
+                .ToHashSet();
+
             var regionPinCode = await _unitOfWork.ServiceRegionPinCodes.FirstOrDefaultAsync(
-                rpc => rpc.PinCode == customerAddress.PostalCode.Trim());
-            
+                rpc => rpc.PinCode == postalCode && customerSupportRegionIds.Contains(rpc.ServiceRegionId));
+
             if (regionPinCode == null)
             {
-                _logger.LogWarning("AssignRejectOrderToCustomerSupport failed: No service region found for postal code {PostalCode}, Order {OrderId}", customerAddress.PostalCode, orderId);
-                throw new KeyNotFoundException($"No service region found for postal code: {customerAddress.PostalCode}");
-            }
-
-            // Verify the region is a CustomerSupport type region
-            var region = await _unitOfWork.ServiceRegions.GetByIdAsync(regionPinCode.ServiceRegionId);
-            if (region == null || region.RegionType != Domain.Enums.RegionType.CustomerSupport)
-            {
-                _logger.LogWarning("AssignRejectOrderToCustomerSupport failed: No customer support region found for postal code {PostalCode}, Order {OrderId}", customerAddress.PostalCode, orderId);
-                throw new KeyNotFoundException($"No customer support region found for postal code: {customerAddress.PostalCode}");
+                _logger.LogWarning("AssignRejectOrderToCustomerSupport failed: No customer support region found for postal code {PostalCode}, Order {OrderId}", postalCode, orderId);
+                throw new KeyNotFoundException($"No customer support region found for postal code: {postalCode}");
             }
 
             // Get all CustomerSupports assigned to this region
             var customerSupports = await _unitOfWork.CustomerSupports.FindAsync(
-                cs => cs.ServiceRegionId == regionPinCode.ServiceRegionId && 
-                      cs.IsActive && 
+                cs => cs.ServiceRegionId == regionPinCode.ServiceRegionId &&
+                      cs.IsActive &&
                       !cs.IsDeleted);
 
             if (customerSupports == null || !customerSupports.Any())
