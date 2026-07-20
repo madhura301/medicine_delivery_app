@@ -19,7 +19,7 @@
 -keep class io.flutter.embedding.** { *; }
 
 # Keep your app's main classes
--keep class com.example.medicine_delivery_app.** { *; }
+-keep class com.pharmaish.app.** { *; }
 
 # Remove logging in release builds
 -assumenosideeffects class android.util.Log {

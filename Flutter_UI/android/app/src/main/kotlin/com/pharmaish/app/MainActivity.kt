@@ -1,4 +1,4 @@
-package com.example.medicine_delivery_app
+package com.pharmaish.app
 
 import io.flutter.embedding.android.FlutterActivity
 

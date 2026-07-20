@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <!-- Cleartext (HTTP) traffic is blocked app-wide by default. -->
+    <base-config cleartextTrafficPermitted="false" />
+
+    <!-- TEMPORARY exception: production API is still served over HTTP.
+         Remove this once MediMartAPIProd is migrated to HTTPS
+         (see lib/config/environment_config.dart _prodApiBaseUrl). -->
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">188.241.187.172</domain>
+    </domain-config>
+</network-security-config>
