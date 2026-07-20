@@ -170,8 +170,11 @@ class OrderModel {
       orderPaymentStatus: _parseOrderPaymentStatus(json['orderPaymentStatus']),
       billFileUrl: _toStringOrNull(json['billFileUrl']),
 
-      // Handle completionOtp as int or string
-      completionOtp: _toStringOrNull(json['completionOtp']),
+      // Delivery-verification OTP. The backend serializes it as "otp"
+      // (camelCased "OTP"); keep the older keys as fallbacks. Value may be an
+      // int or string.
+      completionOtp: _toStringOrNull(
+          json['otp'] ?? json['completionOtp'] ?? json['OTP']),
 
       // ✨ NEW: Parse assignment history
       assignmentHistory: _parseAssignmentHistory(json['AssignmentHistory'] ??
@@ -310,6 +313,14 @@ class OrderModel {
 
   /// True when the order has been fully paid (OrderPaymentStatus.FullyPaid).
   bool get isFullyPaid => orderPaymentStatus == 2;
+
+  /// True when the delivery OTP should be shown to the customer: the order has
+  /// been paid for but is not yet completed (delivered), and an OTP is present.
+  /// The customer shares this OTP with the delivery boy to confirm delivery.
+  bool get shouldShowDeliveryOtp =>
+      isFullyPaid &&
+      status.toLowerCase() != 'completed' &&
+      (completionOtp?.trim().isNotEmpty ?? false);
 
   /// Parse the backend OrderPaymentStatus (int enum, or its name) to an int.
   static int _parseOrderPaymentStatus(dynamic value) {

@@ -22,6 +22,9 @@ class AppConstants {
   static bool get isDevelopment => EnvironmentConfig.isDevelopment;
   static bool get isStaging => EnvironmentConfig.isStaging;
 
+  // Public website
+  static const String websiteUrl = 'https://pharmaish.com';
+
   // Public web pages for legal policies
   static const String termsAndConditionsUrl =
       'https://pharmaish.com/terms-condition.html';

@@ -400,6 +400,9 @@ class _CustomerOrderDetailsPageState extends State<CustomerOrderDetailsPage> {
           // Status Banner
           _buildStatusBanner(),
 
+          // Delivery OTP (shown once paid, until the order is completed)
+          if (_currentOrder.shouldShowDeliveryOtp) _buildDeliveryOtpCard(),
+
           // Order Information Section
           _buildSection(
             'Order Information',
@@ -467,6 +470,81 @@ class _CustomerOrderDetailsPageState extends State<CustomerOrderDetailsPage> {
           ),
 
           const SizedBox(height: 24),
+        ],
+      ),
+    );
+  }
+
+  /// Prominent card showing the delivery OTP. The customer shares this code
+  /// with the delivery boy at hand-off to confirm delivery. Shown only while
+  /// the order is paid but not yet completed.
+  Widget _buildDeliveryOtpCard() {
+    final otp = _currentOrder.completionOtp?.trim() ?? '';
+    const otpColor = Colors.teal;
+
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: otpColor.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: otpColor.withValues(alpha: 0.4)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            children: [
+              Icon(Icons.lock_clock, color: otpColor, size: 22),
+              SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Delivery OTP',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: otpColor,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Center(
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: otp
+                  .split('')
+                  .map(
+                    (d) => Container(
+                      margin: const EdgeInsets.symmetric(horizontal: 6),
+                      width: 48,
+                      height: 56,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: otpColor, width: 1.5),
+                      ),
+                      child: Text(
+                        d,
+                        style: const TextStyle(
+                          fontSize: 26,
+                          fontWeight: FontWeight.bold,
+                          color: otpColor,
+                        ),
+                      ),
+                    ),
+                  )
+                  .toList(),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'Share this OTP with the delivery person only when you receive '
+            'your order. Do not share it with anyone else.',
+            style: TextStyle(fontSize: 13, color: Colors.grey.shade700),
+          ),
         ],
       ),
     );

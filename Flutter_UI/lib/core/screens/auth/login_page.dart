@@ -488,6 +488,26 @@ class _LoginPageState extends State<LoginPage> {
                         ),
                       ),
 
+                      const SizedBox(height: 12),
+
+                      // Website Link
+                      Center(
+                        child: TextButton.icon(
+                          onPressed: () =>
+                              _openUrl(AppConstants.websiteUrl),
+                          icon: const Icon(Icons.language,
+                              size: 18, color: AppTheme.primaryColor),
+                          label: const Text(
+                            'Visit pharmaish.com',
+                            style: TextStyle(
+                              color: AppTheme.primaryColor,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ),
+                      ),
+
                       const SizedBox(height: 20),
                       // Security Notice
                       if (_rememberPassword)

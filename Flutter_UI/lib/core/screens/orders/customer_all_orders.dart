@@ -617,6 +617,12 @@ class _CustomerAllOrdersState extends State<CustomerAllOrders> {
               ],
             ),
           ),
+          // Delivery OTP — shown once paid, so the customer has it ready to
+          // share with the delivery person at hand-off.
+          if (order.shouldShowDeliveryOtp) ...[
+            const SizedBox(height: 8),
+            _buildDeliveryOtpChip(order.completionOtp!.trim()),
+          ],
           const SizedBox(height: 10),
           Row(
             children: [
@@ -791,6 +797,43 @@ class _CustomerAllOrdersState extends State<CustomerAllOrders> {
               fontSize: 12,
               fontWeight: FontWeight.w600,
               color: Colors.green.shade800,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Compact delivery-OTP banner shown on the out-for-delivery tile. The
+  /// customer shares this code with the delivery person to confirm delivery.
+  Widget _buildDeliveryOtpChip(String otp) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.teal.shade50,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.teal.shade200),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.lock_clock, size: 18, color: Colors.teal.shade700),
+          const SizedBox(width: 8),
+          Text(
+            'Delivery OTP: ',
+            style: TextStyle(
+              fontSize: 12,
+              color: Colors.teal.shade800,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          Text(
+            otp,
+            style: TextStyle(
+              fontSize: 16,
+              color: Colors.teal.shade900,
+              fontWeight: FontWeight.bold,
+              letterSpacing: 3,
             ),
           ),
         ],
