@@ -1,6 +1,7 @@
 using System.Security.Cryptography;
 using System.Text;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Linq;
@@ -43,7 +44,11 @@ namespace MedicineDelivery.API.Services
             
             try
             {
-                var user = await _userManager.FindByNameAsync(mobileNumber);
+                // Primary lookup is by username (mobile is the username for most roles).
+                // Fall back to a phone-number lookup so accounts registered through paths
+                // that store the email as the username can still log in with their mobile.
+                var user = await _userManager.FindByNameAsync(mobileNumber)
+                    ?? await _userManager.Users.FirstOrDefaultAsync(u => u.PhoneNumber == mobileNumber);
                 if (user == null)
                 {
                     _logger.LogWarning("Login failed - user not found for mobile number: {MobileNumber}", mobileNumber);
@@ -92,12 +97,27 @@ namespace MedicineDelivery.API.Services
             
             try
             {
+                // Reject duplicate mobile numbers up front (matched on username or phone number)
+                // so the same mobile cannot be registered twice across roles.
+                var existingUser = await _userManager.FindByNameAsync(request.MobileNumber)
+                    ?? await _userManager.Users.FirstOrDefaultAsync(u => u.PhoneNumber == request.MobileNumber);
+                if (existingUser != null)
+                {
+                    _logger.LogWarning("Registration failed - mobile number already exists: {MobileNumber}", request.MobileNumber);
+                    return new Domain.Interfaces.AuthResult
+                    {
+                        Success = false,
+                        Errors = new List<string> { "A user with this mobile number already exists" }
+                    };
+                }
+
                 var user = new Domain.Entities.ApplicationUser
                 {
                     UserName = request.MobileNumber,
                     Email = request.Email,
                     FirstName = request.FirstName,
-                    LastName = request.LastName
+                    LastName = request.LastName,
+                    PhoneNumber = request.MobileNumber
                 };
 
                 var result = await _userManager.CreateAsync(user, request.Password);

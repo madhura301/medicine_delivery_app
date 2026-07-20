@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using MedicineDelivery.Application.DTOs;
 using MedicineDelivery.Application.Interfaces;
@@ -44,8 +45,10 @@ namespace MedicineDelivery.Infrastructure.Services
                     };
                 }
 
-                // Check if user with this mobile number already exists
-                var existingUser = await _userManager.FindByNameAsync(registrationDto.MobileNumber);
+                // Check if user with this mobile number already exists (as username or as
+                // phone number under any role) so mobile numbers stay globally unique.
+                var existingUser = await _userManager.FindByNameAsync(registrationDto.MobileNumber)
+                    ?? await _userManager.Users.FirstOrDefaultAsync(u => u.PhoneNumber == registrationDto.MobileNumber);
                 if (existingUser != null)
                 {
                     _logger.LogWarning("Customer support registration failed: user with mobile number {MobileNumber} already exists", registrationDto.MobileNumber);

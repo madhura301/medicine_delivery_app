@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using MedicineDelivery.Domain.Interfaces;
 using MedicineDelivery.Infrastructure.Data;
@@ -19,6 +20,18 @@ namespace MedicineDelivery.Infrastructure.Services
         public async Task<IApplicationUser?> FindByEmailAsync(string email)
         {
             var user = await _userManager.FindByEmailAsync(email);
+            return user != null ? new ApplicationUserWrapper(user) : null;
+        }
+
+        public async Task<IApplicationUser?> FindByPhoneNumberAsync(string phoneNumber)
+        {
+            if (string.IsNullOrWhiteSpace(phoneNumber))
+            {
+                return null;
+            }
+
+            var user = await _userManager.Users
+                .FirstOrDefaultAsync(u => u.PhoneNumber == phoneNumber);
             return user != null ? new ApplicationUserWrapper(user) : null;
         }
 

@@ -30,6 +30,17 @@ namespace MedicineDelivery.Application.Features.Users.Commands.RegisterUser
                 throw new InvalidOperationException("User with this email already exists.");
             }
 
+            // Check if the mobile number is already registered under any role.
+            // Mobile numbers must be globally unique so users can log in with them.
+            if (!string.IsNullOrWhiteSpace(request.PhoneNumber))
+            {
+                var existingByPhone = await _userManager.FindByPhoneNumberAsync(request.PhoneNumber);
+                if (existingByPhone != null)
+                {
+                    throw new InvalidOperationException("A user with this mobile number already exists.");
+                }
+            }
+
             // Customer role will be assigned via Identity
 
             // Begin transaction to ensure atomicity

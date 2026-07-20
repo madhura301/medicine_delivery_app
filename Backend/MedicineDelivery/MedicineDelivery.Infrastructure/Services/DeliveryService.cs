@@ -1,5 +1,6 @@
 using AutoMapper;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using MedicineDelivery.Application.DTOs;
 using MedicineDelivery.Application.Interfaces;
@@ -40,8 +41,10 @@ namespace MedicineDelivery.Infrastructure.Services
                 throw new ArgumentException("Password is required to create a delivery boy.");
             }
 
-            // Check if user with this mobile number already exists
-            var existingUser = await _userManager.FindByNameAsync(createDto.MobileNumber);
+            // Check if user with this mobile number already exists (as username or as phone
+            // number under any role) so mobile numbers stay globally unique.
+            var existingUser = await _userManager.FindByNameAsync(createDto.MobileNumber)
+                ?? await _userManager.Users.FirstOrDefaultAsync(u => u.PhoneNumber == createDto.MobileNumber);
             if (existingUser != null)
             {
                 _logger.LogWarning("CreateDeliveryAsync failed: User with mobile number {MobileNumber} already exists", createDto.MobileNumber);
