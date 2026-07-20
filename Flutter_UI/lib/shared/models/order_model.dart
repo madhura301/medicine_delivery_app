@@ -375,6 +375,10 @@ class OrderModel {
           return 'Completed';
         case 8:
           return 'Assigned to Customer Support'; // ← add this
+        case 9:
+          return 'Assigned to Manager';
+        case 10:
+          return 'Cancelled';
 
         default:
           AppLogger.warning('Unknown order status code: $statusCode');

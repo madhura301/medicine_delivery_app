@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:pharmaish/shared/models/chemist_model.dart';
 import 'package:pharmaish/shared/models/order_model.dart';
 import 'package:pharmaish/shared/widgets/app_button.dart';
+import 'package:pharmaish/shared/widgets/cancel_order_dialog.dart';
 import 'package:pharmaish/utils/app_logger.dart';
 import 'package:pharmaish/utils/storage.dart';
 
@@ -514,6 +515,14 @@ class _AssignedOrdersPageState extends State<AssignedOrdersPage>
     }
   }
 
+  Future<void> _showCancelDialog(OrderModel order) async {
+    final cancelled = await showCancelOrderDialog(context, order: order);
+    if (cancelled) {
+      _showSnackBar('Order cancelled');
+      await _loadAssignedOrders();
+    }
+  }
+
   void _showSnackBar(String message, {bool isError = false}) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
@@ -599,6 +608,7 @@ class _AssignedOrdersPageState extends State<AssignedOrdersPage>
             customerPhone: customerPhone,
             isReassigning: _reassigningOrders.contains(order.orderId),
             onReassign: () => _showReassignDialog(order, customerName),
+            onCancel: () => _showCancelDialog(order),
           );
         },
       ),
@@ -614,6 +624,7 @@ class _AssignedOrderCard extends StatelessWidget {
   final String customerPhone;
   final bool isReassigning;
   final VoidCallback onReassign;
+  final VoidCallback onCancel;
 
   const _AssignedOrderCard({
     super.key,
@@ -622,6 +633,7 @@ class _AssignedOrderCard extends StatelessWidget {
     required this.customerPhone,
     required this.isReassigning,
     required this.onReassign,
+    required this.onCancel,
   });
 
   // ── Status helpers ──────────────────────────────────────────────────────
@@ -959,6 +971,32 @@ class _AssignedOrderCard extends StatelessWidget {
                         backgroundColor: const Color(0xFF1565C0),
                         foregroundColor: Colors.white,
                         elevation: 0,
+                        padding: const EdgeInsets.symmetric(vertical: 11),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+
+                // ── Cancel Order button (any non-completed, non-cancelled) ─
+                if (isOrderCancellable(order)) ...[
+                  const SizedBox(height: 10),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: isReassigning ? null : onCancel,
+                      icon: const Icon(Icons.cancel_outlined, size: 16),
+                      label: const Text(
+                        'Cancel Order',
+                        style: TextStyle(
+                            fontSize: 13, fontWeight: FontWeight.w600),
+                      ),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: const Color(0xFFC62828),
+                        side: const BorderSide(
+                            color: Color(0xFFC62828), width: 1.5),
                         padding: const EdgeInsets.symmetric(vertical: 11),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(10),
