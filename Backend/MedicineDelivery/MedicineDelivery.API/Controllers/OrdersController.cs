@@ -315,6 +315,18 @@ namespace MedicineDelivery.API.Controllers
                 _logger.LogWarning("CompleteOrder: {Message}", ex.Message);
                 return BadRequest(new { error = ex.Message });
             }
+            catch (PaymentIncompleteException ex)
+            {
+                _logger.LogWarning("CompleteOrder: {Message}", ex.Message);
+                return BadRequest(new
+                {
+                    error = ex.Message,
+                    orderId = ex.OrderId,
+                    totalAmount = ex.TotalAmount,
+                    paidAmount = ex.PaidAmount,
+                    remainingAmount = ex.RemainingAmount,
+                });
+            }
             catch (OperationCanceledException)
             {
                 return StatusCode(499, new { error = "Request was cancelled." });

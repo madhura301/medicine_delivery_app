@@ -24,8 +24,25 @@
 
 ## ▶ RESUME HERE
 
-> **Last updated:** 2026-05-17 (Session 5 — Phase 2 COMPLETE)
-> **Next action:** **Phase 3 — WebApp E2E.** Prereqs before writing specs:
+> **Last updated:** 2026-07-20 (Session 6 — functional layer + local-DB validation)
+> **State:** Running locally against **local Postgres** (not Azure) is the validated
+> path. API suite = **211 passed / 5 skipped**. WebApp (`webapp-chromium`) =
+> **70 passed / 12 skipped** (Phase 3 was already built in a prior session; tracker
+> below was stale). New **functional layer**: `Playright/functional/validate_functional.py`
+> drives every PDF sign-off scenario (create→accept→bill→deliver→pay→OTP→Completed,
+> reject→CS→reassign, CR-1 block, CR-2 escalation, SMS-safety) = **14/14 pass**.
+> One-command runner: `Playright/run-all-tests.ps1` / `.sh` (API suite + functional).
+> Flutter-web **foundation proven**: app served on :8765 pointed at local backend,
+> `flutter-web/smoke.spec.ts` passes.
+> **Backend launch (local DB):** set env `ConnectionStrings__PostgresConnection` to
+> local Postgres + `FileStorage__Azure__ConnectionString` to the real blob string
+> (from `WorkingAppSettings/`), keep `SmsSettings:Provider=Console`, then
+> `dotnet run --project MedicineDelivery.API --urls http://localhost:5000`.
+> **Next action:** Phase 4 deep Flutter customer/delivery journeys (needs Flutter
+> semantics enabled for canvas → DOM selectors). Everything else is green.
+>
+> ---
+> _(historical) Session 5 next-action:_ **Phase 3 — WebApp E2E.** Prereqs before writing specs:
 > (a) `npx playwright install chromium`; (b) start WebApp dev server
 > (`cd WebApp && npm install && npm run dev`, :5173) with
 > `VITE_API_BASE_URL=http://localhost:5000/api`; (c) build the deferred
@@ -49,8 +66,9 @@
 | Phase 0 | Prereqs & blocking decisions | 🟡 Defaulted | 4 / 6 |
 | Phase 1 | Test harness / fixtures | 🟢 Core done & verified | 5 / 7 |
 | Phase 2 | Backend API specs | ✅ Done & verified | 18 / 18 |
-| Phase 3 | WebApp E2E specs | ⬜ Not started | 0 / 24 |
-| Phase 4 | Flutter Web specs | ⬜ Not started | 0 / 13 |
+| Phase 2b | Functional flows (PDF sign-off) | ✅ Done & verified | 14 / 14 checks |
+| Phase 3 | WebApp E2E specs | ✅ Done & verified (70 pass) | 24 / 24 |
+| Phase 4 | Flutter Web specs | 🟡 Foundation (smoke green) | 1 / 13 |
 | Phase 5 | CI + traceability | ⬜ Not started | 0 / 3 |
 | Phase 6 | Hardening | ⬜ Not started | 0 / 3 |
 
@@ -234,6 +252,26 @@ One file per controller. Each endpoint needs happy-path + auth-negative + valida
   InvalidOperationException → 400/409. Not blocking.
 
 ## 🧾 Session Log (append newest at top — never delete entries)
+
+### 2026-07-20 — Session 6  (Functional layer + local-DB validation)
+- **Done:** Validated the whole app **locally against local Postgres** (the app
+  defaults to the shared Azure test DB in Development — overrode
+  `ConnectionStrings__PostgresConnection`). Built `Playright/functional/validate_functional.py`
+  (+ README): seeds a serviceable area (chemist payout Active + activation Paid,
+  delivery region) and drives every PDF sign-off scenario incl. OTP-complete,
+  reject→CS→reassign, CR-1 block, CR-2 manager escalation, SMS-safety — **14/14**.
+  Added one-command runner `run-all-tests.ps1`/`.sh`. Fixed stale specs:
+  `orders.spec.ts` (now CR-1-aware) and `webapp/auth/forgot-password.spec.ts`
+  (F-FRONTEND-2 is FIXED → asserts success). Fixed a backend bug:
+  `OrdersController.CompleteOrder` now catches `PaymentIncompleteException` → 400
+  (was 500). Flutter-web served on :8765 against local backend; `flutter-web/smoke.spec.ts`
+  green. Made `_devApiBaseUrl` web-aware (localhost:5000 for web, 10.0.2.2 for mobile).
+- **State / verified green:** API=211 pass/5 skip; WebApp=70 pass/12 skip;
+  functional=14/14; flutter-web smoke=1 pass. Discovered: CancellationReason
+  migration drift (added column to local DB); payments endpoint doesn't set
+  OrderPaymentStatus=FullyPaid.
+- **Blockers:** Flutter deep journeys need semantics enabled (canvas→DOM).
+- **Next:** Phase 4 Flutter customer/delivery specs.
 
 ### 2026-05-17 — Session 5  (PHASE 2 COMPLETE ✅)
 - **Done:** Remaining Phase 2 specs `customersupports`, `managers`, `consents`,
