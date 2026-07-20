@@ -242,20 +242,75 @@ def s0_sms_safety(token):
            "ConsoleSmsService logs OTP, never sends" if ok else "no Console provider found")
 
 
-def s1_chemist_eligibility(token, cur):
-    print("\nS1  Chemist onboarding & eligibility gate")
-    # An area whose only chemist is NOT eligible must be blocked at order creation.
-    # We temporarily strip STORE_PRIMARY/SECONDARY eligibility, attempt an order, restore.
+def _order_attempt(token, pin=SERVICEABLE_PIN, lat=18.5157, lon=73.8562):
+    cid, aid = register_customer_with_address(token, pin, lat, lon)
+    return create_text_order(token, cid, aid)
+
+
+def _cs_region_ids_for_pin(cur, pin):
+    cur.execute('select p."ServiceRegionId" from "CustomerSupportRegionPinCodes" p '
+                'join "CustomerSupportRegions" r on r."Id"=p."ServiceRegionId" '
+                'where p."PinCode"=%s and r."RegionType"=0', (pin,))
+    return [r[0] for r in cur.fetchall()]
+
+
+def _delivery_region_ids_for_pin(cur, pin):
+    cur.execute('select p."ServiceRegionId" from "CustomerSupportRegionPinCodes" p '
+                'join "CustomerSupportRegions" r on r."Id"=p."ServiceRegionId" '
+                'where p."PinCode"=%s and r."RegionType"=1', (pin,))
+    return [r[0] for r in cur.fetchall()]
+
+
+def s1_serviceability_gate(token, cur):
+    """PDF §5/§8 + CR-1: an order must NOT be created unless chemist AND customer
+    support AND delivery partner are ALL available for the delivery pincode. Each
+    role is toggled off individually (reversibly) to prove it gates creation."""
+    print("\nS1  Serviceability gate — order blocked unless chemist + customer support + delivery are ALL available")
+
+    # Baseline: all three available -> order is created.
+    st, _ = _order_attempt(token)
+    record("All three available -> order created (201)", "PDF 6 / CR-1", st == 201, f"HTTP {st}")
+
+    # 1) Chemist unavailable -> blocked.
     cur.execute('update "ChemistPayoutAccounts" set "OnboardingStatus"=\'Pending\' where "MedicalStoreId" in %s',
                 ((STORE_PRIMARY, STORE_SECONDARY),))
     try:
-        cid, aid = register_customer_with_address(token, SERVICEABLE_PIN)
-        st, body = create_text_order(token, cid, aid)
-        blocked = st == 400 and isinstance(body, dict) and "chemist" in str(body.get("missingRoles", "")).lower()
-        record("Ineligible chemist -> order blocked", "PDF 5", blocked, f"HTTP {st}")
+        st, body = _order_attempt(token)
+        ok = st == 400 and isinstance(body, dict) and "chemist" in str(body.get("missingRoles", "")).lower()
+        record("Chemist unavailable -> order blocked", "PDF 5 / CR-1", ok, f"HTTP {st}")
     finally:
         make_store_eligible(cur, STORE_PRIMARY)
         make_store_eligible(cur, STORE_SECONDARY)
+
+    # 2) Customer support unavailable -> blocked.
+    cs_ids = _cs_region_ids_for_pin(cur, SERVICEABLE_PIN)
+    changed = []
+    if cs_ids:
+        cur.execute('update "CustomerSupports" set "IsActive"=false '
+                    'where "IsActive" and "ServiceRegionId" = ANY(%s) returning "CustomerSupportId"', (cs_ids,))
+        changed = [r[0] for r in cur.fetchall()]
+    try:
+        st, body = _order_attempt(token)
+        ok = st == 400 and isinstance(body, dict) and "customer support" in str(body.get("missingRoles", "")).lower()
+        record("Customer support unavailable -> order blocked", "PDF 7 / CR-1", ok, f"HTTP {st}")
+    finally:
+        if changed:
+            cur.execute('update "CustomerSupports" set "IsActive"=true where "CustomerSupportId" = ANY(%s::uuid[])', (changed,))
+
+    # 3) Delivery partner unavailable -> blocked.
+    del_ids = _delivery_region_ids_for_pin(cur, SERVICEABLE_PIN)
+    changed = []
+    if del_ids:
+        cur.execute('update "Deliveries" set "IsActive"=false '
+                    'where "IsActive" and "ServiceRegionId" = ANY(%s) returning "Id"', (del_ids,))
+        changed = [r[0] for r in cur.fetchall()]
+    try:
+        st, body = _order_attempt(token)
+        ok = st == 400 and isinstance(body, dict) and "delivery partner" in str(body.get("missingRoles", "")).lower()
+        record("Delivery partner unavailable -> order blocked", "PDF 6.5 / CR-1", ok, f"HTTP {st}")
+    finally:
+        if changed:
+            cur.execute('update "Deliveries" set "IsActive"=true where "Id" = ANY(%s)', (changed,))
 
 
 def s2_normal_journey(token):
@@ -383,7 +438,7 @@ def main():
     print(f"  serviceable pincode {SERVICEABLE_PIN}: 2 eligible chemists, delivery region {region}, CS from stock data")
 
     s0_sms_safety(token)
-    s1_chemist_eligibility(token, cur)
+    s1_serviceability_gate(token, cur)
     s2_normal_journey(token)
     s3_reject_reassign(token)
     s4_cr1_service_unavailable(token)
