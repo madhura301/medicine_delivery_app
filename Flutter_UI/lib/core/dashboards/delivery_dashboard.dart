@@ -307,7 +307,7 @@ class _DeliveryActiveOrdersPageState extends State<_DeliveryActiveOrdersPage>
         return;
       }
       setState(() {
-        _errorMessage = 'Failed to load deliveries';
+        _errorMessage = 'No deliveries assigned yet.';
         _isLoading = false;
       });
     } catch (e) {
