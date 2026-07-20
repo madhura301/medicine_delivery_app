@@ -50,10 +50,13 @@ namespace MedicineDelivery.Infrastructure.Services
 
             var result = await _userManager.CreateAsync(appUser, password);
             
-            // Update the user ID in the wrapper
+            // Write the generated Id back through the IApplicationUser interface.
+            // (A hard cast to ApplicationUserWrapper here threw InvalidCastException
+            // for callers that pass a different IApplicationUser implementation, e.g.
+            // the /api/users register & create-with-role handlers' ApplicationUserImpl.)
             if (result.Succeeded)
             {
-                ((ApplicationUserWrapper)user).Id = appUser.Id;
+                user.Id = appUser.Id;
             }
             else
             {

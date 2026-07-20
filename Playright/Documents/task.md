@@ -218,7 +218,13 @@ One file per controller. Each endpoint needs happy-path + auth-negative + valida
   that (preferred — aligns with D4 self-cleaning), (c) make the setup endpoint
   reset password on conflict (backend change — raise with team).
 
-- **F2 — `/api/users` register & create-with-role throw 500 (2026-05-17). BACKEND BUG.**
+- **F2 — [FIXED 2026-07-20] `/api/users` register & create-with-role threw 500. BACKEND BUG.**
+  Fix: `UserManagerService.CreateAsync` wrote the generated Id back via a hard cast
+  `((ApplicationUserWrapper)user).Id = ...` which threw `InvalidCastException` for the
+  handlers' `ApplicationUserImpl`. Changed to `user.Id = appUser.Id;` (via the
+  `IApplicationUser` interface setter). Both endpoints now 201; the 3 `users.spec.ts`
+  fixmes are live and green. Original detail below.
+
   `POST /api/users/register` and `POST /api/users/create-with-role` return
   `500 {"error":"An error occurred while ..."}`. API log shows
   `System.InvalidCastException: Unable to cast object of type

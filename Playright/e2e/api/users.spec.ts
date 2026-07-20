@@ -12,14 +12,12 @@ import { test, expect } from '../fixtures/api.fixture';
  *  UserRegistrationDto: Email*, Password*(>=6), ConfirmPassword*(==Password), FirstName*, LastName*, PhoneNumber?
  *  CreateUserWithRoleDto: Email*, Password*(>=6), FirstName*, LastName*, RoleId*, PhoneNumber?, EmailConfirmed, IsActive
  *
- * ⚠️ KNOWN BACKEND DEFECT F2 (see task.md Findings): the MediatR handlers for
- *  /api/users/register (RegisterUserCommandHandler.cs:53) and
- *  /api/users/create-with-role (CreateUserWithRoleCommandHandler.cs:55) throw
- *  System.InvalidCastException (ApplicationUserImpl -> ApplicationUserWrapper)
- *  AFTER inserting the user row, so both return 500 instead of 201. The
- *  happy-path tests below are `test.fixme` (tracked, NOT hidden) until the
- *  backend is fixed — flip them back to `test` once F2 is resolved.
- *  (/api/auth/register is unaffected — different code path.)
+ * F2 [FIXED 2026-07-20]: /api/users/register and /api/users/create-with-role used
+ *  to throw System.InvalidCastException (ApplicationUserImpl -> ApplicationUserWrapper)
+ *  in UserManagerService.CreateAsync AFTER inserting the user row, returning 500.
+ *  Root cause: a hard cast to ApplicationUserWrapper to write back the generated Id.
+ *  Fix: write the Id through the IApplicationUser interface setter instead. Both
+ *  endpoints now return 201; the happy-path tests below are live again.
  */
 
 const CUSTOMER_ROLE_ID = '44444444-4444-4444-4444-444444444444'; // PredefinedAuthorizationData.CustomerRoleId
@@ -52,8 +50,7 @@ test.describe('Users API', () => {
   });
 
   test.describe('POST /api/users/register (anonymous)', () => {
-    // F2: blocked by backend InvalidCastException in RegisterUserCommandHandler.
-    test.fixme('valid payload -> 201 and the user is created', async ({ api }) => {
+    test('valid payload -> 201 and the user is created', async ({ api }) => {
       const u = uniq();
       const res = await api.post('/api/users/register', {
         data: {
@@ -96,8 +93,7 @@ test.describe('Users API', () => {
       expect(res.status()).toBe(400);
     });
 
-    // F2: precondition (first registration -> 201) is impossible while the bug stands.
-    test.fixme('duplicate email -> 400', async ({ api }) => {
+    test('duplicate email -> 400', async ({ api }) => {
       const u = uniq();
       const payload = {
         email: u.email,
@@ -114,8 +110,7 @@ test.describe('Users API', () => {
   });
 
   test.describe('POST /api/users/create-with-role (admin)', () => {
-    // F2: blocked by backend InvalidCastException in CreateUserWithRoleCommandHandler.
-    test.fixme('valid payload with a real RoleId -> 201', async ({ apiAs }) => {
+    test('valid payload with a real RoleId -> 201', async ({ apiAs }) => {
       const admin = await apiAs('admin');
       const u = uniq();
       const res = await admin.post('/api/users/create-with-role', {

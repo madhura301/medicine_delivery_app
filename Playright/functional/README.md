@@ -47,24 +47,27 @@ Exit code `0` = all checks passed, `1` = at least one failed, `2` = backend unre
 
 ## How it seeds (and why via DB)
 
-Two states have **no public API** (they are driven by Razorpay in production), so the
-harness writes them directly to the local DB:
-- chemist payout account `OnboardingStatus = Active` + activation fee `Status = Paid` (§5 conditions 2 & 3);
-- `Orders.OrderPaymentStatus = FullyPaid` before completion (the completion gate requires it).
+One state has **no public API** (it is driven by Razorpay in production), so the
+harness writes it directly to the local DB: the chemist payout account
+`OnboardingStatus = Active` + activation fee `Status = Paid` (§5 conditions 2 & 3).
 
-Everything else (customers, addresses, orders, accept/reject/bill/deliver/complete,
-CS reassign) goes through the real REST API.
+Everything else goes through the real REST API — including payment: recording a
+successful payment that covers the bill amount auto-sets the order to `FullyPaid`,
+releases the OTP, and lets the delivery be completed, all through the API.
 
 ## Known backend findings surfaced by this script
 
 - **`CancellationReason` migration drift** — `20260720150528_AddOrderCancellationReason`
   must be applied to whatever DB the API uses, or every order read 500s
   (`column o.CancellationReason does not exist`).
-- **`CompleteOrder` returns 500 instead of a clean 4xx** when payment isn't `FullyPaid`:
-  `OrdersController.CompleteOrder` doesn't catch `PaymentIncompleteException`.
-- **Recording a full payment via `POST /api/payments` leaves the order at
-  `PartiallyPaid`**, so completion is impossible without the Razorpay confirmation path
-  setting `OrderPaymentStatus = FullyPaid`.
+- **[FIXED]** `CompleteOrder` used to return 500 (not a clean 4xx) when payment wasn't
+  `FullyPaid` — `OrdersController.CompleteOrder` now catches `PaymentIncompleteException`.
+- **[FIXED]** `/api/users/register` & `/api/users/create-with-role` returned 500
+  (`InvalidCastException` in `UserManagerService.CreateAsync`) — now write the Id via
+  the `IApplicationUser` interface.
+- **[FIXED]** Creating/updating a service region with a pin code already used by another
+  region of the same type returned 500 — the controller now catches
+  `InvalidOperationException` → 400.
 
 ## Relationship to the Playwright suite
 

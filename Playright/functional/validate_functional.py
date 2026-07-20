@@ -185,13 +185,6 @@ def seed_serviceable_area(cur):
     return region_id
 
 
-def mark_order_fully_paid(cur, oid):
-    """No public API sets OrderPaymentStatus=FullyPaid without the Razorpay confirm
-    flow; the completion gate (OrderService.CompleteOrderAsync) requires it, so the
-    harness sets it directly. OrderPaymentStatus.FullyPaid = 2."""
-    cur.execute('update "Orders" set "OrderPaymentStatus"=2 where "OrderId"=%s', (oid,))
-
-
 # --------------------------------------------------------------------------- #
 # Scenario building blocks
 # --------------------------------------------------------------------------- #
@@ -265,7 +258,7 @@ def s1_chemist_eligibility(token, cur):
         make_store_eligible(cur, STORE_SECONDARY)
 
 
-def s2_normal_journey(token, cur):
+def s2_normal_journey(token):
     print("\nS2  Normal order journey (create -> accept -> bill -> deliver -> pay -> OTP -> complete)")
     cid, aid = register_customer_with_address(token, SERVICEABLE_PIN)
     st, body = create_text_order(token, cid, aid)
@@ -289,8 +282,11 @@ def s2_normal_journey(token, cur):
     st, _ = _req("POST", "/api/payments", token=token, json_body={
         "orderId": oid, "paymentMode": "UPI", "transactionId": f"E2E-{int(time.time())}", "amount": 250.0, "paymentStatus": 1,
     })
-    mark_order_fully_paid(cur, oid)
-    record("Customer pays -> payment recorded", "PDF 6.6", st == 201, f"HTTP {st}")
+    # A successful payment covering the bill amount auto-sets the order to FullyPaid (2)
+    # and releases the OTP to the customer — all through the API, no DB shortcut.
+    ops = get_order(token, oid)["orderPaymentStatus"]
+    record("Customer pays (full) -> order FullyPaid + OTP released", "PDF 6.6",
+           st == 201 and ops == 2, f"HTTP {st}, orderPaymentStatus={ops}")
 
     otp = get_order(token, oid)["otp"]  # OTP readable to authorised staff; never SMS-sent in dev
     st, _ = _req("PUT", f"/api/orders/{oid}/complete", token=token, json_body={"otp": otp})
@@ -388,7 +384,7 @@ def main():
 
     s0_sms_safety(token)
     s1_chemist_eligibility(token, cur)
-    s2_normal_journey(token, cur)
+    s2_normal_journey(token)
     s3_reject_reassign(token)
     s4_cr1_service_unavailable(token)
     s5_cr2_manager_escalation(token, cur)
