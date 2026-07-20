@@ -32,5 +32,12 @@ namespace MedicineDelivery.Application.Interfaces
         /// <paramref name="chemistId"/> may be the MedicalStoreId or the chemist's UserId.
         /// </summary>
         Task<ChemistPayoutResult> RefreshStatusAsync(Guid chemistId, CancellationToken ct = default);
+
+        /// <summary>
+        /// Applies a Razorpay Route account webhook event to the payout account identified by its
+        /// linked account id (acc_XXXX). Maps the event to the onboarding status and persists it.
+        /// Returns false if no matching payout account exists.
+        /// </summary>
+        Task<bool> ApplyAccountWebhookAsync(string razorpayLinkedAccountId, string eventType, CancellationToken ct = default);
     }
 }

@@ -17,6 +17,8 @@ using System.Reflection;
 using Microsoft.AspNetCore.Authorization;
 using Serilog;
 using Microsoft.ApplicationInsights.Extensibility;
+using Microsoft.AspNetCore.DataProtection;
+using Azure.Storage.Blobs;
 
 // Bootstrap logger (before config is available) so early log messages are not lost
 Log.Logger = new LoggerConfiguration()
@@ -61,6 +63,32 @@ try
 
     // Add Serilog as the logging provider
     builder.Host.UseSerilog();
+
+    // Persist Data Protection keys to Azure Blob storage so they survive container
+    // restarts (the container filesystem is ephemeral). Without this, ASP.NET Core
+    // regenerates keys on every restart, invalidating anything encrypted with them.
+    // Reuses the existing FileStorage:Azure connection string when available.
+    var dpConnectionString = builder.Configuration["FileStorage:Azure:ConnectionString"];
+    if (!string.IsNullOrWhiteSpace(dpConnectionString) &&
+        !dpConnectionString.StartsWith("SET_VIA_ENV", StringComparison.OrdinalIgnoreCase))
+    {
+        const string dpContainerName = "dataprotection";
+        const string dpBlobName = "keys.xml";
+
+        // Ensure the container exists before Data Protection tries to read/write the blob.
+        var dpContainerClient = new BlobContainerClient(dpConnectionString, dpContainerName);
+        dpContainerClient.CreateIfNotExists();
+
+        builder.Services.AddDataProtection()
+            .SetApplicationName("Pharmaish.API")
+            .PersistKeysToAzureBlobStorage(dpContainerClient.GetBlobClient(dpBlobName));
+
+        Log.Information("Data Protection keys persisted to Azure Blob container '{Container}'.", dpContainerName);
+    }
+    else
+    {
+        Log.Warning("Data Protection: no Azure blob connection string; keys will use the default ephemeral store.");
+    }
 
 // Add services to the container.
 builder.Services.AddControllers()

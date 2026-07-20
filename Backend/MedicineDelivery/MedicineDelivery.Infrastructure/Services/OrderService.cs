@@ -208,7 +208,10 @@ namespace MedicineDelivery.Infrastructure.Services
                     ms.Latitude.HasValue &&
                     ms.Longitude.HasValue);
 
-                var nearestStore = medicalStores
+                // Only chemists that have completed payout onboarding AND paid the activation fee may receive orders.
+                var eligibleStores = await FilterEligibleStoresAsync(medicalStores);
+
+                var nearestStore = eligibleStores
                     .Select(ms => new
                     {
                         Store = ms,
@@ -249,8 +252,9 @@ namespace MedicineDelivery.Infrastructure.Services
                 }
                 else
                 {
-                    _logger.LogWarning("AssignOrderToNearestChemist failed: No active medical store with coordinates found for Order {OrderId}", orderId);
-                    throw new InvalidOperationException("No active medical store with coordinates found to assign the order.");
+                    // No eligible chemist (active payout + paid activation) with coordinates — hand off to customer support.
+                    _logger.LogInformation("Order {OrderId}: No eligible medical store with coordinates found, assigning to customer support", orderId);
+                    await AssignRejectOrderToCustomerSupport(orderId);
                 }
             }
             else
@@ -272,12 +276,15 @@ namespace MedicineDelivery.Infrastructure.Services
                     ms.IsActive &&
                     !ms.IsDeleted);
 
-                if (storesInPostalCode != null && storesInPostalCode.Any())
+                // Only chemists that have completed payout onboarding AND paid the activation fee may receive orders.
+                var storesInPostalCodeList = await FilterEligibleStoresAsync(storesInPostalCode);
+
+                if (storesInPostalCodeList.Count > 0)
                 {
                     // Case 1: Chemists found — assign to the one with the fewest active (not completed/delivered) orders
                     var storeOrderCounts = new List<(MedicalStore Store, int ActiveOrderCount)>();
 
-                    foreach (var store in storesInPostalCode)
+                    foreach (var store in storesInPostalCodeList)
                     {
                         var activeOrderCount = (await _unitOfWork.Orders.FindAsync(
                             o => o.MedicalStoreId == store.MedicalStoreId &&
@@ -319,11 +326,40 @@ namespace MedicineDelivery.Infrastructure.Services
                 }
                 else
                 {
-                    // Case 2: No chemists in this postal code — assign to customer support
-                    _logger.LogInformation("Order {OrderId}: No chemists found in postal code {PostalCode}, assigning to customer support", orderId, postalCode);
+                    // Case 2: No eligible chemist in this postal code — assign to customer support
+                    _logger.LogInformation("Order {OrderId}: No eligible chemists found in postal code {PostalCode}, assigning to customer support", orderId, postalCode);
                     await AssignRejectOrderToCustomerSupport(orderId);
                 }
             }
+        }
+
+        /// <summary>
+        /// Filters the given medical stores to those eligible to receive orders: the store must have
+        /// a payout account with <see cref="ChemistPayoutStatus.Active"/> onboarding AND at least one
+        /// activation payment with <see cref="ChemistActivationStatus.Paid"/> status.
+        /// </summary>
+        private async Task<List<MedicalStore>> FilterEligibleStoresAsync(IEnumerable<MedicalStore> stores)
+        {
+            var eligible = new List<MedicalStore>();
+
+            foreach (var store in stores)
+            {
+                var hasActivePayout = await _unitOfWork.ChemistPayoutAccounts.AnyAsync(
+                    pa => pa.MedicalStoreId == store.MedicalStoreId &&
+                          pa.OnboardingStatus == ChemistPayoutStatus.Active);
+
+                if (!hasActivePayout)
+                    continue;
+
+                var hasPaidActivation = await _unitOfWork.ChemistActivationPayments.AnyAsync(
+                    ap => ap.MedicalStoreId == store.MedicalStoreId &&
+                          ap.Status == ChemistActivationStatus.Paid);
+
+                if (hasPaidActivation)
+                    eligible.Add(store);
+            }
+
+            return eligible;
         }
 
         public async Task<OrderDto?> GetOrderByIdAsync(int orderId, CancellationToken cancellationToken = default)
@@ -608,28 +644,29 @@ namespace MedicineDelivery.Infrastructure.Services
                 throw new InvalidOperationException("Customer address does not have a postal code.");
             }
 
-            // Find the ServiceRegion by postal code (only CustomerSupport type regions)
+            var postalCode = customerAddress.PostalCode.Trim();
+
+            // Find the CustomerSupport region serving this postal code. A pin code can be mapped to
+            // regions of different types (e.g. CustomerSupport and DeliveryBoy), so the region type
+            // must be part of the lookup — not validated after arbitrarily picking the first mapping.
+            var customerSupportRegionIds = (await _unitOfWork.ServiceRegions.FindAsync(
+                    r => r.RegionType == Domain.Enums.RegionType.CustomerSupport))
+                .Select(r => r.Id)
+                .ToHashSet();
+
             var regionPinCode = await _unitOfWork.ServiceRegionPinCodes.FirstOrDefaultAsync(
-                rpc => rpc.PinCode == customerAddress.PostalCode.Trim());
-            
+                rpc => rpc.PinCode == postalCode && customerSupportRegionIds.Contains(rpc.ServiceRegionId));
+
             if (regionPinCode == null)
             {
-                _logger.LogWarning("AssignRejectOrderToCustomerSupport failed: No service region found for postal code {PostalCode}, Order {OrderId}", customerAddress.PostalCode, orderId);
-                throw new KeyNotFoundException($"No service region found for postal code: {customerAddress.PostalCode}");
-            }
-
-            // Verify the region is a CustomerSupport type region
-            var region = await _unitOfWork.ServiceRegions.GetByIdAsync(regionPinCode.ServiceRegionId);
-            if (region == null || region.RegionType != Domain.Enums.RegionType.CustomerSupport)
-            {
-                _logger.LogWarning("AssignRejectOrderToCustomerSupport failed: No customer support region found for postal code {PostalCode}, Order {OrderId}", customerAddress.PostalCode, orderId);
-                throw new KeyNotFoundException($"No customer support region found for postal code: {customerAddress.PostalCode}");
+                _logger.LogWarning("AssignRejectOrderToCustomerSupport failed: No customer support region found for postal code {PostalCode}, Order {OrderId}", postalCode, orderId);
+                throw new KeyNotFoundException($"No customer support region found for postal code: {postalCode}");
             }
 
             // Get all CustomerSupports assigned to this region
             var customerSupports = await _unitOfWork.CustomerSupports.FindAsync(
-                cs => cs.ServiceRegionId == regionPinCode.ServiceRegionId && 
-                      cs.IsActive && 
+                cs => cs.ServiceRegionId == regionPinCode.ServiceRegionId &&
+                      cs.IsActive &&
                       !cs.IsDeleted);
 
             if (customerSupports == null || !customerSupports.Any())

@@ -17,15 +17,18 @@ namespace MedicineDelivery.API.Controllers
     public class RazorpayWebhookController : ControllerBase
     {
         private readonly IChemistActivationService _activationService;
+        private readonly IChemistPayoutService _payoutService;
         private readonly IConfiguration _configuration;
         private readonly ILogger<RazorpayWebhookController> _logger;
 
         public RazorpayWebhookController(
             IChemistActivationService activationService,
+            IChemistPayoutService payoutService,
             IConfiguration configuration,
             ILogger<RazorpayWebhookController> logger)
         {
             _activationService = activationService;
+            _payoutService = payoutService;
             _configuration = configuration;
             _logger = logger;
         }
@@ -67,6 +70,26 @@ namespace MedicineDelivery.API.Controllers
                     {
                         _logger.LogWarning("payment_link.paid webhook missing payment_link id.");
                     }
+                }
+                else if (eventType != null && eventType.StartsWith("account.", StringComparison.Ordinal))
+                {
+                    // Razorpay Route linked-account lifecycle events (activated/rejected/suspended/etc.).
+                    var accountId = ExtractAccountId(root);
+                    if (!string.IsNullOrWhiteSpace(accountId))
+                    {
+                        _logger.LogInformation("Account webhook {Event}: dispatching for linked account {AccountId}", eventType, accountId);
+                        await _payoutService.ApplyAccountWebhookAsync(accountId!, eventType, ct);
+                    }
+                    else
+                    {
+                        // Extraction failed — the payload shape may differ from what we expect.
+                        // Log the raw body so the actual structure can be inspected.
+                        _logger.LogWarning("{Event} webhook missing account id. Raw payload: {RawBody}", eventType, rawBody);
+                    }
+                }
+                else
+                {
+                    _logger.LogInformation("Razorpay webhook {Event} ignored (no handler).", eventType);
                 }
 
                 // Always 200 for accepted/ignored events so Razorpay stops retrying.
@@ -123,6 +146,23 @@ namespace MedicineDelivery.API.Controllers
             }
 
             return (linkId, paymentId);
+        }
+
+        /// <summary>
+        /// Extracts the linked account id (acc_XXXX) from a Razorpay account.* webhook.
+        /// The id lives at payload.account.entity.id.
+        /// </summary>
+        private static string? ExtractAccountId(JsonElement root)
+        {
+            if (root.TryGetProperty("payload", out var payload) &&
+                payload.TryGetProperty("account", out var acc) &&
+                acc.TryGetProperty("entity", out var accEntity) &&
+                accEntity.TryGetProperty("id", out var accId))
+            {
+                return accId.GetString();
+            }
+
+            return null;
         }
 
         private static string ComputeHmacSha256(string payload, string secret)

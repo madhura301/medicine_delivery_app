@@ -366,6 +366,7 @@ namespace MedicineDelivery.API.Controllers
         }
 
         [HttpPost]
+        [HttpPost("CreateOrder")] // Alias: some clients POST to /api/Orders/CreateOrder
         [Consumes("multipart/form-data")]
         [Authorize(Policy = "RequireOrderCreatePermission")]
         public async Task<IActionResult> CreateOrder([FromForm] CreateOrderDto request, CancellationToken cancellationToken)

@@ -269,7 +269,67 @@ namespace MedicineDelivery.Infrastructure.Services
             return ChemistPayoutResult.Ok(ToDto(account));
         }
 
+        public async Task<bool> ApplyAccountWebhookAsync(string razorpayLinkedAccountId, string eventType, CancellationToken ct = default)
+        {
+            ct.ThrowIfCancellationRequested();
+
+            if (string.IsNullOrWhiteSpace(razorpayLinkedAccountId))
+                return false;
+
+            var newStatus = MapAccountEvent(eventType);
+            if (newStatus == null)
+            {
+                _logger.LogInformation("Account webhook: ignoring unmapped event {Event} for {LinkedAccountId}", eventType, razorpayLinkedAccountId);
+                return false;
+            }
+
+            var account = await _unitOfWork.ChemistPayoutAccounts
+                .FirstOrDefaultAsync(a => a.RazorpayLinkedAccountId == razorpayLinkedAccountId);
+
+            if (account == null)
+            {
+                _logger.LogWarning("Account webhook: no payout account for LinkedAccountId={LinkedAccountId}", razorpayLinkedAccountId);
+                return false;
+            }
+
+            if (account.OnboardingStatus == newStatus.Value)
+            {
+                _logger.LogInformation("Account webhook: store {StoreId} already at status {Status} for event {Event}; skipping (idempotent).",
+                    account.MedicalStoreId, newStatus.Value, eventType);
+                return true; // Idempotent: already at this status.
+            }
+
+            var previous = account.OnboardingStatus;
+            account.OnboardingStatus = newStatus.Value;
+            if (newStatus.Value == ChemistPayoutStatus.Active)
+            {
+                account.OnboardingError = null;
+                account.ActivatedOn ??= DateTime.UtcNow;
+            }
+            account.UpdatedOn = DateTime.UtcNow;
+            _unitOfWork.ChemistPayoutAccounts.Update(account);
+            await _unitOfWork.SaveChangesAsync();
+
+            _logger.LogInformation("Account webhook: store {StoreId} {Old} -> {New} (event={Event})",
+                account.MedicalStoreId, previous, newStatus.Value, eventType);
+            return true;
+        }
+
         // ----- helpers -----
+
+        /// <summary>
+        /// Maps a Razorpay Route account webhook event to an onboarding status.
+        /// Returns null for events that should not change the status.
+        /// </summary>
+        private static ChemistPayoutStatus? MapAccountEvent(string? eventType) => eventType switch
+        {
+            "account.activated" => ChemistPayoutStatus.Active,
+            "account.rejected" => ChemistPayoutStatus.Rejected,
+            "account.suspended" => ChemistPayoutStatus.Suspended,
+            "account.needs_clarification" => ChemistPayoutStatus.NeedsClarification,
+            "account.under_review" => ChemistPayoutStatus.Pending,
+            _ => null
+        };
 
         private static ChemistPayoutStatus MapState(RazorpayActivationState state) => state switch
         {
