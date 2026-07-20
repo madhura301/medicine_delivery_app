@@ -456,6 +456,10 @@ namespace MedicineDelivery.Infrastructure.Data
                 entity.Property(o => o.OTP)
                     .HasMaxLength(4);
 
+                entity.Property(o => o.CancellationReason)
+                    .HasMaxLength(250)
+                    .IsRequired(false);
+
                 entity.Property(o => o.TotalAmount)
                     .HasColumnType("decimal(10,2)");
 
@@ -485,6 +489,11 @@ namespace MedicineDelivery.Infrastructure.Data
                     .HasForeignKey(o => o.CustomerSupportId)
                     .OnDelete(DeleteBehavior.SetNull);
 
+                entity.HasOne(o => o.Manager)
+                    .WithMany()
+                    .HasForeignKey(o => o.ManagerId)
+                    .OnDelete(DeleteBehavior.SetNull);
+
                 entity.HasOne<Delivery>()
                     .WithMany()
                     .HasForeignKey(o => o.DeliveryId)
@@ -494,6 +503,7 @@ namespace MedicineDelivery.Infrastructure.Data
                 entity.HasIndex(o => o.OrderStatus);
                 entity.HasIndex(o => o.MedicalStoreId);
                 entity.HasIndex(o => o.DeliveryId);
+                entity.HasIndex(o => o.ManagerId);
             });
 
             // Configure OrderAssignmentHistory entity
@@ -535,6 +545,11 @@ namespace MedicineDelivery.Infrastructure.Data
                 entity.HasOne(oah => oah.CustomerSupport)
                     .WithMany()
                     .HasForeignKey(oah => oah.AssignedByCustomerSupportId)
+                    .OnDelete(DeleteBehavior.SetNull);
+
+                entity.HasOne(oah => oah.Manager)
+                    .WithMany()
+                    .HasForeignKey(oah => oah.ManagerId)
                     .OnDelete(DeleteBehavior.SetNull);
 
                 entity.HasOne<Delivery>()

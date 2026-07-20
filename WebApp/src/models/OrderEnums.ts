@@ -32,6 +32,8 @@ export enum OrderStatus {
   OutForDelivery = 6,
   Completed = 7,
   AssignedToCustomerSupport = 8,
+  AssignedToManager = 9,
+  Cancelled = 10,
 }
 
 export const OrderStatusLabel: Record<number, string> = {
@@ -44,6 +46,8 @@ export const OrderStatusLabel: Record<number, string> = {
   6: 'Out for Delivery',
   7: 'Completed',
   8: 'Assigned to Customer Support',
+  9: 'Assigned to Manager',
+  10: 'Cancelled',
 };
 
 export enum OrderPaymentStatus {
@@ -63,6 +67,7 @@ export enum AssignTo {
   Chemist = 1,
   CustomerSupport = 2,
   Delivery = 3,
+  Manager = 4,
 }
 
 export enum AssignedByType {

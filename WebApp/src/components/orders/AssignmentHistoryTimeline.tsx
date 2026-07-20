@@ -3,7 +3,7 @@ import { Timeline, TimelineItem, TimelineSeparator, TimelineConnector, TimelineC
 import type { OrderAssignmentHistory } from '../../models/Order';
 import { formatDateTime } from '../../utils/formatters';
 
-const ASSIGN_TO_LABEL: Record<number, string> = { 0: 'Customer', 1: 'Chemist', 2: 'Customer Support', 3: 'Delivery' };
+const ASSIGN_TO_LABEL: Record<number, string> = { 0: 'Customer', 1: 'Chemist', 2: 'Customer Support', 3: 'Delivery', 4: 'Manager' };
 const STATUS_LABEL: Record<number, string> = { 0: 'Assigned', 1: 'Accepted', 2: 'Rejected' };
 const STATUS_COLOR: Record<number, 'info' | 'success' | 'error'> = { 0: 'info', 1: 'success', 2: 'error' };
 

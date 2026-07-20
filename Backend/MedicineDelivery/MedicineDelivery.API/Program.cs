@@ -237,6 +237,9 @@ builder.Services.AddAuthorization(options =>
     
     options.AddPolicy("RequireOrderDeletePermission", policy =>
         policy.Requirements.Add(new MedicineDelivery.API.Authorization.PermissionRequirement("DeleteOrders")));
+
+    options.AddPolicy("RequireOrderCancelPermission", policy =>
+        policy.Requirements.Add(new MedicineDelivery.API.Authorization.PermissionRequirement("CancelOrders")));
     
     options.AddPolicy("RequireListAllOrdersPermission", policy =>
         policy.Requirements.Add(new MedicineDelivery.API.Authorization.PermissionRequirement("ListAllOrders")));

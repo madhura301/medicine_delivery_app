@@ -96,6 +96,11 @@ namespace MedicineDelivery.Infrastructure.Services
                 throw new KeyNotFoundException("Customer address not found or inactive.");
             }
 
+            // The delivery area must be fully serviceable — an eligible chemist within 5 km, plus a
+            // customer support agent and a delivery partner covering the pin code. If any is missing,
+            // no order is created (throws ServiceAreaUnavailableException -> HTTP 400).
+            await EnsureOrderAreaIsServiceableAsync(address, cancellationToken);
+
             // Validate input data based on the order input type
             switch (createDto.OrderInputType)
             {
@@ -169,6 +174,130 @@ namespace MedicineDelivery.Infrastructure.Services
             await AssignOrderToNearestChemist(order.OrderId);
 
             return _mapper.Map<OrderDto>(order);
+        }
+
+        /// <summary>
+        /// Verifies that the delivery address's area can be fully served before an order is created:
+        /// <list type="bullet">
+        /// <item>an <b>eligible chemist</b> (active payout + paid activation) within a 5 km radius when the
+        /// address has coordinates, otherwise an eligible chemist in the same postal code;</item>
+        /// <item>a <b>customer support</b> agent whose <see cref="RegionType.CustomerSupport"/> region covers the pin code;</item>
+        /// <item>a <b>delivery partner</b> whose <see cref="RegionType.DeliveryBoy"/> region covers the pin code.</item>
+        /// </list>
+        /// Throws <see cref="ServiceAreaUnavailableException"/> listing every missing role if any is unavailable.
+        /// </summary>
+        private async Task EnsureOrderAreaIsServiceableAsync(CustomerAddress address, CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            var postalCode = address.PostalCode?.Trim() ?? string.Empty;
+            var missingRoles = new List<string>();
+
+            // --- Chemist: eligible store within 5 km (geo) or, without coordinates, in the same pin code ---
+            var chemistAvailable = await IsChemistAvailableForAddressAsync(address, postalCode);
+            if (!chemistAvailable)
+                missingRoles.Add("chemist");
+
+            // Customer support and delivery partner are matched purely by pin code -> region. Without a
+            // postal code neither can be resolved, so both count as unavailable.
+            var customerSupportAvailable = false;
+            var deliveryAvailable = false;
+
+            if (!string.IsNullOrWhiteSpace(postalCode))
+            {
+                // --- Customer support: any active agent in a CustomerSupport region covering this pin ---
+                var customerSupportRegionIds = (await _unitOfWork.ServiceRegions.FindAsync(
+                        r => r.RegionType == RegionType.CustomerSupport))
+                    .Select(r => r.Id)
+                    .ToHashSet();
+
+                var customerSupportPinRegionIds = (await _unitOfWork.ServiceRegionPinCodes.FindAsync(
+                        rpc => rpc.PinCode == postalCode))
+                    .Where(rpc => customerSupportRegionIds.Contains(rpc.ServiceRegionId))
+                    .Select(rpc => rpc.ServiceRegionId)
+                    .ToHashSet();
+
+                if (customerSupportPinRegionIds.Count > 0)
+                {
+                    customerSupportAvailable = await _unitOfWork.CustomerSupports.AnyAsync(
+                        cs => cs.ServiceRegionId.HasValue &&
+                              customerSupportPinRegionIds.Contains(cs.ServiceRegionId.Value) &&
+                              cs.IsActive &&
+                              !cs.IsDeleted);
+                }
+
+                // --- Delivery partner: any active delivery boy in a DeliveryBoy region covering this pin ---
+                var deliveryRegionIds = (await _unitOfWork.ServiceRegions.FindAsync(
+                        r => r.RegionType == RegionType.DeliveryBoy))
+                    .Select(r => r.Id)
+                    .ToHashSet();
+
+                var deliveryPinRegionIds = (await _unitOfWork.ServiceRegionPinCodes.FindAsync(
+                        rpc => rpc.PinCode == postalCode))
+                    .Where(rpc => deliveryRegionIds.Contains(rpc.ServiceRegionId))
+                    .Select(rpc => rpc.ServiceRegionId)
+                    .ToHashSet();
+
+                if (deliveryPinRegionIds.Count > 0)
+                {
+                    deliveryAvailable = await _unitOfWork.Deliveries.AnyAsync(
+                        d => d.ServiceRegionId.HasValue &&
+                             deliveryPinRegionIds.Contains(d.ServiceRegionId.Value) &&
+                             d.IsActive &&
+                             !d.IsDeleted);
+                }
+            }
+
+            if (!customerSupportAvailable)
+                missingRoles.Add("customer support");
+
+            if (!deliveryAvailable)
+                missingRoles.Add("delivery partner");
+
+            if (missingRoles.Count > 0)
+            {
+                _logger.LogWarning(
+                    "CreateOrderAsync blocked: area not serviceable for pincode {PostalCode}. Missing: {MissingRoles}",
+                    string.IsNullOrWhiteSpace(postalCode) ? "(none)" : postalCode,
+                    string.Join(", ", missingRoles));
+                throw new ServiceAreaUnavailableException(postalCode, missingRoles);
+            }
+        }
+
+        /// <summary>
+        /// Determines whether an eligible chemist (active payout + paid activation) can serve the address:
+        /// within a 5 km radius when the address has coordinates, otherwise present in the same postal code.
+        /// </summary>
+        private async Task<bool> IsChemistAvailableForAddressAsync(CustomerAddress address, string postalCode)
+        {
+            if (address.Latitude.HasValue && address.Longitude.HasValue)
+            {
+                var storesWithCoords = await _unitOfWork.MedicalStores.FindAsync(ms =>
+                    ms.IsActive &&
+                    !ms.IsDeleted &&
+                    ms.Latitude.HasValue &&
+                    ms.Longitude.HasValue);
+
+                var eligibleStores = await FilterEligibleStoresAsync(storesWithCoords);
+
+                return eligibleStores.Any(ms => CalculateHaversineDistance(
+                    (double)address.Latitude.Value,
+                    (double)address.Longitude.Value,
+                    (double)ms.Latitude!.Value,
+                    (double)ms.Longitude!.Value) <= 5.0);
+            }
+
+            // No coordinates — fall back to postal-code match, consistent with AssignOrderToNearestChemist.
+            if (string.IsNullOrWhiteSpace(postalCode))
+                return false;
+
+            var storesInPostalCode = await _unitOfWork.MedicalStores.FindAsync(ms =>
+                ms.PostalCode == postalCode &&
+                ms.IsActive &&
+                !ms.IsDeleted);
+
+            var eligibleInPostalCode = await FilterEligibleStoresAsync(storesInPostalCode);
+            return eligibleInPostalCode.Count > 0;
         }
 
         public async Task AssignOrderToNearestChemist(int orderId)
@@ -375,6 +504,7 @@ namespace MedicineDelivery.Infrastructure.Services
                     .ThenInclude(ah => ah.CustomerSupport)
                 .Include(o => o.Payments)
                 .Include(o => o.CustomerSupport)
+                .Include(o => o.Manager)
                 .FirstOrDefaultAsync(o => o.OrderId == orderId, cancellationToken);
             
             if (order == null)
@@ -419,8 +549,11 @@ namespace MedicineDelivery.Infrastructure.Services
                         AssignTo.Chemist => history.MedicalStore != null 
                             ? history.MedicalStore.MedicalName
                             : string.Empty,
-                        AssignTo.CustomerSupport => order.CustomerSupport != null 
+                        AssignTo.CustomerSupport => order.CustomerSupport != null
                             ? $"{order.CustomerSupport.CustomerSupportFirstName} {order.CustomerSupport.CustomerSupportLastName}".Trim()
+                            : string.Empty,
+                        AssignTo.Manager => order.Manager != null
+                            ? $"{order.Manager.ManagerFirstName} {order.Manager.ManagerLastName}".Trim()
                             : string.Empty,
                         AssignTo.Delivery => history.DeliveryId.HasValue && deliveriesDict.TryGetValue(history.DeliveryId.Value, out var delivery)
                             ? $"{delivery.FirstName ?? string.Empty} {delivery.LastName ?? string.Empty}".Trim()
@@ -618,6 +751,53 @@ namespace MedicineDelivery.Infrastructure.Services
             return _mapper.Map<OrderDto>(order);
         }
 
+        /// <summary>
+        /// Cancels an order and records the mandatory cancellation reason. Intended for customer support,
+        /// manager and admin (authorized via the CancelOrders permission at the API layer). An order that is
+        /// already cancelled, or already completed, cannot be cancelled.
+        /// </summary>
+        public async Task<OrderDto> CancelOrderAsync(int orderId, CancelOrderDto cancelDto, CancellationToken cancellationToken = default)
+        {
+            ArgumentNullException.ThrowIfNull(cancelDto);
+            cancellationToken.ThrowIfCancellationRequested();
+
+            if (string.IsNullOrWhiteSpace(cancelDto.CancellationReason))
+            {
+                _logger.LogWarning("CancelOrderAsync failed: Cancellation reason is empty for Order {OrderId}", orderId);
+                throw new ArgumentException("Cancellation reason is required.", nameof(cancelDto.CancellationReason));
+            }
+
+            var order = await _unitOfWork.Orders.FirstOrDefaultAsync(o => o.OrderId == orderId);
+            if (order == null)
+            {
+                _logger.LogWarning("CancelOrderAsync failed: Order {OrderId} not found", orderId);
+                throw new KeyNotFoundException("Order not found.");
+            }
+
+            if (order.OrderStatus == OrderStatus.Cancelled)
+            {
+                _logger.LogWarning("CancelOrderAsync failed: Order {OrderId} is already cancelled", orderId);
+                throw new InvalidOperationException("Order is already cancelled.");
+            }
+
+            if (order.OrderStatus == OrderStatus.Completed)
+            {
+                _logger.LogWarning("CancelOrderAsync failed: Order {OrderId} is completed and cannot be cancelled", orderId);
+                throw new InvalidOperationException("A completed order cannot be cancelled.");
+            }
+
+            order.OrderStatus = OrderStatus.Cancelled;
+            order.CancellationReason = cancelDto.CancellationReason.Trim();
+            order.UpdatedOn = DateTime.UtcNow;
+
+            _unitOfWork.Orders.Update(order);
+            await _unitOfWork.SaveChangesAsync();
+
+            _logger.LogInformation("Order {OrderId} cancelled. Reason: {CancellationReason}", orderId, order.CancellationReason);
+
+            return _mapper.Map<OrderDto>(order);
+        }
+
         public async Task AssignRejectOrderToCustomerSupport(int orderId, CancellationToken cancellationToken = default)
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -659,8 +839,10 @@ namespace MedicineDelivery.Infrastructure.Services
 
             if (regionPinCode == null)
             {
-                _logger.LogWarning("AssignRejectOrderToCustomerSupport failed: No customer support region found for postal code {PostalCode}, Order {OrderId}", postalCode, orderId);
-                throw new KeyNotFoundException($"No customer support region found for postal code: {postalCode}");
+                // No customer support serves this pin code — escalate to a manager instead.
+                _logger.LogInformation("AssignRejectOrderToCustomerSupport: No customer support region for postal code {PostalCode}, Order {OrderId}. Escalating to a manager.", postalCode, orderId);
+                await AssignOrderToManagerAsync(order, cancellationToken);
+                return;
             }
 
             // Get all CustomerSupports assigned to this region
@@ -671,8 +853,10 @@ namespace MedicineDelivery.Infrastructure.Services
 
             if (customerSupports == null || !customerSupports.Any())
             {
-                _logger.LogWarning("AssignRejectOrderToCustomerSupport failed: No active customer supports found for region {ServiceRegionId}, Order {OrderId}", regionPinCode.ServiceRegionId, orderId);
-                throw new InvalidOperationException($"No active customer supports found for region ID: {regionPinCode.ServiceRegionId}");
+                // A region exists but has no active customer support agent — escalate to a manager.
+                _logger.LogInformation("AssignRejectOrderToCustomerSupport: No active customer support for region {ServiceRegionId}, Order {OrderId}. Escalating to a manager.", regionPinCode.ServiceRegionId, orderId);
+                await AssignOrderToManagerAsync(order, cancellationToken);
+                return;
             }
 
             // Find the CustomerSupport with the least orders in AssignedToCustomerSupport status
@@ -718,6 +902,99 @@ namespace MedicineDelivery.Infrastructure.Services
             await _unitOfWork.SaveChangesAsync();
 
             _logger.LogInformation("Order {OrderId} assigned to customer support {CustomerSupportId}", orderId, selectedCustomerSupport.CustomerSupportId);
+        }
+
+        /// <summary>
+        /// Escalates an order to a manager when no customer support serves the customer's pin code.
+        /// The manager then re-assigns the order to a chemist (via <see cref="AssignOrderToMedicalStoreAsync"/>),
+        /// after which the normal flow resumes. The manager with the fewest orders currently in
+        /// <see cref="OrderStatus.AssignedToManager"/> status is chosen; the oldest manager wins ties.
+        /// </summary>
+        private async Task AssignOrderToManagerAsync(Order order, CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            var managers = await _unitOfWork.Managers.FindAsync(m => m.IsActive && !m.IsDeleted);
+
+            if (managers == null || !managers.Any())
+            {
+                _logger.LogError("AssignOrderToManagerAsync failed: No active manager available to escalate Order {OrderId}", order.OrderId);
+                throw new InvalidOperationException("No active manager is available to handle this order.");
+            }
+
+            // Choose the least-loaded manager (fewest orders currently awaiting manager action).
+            var managerOrderCounts = new List<(Manager Manager, int OrderCount)>();
+
+            foreach (var manager in managers)
+            {
+                var orderCount = (await _unitOfWork.Orders.FindAsync(
+                    o => o.ManagerId == manager.ManagerId &&
+                         o.OrderStatus == OrderStatus.AssignedToManager)).Count();
+
+                managerOrderCounts.Add((manager, orderCount));
+            }
+
+            var selectedManager = managerOrderCounts
+                .OrderBy(x => x.OrderCount)
+                .ThenBy(x => x.Manager.CreatedOn) // If tied, use the one created first
+                .First()
+                .Manager;
+
+            order.ManagerId = selectedManager.ManagerId;
+            order.AssignTo = AssignTo.Manager;
+            order.AssignedByType = AssignedByType.System;
+            order.OrderStatus = OrderStatus.AssignedToManager;
+            order.UpdatedOn = DateTime.UtcNow;
+
+            var assignmentHistory = new OrderAssignmentHistory
+            {
+                OrderId = order.OrderId,
+                CustomerId = order.CustomerId,
+                MedicalStoreId = order.MedicalStoreId,
+                ManagerId = selectedManager.ManagerId,
+                AssignedByType = AssignedByType.System,
+                AssignTo = AssignTo.Manager,
+                AssignedOn = DateTime.UtcNow,
+                Status = AssignmentStatus.Assigned
+            };
+
+            _unitOfWork.Orders.Update(order);
+            await _unitOfWork.OrderAssignmentHistories.AddAsync(assignmentHistory);
+            await _unitOfWork.SaveChangesAsync();
+
+            _logger.LogInformation("Order {OrderId} escalated to manager {ManagerId}", order.OrderId, selectedManager.ManagerId);
+        }
+
+        public async Task<IEnumerable<OrderDto>> AssignedToManagerByManagerIdAsync(Guid managerId, CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            if (managerId == Guid.Empty)
+            {
+                _logger.LogWarning("AssignedToManagerByManagerIdAsync failed: ManagerId is empty");
+                throw new ArgumentException("ManagerId is required.", nameof(managerId));
+            }
+
+            var orders = await _unitOfWork.Orders.FindAsync(o =>
+                o.ManagerId == managerId &&
+                o.OrderStatus == OrderStatus.AssignedToManager);
+
+            return _mapper.Map<IEnumerable<OrderDto>>(orders);
+        }
+
+        public async Task<IEnumerable<OrderDto>> GetAllOrdersByManagerIdAsync(Guid managerId, CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            if (managerId == Guid.Empty)
+            {
+                _logger.LogWarning("GetAllOrdersByManagerIdAsync failed: ManagerId is empty");
+                throw new ArgumentException("ManagerId is required.", nameof(managerId));
+            }
+
+            var orders = await _unitOfWork.Orders.FindAsync(o => o.ManagerId == managerId);
+
+            return _mapper.Map<IEnumerable<OrderDto>>(orders);
         }
 
         public async Task<OrderDto> CompleteOrderAsync(int orderId, CompleteOrderDto completeDto, CancellationToken cancellationToken = default)

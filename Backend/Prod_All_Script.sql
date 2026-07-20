@@ -2,6 +2,7 @@
 -- COMPLETE MIGRATION SCRIPT
 -- Medicine Delivery Application
 -- Generated: 2025-10-05
+-- Last updated: 2026-07-19 (SECTION 6.7: AddManagerOrderEscalation)
 -- =====================================================
 
 -- This script creates the complete database schema and seeds all data
@@ -711,6 +712,64 @@ ALTER TABLE "ChemistPayoutAccounts" ADD COLUMN IF NOT EXISTS "RazorpayBusinessTy
 -- =====================================================
 
 ALTER TABLE "ChemistPayoutAccounts" ADD COLUMN IF NOT EXISTS "OwnerPan" character varying(10) NULL;
+
+-- =====================================================
+-- SECTION 6.7: MANAGER ESCALATION FOR ORDERS
+-- (EF migration: AddManagerOrderEscalation)
+-- When no customer-support agent serves the customer's pin code, a rejected /
+-- unassignable order is escalated to a Manager who re-assigns it to a chemist.
+-- Adds a nullable ManagerId (assignee) on Orders and OrderAssignmentHistories,
+-- with indexes and SET NULL foreign keys to "Managers".
+-- =====================================================
+
+ALTER TABLE "Orders" ADD COLUMN IF NOT EXISTS "ManagerId" uuid NULL;
+ALTER TABLE "OrderAssignmentHistories" ADD COLUMN IF NOT EXISTS "ManagerId" uuid NULL;
+
+CREATE INDEX IF NOT EXISTS "IX_Orders_ManagerId"
+    ON "Orders" ("ManagerId");
+CREATE INDEX IF NOT EXISTS "IX_OrderAssignmentHistories_ManagerId"
+    ON "OrderAssignmentHistories" ("ManagerId");
+
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'FK_Orders_Managers_ManagerId') THEN
+        ALTER TABLE "Orders"
+            ADD CONSTRAINT "FK_Orders_Managers_ManagerId"
+            FOREIGN KEY ("ManagerId") REFERENCES "Managers" ("ManagerId") ON DELETE SET NULL;
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'FK_OrderAssignmentHistories_Managers_ManagerId') THEN
+        ALTER TABLE "OrderAssignmentHistories"
+            ADD CONSTRAINT "FK_OrderAssignmentHistories_Managers_ManagerId"
+            FOREIGN KEY ("ManagerId") REFERENCES "Managers" ("ManagerId") ON DELETE SET NULL;
+    END IF;
+END$$;
+
+-- =====================================================
+-- SECTION 6.8: ORDER CANCELLATION + CancelOrders PERMISSION
+-- (EF migration: AddOrderCancellationReason)
+-- Adds a nullable CancellationReason to Orders, plus a new CancelOrders
+-- permission (Id 66) granted to Admin, Manager and CustomerSupport so those
+-- roles can cancel an order (with a mandatory reason) via PUT api/Orders/{id}/cancel.
+-- =====================================================
+
+ALTER TABLE "Orders" ADD COLUMN IF NOT EXISTS "CancellationReason" character varying(250) NULL;
+
+INSERT INTO "Permissions" ("Id", "Name", "Description", "Module", "CreatedAt", "IsActive")
+SELECT 66, 'CancelOrders', 'Can cancel orders with a reason', 'Orders', now() at time zone 'utc', true
+WHERE NOT EXISTS (SELECT 1 FROM "Permissions" WHERE "Id" = 66);
+
+INSERT INTO "RolePermissions" ("RoleId", "PermissionId", "GrantedAt", "IsActive")
+SELECT r."RoleId", 66, now() at time zone 'utc', true
+FROM (VALUES
+        ('11111111-1111-1111-1111-111111111111'),  -- Admin
+        ('22222222-2222-2222-2222-222222222222'),  -- Manager
+        ('33333333-3333-3333-3333-333333333333')   -- CustomerSupport
+     ) AS r("RoleId")
+WHERE NOT EXISTS (
+    SELECT 1 FROM "RolePermissions" rp
+    WHERE rp."RoleId" = r."RoleId" AND rp."PermissionId" = 66
+);
 
 -- =====================================================
 -- SECTION 7: VERIFICATION

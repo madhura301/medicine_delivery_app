@@ -10,6 +10,7 @@ namespace MedicineDelivery.Domain.Entities
         public Guid? MedicalStoreId { get; set; }
         public AssignedByType AssignedByType { get; set; } = AssignedByType.System;
         public Guid? AssignedByCustomerSupportId { get; set; }
+        public Guid? ManagerId { get; set; }
         public int? DeliveryId { get; set; }
         public AssignTo AssignTo { get; set; } = AssignTo.Chemist;
         public DateTime AssignedOn { get; set; } = DateTime.UtcNow;
@@ -21,6 +22,7 @@ namespace MedicineDelivery.Domain.Entities
         public Customer? Customer { get; set; }
         public MedicalStore? MedicalStore { get; set; }
         public CustomerSupport? CustomerSupport { get; set; }
+        public Manager? Manager { get; set; }
     }
 }
 

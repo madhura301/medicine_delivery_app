@@ -5,6 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using MedicineDelivery.Application.DTOs;
 using MedicineDelivery.Application.Interfaces;
+using MedicineDelivery.Domain.Exceptions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
@@ -325,6 +326,50 @@ namespace MedicineDelivery.API.Controllers
             }
         }
 
+        /// <summary>
+        /// Cancels an order, recording a mandatory cancellation reason. Restricted to customer support,
+        /// manager and admin via the CancelOrders permission.
+        /// </summary>
+        [HttpPut("{orderId:int}/cancel")]
+        [Authorize(Policy = "RequireOrderCancelPermission")]
+        public async Task<IActionResult> CancelOrder(int orderId, [FromBody] CancelOrderDto cancelDto, CancellationToken cancellationToken)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            try
+            {
+                var order = await _orderService.CancelOrderAsync(orderId, cancelDto, cancellationToken);
+                return Ok(order);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                _logger.LogWarning("CancelOrder: {Message}", ex.Message);
+                return NotFound(new { error = ex.Message });
+            }
+            catch (ArgumentException ex)
+            {
+                _logger.LogWarning("CancelOrder: {Message}", ex.Message);
+                return BadRequest(new { error = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogWarning("CancelOrder: {Message}", ex.Message);
+                return BadRequest(new { error = ex.Message });
+            }
+            catch (OperationCanceledException)
+            {
+                return StatusCode(499, new { error = "Request was cancelled." });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error in CancelOrder for Order {OrderId}", orderId);
+                return StatusCode(500, new { error = "An error occurred while cancelling the order." });
+            }
+        }
+
         [HttpPut("assign")]
         [Authorize(Policy = "RequireOrderUpdatePermission")]
         public async Task<IActionResult> AssignOrderToMedicalStore([FromBody] AssignOrderDto assignDto, CancellationToken cancellationToken)
@@ -380,6 +425,11 @@ namespace MedicineDelivery.API.Controllers
             {
                 var order = await _orderService.CreateOrderAsync(request, cancellationToken);
                 return CreatedAtAction(nameof(GetOrderById), new { orderId = order.OrderId }, order);
+            }
+            catch (ServiceAreaUnavailableException ex)
+            {
+                _logger.LogWarning("CreateOrder: {Message}", ex.Message);
+                return BadRequest(new { error = ex.Message, postalCode = ex.PostalCode, missingRoles = ex.MissingRoles });
             }
             catch (ArgumentException ex)
             {
@@ -700,6 +750,66 @@ namespace MedicineDelivery.API.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error in GetAllOrdersByCustomerSupportId for CustomerSupport {CustomerSupportId}", customerSupportId);
+                return StatusCode(500, new { error = "An error occurred while retrieving the orders." });
+            }
+        }
+
+        /// <summary>
+        /// Get orders currently escalated to a manager (awaiting the manager to re-assign to a chemist)
+        /// </summary>
+        /// <param name="managerId">Manager ID</param>
+        /// <returns>List of orders in AssignedToManager status for this manager</returns>
+        [HttpGet("manager/{managerId:guid}/assignedtomanager")]
+        [Authorize(Policy = "RequireOrderReadPermission")]
+        public async Task<IActionResult> AssignedToManagerByManagerId(Guid managerId, CancellationToken cancellationToken)
+        {
+            try
+            {
+                var orders = await _orderService.AssignedToManagerByManagerIdAsync(managerId, cancellationToken);
+                return Ok(orders);
+            }
+            catch (ArgumentException ex)
+            {
+                _logger.LogWarning("AssignedToManagerByManagerId: {Message}", ex.Message);
+                return BadRequest(new { error = ex.Message });
+            }
+            catch (OperationCanceledException)
+            {
+                return StatusCode(499, new { error = "Request was cancelled." });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error in AssignedToManagerByManagerId for Manager {ManagerId}", managerId);
+                return StatusCode(500, new { error = "An error occurred while retrieving the orders." });
+            }
+        }
+
+        /// <summary>
+        /// Get all orders by Manager ID
+        /// </summary>
+        /// <param name="managerId">Manager ID</param>
+        /// <returns>List of all orders handled by this manager</returns>
+        [HttpGet("manager/{managerId:guid}")]
+        [Authorize(Policy = "RequireOrderReadPermission")]
+        public async Task<IActionResult> GetAllOrdersByManagerId(Guid managerId, CancellationToken cancellationToken)
+        {
+            try
+            {
+                var orders = await _orderService.GetAllOrdersByManagerIdAsync(managerId, cancellationToken);
+                return Ok(orders);
+            }
+            catch (ArgumentException ex)
+            {
+                _logger.LogWarning("GetAllOrdersByManagerId: {Message}", ex.Message);
+                return BadRequest(new { error = ex.Message });
+            }
+            catch (OperationCanceledException)
+            {
+                return StatusCode(499, new { error = "Request was cancelled." });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error in GetAllOrdersByManagerId for Manager {ManagerId}", managerId);
                 return StatusCode(500, new { error = "An error occurred while retrieving the orders." });
             }
         }

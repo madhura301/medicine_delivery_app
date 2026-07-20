@@ -10,6 +10,7 @@ namespace MedicineDelivery.Domain.Entities
         public Guid? MedicalStoreId { get; set; }
         public AssignedByType AssignedByType { get; set; } = AssignedByType.System;
         public Guid? CustomerSupportId { get; set; }
+        public Guid? ManagerId { get; set; }
         public int? DeliveryId { get; set; }
         public AssignTo AssignTo { get; set; } = AssignTo.Chemist;
         public OrderType OrderType { get; set; } = OrderType.NotSet;
@@ -21,6 +22,9 @@ namespace MedicineDelivery.Domain.Entities
         public OrderPaymentStatus OrderPaymentStatus { get; set; } = OrderPaymentStatus.NotPaid;
         public string? OrderNumber { get; set; }
         public string? OTP { get; set; }
+
+        /// <summary>Reason captured when the order is cancelled (by customer support, manager or admin). Null unless cancelled.</summary>
+        public string? CancellationReason { get; set; }
         public decimal? TotalAmount { get; set; }
 
         /// <summary>The medicine/bill value (slab is applied to this). Set at payment time.</summary>
@@ -36,6 +40,7 @@ namespace MedicineDelivery.Domain.Entities
         public CustomerAddress? CustomerAddress { get; set; }
         public MedicalStore? MedicalStore { get; set; }
         public CustomerSupport? CustomerSupport { get; set; }
+        public Manager? Manager { get; set; }
         public ICollection<OrderAssignmentHistory> AssignmentHistory { get; set; } = new List<OrderAssignmentHistory>();
         public ICollection<Payment> Payments { get; set; } = new List<Payment>();
         public ICollection<PaymentSplit> PaymentSplits { get; set; } = new List<PaymentSplit>();

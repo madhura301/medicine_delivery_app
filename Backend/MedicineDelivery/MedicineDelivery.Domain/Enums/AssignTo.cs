@@ -5,7 +5,8 @@ namespace MedicineDelivery.Domain.Enums
         Customer = 0,
         Chemist = 1,
         CustomerSupport = 2,
-        Delivery = 3
+        Delivery = 3,
+        Manager = 4
     }
 }
 
