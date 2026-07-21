@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:pharmaish/utils/constants.dart';
+import 'package:pharmaish/core/services/location_service.dart';
 
 class CustomerRegisterPage extends StatefulWidget {
   const CustomerRegisterPage({super.key});
@@ -36,6 +37,12 @@ class _RegisterPageState extends State<CustomerRegisterPage> {
 
   String _selectedAddressType = 'Home'; // Default value
   final List<String> _addressTypes = ['Home', 'Office', 'Other'];
+
+  // Delivery-location coordinates captured from GPS for the address.
+  double? _latitude;
+  double? _longitude;
+  bool _isFetchingLocation = false;
+  String? _locationMessage;
 
   // Other Form Data
   DateTime? _selectedDate;
@@ -514,7 +521,48 @@ class _RegisterPageState extends State<CustomerRegisterPage> {
             Icons.location_on,
           ),
 
-          const SizedBox(height: 30),
+          const SizedBox(height: 20),
+
+          // Use current location — captures GPS coordinates for delivery and
+          // auto-fills the address fields below.
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: _isFetchingLocation ? null : _getCurrentLocation,
+              icon: _isFetchingLocation
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.my_location, size: 18),
+              label: Text(_isFetchingLocation
+                  ? 'Fetching location…'
+                  : 'Use Current Location'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppTheme.primaryColor,
+                side: const BorderSide(color: AppTheme.primaryColor),
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
+          ),
+          if (_locationMessage != null) ...[
+            const SizedBox(height: 8),
+            Text(
+              _locationMessage!,
+              style: TextStyle(
+                fontSize: 12,
+                color: (_latitude != null && _longitude != null)
+                    ? Colors.green.shade700
+                    : Colors.red.shade700,
+              ),
+            ),
+          ],
+
+          const SizedBox(height: 20),
 
           // Address Type - Required
           DropdownButtonFormField<String>(
@@ -871,6 +919,12 @@ class _RegisterPageState extends State<CustomerRegisterPage> {
         'isDefault': true,
       };
 
+      // Include GPS coordinates when captured so the delivery location is saved.
+      if (_latitude != null && _longitude != null) {
+        addressData['latitude'] = _latitude;
+        addressData['longitude'] = _longitude;
+      }
+
       registrationData['addresses'] = [addressData];
 
       AppLogger.info('Registration Data: ${jsonEncode(registrationData)}');
@@ -1076,6 +1130,63 @@ class _RegisterPageState extends State<CustomerRegisterPage> {
   //         !['admin', 'test', 'user'].contains(username.toLowerCase());
   //   });
   // }
+
+  /// Captures the device's current GPS location, stores the coordinates for the
+  /// address payload, and auto-fills the address fields when available.
+  Future<void> _getCurrentLocation() async {
+    setState(() {
+      _isFetchingLocation = true;
+      _locationMessage = null;
+    });
+
+    try {
+      final result = await LocationService().getCurrentLocation();
+
+      if (!mounted) return;
+
+      setState(() {
+        _isFetchingLocation = false;
+
+        if (result.isValid) {
+          _latitude = result.latitude;
+          _longitude = result.longitude;
+
+          // Auto-fill address fields when the reverse geocode returned them and
+          // the user hasn't already typed something.
+          if (_addressController.text.trim().isEmpty &&
+              result.street != null &&
+              result.street!.isNotEmpty) {
+            _addressController.text = result.street!;
+          }
+          if (_cityController.text.trim().isEmpty &&
+              result.city != null &&
+              result.city!.isNotEmpty) {
+            _cityController.text = result.city!;
+          }
+          if (_postalCodeController.text.trim().isEmpty &&
+              result.postalCode != null &&
+              result.postalCode!.isNotEmpty) {
+            _postalCodeController.text = result.postalCode!;
+          }
+
+          _locationMessage = '📍 Location captured '
+              '(${result.latitude.toStringAsFixed(6)}, '
+              '${result.longitude.toStringAsFixed(6)})';
+        } else {
+          _latitude = null;
+          _longitude = null;
+          _locationMessage = result.error ?? 'Unable to get location';
+        }
+      });
+    } catch (e) {
+      AppLogger.error('Error capturing location during registration', e);
+      if (!mounted) return;
+      setState(() {
+        _isFetchingLocation = false;
+        _locationMessage = 'Unable to get location. Please try again.';
+      });
+    }
+  }
 
   @override
   void dispose() {

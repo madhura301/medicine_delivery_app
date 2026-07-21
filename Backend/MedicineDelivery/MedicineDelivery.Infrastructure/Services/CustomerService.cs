@@ -138,6 +138,8 @@ namespace MedicineDelivery.Infrastructure.Services
                                 City = addressDto.City,
                                 State = addressDto.State,
                                 PostalCode = addressDto.PostalCode,
+                                Latitude = addressDto.Latitude,
+                                Longitude = addressDto.Longitude,
                                 IsDefault = addressDto.IsDefault
                             };
                             await _customerAddressService.CreateCustomerAddressAsync(createAddressDto);
@@ -289,9 +291,14 @@ namespace MedicineDelivery.Infrastructure.Services
                     {
                         CustomerId = id,
                         Address = addressDto.Address,
+                        AddressLine1 = addressDto.AddressLine1,
+                        AddressLine2 = addressDto.AddressLine2,
+                        AddressLine3 = addressDto.AddressLine3,
                         City = addressDto.City,
                         State = addressDto.State,
                         PostalCode = addressDto.PostalCode,
+                        Latitude = addressDto.Latitude,
+                        Longitude = addressDto.Longitude,
                         IsDefault = addressDto.IsDefault
                     };
                     await _customerAddressService.CreateCustomerAddressAsync(createAddressDto);
