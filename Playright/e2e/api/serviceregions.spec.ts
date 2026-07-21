@@ -55,6 +55,28 @@ test.describe('ServiceRegions API', () => {
     expect((await admin.get('/api/ServiceRegions/by-pincode/000000')).status()).toBe(404);
   });
 
+  // F4 [FIXED 2026-07-20]: a pin code already used by another region of the same type
+  // used to surface as 500 (service threw InvalidOperationException, controller only
+  // caught ArgumentException). The Create/Update actions now catch it -> 400.
+  test('create with a pin code already used by same-type region -> 400 (not 500)', async ({ apiAs }) => {
+    const admin = await apiAs('admin');
+    const pin = String(300000 + Math.floor(Math.random() * 699999)).slice(0, 6);
+    const first = await admin.post('/api/ServiceRegions', {
+      data: { name: `F4-A-${pin}`, city: 'Pune', regionName: `F4-A-${pin}`, regionType: 0, pinCodes: [pin] },
+    });
+    expect(first.status(), await first.text()).toBe(201);
+    const firstId = (await first.json()).id;
+    try {
+      const dup = await admin.post('/api/ServiceRegions', {
+        data: { name: `F4-B-${pin}`, city: 'Pune', regionName: `F4-B-${pin}`, regionType: 0, pinCodes: [pin] },
+      });
+      expect(dup.status(), await dup.text()).toBe(400);
+      expect((await dup.text()).toLowerCase()).toContain('already assigned');
+    } finally {
+      await admin.delete(`/api/ServiceRegions/${firstId}`);
+    }
+  });
+
   test.describe.serial('region lifecycle (create -> read -> pincodes -> assign -> delete)', () => {
     // Pin codes are unique per region-type (server enforces it). Use a run-unique
     // 6-digit pin and create the region with NO pincodes to avoid collisions.

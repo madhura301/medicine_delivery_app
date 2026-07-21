@@ -10,12 +10,12 @@ import { credentials } from '../../helpers/config';
  *  - Error -> red Alert: "Failed to send reset link. Please try again."
  *  - Back link -> /login
  *
- * F-FRONTEND-2 (logged in task.md): WebApp's authApi.forgotPassword posts
- * `{ mobileNumber }`, but backend `SendOtpRequestDto` expects `{ PhoneNumber }`.
- * So PhoneNumber arrives null, AuthService.SendOtpAsync throws, and the
- * endpoint returns 500. Every UI submit therefore shows the
- * "Failed to send reset link" alert — that's what the spec asserts today.
- * Flip the assertion to the success path once the WebApp DTO is fixed.
+ * F-FRONTEND-2 (was logged in task.md): WebApp's authApi.forgotPassword used to
+ * post `{ mobileNumber }` while the backend expects `{ phoneNumber }`, so every
+ * submit 500'd. FIXED — authApi.ts now posts `{ phoneNumber: mobileNumber }` and
+ * the endpoint returns 200 ("If this number is registered, an OTP has been sent.").
+ * The UI shows the success Alert "OTP sent! Check your mobile." which this spec
+ * now asserts. (OTP goes to the Console SMS log in dev — never a real SMS.)
  */
 
 test.describe('WebApp — Forgot Password', () => {
@@ -33,18 +33,17 @@ test.describe('WebApp — Forgot Password', () => {
     await expect(page).toHaveURL(/\/forgot-password/);
   });
 
-  test('valid mobile shows failed-to-send alert today [F-FRONTEND-2]', async ({ page }) => {
+  test('valid mobile shows success alert (OTP sent)', async ({ page }) => {
     await page.goto('/forgot-password');
     await page.getByLabel('Mobile Number').fill(credentials.admin.mobileNumber);
     await page.getByRole('button', { name: /send reset otp/i }).click();
-    // F-FRONTEND-2: DTO field-name mismatch -> backend 500 -> alert.
-    await expect(page.getByText(/failed to send reset link/i)).toBeVisible();
-    await expect(page).toHaveURL(/\/forgot-password/);
+    // F-FRONTEND-2 fixed: endpoint returns 200 and the success Alert is shown.
+    await expect(page.getByText(/otp sent! check your mobile/i)).toBeVisible();
   });
 
-  // Until F-FRONTEND-2 is fixed there is no observable difference between known
-  // vs unknown mobile from the UI — every submit shows the same error alert.
-  test.fixme('known mobile shows success alert (post-fix)', async () => {});
+  // Backend deliberately returns the same generic response for known & unknown
+  // numbers (no account enumeration), so the UI shows the success alert for any
+  // well-formed mobile — asserted above.
 
   test('"Back to Login" link returns to /login', async ({ page }) => {
     await page.goto('/forgot-password');
