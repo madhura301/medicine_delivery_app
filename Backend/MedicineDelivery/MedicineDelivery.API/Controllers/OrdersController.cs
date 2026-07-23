@@ -541,6 +541,48 @@ namespace MedicineDelivery.API.Controllers
             }
         }
 
+        /// <summary>
+        /// Assigns a delivery boy to an order. Route-based variant used by the WebApp:
+        /// the order id comes from the route and only the delivery boy id is in the body.
+        /// Delegates to the same logic as <see cref="AssignOrderToDelivery"/>.
+        /// </summary>
+        [HttpPut("{orderId:int}/assign-delivery")]
+        [Authorize(Policy = "RequireOrderUpdatePermission")]
+        public async Task<IActionResult> AssignDelivery(int orderId, [FromBody] AssignDeliveryRequestDto request, CancellationToken cancellationToken)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            var assignDto = new AssignOrderToDeliveryDto { OrderId = orderId, DeliveryId = request.DeliveryId };
+
+            try
+            {
+                var order = await _orderService.AssignOrderToDeliveryAsync(assignDto, cancellationToken);
+                return Ok(order);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                _logger.LogWarning("AssignDelivery: {Message}", ex.Message);
+                return NotFound(new { error = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogWarning("AssignDelivery: {Message}", ex.Message);
+                return BadRequest(new { error = ex.Message });
+            }
+            catch (OperationCanceledException)
+            {
+                return StatusCode(499, new { error = "Request was cancelled." });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error in AssignDelivery for Order {OrderId}", orderId);
+                return StatusCode(500, new { error = "An error occurred while assigning the order to delivery." });
+            }
+        }
+
         [HttpGet]
         [Authorize(Policy = "RequireListAllOrdersPermission")]
         public async Task<IActionResult> GetAllOrders(CancellationToken cancellationToken)
@@ -832,6 +874,7 @@ namespace MedicineDelivery.API.Controllers
         /// <param name="orderId">Order ID</param>
         /// <returns>List of delivery boys whose region pincode matches the order's shipping address</returns>
         [HttpGet("{orderId:int}/eligible-delivery-boys")]
+        [HttpGet("{orderId:int}/eligible-deliveries")] // Alias: the WebApp calls this route.
         [Authorize(Policy = "RequireOrderReadPermission")]
         public async Task<IActionResult> GetEligibleDeliveryBoys(int orderId, CancellationToken cancellationToken)
         {

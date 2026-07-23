@@ -1,3 +1,4 @@
+using MedicineDelivery.Domain.Constants;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -80,8 +81,8 @@ namespace MedicineDelivery.Infrastructure.Services
                 ApplicationUser? identityUser = null;
                 try
                 {
-                    // Generate random password
-                    var generatedPassword = GenerateRandomPassword();
+                    // Staff accounts are created with a known default password.
+                    var generatedPassword = DefaultCredentials.StaffPassword;
 
                     // Create Identity user
                     identityUser = new ApplicationUser
@@ -279,41 +280,5 @@ namespace MedicineDelivery.Infrastructure.Services
             return true;
         }
 
-        private string GenerateRandomPassword()
-        {
-            const string capitalLetters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-            const string smallLetters = "abcdefghijklmnopqrstuvwxyz";
-            const string numbers = "0123456789";
-            const string specialChars = "!@#$%^&*";
-            const string allChars = capitalLetters + smallLetters + numbers + specialChars;
-            
-            var random = new Random();
-            var password = new List<char>();
-            
-            // Ensure minimum requirements
-            password.Add(capitalLetters[random.Next(capitalLetters.Length)]); // 1st capital
-            password.Add(capitalLetters[random.Next(capitalLetters.Length)]); // 2nd capital
-            password.Add(smallLetters[random.Next(smallLetters.Length)]);     // 1st small
-            password.Add(smallLetters[random.Next(smallLetters.Length)]);     // 2nd small
-            password.Add(numbers[random.Next(numbers.Length)]);               // 1st number
-            password.Add(numbers[random.Next(numbers.Length)]);               // 2nd number
-            password.Add(specialChars[random.Next(specialChars.Length)]);     // 1st special
-            
-            // Fill remaining length (total 12 characters)
-            for (int i = 7; i < 12; i++)
-            {
-                password.Add(allChars[random.Next(allChars.Length)]);
-            }
-            
-            // Shuffle the password to randomize positions
-            for (int i = password.Count - 1; i > 0; i--)
-            {
-                int j = random.Next(i + 1);
-                (password[i], password[j]) = (password[j], password[i]);
-            }
-            
-            //return new string(password.ToArray());
-            return "Password@123";
-        }
     }
 }
