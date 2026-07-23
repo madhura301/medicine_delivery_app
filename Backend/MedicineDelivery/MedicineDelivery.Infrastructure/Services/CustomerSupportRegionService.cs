@@ -327,12 +327,15 @@ namespace MedicineDelivery.Infrastructure.Services
             ArgumentNullException.ThrowIfNull(assignDto);
             _logger.LogInformation("Assigning service region {RegionId} to customer support {CustomerSupportId}", assignDto.ServiceRegionId, assignDto.CustomerSupportId);
 
-            // Validate region exists
-            var region = await _unitOfWork.ServiceRegions.GetByIdAsync(assignDto.ServiceRegionId);
-            if (region == null)
+            // Validate region exists (a null region id unassigns the customer support)
+            if (assignDto.ServiceRegionId.HasValue)
             {
-                _logger.LogWarning("AssignRegionToCustomerSupportAsync failed: Service region {RegionId} not found", assignDto.ServiceRegionId);
-                throw new KeyNotFoundException($"Service region with ID '{assignDto.ServiceRegionId}' not found.");
+                var region = await _unitOfWork.ServiceRegions.GetByIdAsync(assignDto.ServiceRegionId.Value);
+                if (region == null)
+                {
+                    _logger.LogWarning("AssignRegionToCustomerSupportAsync failed: Service region {RegionId} not found", assignDto.ServiceRegionId);
+                    throw new KeyNotFoundException($"Service region with ID '{assignDto.ServiceRegionId}' not found.");
+                }
             }
 
             // Validate customer support exists
@@ -399,12 +402,15 @@ namespace MedicineDelivery.Infrastructure.Services
             ArgumentNullException.ThrowIfNull(assignDto);
             _logger.LogInformation("Assigning service region {RegionId} to delivery {DeliveryId}", assignDto.ServiceRegionId, assignDto.DeliveryId);
 
-            // Validate region exists
-            var region = await _unitOfWork.ServiceRegions.GetByIdAsync(assignDto.ServiceRegionId);
-            if (region == null)
+            // Validate region exists (a null region id unassigns the delivery)
+            if (assignDto.ServiceRegionId.HasValue)
             {
-                _logger.LogWarning("AssignRegionToDeliveryAsync failed: Service region {RegionId} not found", assignDto.ServiceRegionId);
-                throw new KeyNotFoundException($"Service region with ID '{assignDto.ServiceRegionId}' not found.");
+                var region = await _unitOfWork.ServiceRegions.GetByIdAsync(assignDto.ServiceRegionId.Value);
+                if (region == null)
+                {
+                    _logger.LogWarning("AssignRegionToDeliveryAsync failed: Service region {RegionId} not found", assignDto.ServiceRegionId);
+                    throw new KeyNotFoundException($"Service region with ID '{assignDto.ServiceRegionId}' not found.");
+                }
             }
 
             // Validate delivery exists

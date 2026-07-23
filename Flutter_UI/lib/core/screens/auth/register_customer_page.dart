@@ -7,6 +7,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:pharmaish/utils/constants.dart';
 import 'package:pharmaish/core/services/location_service.dart';
+import 'package:pharmaish/shared/widgets/map_location_picker_page.dart';
 
 class CustomerRegisterPage extends StatefulWidget {
   const CustomerRegisterPage({super.key});
@@ -539,6 +540,25 @@ class _RegisterPageState extends State<CustomerRegisterPage> {
               label: Text(_isFetchingLocation
                   ? 'Fetching location…'
                   : 'Use Current Location'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppTheme.primaryColor,
+                side: const BorderSide(color: AppTheme.primaryColor),
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 10),
+
+          // Pick any location on a map instead of using current GPS.
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: _isFetchingLocation ? null : _pickOnMap,
+              icon: const Icon(Icons.map_outlined, size: 18),
+              label: const Text('Pick on Map'),
               style: OutlinedButton.styleFrom(
                 foregroundColor: AppTheme.primaryColor,
                 side: const BorderSide(color: AppTheme.primaryColor),
@@ -1146,32 +1166,8 @@ class _RegisterPageState extends State<CustomerRegisterPage> {
 
       setState(() {
         _isFetchingLocation = false;
-
         if (result.isValid) {
-          _latitude = result.latitude;
-          _longitude = result.longitude;
-
-          // Auto-fill address fields when the reverse geocode returned them and
-          // the user hasn't already typed something.
-          if (_addressController.text.trim().isEmpty &&
-              result.street != null &&
-              result.street!.isNotEmpty) {
-            _addressController.text = result.street!;
-          }
-          if (_cityController.text.trim().isEmpty &&
-              result.city != null &&
-              result.city!.isNotEmpty) {
-            _cityController.text = result.city!;
-          }
-          if (_postalCodeController.text.trim().isEmpty &&
-              result.postalCode != null &&
-              result.postalCode!.isNotEmpty) {
-            _postalCodeController.text = result.postalCode!;
-          }
-
-          _locationMessage = '📍 Location captured '
-              '(${result.latitude.toStringAsFixed(6)}, '
-              '${result.longitude.toStringAsFixed(6)})';
+          _applyLocationResult(result);
         } else {
           _latitude = null;
           _longitude = null;
@@ -1186,6 +1182,45 @@ class _RegisterPageState extends State<CustomerRegisterPage> {
         _locationMessage = 'Unable to get location. Please try again.';
       });
     }
+  }
+
+  /// Lets the user pick any point on a map, then stores the coordinates and
+  /// fills the address fields from the chosen location.
+  Future<void> _pickOnMap() async {
+    final result = await pickLocationOnMap(
+      context,
+      initialLatitude: _latitude,
+      initialLongitude: _longitude,
+    );
+    if (result == null || !mounted) return;
+    setState(() => _applyLocationResult(result));
+  }
+
+  /// Stores coordinates and auto-fills empty address fields from a resolved
+  /// location. Call inside setState.
+  void _applyLocationResult(LocationResult result) {
+    _latitude = result.latitude;
+    _longitude = result.longitude;
+
+    if (_addressController.text.trim().isEmpty &&
+        result.street != null &&
+        result.street!.isNotEmpty) {
+      _addressController.text = result.street!;
+    }
+    if (_cityController.text.trim().isEmpty &&
+        result.city != null &&
+        result.city!.isNotEmpty) {
+      _cityController.text = result.city!;
+    }
+    if (_postalCodeController.text.trim().isEmpty &&
+        result.postalCode != null &&
+        result.postalCode!.isNotEmpty) {
+      _postalCodeController.text = result.postalCode!;
+    }
+
+    _locationMessage = '📍 Location captured '
+        '(${result.latitude.toStringAsFixed(6)}, '
+        '${result.longitude.toStringAsFixed(6)})';
   }
 
   @override

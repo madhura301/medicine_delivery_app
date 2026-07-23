@@ -17,6 +17,9 @@ dependencies:
   # Location & Maps
   geolocator: ^9.0.2
   geocoding: ^2.1.1
+  # Map picker (OpenStreetMap tiles — no API key required)
+  flutter_map: ^7.0.2
+  latlong2: ^0.9.1
 
  # File handling
   file_picker: ^8.0.0+1
@@ -82,11 +85,11 @@ flutter:
 flutter_launcher_icons:
   android: "launcher_icon"
   ios: true
-  image_path: "assets/images/full_logo_animated.jpeg"
+  image_path: "assets/images/logo_for_opening page.png"
   min_sdk_android: 21
   # iOS app icons must be opaque (no alpha) for the App Store.
   remove_alpha_ios: true
   background_color_ios: "#ffffff"
   web:
     generate: true
-    image_path: "assets/images/full_logo_animated.jpeg"
+    image_path: "assets/images/logo_for_opening page.png"

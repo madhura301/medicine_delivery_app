@@ -1695,6 +1695,14 @@ class _AdminServiceRegionsPageState extends State<AdminServiceRegionsPage> {
     );
   }
 
+  /// Delivery boys are keyed by the integer `id` of their Delivery record,
+  /// customer supports by a GUID string — JSON hands us `num` or `String`
+  /// depending on the payload, so normalise before hitting the API.
+  static int? _asDeliveryId(dynamic value) {
+    if (value is num) return value.toInt();
+    return int.tryParse(value?.toString() ?? '');
+  }
+
   Future<void> _assignPersonToRegion(
     dynamic regionId,
     dynamic personId,
@@ -1706,11 +1714,19 @@ class _AdminServiceRegionsPageState extends State<AdminServiceRegionsPage> {
       if (regionType == RegionType.customerSupport) {
         await RegionService.assignCustomerSupportToRegion(
           regionId: id,
-          customerSupportId: personId,
+          customerSupportId: personId.toString(),
         );
       } else {
+        final deliveryId = _asDeliveryId(personId);
+        if (deliveryId == null) {
+          AppLogger.error('Invalid delivery boy id: $personId');
+          if (mounted) {
+            AppSnackBar.error(context, 'Failed to assign: invalid delivery boy');
+          }
+          return;
+        }
         await RegionService.setDeliveryBoyServiceRegion(
-          personId: personId,
+          deliveryId: deliveryId,
           serviceRegionId: id,
         );
       }
@@ -1742,11 +1758,20 @@ class _AdminServiceRegionsPageState extends State<AdminServiceRegionsPage> {
       if (regionType == RegionType.customerSupport) {
         await RegionService.assignCustomerSupportToRegion(
           regionId: null,
-          customerSupportId: personId,
+          customerSupportId: personId.toString(),
         );
       } else {
+        final deliveryId = _asDeliveryId(personId);
+        if (deliveryId == null) {
+          AppLogger.error('Invalid delivery boy id: $personId');
+          if (mounted) {
+            AppSnackBar.error(
+                context, 'Failed to unassign: invalid delivery boy');
+          }
+          return;
+        }
         await RegionService.setDeliveryBoyServiceRegion(
-          personId: personId,
+          deliveryId: deliveryId,
           serviceRegionId: null,
         );
       }
@@ -1763,6 +1788,9 @@ class _AdminServiceRegionsPageState extends State<AdminServiceRegionsPage> {
       await _checkPermissionAndLoad();
     } catch (e) {
       AppLogger.error('Error unassigning person: $e');
+      if (mounted) {
+        AppSnackBar.error(context, 'Failed to unassign');
+      }
     }
   }
 

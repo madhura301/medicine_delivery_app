@@ -8,6 +8,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:pharmaish/core/services/chemist_payout_service.dart';
 import 'package:pharmaish/core/services/location_service.dart';
+import 'package:pharmaish/shared/widgets/map_location_picker_page.dart';
 import 'package:pharmaish/shared/models/chemist_payout_models.dart';
 import 'package:pharmaish/utils/constants.dart';
 import 'package:pharmaish/utils/storage.dart';
@@ -685,6 +686,24 @@ class _PharmacistProfilePageState extends State<PharmacistProfilePage> {
                                         label: const Text('Update Location'),
                                         style: AppButton.primary(),
                                       ),
+                                      const SizedBox(height: 8),
+                                      OutlinedButton.icon(
+                                        onPressed: _pickOnMap,
+                                        icon: const Icon(Icons.map_outlined),
+                                        label: const Text('Pick on Map'),
+                                        style: OutlinedButton.styleFrom(
+                                          foregroundColor:
+                                              AppTheme.primaryColor,
+                                          side: const BorderSide(
+                                              color: AppTheme.primaryColor),
+                                          minimumSize:
+                                              const Size(double.infinity, 48),
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius:
+                                                BorderRadius.circular(8),
+                                          ),
+                                        ),
+                                      ),
                                     ],
                                   ),
                                 ),
@@ -1255,44 +1274,7 @@ class _PharmacistProfilePageState extends State<PharmacistProfilePage> {
 
       setState(() {
         if (result.isValid) {
-          _latitude = result.latitude;
-          _longitude = result.longitude;
-
-          // Auto-populate with structured data
-          if (result.street != null) {
-            _addressLine1Controller.text = result.street!;
-          }
-          if (result.locality != null) {
-            _addressLine2Controller.text = result.locality!;
-          }
-          if (result.city != null) {
-            _cityController.text = result.city!;
-          }
-          if (result.state != null) {
-            // Match with dropdown options
-            final matchedState = _states.firstWhere(
-              (state) => state.toLowerCase() == result.state!.toLowerCase(),
-              orElse: () => '',
-            );
-            if (matchedState.isNotEmpty) {
-              _selectedState = matchedState;
-            }
-          }
-          // if (result.postalCode != null) {
-          //   _postalCodeController.text = result.postalCode!;
-          // }
-          
-          // Format the location text based on whether we have an address
-          if (result.address != null && result.address!.isNotEmpty) {
-            _locationText = '${result.address}\n'
-                'Lat: ${result.latitude.toStringAsFixed(6)}, '
-                'Long: ${result.longitude.toStringAsFixed(6)}';
-          } else {
-            _locationText = 'Location selected\n'
-                'Lat: ${result.latitude.toStringAsFixed(6)}, '
-                'Long: ${result.longitude.toStringAsFixed(6)}';
-          }
-          _errorMessage = '';
+          _applyLocationResult(result);
         } else {
           _errorMessage = result.error ?? 'Unable to get location';
           _locationText = 'Tap to select location';
@@ -1306,6 +1288,55 @@ class _PharmacistProfilePageState extends State<PharmacistProfilePage> {
       });
       AppLogger.error('Location error: $e');
     }
+  }
+
+  /// Lets the user pick any point on a map, then stores the coordinates and
+  /// fills the store's address fields.
+  Future<void> _pickOnMap() async {
+    final result = await pickLocationOnMap(
+      context,
+      initialLatitude: _latitude,
+      initialLongitude: _longitude,
+    );
+    if (result == null || !mounted) return;
+    setState(() => _applyLocationResult(result));
+  }
+
+  /// Stores coordinates and auto-fills the address fields from a resolved
+  /// location. Call inside setState.
+  void _applyLocationResult(LocationResult result) {
+    _latitude = result.latitude;
+    _longitude = result.longitude;
+
+    if (result.street != null) {
+      _addressLine1Controller.text = result.street!;
+    }
+    if (result.locality != null) {
+      _addressLine2Controller.text = result.locality!;
+    }
+    if (result.city != null) {
+      _cityController.text = result.city!;
+    }
+    if (result.state != null) {
+      final matchedState = _states.firstWhere(
+        (state) => state.toLowerCase() == result.state!.toLowerCase(),
+        orElse: () => '',
+      );
+      if (matchedState.isNotEmpty) {
+        _selectedState = matchedState;
+      }
+    }
+
+    if (result.address != null && result.address!.isNotEmpty) {
+      _locationText = '${result.address}\n'
+          'Lat: ${result.latitude.toStringAsFixed(6)}, '
+          'Long: ${result.longitude.toStringAsFixed(6)}';
+    } else {
+      _locationText = 'Location selected\n'
+          'Lat: ${result.latitude.toStringAsFixed(6)}, '
+          'Long: ${result.longitude.toStringAsFixed(6)}';
+    }
+    _errorMessage = '';
   }
 
   Future<void> _checkLocationAndRequest() async {

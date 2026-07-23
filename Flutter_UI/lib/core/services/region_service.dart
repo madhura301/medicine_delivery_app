@@ -125,14 +125,18 @@ class RegionService {
     await _dio.delete('/CustomerSupportRegions/$regionId');
   }
 
-  /// PUT /Deliveries/{personId} — set delivery boy's service region.
+  /// POST /ServiceRegions/assign-delivery — set delivery boy's service region.
   /// Pass [serviceRegionId] = null to unassign.
+  ///
+  /// [deliveryId] is the integer `id` of the Delivery record (DeliveryDto.id),
+  /// not the delivery boy's user GUID.
   static Future<void> setDeliveryBoyServiceRegion({
-    required String personId,
+    required int deliveryId,
     required int? serviceRegionId,
   }) async {
-    await _dio.put('/Deliveries/$personId', data: {
-      'serviceRegionId': serviceRegionId,
+    await _dio.post('/ServiceRegions/assign-delivery', data: {
+      'ServiceRegionId': serviceRegionId,
+      'DeliveryId': deliveryId,
     });
   }
 }

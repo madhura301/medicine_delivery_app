@@ -215,15 +215,11 @@ class _SplashPageState extends State<SplashPage> {
           children: [
              // Add some top spacing to push logo slightly down from perfect center
             const SizedBox(height: 60),
-            // App Logo with proper constraints to prevent stretching
-            ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 400, maxHeight: 220),
-              child: Image.asset(
-                'assets/images/full_logo_animated.jpeg',
-                fit: BoxFit.contain,
-                width: 400,
-                height: 220,
-              ),
+            // App Logo — sized relative to screen width so it reads large.
+            Image.asset(
+              'assets/images/opening_logo_animated.png',
+              fit: BoxFit.contain,
+              width: MediaQuery.of(context).size.width * 0.75,
             ),
             const SizedBox(height: 50),
             // Loading Indicator

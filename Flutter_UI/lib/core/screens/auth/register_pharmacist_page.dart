@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:pharmaish/core/services/location_service.dart';
+import 'package:pharmaish/shared/widgets/map_location_picker_page.dart';
 import 'package:pharmaish/utils/consent_manager.dart';
 import 'package:pharmaish/utils/constants.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -588,6 +589,20 @@ class _PharmacistRegistrationPageState
                         ? 'Update Location'
                         : 'Select Current Location'),
                     style: AppButton.primary(),
+                  ),
+                  const SizedBox(height: 8),
+                  OutlinedButton.icon(
+                    onPressed: _pickOnMap,
+                    icon: const Icon(Icons.map_outlined),
+                    label: const Text('Pick on Map'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppTheme.primaryColor,
+                      side: const BorderSide(color: AppTheme.primaryColor),
+                      minimumSize: const Size(double.infinity, 48),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
                   ),
                 ],
               ),
@@ -1301,44 +1316,7 @@ class _PharmacistRegistrationPageState
           'Location result: ${result.latitude}, ${result.longitude} - ${result.address}');
       setState(() {
         if (result.isValid) {
-          _latitude = result.latitude;
-          _longitude = result.longitude;
-
-          // Auto-populate address fields with structured data
-          if (result.street != null && result.street!.isNotEmpty) {
-            _addressLine1Controller.text = result.street!;
-          }
-          if (result.locality != null && result.locality!.isNotEmpty) {
-            _addressLine2Controller.text = result.locality!;
-          }
-          if (result.city != null && result.city!.isNotEmpty) {
-            _cityController.text = result.city!;
-          }
-          if (result.state != null && result.state!.isNotEmpty) {
-            final matchedState = _states.firstWhere(
-              (state) => state.toLowerCase() == result.state!.toLowerCase(),
-              orElse: () => '',
-            );
-            if (matchedState.isNotEmpty) {
-              _selectedState = matchedState;
-            }
-          }
-          if (result.postalCode != null && result.postalCode!.isNotEmpty) {
-            _postalCodeController.text = result.postalCode!;
-          }
-
-          if (result.address != null && result.address!.isNotEmpty) {
-            _locationText = '${result.address}\n'
-                'Lat: ${result.latitude.toStringAsFixed(6)}, '
-                'Long: ${result.longitude.toStringAsFixed(6)}';
-          } else {
-            _locationText = 'Location selected\n'
-                'Lat: ${result.latitude.toStringAsFixed(6)}, '
-                'Long: ${result.longitude.toStringAsFixed(6)}';
-          }
-
-          _errorMessage = '';
-          AppLogger.info('Address auto-populated from location');
+          _applyLocationResult(result);
         } else {
           _errorMessage = result.error ?? 'Unable to get location';
           _locationText = 'Tap to select location';
@@ -1352,6 +1330,60 @@ class _PharmacistRegistrationPageState
       });
       AppLogger.error('Location error: $e');
     }
+  }
+
+  /// Lets the user pick any point on a map, then stores the coordinates and
+  /// fills the store's address fields.
+  Future<void> _pickOnMap() async {
+    final result = await pickLocationOnMap(
+      context,
+      initialLatitude: _latitude,
+      initialLongitude: _longitude,
+    );
+    if (result == null || !mounted) return;
+    setState(() => _applyLocationResult(result));
+  }
+
+  /// Stores coordinates and auto-fills the address fields from a resolved
+  /// location. Call inside setState.
+  void _applyLocationResult(LocationResult result) {
+    _latitude = result.latitude;
+    _longitude = result.longitude;
+
+    if (result.street != null && result.street!.isNotEmpty) {
+      _addressLine1Controller.text = result.street!;
+    }
+    if (result.locality != null && result.locality!.isNotEmpty) {
+      _addressLine2Controller.text = result.locality!;
+    }
+    if (result.city != null && result.city!.isNotEmpty) {
+      _cityController.text = result.city!;
+    }
+    if (result.state != null && result.state!.isNotEmpty) {
+      final matchedState = _states.firstWhere(
+        (state) => state.toLowerCase() == result.state!.toLowerCase(),
+        orElse: () => '',
+      );
+      if (matchedState.isNotEmpty) {
+        _selectedState = matchedState;
+      }
+    }
+    if (result.postalCode != null && result.postalCode!.isNotEmpty) {
+      _postalCodeController.text = result.postalCode!;
+    }
+
+    if (result.address != null && result.address!.isNotEmpty) {
+      _locationText = '${result.address}\n'
+          'Lat: ${result.latitude.toStringAsFixed(6)}, '
+          'Long: ${result.longitude.toStringAsFixed(6)}';
+    } else {
+      _locationText = 'Location selected\n'
+          'Lat: ${result.latitude.toStringAsFixed(6)}, '
+          'Long: ${result.longitude.toStringAsFixed(6)}';
+    }
+
+    _errorMessage = '';
+    AppLogger.info('Address auto-populated from location');
   }
 
   Future<void> _submitRegistration() async {
