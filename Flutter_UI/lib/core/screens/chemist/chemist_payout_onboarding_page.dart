@@ -50,8 +50,28 @@ class _ChemistPayoutOnboardingPageState
   bool _submittingBank = false;
   bool _linkOpened = false;
 
-  bool get _isActivated =>
-      _activation?.isActivated == true || _payout?.activatedOn != null;
+  /// Step 1 is about the one-time activation FEE only. The backend derives
+  /// [ChemistActivationModel.isActivated] from `MedicalStore.ActivatedOn`,
+  /// which is stamped when that fee is paid — it is the only signal for this
+  /// step.
+  ///
+  /// Deliberately NOT ORed with `_payout?.activatedOn`: that is the Razorpay
+  /// linked account's activation date (Step 2), a separate milestone. Razorpay
+  /// can activate an account and later move it back to NeedsClarification, and
+  /// `ActivatedOn` is never cleared — so mixing it in claimed the fee was paid
+  /// when it was not.
+  bool get _isActivated => _activation?.isActivated == true;
+
+  /// Payout onboarding succeeded. Mirrors the chemist dashboard's unlock rule,
+  /// so both screens agree on what "done" means.
+  bool get _isPayoutComplete {
+    final s = (_payout?.onboardingStatus ?? '').toLowerCase();
+    return s == 'active' || s == 'processed' || s == 'success';
+  }
+
+  /// The pharmacy is only genuinely usable once BOTH the fee is paid and the
+  /// payout account is live. Step 1 alone must never claim this.
+  bool get _isFullyActivated => _isActivated && _isPayoutComplete;
 
   @override
   void initState() {
@@ -298,11 +318,17 @@ class _ChemistPayoutOnboardingPageState
           _sectionHeader(Icons.rocket_launch, 'Step 1 · Activation Fee'),
           const SizedBox(height: 12),
           if (_isActivated)
+            // Paying the fee completes THIS step only. Claiming "your pharmacy
+            // is activated" here contradicted the dashboard, which stays locked
+            // until payout onboarding is live too.
             _statusTile(
-              Icons.check_circle,
-              _green,
-              'Activated',
-              'Your pharmacy is activated.',
+              _isFullyActivated ? Icons.check_circle : Icons.check_circle_outline,
+              _isFullyActivated ? _green : Colors.orange,
+              _isFullyActivated ? 'Activated' : 'Fee Paid',
+              _isFullyActivated
+                  ? 'Your pharmacy is activated.'
+                  : 'Onboarding fee received. Your pharmacy is not active yet — '
+                      'complete Step 2 below.',
             )
           else ...[
             Text(
