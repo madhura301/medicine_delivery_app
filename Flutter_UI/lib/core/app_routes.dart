@@ -119,7 +119,7 @@ class AppRoutes {
       return PaymentSummaryPage(
         orderId: args['orderId'],
         medicinesTotal: args['medicinesTotal'],
-        convenienceFee: args['convenienceFee'],
+        convenienceFee: args['convenienceFee'] as double?,
         orderNumber: args['orderId'],
         onPaymentSuccess: () {
           AppLogger.info('Payment completed!');

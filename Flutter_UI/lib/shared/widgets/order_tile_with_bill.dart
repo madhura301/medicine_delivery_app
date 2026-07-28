@@ -79,7 +79,6 @@ class OrderTileWithBill extends StatelessWidget {
         builder: (context) => PaymentSummaryPage(
           orderId: 45,
           medicinesTotal: 850.0,
-          convenienceFee: 20.0,
           orderNumber: '5IKK4FVR3F',
           onPaymentSuccess: () {
             AppLogger.info('Payment completed!');

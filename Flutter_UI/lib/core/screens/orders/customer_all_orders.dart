@@ -992,17 +992,14 @@ class _CustomerAllOrdersState extends State<CustomerAllOrders> {
 
   void _goToPayment(OrderModel order) {
     final amount = order.totalAmount!;
-    // Convenience fee is currently a flat ₹20. The percentage-based logic
-    // (2.5%, min ₹20) is retained for future use:
-    //   final fee = (amount * 0.025) < 20 ? 20.0 : amount * 0.025;
-    const double fee = 20.0;
+    // Razorpay charges (2% of the bill) and the GST on them are derived by
+    // PaymentSummaryPage itself.
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (_) => PaymentSummaryPage(
           orderId: int.tryParse(order.orderId) ?? 0,
           medicinesTotal: amount,
-          convenienceFee: fee,
           orderNumber: order.orderNumber ?? order.orderId,
           onPaymentSuccess: _loadAllOrders,
         ),
