@@ -49,6 +49,18 @@ test.describe('Orders API', () => {
     test('POST /api/orders/assign-to-delivery', async ({ api }) => {
       expect((await api.post('/api/orders/assign-to-delivery', { data: {} })).status()).toBe(401);
     });
+    // WebApp-facing aliases: eligible-deliveries (GET) and assign-delivery (PUT).
+    test('GET /api/orders/1/eligible-deliveries (WebApp alias)', async ({ api }) => {
+      expect((await api.get('/api/orders/1/eligible-deliveries')).status()).toBe(401);
+    });
+    test('PUT /api/orders/1/assign-delivery (WebApp alias)', async ({ api }) => {
+      expect((await api.put('/api/orders/1/assign-delivery', { data: { deliveryId: 1 } })).status()).toBe(401);
+    });
+  });
+
+  test('GET /api/orders/{unknown}/eligible-deliveries (admin, WebApp alias) -> 404', async ({ apiAs }) => {
+    const admin = await apiAs('admin');
+    expect((await admin.get('/api/orders/99999999/eligible-deliveries')).status()).toBe(404);
   });
 
   test('GET /api/orders (admin, ListAllOrders) -> 200 array', async ({ apiAs }) => {

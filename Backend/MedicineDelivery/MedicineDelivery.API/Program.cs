@@ -38,6 +38,11 @@ try
     var appInsightsConnectionString = builder.Configuration["ApplicationInsights:ConnectionString"];
     var appInsightsEnabled = !string.IsNullOrWhiteSpace(appInsightsConnectionString);
 
+    // Identifies this deployment in shared telemetry (test vs production vs local).
+    // Set via env vars DeploymentEnvironment / CloudRoleName on Azure Container Apps.
+    var deploymentEnvironment = builder.Configuration["DeploymentEnvironment"] ?? "Local";
+    var cloudRoleName = builder.Configuration["CloudRoleName"] ?? $"pharmaish-api-{deploymentEnvironment.ToLowerInvariant()}";
+
     if (appInsightsEnabled)
     {
         // Captures requests, dependencies (DB/HTTP), and exceptions automatically.
@@ -45,17 +50,29 @@ try
         {
             options.ConnectionString = appInsightsConnectionString;
         });
+
+        // Tag auto-collected telemetry (requests/dependencies/exceptions).
+        builder.Services.AddSingleton<ITelemetryInitializer>(
+            new MedicineDelivery.API.Telemetry.CloudRoleNameInitializer(cloudRoleName, deploymentEnvironment));
     }
 
     // Replace bootstrap logger with fully configured logger from appsettings
     var loggerConfiguration = new LoggerConfiguration()
-        .ReadFrom.Configuration(builder.Configuration);
+        .ReadFrom.Configuration(builder.Configuration)
+        // Also stamp console/file logs so local and container logs are self-describing.
+        .Enrich.WithProperty("DeploymentEnvironment", deploymentEnvironment);
 
     // Ship structured logs to Application Insights when configured.
     if (appInsightsEnabled)
     {
+        // The Serilog sink uses its OWN TelemetryConfiguration, so the initializer must be
+        // registered here too — DI registration alone would not tag Serilog traces.
+        var serilogTelemetryConfig = new TelemetryConfiguration { ConnectionString = appInsightsConnectionString };
+        serilogTelemetryConfig.TelemetryInitializers.Add(
+            new MedicineDelivery.API.Telemetry.CloudRoleNameInitializer(cloudRoleName, deploymentEnvironment));
+
         loggerConfiguration.WriteTo.ApplicationInsights(
-            new TelemetryConfiguration { ConnectionString = appInsightsConnectionString },
+            serilogTelemetryConfig,
             TelemetryConverter.Traces);
     }
 
@@ -202,7 +219,12 @@ builder.Services.AddAuthentication(options =>
 builder.Services.AddAuthorization(options =>
 {
     // Register permission-based policies
-    options.AddPolicy("RequireReadUsersPermission", policy => 
+    // Seeding endpoints (/api/setup/*): authenticated Admin OR a valid X-Setup-Token.
+    // Fails closed when no token is configured outside Development.
+    options.AddPolicy("RequireSetupAccess", policy =>
+        policy.Requirements.Add(new MedicineDelivery.API.Authorization.SetupAccessRequirement()));
+
+    options.AddPolicy("RequireReadUsersPermission", policy =>
         policy.Requirements.Add(new MedicineDelivery.API.Authorization.PermissionRequirement("ReadUsers")));
     
     options.AddPolicy("RequireCreateUsersPermission", policy => 
@@ -399,6 +421,9 @@ builder.Services.AddAuthorization(options =>
 
 // Register the permission authorization handler
 builder.Services.AddScoped<IAuthorizationHandler, MedicineDelivery.API.Authorization.PermissionAuthorizationHandler>();
+// Guards the /api/setup/* seeding endpoints (see SetupAccessHandler).
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<IAuthorizationHandler, MedicineDelivery.API.Authorization.SetupAccessHandler>();
 
 // Add AutoMapper
 builder.Services.AddAutoMapper(typeof(MappingProfile));
