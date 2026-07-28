@@ -813,6 +813,7 @@ namespace MedicineDelivery.Infrastructure.Data
                 entity.Property(p => p.BillAmount).HasColumnType("decimal(10,2)");
                 entity.Property(p => p.ConvenienceFee).HasColumnType("decimal(10,2)");
                 entity.Property(p => p.PlatformFee).HasColumnType("decimal(10,2)");
+                entity.Property(p => p.PlatformFeeGst).HasColumnType("decimal(10,2)");
                 entity.Property(p => p.ChemistAmount).HasColumnType("decimal(10,2)");
                 entity.Property(p => p.PharmaishAmount).HasColumnType("decimal(10,2)");
 
@@ -1170,6 +1171,8 @@ namespace MedicineDelivery.Infrastructure.Data
                 .Property(p => p.ConvenienceFee).HasColumnType("numeric(10,2)");
             builder.Entity<PaymentSplit>()
                 .Property(p => p.PlatformFee).HasColumnType("numeric(10,2)");
+            builder.Entity<PaymentSplit>()
+                .Property(p => p.PlatformFeeGst).HasColumnType("numeric(10,2)");
             builder.Entity<PaymentSplit>()
                 .Property(p => p.ChemistAmount).HasColumnType("numeric(10,2)");
             builder.Entity<PaymentSplit>()

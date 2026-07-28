@@ -4,7 +4,7 @@ Entity Framework
 Generate Migration : dotnet ef migrations add AddOrderNumberAndCustomerAddressCoordinates --project MedicineDelivery.Infrastructure --startup-project MedicineDelivery.API
 Generate Migration Script : dotnet ef migrations script InitialCreate AddOrderNumberAndCustomerAddressCoordinates --idempotent --project MedicineDelivery.Infrastructure --startup-project MedicineDelivery.API --output migration_script.sql
 
-A .NET 8 Web API project with Clean Architecture, JWT-based authentication and permission-based authorization using ASP.NET Core Identity.
+A .NET 10 Web API project with Clean Architecture, JWT-based authentication and permission-based authorization using ASP.NET Core Identity.
 
 ## Architecture
 
@@ -29,7 +29,7 @@ This project follows Clean Architecture principles with the following layers:
 
 ## Getting Started
 
-1. Make sure you have .NET 8 SDK installed
+1. Make sure you have .NET 10 SDK installed
 2. Update the connection string in `MedicineDelivery.API/appsettings.json` if needed
 3. Run the following commands:
 
