@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using MedicineDelivery.Application.DTOs;
@@ -428,38 +429,68 @@ namespace MedicineDelivery.API.Controllers
         [Authorize(Policy = "RequireOrderCreatePermission")]
         public async Task<IActionResult> CreateOrder([FromForm] CreateOrderDto request, CancellationToken cancellationToken)
         {
+            // A short correlation id is opened as a logging scope so that EVERY log line emitted for this
+            // request — in this controller AND inside OrderService and its private helpers — carries the same
+            // {CorrelationId} property. Grep the logs for one CorrelationId to replay a single order end-to-end.
+            var correlationId = Guid.NewGuid().ToString("N").Substring(0, 8);
+            using var logScope = _logger.BeginScope(new Dictionary<string, object?>
+            {
+                ["CorrelationId"] = correlationId,
+                ["CustomerId"] = request?.CustomerId,
+                ["CustomerAddressId"] = request?.CustomerAddressId,
+                ["OrderType"] = request?.OrderType,
+                ["OrderInputType"] = request?.OrderInputType
+            });
+
+            var inputFileName = request?.OrderInputFile?.FileName;
+            var inputFileLength = request?.OrderInputFile?.Length ?? 0;
+            _logger.LogInformation(
+                "CreateOrder [{CorrelationId}] START: Customer={CustomerId}, Address={CustomerAddressId}, OrderType={OrderType}, InputType={OrderInputType}, HasInputText={HasInputText}, InputFile={InputFileName} ({InputFileLength} bytes)",
+                correlationId, request?.CustomerId, request?.CustomerAddressId, request?.OrderType, request?.OrderInputType,
+                !string.IsNullOrWhiteSpace(request?.OrderInputText), inputFileName ?? "(none)", inputFileLength);
+
             if (!ModelState.IsValid)
             {
+                var validationErrors = string.Join("; ", ModelState
+                    .Where(kvp => kvp.Value != null && kvp.Value.Errors.Count > 0)
+                    .Select(kvp => $"{kvp.Key}: {string.Join(", ", kvp.Value!.Errors.Select(e => e.ErrorMessage))}"));
+                _logger.LogWarning("CreateOrder [{CorrelationId}] REJECTED: ModelState invalid. Errors: {ValidationErrors}", correlationId, validationErrors);
                 return BadRequest(ModelState);
             }
 
             try
             {
-                var order = await _orderService.CreateOrderAsync(request, cancellationToken);
+                _logger.LogInformation("CreateOrder [{CorrelationId}] STEP: ModelState valid, delegating to OrderService.CreateOrderAsync", correlationId);
+                var order = await _orderService.CreateOrderAsync(request!, cancellationToken);
+                _logger.LogInformation(
+                    "CreateOrder [{CorrelationId}] SUCCESS: OrderId={OrderId}, OrderNumber={OrderNumber}, Status={OrderStatus}, MedicalStoreId={MedicalStoreId}, CustomerSupportId={CustomerSupportId}, ManagerId={ManagerId}",
+                    correlationId, order.OrderId, order.OrderNumber, order.OrderStatus, order.MedicalStoreId, order.CustomerSupportId, order.ManagerId);
                 return CreatedAtAction(nameof(GetOrderById), new { orderId = order.OrderId }, order);
             }
             catch (ServiceAreaUnavailableException ex)
             {
-                _logger.LogWarning("CreateOrder: {Message}", ex.Message);
+                _logger.LogWarning("CreateOrder [{CorrelationId}] BLOCKED (area not serviceable): {Message}. PostalCode={PostalCode}, MissingRoles={MissingRoles}",
+                    correlationId, ex.Message, ex.PostalCode, string.Join(", ", ex.MissingRoles));
                 return BadRequest(new { error = ex.Message, postalCode = ex.PostalCode, missingRoles = ex.MissingRoles });
             }
             catch (ArgumentException ex)
             {
-                _logger.LogWarning("CreateOrder: {Message}", ex.Message);
+                _logger.LogWarning("CreateOrder [{CorrelationId}] REJECTED (invalid argument): {Message} (param: {ParamName})", correlationId, ex.Message, ex.ParamName ?? "(none)");
                 return BadRequest(new { error = ex.Message });
             }
             catch (KeyNotFoundException ex)
             {
-                _logger.LogWarning("CreateOrder: {Message}", ex.Message);
+                _logger.LogWarning("CreateOrder [{CorrelationId}] NOT FOUND: {Message}", correlationId, ex.Message);
                 return NotFound(new { error = ex.Message });
             }
             catch (OperationCanceledException)
             {
+                _logger.LogInformation("CreateOrder [{CorrelationId}] CANCELLED by caller/client", correlationId);
                 return StatusCode(499, new { error = "Request was cancelled." });
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error in CreateOrder");
+                _logger.LogError(ex, "CreateOrder [{CorrelationId}] FAILED with unhandled exception", correlationId);
                 return StatusCode(500, new { error = "An error occurred while creating the order." });
             }
         }

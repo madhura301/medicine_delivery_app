@@ -52,6 +52,12 @@ namespace MedicineDelivery.Infrastructure.Services
 
             cancellationToken.ThrowIfCancellationRequested();
 
+            _logger.LogInformation(
+                "CreateOrderAsync ENTRY: Customer={CustomerId}, Address={CustomerAddressId}, OrderType={OrderType}, InputType={OrderInputType}, HasInputText={HasInputText}, InputFile={InputFileName} ({InputFileLength} bytes)",
+                createDto.CustomerId, createDto.CustomerAddressId, createDto.OrderType, createDto.OrderInputType,
+                !string.IsNullOrWhiteSpace(createDto.OrderInputText),
+                createDto.OrderInputFile?.FileName ?? "(none)", createDto.OrderInputFile?.Length ?? 0);
+
             if (createDto.CustomerId == Guid.Empty)
             {
                 _logger.LogWarning("CreateOrderAsync failed: CustomerId is empty");
@@ -76,6 +82,8 @@ namespace MedicineDelivery.Infrastructure.Services
                 throw new ArgumentException("Invalid order input type provided.", nameof(createDto.OrderInputType));
             }
 
+            _logger.LogInformation("CreateOrderAsync STEP 1/7: Basic input validation passed. Looking up customer {CustomerId}.", createDto.CustomerId);
+
             // Ensure the customer exists and is active
             var customer = await _unitOfWork.Customers.FirstOrDefaultAsync(c => c.CustomerId == createDto.CustomerId && c.IsActive);
             if (customer == null)
@@ -83,6 +91,8 @@ namespace MedicineDelivery.Infrastructure.Services
                 _logger.LogWarning("CreateOrderAsync failed: Customer {CustomerId} not found or inactive", createDto.CustomerId);
                 throw new KeyNotFoundException("Customer not found or inactive.");
             }
+
+            _logger.LogInformation("CreateOrderAsync STEP 2/7: Customer found (Mobile={CustomerMobile}). Looking up address {CustomerAddressId}.", customer.MobileNumber, createDto.CustomerAddressId);
 
             // Ensure the address exists for the customer
             var address = await _unitOfWork.CustomerAddresses.FirstOrDefaultAsync(ca =>
@@ -96,10 +106,18 @@ namespace MedicineDelivery.Infrastructure.Services
                 throw new KeyNotFoundException("Customer address not found or inactive.");
             }
 
+            _logger.LogInformation(
+                "CreateOrderAsync STEP 3/7: Address found. PostalCode={PostalCode}, HasCoordinates={HasCoordinates}. Running serviceability check.",
+                string.IsNullOrWhiteSpace(address.PostalCode) ? "(none)" : address.PostalCode,
+                address.Latitude.HasValue && address.Longitude.HasValue);
+            _logger.LogDebug("CreateOrderAsync: Address coordinates Latitude={Latitude}, Longitude={Longitude}", address.Latitude, address.Longitude);
+
             // The delivery area must be fully serviceable — an eligible chemist within 5 km, plus a
             // customer support agent and a delivery partner covering the pin code. If any is missing,
             // no order is created (throws ServiceAreaUnavailableException -> HTTP 400).
             await EnsureOrderAreaIsServiceableAsync(address, cancellationToken);
+
+            _logger.LogInformation("CreateOrderAsync STEP 4/7: Serviceability check passed. Validating {OrderInputType} input payload.", createDto.OrderInputType);
 
             // Validate input data based on the order input type
             switch (createDto.OrderInputType)
@@ -133,6 +151,9 @@ namespace MedicineDelivery.Infrastructure.Services
                 UpdatedOn = null
             };
 
+            // OTP value is intentionally NOT logged (it is the delivery-verification secret).
+            _logger.LogInformation("CreateOrderAsync STEP 5/7: Order entity built. OrderNumber={OrderNumber}, InitialStatus={OrderStatus}, AssignTo={AssignTo}.", order.OrderNumber, order.OrderStatus, order.AssignTo);
+
             if (createDto.OrderInputType is OrderInputType.Image or OrderInputType.Voice)
             {
                 if (createDto.OrderInputFile == null || createDto.OrderInputFile.Length == 0)
@@ -141,15 +162,18 @@ namespace MedicineDelivery.Infrastructure.Services
                     throw new ArgumentException("An order input file is required for image or voice orders.", nameof(createDto.OrderInputFile));
                 }
 
+                _logger.LogInformation("CreateOrderAsync: Validating and uploading input file {InputFileName} ({InputFileLength} bytes) for {OrderInputType} order.", createDto.OrderInputFile.FileName, createDto.OrderInputFile.Length, createDto.OrderInputType);
                 ValidateOrderInputFile(createDto.OrderInputType, createDto.OrderInputFile);
                 order.OrderInputFileLocation = await SaveOrderInputFileAsync(createDto.OrderInputFile, createDto.OrderInputType, cancellationToken);
+                _logger.LogInformation("CreateOrderAsync: Input file uploaded to {OrderInputFileLocation}.", order.OrderInputFileLocation);
             }
             else
             {
                 order.OrderInputFileLocation = null;
+                _logger.LogDebug("CreateOrderAsync: Text order — no input file to upload.");
             }
 
-           
+            _logger.LogInformation("CreateOrderAsync STEP 6/7: Persisting order to database.");
 
             await _unitOfWork.Orders.AddAsync(order);
             await _unitOfWork.SaveChangesAsync();
@@ -171,7 +195,13 @@ namespace MedicineDelivery.Infrastructure.Services
             await _unitOfWork.OrderAssignmentHistories.AddAsync(assignmentHistory);
             await _unitOfWork.SaveChangesAsync();
 
+            _logger.LogInformation("CreateOrderAsync STEP 7/7: Order {OrderId} persisted with initial assignment history. Running auto-assignment to nearest chemist.", order.OrderId);
+
             await AssignOrderToNearestChemist(order.OrderId);
+
+            _logger.LogInformation(
+                "CreateOrderAsync EXIT: Order {OrderId} (OrderNumber={OrderNumber}) complete. FinalStatus={OrderStatus}, MedicalStoreId={MedicalStoreId}, CustomerSupportId={CustomerSupportId}, ManagerId={ManagerId}.",
+                order.OrderId, order.OrderNumber, order.OrderStatus, order.MedicalStoreId, order.CustomerSupportId, order.ManagerId);
 
             return _mapper.Map<OrderDto>(order);
         }
@@ -193,10 +223,15 @@ namespace MedicineDelivery.Infrastructure.Services
             var postalCode = address.PostalCode?.Trim() ?? string.Empty;
             var missingRoles = new List<string>();
 
+            _logger.LogInformation("EnsureOrderAreaIsServiceableAsync ENTRY: PostalCode={PostalCode}, HasCoordinates={HasCoordinates}.",
+                string.IsNullOrWhiteSpace(postalCode) ? "(none)" : postalCode, address.Latitude.HasValue && address.Longitude.HasValue);
+
             // --- Chemist: eligible store within 5 km (geo) or, without coordinates, in the same pin code ---
             var chemistAvailable = await IsChemistAvailableForAddressAsync(address, postalCode);
             if (!chemistAvailable)
                 missingRoles.Add("chemist");
+
+            _logger.LogInformation("EnsureOrderAreaIsServiceableAsync: Chemist availability = {ChemistAvailable}.", chemistAvailable);
 
             // Customer support and delivery partner are matched purely by pin code -> region. Without a
             // postal code neither can be resolved, so both count as unavailable.
@@ -226,6 +261,9 @@ namespace MedicineDelivery.Infrastructure.Services
                               !cs.IsDeleted);
                 }
 
+                _logger.LogInformation("EnsureOrderAreaIsServiceableAsync: CustomerSupport regions covering {PostalCode} = {CustomerSupportRegionCount}; active agent available = {CustomerSupportAvailable}.",
+                    postalCode, customerSupportPinRegionIds.Count, customerSupportAvailable);
+
                 // --- Delivery partner: any active delivery boy in a DeliveryBoy region covering this pin ---
                 var deliveryRegionIds = (await _unitOfWork.ServiceRegions.FindAsync(
                         r => r.RegionType == RegionType.DeliveryBoy))
@@ -246,6 +284,13 @@ namespace MedicineDelivery.Infrastructure.Services
                              d.IsActive &&
                              !d.IsDeleted);
                 }
+
+                _logger.LogInformation("EnsureOrderAreaIsServiceableAsync: DeliveryBoy regions covering {PostalCode} = {DeliveryRegionCount}; active delivery partner available = {DeliveryAvailable}.",
+                    postalCode, deliveryPinRegionIds.Count, deliveryAvailable);
+            }
+            else
+            {
+                _logger.LogWarning("EnsureOrderAreaIsServiceableAsync: Address has no postal code — customer support and delivery partner cannot be resolved and both count as unavailable.");
             }
 
             if (!customerSupportAvailable)
@@ -262,6 +307,9 @@ namespace MedicineDelivery.Infrastructure.Services
                     string.Join(", ", missingRoles));
                 throw new ServiceAreaUnavailableException(postalCode, missingRoles);
             }
+
+            _logger.LogInformation("EnsureOrderAreaIsServiceableAsync EXIT: Area is fully serviceable for pincode {PostalCode} (chemist + customer support + delivery partner all available).",
+                string.IsNullOrWhiteSpace(postalCode) ? "(none)" : postalCode);
         }
 
         /// <summary>
@@ -272,36 +320,64 @@ namespace MedicineDelivery.Infrastructure.Services
         {
             if (address.Latitude.HasValue && address.Longitude.HasValue)
             {
+                _logger.LogDebug("IsChemistAvailableForAddressAsync: Using GEO path (address has coordinates).");
+
                 var storesWithCoords = await _unitOfWork.MedicalStores.FindAsync(ms =>
                     ms.IsActive &&
                     !ms.IsDeleted &&
                     ms.Latitude.HasValue &&
                     ms.Longitude.HasValue);
 
-                var eligibleStores = await FilterEligibleStoresAsync(storesWithCoords);
+                var storesWithCoordsList = storesWithCoords.ToList();
+                var eligibleStores = await FilterEligibleStoresAsync(storesWithCoordsList);
 
-                return eligibleStores.Any(ms => CalculateHaversineDistance(
-                    (double)address.Latitude.Value,
-                    (double)address.Longitude.Value,
-                    (double)ms.Latitude!.Value,
-                    (double)ms.Longitude!.Value) <= 5.0);
+                var nearestWithinRange = eligibleStores
+                    .Select(ms => new
+                    {
+                        ms.MedicalStoreId,
+                        DistanceKm = CalculateHaversineDistance(
+                            (double)address.Latitude.Value,
+                            (double)address.Longitude.Value,
+                            (double)ms.Latitude!.Value,
+                            (double)ms.Longitude!.Value)
+                    })
+                    .OrderBy(x => x.DistanceKm)
+                    .FirstOrDefault();
+
+                var available = nearestWithinRange != null && nearestWithinRange.DistanceKm <= 5.0;
+                _logger.LogInformation(
+                    "IsChemistAvailableForAddressAsync (GEO): active-with-coords stores={StoreCount}, eligible (payout+activation)={EligibleCount}, nearestEligibleKm={NearestKm}, within5km={Available}.",
+                    storesWithCoordsList.Count, eligibleStores.Count,
+                    nearestWithinRange == null ? "(none)" : nearestWithinRange.DistanceKm.ToString("F2"), available);
+
+                return available;
             }
 
             // No coordinates — fall back to postal-code match, consistent with AssignOrderToNearestChemist.
+            _logger.LogDebug("IsChemistAvailableForAddressAsync: Using POSTAL-CODE path (address has no coordinates).");
             if (string.IsNullOrWhiteSpace(postalCode))
+            {
+                _logger.LogInformation("IsChemistAvailableForAddressAsync (POSTAL): No postal code and no coordinates — no chemist can be matched.");
                 return false;
+            }
 
             var storesInPostalCode = await _unitOfWork.MedicalStores.FindAsync(ms =>
                 ms.PostalCode == postalCode &&
                 ms.IsActive &&
                 !ms.IsDeleted);
 
-            var eligibleInPostalCode = await FilterEligibleStoresAsync(storesInPostalCode);
+            var storesInPostalCodeList = storesInPostalCode.ToList();
+            var eligibleInPostalCode = await FilterEligibleStoresAsync(storesInPostalCodeList);
+            _logger.LogInformation(
+                "IsChemistAvailableForAddressAsync (POSTAL {PostalCode}): active stores in pincode={StoreCount}, eligible (payout+activation)={EligibleCount}, available={Available}.",
+                postalCode, storesInPostalCodeList.Count, eligibleInPostalCode.Count, eligibleInPostalCode.Count > 0);
             return eligibleInPostalCode.Count > 0;
         }
 
         public async Task AssignOrderToNearestChemist(int orderId)
         {
+            _logger.LogInformation("AssignOrderToNearestChemist ENTRY: Order {OrderId}.", orderId);
+
             // Find the order by OrderId
             var order = await _unitOfWork.Orders.FirstOrDefaultAsync(o => o.OrderId == orderId);
             if (order == null)
@@ -325,6 +401,8 @@ namespace MedicineDelivery.Infrastructure.Services
             // Find nearest active medical store using NetTopologySuite if customer address has coordinates
             if (address.Latitude.HasValue && address.Longitude.HasValue)
             {
+                _logger.LogInformation("AssignOrderToNearestChemist: Order {OrderId} using GEO assignment (address has coordinates).", orderId);
+
                 var geometryFactory = NtsGeometryServices.Instance.CreateGeometryFactory(srid: 4326);
                 var customerPoint = geometryFactory.CreatePoint(new Coordinate(
                     x: (double)address.Longitude.Value, // longitude = X
@@ -339,6 +417,8 @@ namespace MedicineDelivery.Infrastructure.Services
 
                 // Only chemists that have completed payout onboarding AND paid the activation fee may receive orders.
                 var eligibleStores = await FilterEligibleStoresAsync(medicalStores);
+
+                _logger.LogInformation("AssignOrderToNearestChemist (GEO): Order {OrderId} has {EligibleCount} eligible chemist(s) with coordinates to choose from.", orderId, eligibleStores.Count);
 
                 var nearestStore = eligibleStores
                     .Select(ms => new
@@ -408,6 +488,8 @@ namespace MedicineDelivery.Infrastructure.Services
                 // Only chemists that have completed payout onboarding AND paid the activation fee may receive orders.
                 var storesInPostalCodeList = await FilterEligibleStoresAsync(storesInPostalCode);
 
+                _logger.LogInformation("AssignOrderToNearestChemist (POSTAL {PostalCode}): Order {OrderId} has {EligibleCount} eligible chemist(s) in pincode to choose from.", postalCode, orderId, storesInPostalCodeList.Count);
+
                 if (storesInPostalCodeList.Count > 0)
                 {
                     // Case 1: Chemists found — assign to the one with the fewest active (not completed/delivered) orders
@@ -469,24 +551,45 @@ namespace MedicineDelivery.Infrastructure.Services
         /// </summary>
         private async Task<List<MedicalStore>> FilterEligibleStoresAsync(IEnumerable<MedicalStore> stores)
         {
+            var storeList = stores as ICollection<MedicalStore> ?? stores.ToList();
             var eligible = new List<MedicalStore>();
+            var rejectedNoPayout = 0;
+            var rejectedNoActivation = 0;
 
-            foreach (var store in stores)
+            _logger.LogDebug("FilterEligibleStoresAsync ENTRY: evaluating {CandidateCount} candidate store(s) for payout + activation eligibility.", storeList.Count);
+
+            foreach (var store in storeList)
             {
                 var hasActivePayout = await _unitOfWork.ChemistPayoutAccounts.AnyAsync(
                     pa => pa.MedicalStoreId == store.MedicalStoreId &&
                           pa.OnboardingStatus == ChemistPayoutStatus.Active);
 
                 if (!hasActivePayout)
+                {
+                    rejectedNoPayout++;
+                    _logger.LogDebug("FilterEligibleStoresAsync: Store {MedicalStoreId} EXCLUDED — no ACTIVE payout account.", store.MedicalStoreId);
                     continue;
+                }
 
                 var hasPaidActivation = await _unitOfWork.ChemistActivationPayments.AnyAsync(
                     ap => ap.MedicalStoreId == store.MedicalStoreId &&
                           ap.Status == ChemistActivationStatus.Paid);
 
                 if (hasPaidActivation)
+                {
                     eligible.Add(store);
+                    _logger.LogDebug("FilterEligibleStoresAsync: Store {MedicalStoreId} ELIGIBLE (active payout + paid activation).", store.MedicalStoreId);
+                }
+                else
+                {
+                    rejectedNoActivation++;
+                    _logger.LogDebug("FilterEligibleStoresAsync: Store {MedicalStoreId} EXCLUDED — activation fee not PAID.", store.MedicalStoreId);
+                }
             }
+
+            _logger.LogInformation(
+                "FilterEligibleStoresAsync EXIT: {CandidateCount} candidate(s) -> {EligibleCount} eligible. Excluded: {NoPayout} without active payout, {NoActivation} without paid activation.",
+                storeList.Count, eligible.Count, rejectedNoPayout, rejectedNoActivation);
 
             return eligible;
         }
@@ -801,6 +904,8 @@ namespace MedicineDelivery.Infrastructure.Services
         public async Task AssignRejectOrderToCustomerSupport(int orderId, CancellationToken cancellationToken = default)
         {
             cancellationToken.ThrowIfCancellationRequested();
+
+            _logger.LogInformation("AssignRejectOrderToCustomerSupport ENTRY: Order {OrderId} (no eligible chemist / rejected — routing to customer support, escalating to manager if none).", orderId);
 
             // Get the order
             var order = await _unitOfWork.Orders.FirstOrDefaultAsync(o => o.OrderId == orderId);
@@ -1185,6 +1290,8 @@ namespace MedicineDelivery.Infrastructure.Services
                 _logger.LogWarning("ValidateOrderInputFile failed: File type {Extension} not supported for {InputType} orders", extension, inputType);
                 throw new ArgumentException($"File type '{extension}' is not supported for {inputType} orders.", nameof(file));
             }
+
+            _logger.LogDebug("ValidateOrderInputFile: File '{FileName}' with extension {Extension} is valid for {InputType} orders.", file.FileName, extension, inputType);
         }
 
         private async Task<string> SaveOrderInputFileAsync(IFormFile file, OrderInputType inputType, CancellationToken cancellationToken)
@@ -1200,8 +1307,12 @@ namespace MedicineDelivery.Infrastructure.Services
             var uniqueFileName = $"{Guid.NewGuid():N}{fileExtension}";
             var relativePath = Path.Combine("Files", "Orders", folderName, uniqueFileName).Replace("\\", "/");
 
+            _logger.LogInformation("SaveOrderInputFileAsync: Uploading {InputType} file '{OriginalFileName}' ({FileLength} bytes) to storage path {RelativePath}.", inputType, file.FileName, file.Length, relativePath);
+
             using var stream = file.OpenReadStream();
             await _fileStorageService.UploadAsync(stream, relativePath, cancellationToken);
+
+            _logger.LogInformation("SaveOrderInputFileAsync: Upload complete for {RelativePath}.", relativePath);
 
             return relativePath;
         }
@@ -1213,8 +1324,10 @@ namespace MedicineDelivery.Infrastructure.Services
         {
             const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
             var random = new Random();
-            return new string(Enumerable.Repeat(chars, 10)
+            var orderNumber = new string(Enumerable.Repeat(chars, 10)
                 .Select(s => s[random.Next(s.Length)]).ToArray());
+            _logger.LogDebug("GenerateOrderNumber: Generated OrderNumber={OrderNumber}.", orderNumber);
+            return orderNumber;
         }
 
         /// <summary>
@@ -1223,7 +1336,10 @@ namespace MedicineDelivery.Infrastructure.Services
         private string GenerateOTP()
         {
             var random = new Random();
-            return random.Next(1000, 9999).ToString();
+            var otp = random.Next(1000, 9999).ToString();
+            // The OTP value is the delivery-verification secret and is deliberately never logged.
+            _logger.LogDebug("GenerateOTP: Generated a {OtpLength}-digit delivery OTP (value redacted).", otp.Length);
+            return otp;
         }
 
         public async Task<OrderDto> UploadOrderBillAsync(UploadOrderBillDto uploadDto, CancellationToken cancellationToken = default)

@@ -340,9 +340,14 @@ builder.Services.AddAuthorization(options =>
         policy.Requirements.Add(new MedicineDelivery.API.Authorization.PermissionRequirement("ManagerSupportDelete")));
     
     // Customer CRUD Policies (for own records only)
-    options.AddPolicy("RequireCustomerReadPermission", policy => 
+    options.AddPolicy("RequireCustomerReadPermission", policy =>
         policy.Requirements.Add(new MedicineDelivery.API.Authorization.PermissionRequirement("CustomerRead")));
-    
+
+    // Dual-use customer read (own OR any): customers read their own record (CustomerRead)
+    // while staff (Support/Admin/Manager) look up any customer (AllCustomerRead).
+    options.AddPolicy("RequireCustomerReadAnyPermission", policy =>
+        policy.Requirements.Add(new MedicineDelivery.API.Authorization.PermissionRequirement("CustomerRead", "AllCustomerRead")));
+
     options.AddPolicy("RequireCustomerCreatePermission", policy => 
         policy.Requirements.Add(new MedicineDelivery.API.Authorization.PermissionRequirement("CustomerCreate")));
     
