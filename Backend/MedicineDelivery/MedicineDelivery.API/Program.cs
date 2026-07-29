@@ -19,6 +19,8 @@ using Serilog;
 using Microsoft.ApplicationInsights.Extensibility;
 using Microsoft.AspNetCore.DataProtection;
 using Azure.Storage.Blobs;
+using System.Threading.RateLimiting;
+using Microsoft.AspNetCore.RateLimiting;
 
 // Bootstrap logger (before config is available) so early log messages are not lost
 Log.Logger = new LoggerConfiguration()
@@ -106,6 +108,31 @@ try
     {
         Log.Warning("Data Protection: no Azure blob connection string; keys will use the default ephemeral store.");
     }
+
+// Rate limiting (security finding C-04). Authentication endpoints previously had no
+// throttling AND no lockout, allowing unlimited credential brute-force. "auth" is a strict
+// per-IP limit for login/OTP/password-reset; "global" is a safety net for everything else.
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+
+    options.AddPolicy("auth", httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                // Tunable per environment: RateLimiting:AuthPermitPerMinute (default 30).
+                // Defence-in-depth alongside account lockout (5 failed logins -> 5 min lock).
+                PermitLimit = builder.Configuration.GetValue<int?>("RateLimiting:AuthPermitPerMinute") ?? 30,
+                Window = TimeSpan.FromMinutes(1),
+                QueueLimit = 0
+            }));
+
+    // NOTE: deliberately NO global limiter. Mobile carriers/corporate networks NAT many
+    // users behind a single IP, so a global per-IP cap blocks legitimate traffic while adding
+    // little security value. Brute-force protection comes from the strict 'auth' policy below
+    // plus per-ACCOUNT lockout (5 failures -> 5 min), which is attacker-specific rather than IP-wide.
+});
 
 // Add services to the container.
 builder.Services.AddControllers()
@@ -420,6 +447,7 @@ builder.Services.AddAuthorization(options =>
 });
 
 // Register the permission authorization handler
+builder.Services.AddScoped<MedicineDelivery.Application.Interfaces.IOrderAccessGuard, MedicineDelivery.Infrastructure.Services.OrderAccessGuard>();
 builder.Services.AddScoped<IAuthorizationHandler, MedicineDelivery.API.Authorization.PermissionAuthorizationHandler>();
 // Guards the /api/setup/* seeding endpoints (see SetupAccessHandler).
 builder.Services.AddHttpContextAccessor();
@@ -495,6 +523,8 @@ app.UseSwaggerUI();
 app.UseSerilogRequestLogging();
 
 app.UseHttpsRedirection();
+
+app.UseRateLimiter();
 
 // Add global exception handling middleware
 app.UseMiddleware<GlobalExceptionMiddleware>();

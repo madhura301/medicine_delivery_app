@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.Mvc;
 using MedicineDelivery.Application.DTOs;
 using MedicineDelivery.Domain.Interfaces;
@@ -7,6 +8,8 @@ namespace MedicineDelivery.API.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    // C-04: strict per-IP throttling on login / OTP / password-reset.
+    [EnableRateLimiting("auth")]
     public class AuthController : ControllerBase
     {
         private readonly IAuthService _authService;

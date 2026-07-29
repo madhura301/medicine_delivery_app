@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Security.Claims;
 using MedicineDelivery.Application.DTOs;
 using MedicineDelivery.Application.Interfaces;
 using MedicineDelivery.Domain.Exceptions;
@@ -20,14 +21,34 @@ namespace MedicineDelivery.API.Controllers
     {
         private readonly IOrderService _orderService;
         private readonly IFileStorageService _fileStorage;
+        private readonly IOrderAccessGuard _accessGuard;
+        private readonly IPermissionCheckerService _permissionChecker;
         private readonly ILogger<OrdersController> _logger;
 
-        public OrdersController(IOrderService orderService, IFileStorageService fileStorage, ILogger<OrdersController> logger)
+        public OrdersController(
+            IOrderService orderService,
+            IFileStorageService fileStorage,
+            IOrderAccessGuard accessGuard,
+            IPermissionCheckerService permissionChecker,
+            ILogger<OrdersController> logger)
         {
             _orderService = orderService;
             _fileStorage = fileStorage;
+            _accessGuard = accessGuard;
+            _permissionChecker = permissionChecker;
             _logger = logger;
         }
+
+        /// <summary>Current caller's Identity user id.</summary>
+        private string CurrentUserId => User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? string.Empty;
+
+        /// <summary>Admin/Manager hold ListAllOrders and bypass ownership checks.</summary>
+        private Task<bool> HasFullOrderAccessAsync() =>
+            _permissionChecker.HasPermissionAsync(User, "ListAllOrders");
+
+        /// <summary>C-02: verifies the caller is actually a party to this order.</summary>
+        private async Task<bool> CanAccessOrderAsync(int orderId, CancellationToken ct) =>
+            await _accessGuard.CanAccessOrderAsync(CurrentUserId, await HasFullOrderAccessAsync(), orderId, ct);
 
         [HttpGet("{orderId:int}")]
         [Authorize(Policy = "RequireOrderReadPermission")]
@@ -35,6 +56,11 @@ namespace MedicineDelivery.API.Controllers
         {
             try
             {
+                if (!await CanAccessOrderAsync(orderId, cancellationToken))
+                {
+                    return Forbid();
+                }
+
                 var order = await _orderService.GetOrderByIdAsync(orderId, cancellationToken);
                 if (order == null)
                 {
@@ -60,6 +86,11 @@ namespace MedicineDelivery.API.Controllers
         {
             try
             {
+                if (!await _accessGuard.CanAccessCustomerAsync(CurrentUserId, await HasFullOrderAccessAsync(), customerId, cancellationToken))
+                {
+                    return Forbid();
+                }
+
                 var orders = await _orderService.GetOrdersByCustomerIdAsync(customerId, cancellationToken);
                 return Ok(orders);
             }
@@ -85,6 +116,11 @@ namespace MedicineDelivery.API.Controllers
         {
             try
             {
+                if (!await _accessGuard.CanAccessCustomerAsync(CurrentUserId, await HasFullOrderAccessAsync(), customerId, cancellationToken))
+                {
+                    return Forbid();
+                }
+
                 var orders = await _orderService.GetActiveOrdersByCustomerIdAsync(customerId, cancellationToken);
                 return Ok(orders);
             }
@@ -110,6 +146,11 @@ namespace MedicineDelivery.API.Controllers
         {
             try
             {
+                if (!await _accessGuard.CanAccessMedicalStoreAsync(CurrentUserId, await HasFullOrderAccessAsync(), medicalStoreId, cancellationToken))
+                {
+                    return Forbid();
+                }
+
                 var orders = await _orderService.GetActiveOrdersByMedicalStoreIdAsync(medicalStoreId, cancellationToken);
                 return Ok(orders);
             }
@@ -135,6 +176,11 @@ namespace MedicineDelivery.API.Controllers
         {
             try
             {
+                if (!await _accessGuard.CanAccessMedicalStoreAsync(CurrentUserId, await HasFullOrderAccessAsync(), medicalStoreId, cancellationToken))
+                {
+                    return Forbid();
+                }
+
                 var orders = await _orderService.GetAcceptedOrdersByMedicalStoreIdAsync(medicalStoreId, cancellationToken);
                 return Ok(orders);
             }
@@ -160,6 +206,11 @@ namespace MedicineDelivery.API.Controllers
         {
             try
             {
+                if (!await _accessGuard.CanAccessMedicalStoreAsync(CurrentUserId, await HasFullOrderAccessAsync(), medicalStoreId, cancellationToken))
+                {
+                    return Forbid();
+                }
+
                 var orders = await _orderService.GetRejectedOrdersByMedicalStoreIdAsync(medicalStoreId, cancellationToken);
                 return Ok(orders);
             }
@@ -185,6 +236,11 @@ namespace MedicineDelivery.API.Controllers
         {
             try
             {
+                if (!await _accessGuard.CanAccessMedicalStoreAsync(CurrentUserId, await HasFullOrderAccessAsync(), medicalStoreId, cancellationToken))
+                {
+                    return Forbid();
+                }
+
                 var orders = await _orderService.GetAllOrdersByMedicalStoreIdAsync(medicalStoreId, cancellationToken);
                 return Ok(orders);
             }
@@ -210,6 +266,11 @@ namespace MedicineDelivery.API.Controllers
         {
             try
             {
+                if (!await CanAccessOrderAsync(orderId, cancellationToken))
+                {
+                    return Forbid();
+                }
+
                 var order = await _orderService.AcceptOrderByChemistAsync(orderId, cancellationToken);
                 return Ok(order);
             }
@@ -245,6 +306,11 @@ namespace MedicineDelivery.API.Controllers
 
             try
             {
+                if (!await CanAccessOrderAsync(orderId, cancellationToken))
+                {
+                    return Forbid();
+                }
+
                 var order = await _orderService.RejectOrderByChemistAsync(orderId, rejectDto, cancellationToken);
                 
                 // Assign the rejected order to CustomerSupport
@@ -298,6 +364,11 @@ namespace MedicineDelivery.API.Controllers
 
             try
             {
+                if (!await CanAccessOrderAsync(orderId, cancellationToken))
+                {
+                    return Forbid();
+                }
+
                 var order = await _orderService.CompleteOrderAsync(orderId, completeDto, cancellationToken);
                 return Ok(order);
             }
@@ -354,6 +425,11 @@ namespace MedicineDelivery.API.Controllers
 
             try
             {
+                if (!await CanAccessOrderAsync(orderId, cancellationToken))
+                {
+                    return Forbid();
+                }
+
                 var order = await _orderService.CancelOrderAsync(orderId, cancelDto, cancellationToken);
                 return Ok(order);
             }
@@ -394,6 +470,11 @@ namespace MedicineDelivery.API.Controllers
 
             try
             {
+                if (!await CanAccessOrderAsync(assignDto.OrderId, cancellationToken))
+                {
+                    return Forbid();
+                }
+
                 var order = await _orderService.AssignOrderToMedicalStoreAsync(assignDto, cancellationToken);
                 return Ok(order);
             }
@@ -513,6 +594,11 @@ namespace MedicineDelivery.API.Controllers
 
             try
             {
+                if (!await CanAccessOrderAsync(orderId, cancellationToken))
+                {
+                    return Forbid();
+                }
+
                 var order = await _orderService.UploadOrderBillAsync(uploadDto, cancellationToken);
                 return Ok(order);
             }
@@ -548,6 +634,11 @@ namespace MedicineDelivery.API.Controllers
 
             try
             {
+                if (!await CanAccessOrderAsync(assignDto.OrderId, cancellationToken))
+                {
+                    return Forbid();
+                }
+
                 var order = await _orderService.AssignOrderToDeliveryAsync(assignDto, cancellationToken);
                 return Ok(order);
             }
@@ -645,6 +736,11 @@ namespace MedicineDelivery.API.Controllers
         {
             try
             {
+                if (!await CanAccessOrderAsync(orderId, cancellationToken))
+                {
+                    return Forbid();
+                }
+
                 var order = await _orderService.GetOrderByIdAsync(orderId, cancellationToken);
                 if (order == null)
                 {
@@ -702,6 +798,11 @@ namespace MedicineDelivery.API.Controllers
         {
             try
             {
+                if (!await CanAccessOrderAsync(orderId, cancellationToken))
+                {
+                    return Forbid();
+                }
+
                 var order = await _orderService.GetOrderByIdAsync(orderId, cancellationToken);
                 if (order == null)
                 {
@@ -755,6 +856,11 @@ namespace MedicineDelivery.API.Controllers
         {
             try
             {
+                if (!await CanAccessOrderAsync(orderId, cancellationToken))
+                {
+                    return Forbid();
+                }
+
                 var medicalStores = await _orderService.GetMedicalStoresByOrderCityAsync(orderId, cancellationToken);
                 return Ok(medicalStores);
             }
@@ -911,6 +1017,11 @@ namespace MedicineDelivery.API.Controllers
         {
             try
             {
+                if (!await CanAccessOrderAsync(orderId, cancellationToken))
+                {
+                    return Forbid();
+                }
+
                 var deliveryBoys = await _orderService.GetEligibleDeliveryBoysByOrderIdAsync(orderId, cancellationToken);
                 return Ok(deliveryBoys);
             }
@@ -1006,6 +1117,11 @@ namespace MedicineDelivery.API.Controllers
         {
             try
             {
+                if (!await CanAccessOrderAsync(orderId, cancellationToken))
+                {
+                    return Forbid();
+                }
+
                 var medicalStores = await _orderService.GetMedicalStoresByOrderPinCodeAsync(orderId, cancellationToken);
                 return Ok(medicalStores);
             }

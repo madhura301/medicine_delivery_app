@@ -59,7 +59,7 @@ namespace MedicineDelivery.API.Services
                     };
                 }
 
-                var result = await _signInManager.CheckPasswordSignInAsync(user, password, false);
+                var result = await _signInManager.CheckPasswordSignInAsync(user, password, lockoutOnFailure: true);
                 if (!result.Succeeded)
                 {
                     _logger.LogWarning("Login failed - invalid password for mobile number: {MobileNumber}", mobileNumber);
