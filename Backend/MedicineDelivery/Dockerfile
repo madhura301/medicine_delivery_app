@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 
 # ---- Build stage ----
-FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 
 # Copy solution-level files first for better layer caching.
@@ -27,7 +27,7 @@ RUN dotnet publish "MedicineDelivery.API/MedicineDelivery.API.csproj" \
     -c Release -o /app/publish /p:UseAppHost=false /p:TreatWarningsAsErrors=false
 
 # ---- Runtime stage ----
-FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS final
+FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS final
 WORKDIR /app
 
 # The aspnet:8.0 image already listens on port 8080 (ASPNETCORE_HTTP_PORTS=8080).

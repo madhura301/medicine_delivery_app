@@ -37,7 +37,13 @@ export async function seed(): Promise<void> {
   for (const step of SETUP_STEPS) {
     const url = `${config.apiBaseUrl}${step}`;
     try {
-      const res = await fetch(url, { method: 'POST' });
+      // /api/setup/* now requires an Admin token or the shared setup token
+      // (SETUP_ACCESS_TOKEN); anonymous access is rejected by design.
+      const setupToken = process.env.SETUP_ACCESS_TOKEN ?? '';
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: setupToken ? { 'X-Setup-Token': setupToken } : {},
+      });
       const ok = res.status >= 200 && res.status < 300;
       // eslint-disable-next-line no-console
       console.log(`[seed] POST ${step} -> ${res.status}${ok ? '' : ' (continuing; likely already seeded)'}`);

@@ -61,5 +61,16 @@ namespace MedicineDelivery.Infrastructure.Services
             _logger.LogDebug("Platform fee calculated: BillAmount={BillAmount} -> Fee={Fee} (above top slab)", billAmount, AboveTopSlabFee);
             return AboveTopSlabFee;
         }
+
+        public PlatformFeeBreakdown CalculateFeeBreakdown(decimal billAmount, DateTime? storeActivatedOn, decimal gstPercent, DateTime? asOfUtc = null)
+        {
+            var fee = CalculateFee(billAmount, storeActivatedOn, asOfUtc);
+            if (fee <= 0m || gstPercent <= 0m)
+                return new PlatformFeeBreakdown(fee, 0m);
+
+            var gst = Math.Round(fee * gstPercent / 100m, 2, MidpointRounding.AwayFromZero);
+            _logger.LogDebug("Platform fee GST: Fee={Fee}, GstPercent={GstPercent} -> Gst={Gst}", fee, gstPercent, gst);
+            return new PlatformFeeBreakdown(fee, gst);
+        }
     }
 }

@@ -25,13 +25,16 @@ namespace MedicineDelivery.Domain.Entities
         /// <summary>Convenience fee portion (retained by Pharmaish).</summary>
         public decimal ConvenienceFee { get; set; }
 
-        /// <summary>Platform technology fee (slab on BillAmount; retained by Pharmaish).</summary>
+        /// <summary>Platform technology fee (slab on BillAmount; retained by Pharmaish), excluding GST.</summary>
         public decimal PlatformFee { get; set; }
 
-        /// <summary>Amount transferred (or owed) to the chemist = BillAmount − PlatformFee.</summary>
+        /// <summary>GST charged on the platform technology fee (e.g. 18% of PlatformFee).</summary>
+        public decimal PlatformFeeGst { get; set; }
+
+        /// <summary>Amount transferred (or owed) to the chemist = BillAmount − (PlatformFee + PlatformFeeGst).</summary>
         public decimal ChemistAmount { get; set; }
 
-        /// <summary>Amount retained by Pharmaish = ConvenienceFee + PlatformFee.</summary>
+        /// <summary>Amount retained by Pharmaish = ConvenienceFee + PlatformFee + PlatformFeeGst.</summary>
         public decimal PharmaishAmount { get; set; }
 
         /// <summary>Razorpay transfer id (trf_XXXX), when a transfer was made.</summary>

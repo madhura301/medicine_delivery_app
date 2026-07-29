@@ -43,7 +43,10 @@ namespace MedicineDelivery.Application.Mappings
 
             // Order mappings
             CreateMap<Order, OrderDto>()
-                .ForMember(dest => dest.AssignmentHistory, opt => opt.Ignore()); // Will be mapped manually
+                .ForMember(dest => dest.AssignmentHistory, opt => opt.Ignore()) // Will be mapped manually
+                // SECURITY (H-02): the delivery OTP must never be mapped automatically. Controllers
+                // reveal it explicitly, and only to the paying customer who owns the order.
+                .ForMember(dest => dest.OTP, opt => opt.Ignore());
             CreateMap<OrderAssignmentHistory, OrderAssignmentHistoryDto>();
             CreateMap<OrderAssignmentHistory, OrderAssignmentHistoryExtendedDto>()
                 .IncludeBase<OrderAssignmentHistory, OrderAssignmentHistoryDto>();

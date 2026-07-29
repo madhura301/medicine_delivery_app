@@ -1,8 +1,10 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Security.Claims;
 using MedicineDelivery.Application.DTOs;
 using MedicineDelivery.Application.Interfaces;
 using MedicineDelivery.Domain.Exceptions;
@@ -19,14 +21,59 @@ namespace MedicineDelivery.API.Controllers
     {
         private readonly IOrderService _orderService;
         private readonly IFileStorageService _fileStorage;
+        private readonly IOrderAccessGuard _accessGuard;
+        private readonly IPermissionCheckerService _permissionChecker;
         private readonly ILogger<OrdersController> _logger;
 
-        public OrdersController(IOrderService orderService, IFileStorageService fileStorage, ILogger<OrdersController> logger)
+        public OrdersController(
+            IOrderService orderService,
+            IFileStorageService fileStorage,
+            IOrderAccessGuard accessGuard,
+            IPermissionCheckerService permissionChecker,
+            ILogger<OrdersController> logger)
         {
             _orderService = orderService;
             _fileStorage = fileStorage;
+            _accessGuard = accessGuard;
+            _permissionChecker = permissionChecker;
             _logger = logger;
         }
+
+        /// <summary>Current caller's Identity user id.</summary>
+        private string CurrentUserId => User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? string.Empty;
+
+        /// <summary>Admin/Manager hold ListAllOrders and bypass ownership checks.</summary>
+        private Task<bool> HasFullOrderAccessAsync() =>
+            _permissionChecker.HasPermissionAsync(User, "ListAllOrders");
+
+        /// <summary>
+        /// H-02: reveals the delivery OTP on a single order only when it is fully paid AND the
+        /// caller is that order's own customer. The mapping never populates OTP, so anything not
+        /// explicitly revealed here stays null.
+        /// </summary>
+        private async Task<OrderDto> RevealOtpIfPermittedAsync(OrderDto order, CancellationToken ct)
+        {
+            order.OTP = await _accessGuard.GetVisibleOtpAsync(CurrentUserId, order.OrderId, ct);
+            return order;
+        }
+
+        /// <summary>Bulk form of <see cref="RevealOtpIfPermittedAsync"/> for list responses.</summary>
+        private async Task<IEnumerable<OrderDto>> RevealOtpIfPermittedAsync(IEnumerable<OrderDto> orders, CancellationToken ct)
+        {
+            var list = orders?.ToList() ?? new List<OrderDto>();
+            if (list.Count == 0) return list;
+
+            var visible = await _accessGuard.GetVisibleOtpsAsync(CurrentUserId, list.Select(o => o.OrderId), ct);
+            foreach (var o in list)
+            {
+                o.OTP = visible.TryGetValue(o.OrderId, out var otp) ? otp : null;
+            }
+            return list;
+        }
+
+        /// <summary>C-02: verifies the caller is actually a party to this order.</summary>
+        private async Task<bool> CanAccessOrderAsync(int orderId, CancellationToken ct) =>
+            await _accessGuard.CanAccessOrderAsync(CurrentUserId, await HasFullOrderAccessAsync(), orderId, ct);
 
         [HttpGet("{orderId:int}")]
         [Authorize(Policy = "RequireOrderReadPermission")]
@@ -34,13 +81,18 @@ namespace MedicineDelivery.API.Controllers
         {
             try
             {
+                if (!await CanAccessOrderAsync(orderId, cancellationToken))
+                {
+                    return Forbid();
+                }
+
                 var order = await _orderService.GetOrderByIdAsync(orderId, cancellationToken);
                 if (order == null)
                 {
                     return NotFound(new { error = "Order not found." });
                 }
 
-                return Ok(order);
+                return Ok(await RevealOtpIfPermittedAsync(order, cancellationToken));
             }
             catch (OperationCanceledException)
             {
@@ -59,8 +111,13 @@ namespace MedicineDelivery.API.Controllers
         {
             try
             {
+                if (!await _accessGuard.CanAccessCustomerAsync(CurrentUserId, await HasFullOrderAccessAsync(), customerId, cancellationToken))
+                {
+                    return Forbid();
+                }
+
                 var orders = await _orderService.GetOrdersByCustomerIdAsync(customerId, cancellationToken);
-                return Ok(orders);
+                return Ok(await RevealOtpIfPermittedAsync(orders, cancellationToken));
             }
             catch (ArgumentException ex)
             {
@@ -84,8 +141,13 @@ namespace MedicineDelivery.API.Controllers
         {
             try
             {
+                if (!await _accessGuard.CanAccessCustomerAsync(CurrentUserId, await HasFullOrderAccessAsync(), customerId, cancellationToken))
+                {
+                    return Forbid();
+                }
+
                 var orders = await _orderService.GetActiveOrdersByCustomerIdAsync(customerId, cancellationToken);
-                return Ok(orders);
+                return Ok(await RevealOtpIfPermittedAsync(orders, cancellationToken));
             }
             catch (ArgumentException ex)
             {
@@ -109,6 +171,11 @@ namespace MedicineDelivery.API.Controllers
         {
             try
             {
+                if (!await _accessGuard.CanAccessMedicalStoreAsync(CurrentUserId, await HasFullOrderAccessAsync(), medicalStoreId, cancellationToken))
+                {
+                    return Forbid();
+                }
+
                 var orders = await _orderService.GetActiveOrdersByMedicalStoreIdAsync(medicalStoreId, cancellationToken);
                 return Ok(orders);
             }
@@ -134,6 +201,11 @@ namespace MedicineDelivery.API.Controllers
         {
             try
             {
+                if (!await _accessGuard.CanAccessMedicalStoreAsync(CurrentUserId, await HasFullOrderAccessAsync(), medicalStoreId, cancellationToken))
+                {
+                    return Forbid();
+                }
+
                 var orders = await _orderService.GetAcceptedOrdersByMedicalStoreIdAsync(medicalStoreId, cancellationToken);
                 return Ok(orders);
             }
@@ -159,6 +231,11 @@ namespace MedicineDelivery.API.Controllers
         {
             try
             {
+                if (!await _accessGuard.CanAccessMedicalStoreAsync(CurrentUserId, await HasFullOrderAccessAsync(), medicalStoreId, cancellationToken))
+                {
+                    return Forbid();
+                }
+
                 var orders = await _orderService.GetRejectedOrdersByMedicalStoreIdAsync(medicalStoreId, cancellationToken);
                 return Ok(orders);
             }
@@ -184,6 +261,11 @@ namespace MedicineDelivery.API.Controllers
         {
             try
             {
+                if (!await _accessGuard.CanAccessMedicalStoreAsync(CurrentUserId, await HasFullOrderAccessAsync(), medicalStoreId, cancellationToken))
+                {
+                    return Forbid();
+                }
+
                 var orders = await _orderService.GetAllOrdersByMedicalStoreIdAsync(medicalStoreId, cancellationToken);
                 return Ok(orders);
             }
@@ -209,6 +291,11 @@ namespace MedicineDelivery.API.Controllers
         {
             try
             {
+                if (!await CanAccessOrderAsync(orderId, cancellationToken))
+                {
+                    return Forbid();
+                }
+
                 var order = await _orderService.AcceptOrderByChemistAsync(orderId, cancellationToken);
                 return Ok(order);
             }
@@ -244,6 +331,11 @@ namespace MedicineDelivery.API.Controllers
 
             try
             {
+                if (!await CanAccessOrderAsync(orderId, cancellationToken))
+                {
+                    return Forbid();
+                }
+
                 var order = await _orderService.RejectOrderByChemistAsync(orderId, rejectDto, cancellationToken);
                 
                 // Assign the rejected order to CustomerSupport
@@ -297,6 +389,11 @@ namespace MedicineDelivery.API.Controllers
 
             try
             {
+                if (!await CanAccessOrderAsync(orderId, cancellationToken))
+                {
+                    return Forbid();
+                }
+
                 var order = await _orderService.CompleteOrderAsync(orderId, completeDto, cancellationToken);
                 return Ok(order);
             }
@@ -353,6 +450,11 @@ namespace MedicineDelivery.API.Controllers
 
             try
             {
+                if (!await CanAccessOrderAsync(orderId, cancellationToken))
+                {
+                    return Forbid();
+                }
+
                 var order = await _orderService.CancelOrderAsync(orderId, cancelDto, cancellationToken);
                 return Ok(order);
             }
@@ -393,6 +495,11 @@ namespace MedicineDelivery.API.Controllers
 
             try
             {
+                if (!await CanAccessOrderAsync(assignDto.OrderId, cancellationToken))
+                {
+                    return Forbid();
+                }
+
                 var order = await _orderService.AssignOrderToMedicalStoreAsync(assignDto, cancellationToken);
                 return Ok(order);
             }
@@ -428,38 +535,68 @@ namespace MedicineDelivery.API.Controllers
         [Authorize(Policy = "RequireOrderCreatePermission")]
         public async Task<IActionResult> CreateOrder([FromForm] CreateOrderDto request, CancellationToken cancellationToken)
         {
+            // A short correlation id is opened as a logging scope so that EVERY log line emitted for this
+            // request — in this controller AND inside OrderService and its private helpers — carries the same
+            // {CorrelationId} property. Grep the logs for one CorrelationId to replay a single order end-to-end.
+            var correlationId = Guid.NewGuid().ToString("N").Substring(0, 8);
+            using var logScope = _logger.BeginScope(new Dictionary<string, object?>
+            {
+                ["CorrelationId"] = correlationId,
+                ["CustomerId"] = request?.CustomerId,
+                ["CustomerAddressId"] = request?.CustomerAddressId,
+                ["OrderType"] = request?.OrderType,
+                ["OrderInputType"] = request?.OrderInputType
+            });
+
+            var inputFileName = request?.OrderInputFile?.FileName;
+            var inputFileLength = request?.OrderInputFile?.Length ?? 0;
+            _logger.LogInformation(
+                "CreateOrder [{CorrelationId}] START: Customer={CustomerId}, Address={CustomerAddressId}, OrderType={OrderType}, InputType={OrderInputType}, HasInputText={HasInputText}, InputFile={InputFileName} ({InputFileLength} bytes)",
+                correlationId, request?.CustomerId, request?.CustomerAddressId, request?.OrderType, request?.OrderInputType,
+                !string.IsNullOrWhiteSpace(request?.OrderInputText), inputFileName ?? "(none)", inputFileLength);
+
             if (!ModelState.IsValid)
             {
+                var validationErrors = string.Join("; ", ModelState
+                    .Where(kvp => kvp.Value != null && kvp.Value.Errors.Count > 0)
+                    .Select(kvp => $"{kvp.Key}: {string.Join(", ", kvp.Value!.Errors.Select(e => e.ErrorMessage))}"));
+                _logger.LogWarning("CreateOrder [{CorrelationId}] REJECTED: ModelState invalid. Errors: {ValidationErrors}", correlationId, validationErrors);
                 return BadRequest(ModelState);
             }
 
             try
             {
-                var order = await _orderService.CreateOrderAsync(request, cancellationToken);
+                _logger.LogInformation("CreateOrder [{CorrelationId}] STEP: ModelState valid, delegating to OrderService.CreateOrderAsync", correlationId);
+                var order = await _orderService.CreateOrderAsync(request!, cancellationToken);
+                _logger.LogInformation(
+                    "CreateOrder [{CorrelationId}] SUCCESS: OrderId={OrderId}, OrderNumber={OrderNumber}, Status={OrderStatus}, MedicalStoreId={MedicalStoreId}, CustomerSupportId={CustomerSupportId}, ManagerId={ManagerId}",
+                    correlationId, order.OrderId, order.OrderNumber, order.OrderStatus, order.MedicalStoreId, order.CustomerSupportId, order.ManagerId);
                 return CreatedAtAction(nameof(GetOrderById), new { orderId = order.OrderId }, order);
             }
             catch (ServiceAreaUnavailableException ex)
             {
-                _logger.LogWarning("CreateOrder: {Message}", ex.Message);
+                _logger.LogWarning("CreateOrder [{CorrelationId}] BLOCKED (area not serviceable): {Message}. PostalCode={PostalCode}, MissingRoles={MissingRoles}",
+                    correlationId, ex.Message, ex.PostalCode, string.Join(", ", ex.MissingRoles));
                 return BadRequest(new { error = ex.Message, postalCode = ex.PostalCode, missingRoles = ex.MissingRoles });
             }
             catch (ArgumentException ex)
             {
-                _logger.LogWarning("CreateOrder: {Message}", ex.Message);
+                _logger.LogWarning("CreateOrder [{CorrelationId}] REJECTED (invalid argument): {Message} (param: {ParamName})", correlationId, ex.Message, ex.ParamName ?? "(none)");
                 return BadRequest(new { error = ex.Message });
             }
             catch (KeyNotFoundException ex)
             {
-                _logger.LogWarning("CreateOrder: {Message}", ex.Message);
+                _logger.LogWarning("CreateOrder [{CorrelationId}] NOT FOUND: {Message}", correlationId, ex.Message);
                 return NotFound(new { error = ex.Message });
             }
             catch (OperationCanceledException)
             {
+                _logger.LogInformation("CreateOrder [{CorrelationId}] CANCELLED by caller/client", correlationId);
                 return StatusCode(499, new { error = "Request was cancelled." });
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error in CreateOrder");
+                _logger.LogError(ex, "CreateOrder [{CorrelationId}] FAILED with unhandled exception", correlationId);
                 return StatusCode(500, new { error = "An error occurred while creating the order." });
             }
         }
@@ -482,6 +619,11 @@ namespace MedicineDelivery.API.Controllers
 
             try
             {
+                if (!await CanAccessOrderAsync(orderId, cancellationToken))
+                {
+                    return Forbid();
+                }
+
                 var order = await _orderService.UploadOrderBillAsync(uploadDto, cancellationToken);
                 return Ok(order);
             }
@@ -517,6 +659,11 @@ namespace MedicineDelivery.API.Controllers
 
             try
             {
+                if (!await CanAccessOrderAsync(assignDto.OrderId, cancellationToken))
+                {
+                    return Forbid();
+                }
+
                 var order = await _orderService.AssignOrderToDeliveryAsync(assignDto, cancellationToken);
                 return Ok(order);
             }
@@ -614,6 +761,11 @@ namespace MedicineDelivery.API.Controllers
         {
             try
             {
+                if (!await CanAccessOrderAsync(orderId, cancellationToken))
+                {
+                    return Forbid();
+                }
+
                 var order = await _orderService.GetOrderByIdAsync(orderId, cancellationToken);
                 if (order == null)
                 {
@@ -671,6 +823,11 @@ namespace MedicineDelivery.API.Controllers
         {
             try
             {
+                if (!await CanAccessOrderAsync(orderId, cancellationToken))
+                {
+                    return Forbid();
+                }
+
                 var order = await _orderService.GetOrderByIdAsync(orderId, cancellationToken);
                 if (order == null)
                 {
@@ -724,6 +881,11 @@ namespace MedicineDelivery.API.Controllers
         {
             try
             {
+                if (!await CanAccessOrderAsync(orderId, cancellationToken))
+                {
+                    return Forbid();
+                }
+
                 var medicalStores = await _orderService.GetMedicalStoresByOrderCityAsync(orderId, cancellationToken);
                 return Ok(medicalStores);
             }
@@ -880,6 +1042,11 @@ namespace MedicineDelivery.API.Controllers
         {
             try
             {
+                if (!await CanAccessOrderAsync(orderId, cancellationToken))
+                {
+                    return Forbid();
+                }
+
                 var deliveryBoys = await _orderService.GetEligibleDeliveryBoysByOrderIdAsync(orderId, cancellationToken);
                 return Ok(deliveryBoys);
             }
@@ -975,6 +1142,11 @@ namespace MedicineDelivery.API.Controllers
         {
             try
             {
+                if (!await CanAccessOrderAsync(orderId, cancellationToken))
+                {
+                    return Forbid();
+                }
+
                 var medicalStores = await _orderService.GetMedicalStoresByOrderPinCodeAsync(orderId, cancellationToken);
                 return Ok(medicalStores);
             }

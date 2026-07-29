@@ -24,6 +24,12 @@ namespace MedicineDelivery.Application.DTOs
         public OrderStatus OrderStatus { get; set; }
         public OrderPaymentStatus OrderPaymentStatus { get; set; }
         public string? OrderNumber { get; set; }
+        /// <summary>
+        /// Delivery verification OTP. SECURITY (H-02): never populated by AutoMapper — the mapping
+        /// explicitly ignores it, so it is null unless a controller deliberately reveals it. It is
+        /// revealed ONLY when BOTH hold: (1) the order is fully paid, AND (2) the caller is the
+        /// order's own customer. Staff, chemists and delivery partners never receive it.
+        /// </summary>
         public string? OTP { get; set; }
         public string? CancellationReason { get; set; }
         public decimal? TotalAmount { get; set; }

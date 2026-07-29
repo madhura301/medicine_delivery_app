@@ -13,6 +13,9 @@ namespace MedicineDelivery.Infrastructure.Services
 {
     public class RazorpayService : IRazorpayService
     {
+        /// <summary>GST applied to the platform technology fee when not configured.</summary>
+        private const decimal DefaultPlatformFeeGstPercent = 18m;
+
         private readonly IUnitOfWork _unitOfWork;
         private readonly IPaymentService _paymentService;
         private readonly IRazorpayRouteClient _routeClient;
@@ -204,8 +207,14 @@ namespace MedicineDelivery.Infrastructure.Services
                     payout = await _unitOfWork.ChemistPayoutAccounts.FirstOrDefaultAsync(a => a.MedicalStoreId == storeId);
                 }
 
-                var platformFee = _feeCalculator.CalculateFee(billAmount, store?.ActivatedOn);
-                var chemistAmount = Math.Max(0m, billAmount - platformFee);
+                // The chemist bears the platform fee INCLUSIVE of GST: for a ₹1,000 bill with a
+                // ₹50 slab fee and 18% GST, Pharmaish retains ₹59 (50 + 9) and the chemist
+                // receives ₹941. GST is tracked separately on the split for tax reporting.
+                var gstPercent = GetDecimal("RazorpaySettings:PlatformFeeGstPercent", DefaultPlatformFeeGstPercent);
+                var feeBreakdown = _feeCalculator.CalculateFeeBreakdown(billAmount, store?.ActivatedOn, gstPercent);
+                var platformFee = feeBreakdown.Fee;
+                var platformFeeGst = feeBreakdown.Gst;
+                var chemistAmount = Math.Max(0m, billAmount - feeBreakdown.FeeInclusiveOfGst);
                 var pharmaishAmount = capturedTotal - chemistAmount;
 
                 var split = new PaymentSplit
@@ -216,6 +225,7 @@ namespace MedicineDelivery.Infrastructure.Services
                     BillAmount = billAmount,
                     ConvenienceFee = convenienceFee,
                     PlatformFee = platformFee,
+                    PlatformFeeGst = platformFeeGst,
                     ChemistAmount = chemistAmount,
                     PharmaishAmount = pharmaishAmount,
                     TransferStatus = TransferStatus.Skipped,
@@ -285,6 +295,11 @@ namespace MedicineDelivery.Infrastructure.Services
         private bool GetBool(string key, bool fallback)
         {
             return bool.TryParse(_configuration[key], out var value) ? value : fallback;
+        }
+
+        private decimal GetDecimal(string key, decimal fallback)
+        {
+            return decimal.TryParse(_configuration[key], out var value) ? value : fallback;
         }
 
         private static string ComputeHmacSha256(string payload, string secret)
