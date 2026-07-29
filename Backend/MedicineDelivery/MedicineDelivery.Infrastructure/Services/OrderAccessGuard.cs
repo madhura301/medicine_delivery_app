@@ -83,6 +83,19 @@ namespace MedicineDelivery.Infrastructure.Services
             return isStaff;
         }
 
+        public async Task<bool> CanAccessCustomerRecordAsync(string userId, bool hasFullAccess, Guid customerId, CancellationToken cancellationToken = default)
+        {
+            if (hasFullAccess) return true;
+            if (string.IsNullOrWhiteSpace(userId)) return false;
+
+            // Strictly the customer themselves — no implicit staff bypass (finding H-01).
+            var customer = await _unitOfWork.Customers.FirstOrDefaultAsync(c => c.UserId == userId);
+            if (customer != null && customer.CustomerId == customerId) return true;
+
+            _logger.LogWarning("Customer-record access denied: UserId {UserId} for Customer {CustomerId}", userId, customerId);
+            return false;
+        }
+
         public async Task<bool> CanAccessMedicalStoreAsync(string userId, bool hasFullAccess, Guid medicalStoreId, CancellationToken cancellationToken = default)
         {
             if (hasFullAccess) return true;

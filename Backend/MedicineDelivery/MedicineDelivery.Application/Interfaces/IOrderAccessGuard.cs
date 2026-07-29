@@ -20,6 +20,18 @@ namespace MedicineDelivery.Application.Interfaces
         /// <summary>True when the user IS the given customer (or has full access).</summary>
         Task<bool> CanAccessCustomerAsync(string userId, bool hasFullAccess, Guid customerId, CancellationToken cancellationToken = default);
 
+        /// <summary>
+        /// Strict ownership test for a customer's own personal records — addresses and their GPS
+        /// coordinates (finding H-01).
+        ///
+        /// Unlike <see cref="CanAccessCustomerAsync"/>, this does NOT grant blanket access to any
+        /// staff member: a chemist or delivery partner must obtain a delivery address through the
+        /// order they are fulfilling, not by browsing a customer's address book. Only the customer
+        /// themselves, or a caller with full access (<c>AllCustomerRead</c> — Admin/Manager/
+        /// CustomerSupport), may read these records.
+        /// </summary>
+        Task<bool> CanAccessCustomerRecordAsync(string userId, bool hasFullAccess, Guid customerId, CancellationToken cancellationToken = default);
+
         /// <summary>True when the user operates the given medical store (or has full access).</summary>
         Task<bool> CanAccessMedicalStoreAsync(string userId, bool hasFullAccess, Guid medicalStoreId, CancellationToken cancellationToken = default);
 
