@@ -220,6 +220,22 @@ else
     Log.Warning("CORS: no Cors:AllowedOrigins configured; all cross-origin browser requests will be blocked. " +
                 "Set Cors__AllowedOrigins if a browser front-end needs access.");
 
+// Upload limits (security finding M-08). Nothing capped multipart bodies, so the only ceiling was
+// Kestrel's ~30 MB default — enough for cheap storage/bandwidth DoS, and far larger than any
+// legitimate prescription photo or policy PDF. Per-endpoint [RequestSizeLimit] attributes tighten
+// this further; services additionally validate size, extension and magic bytes.
+var maxUploadBytes = builder.Configuration.GetValue<long?>("Uploads:MaxRequestBytes") ?? (12L * 1024 * 1024); // 12 MB
+
+builder.Services.Configure<Microsoft.AspNetCore.Http.Features.FormOptions>(options =>
+{
+    options.MultipartBodyLengthLimit = maxUploadBytes;
+});
+
+builder.Services.Configure<Microsoft.AspNetCore.Server.Kestrel.Core.KestrelServerOptions>(options =>
+{
+    options.Limits.MaxRequestBodySize = maxUploadBytes;
+});
+
 // Add services to the container.
 builder.Services.AddControllers()
     .AddJsonOptions(options =>

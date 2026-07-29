@@ -32,6 +32,9 @@ namespace MedicineDelivery.Infrastructure.Services
         private readonly ApplicationDbContext _context;
         private readonly ILogger<OrderService> _logger;
         private readonly ISmsService _smsService;
+        /// <summary>M-08: upper bound for order input files (prescription image / voice note) and bills.</summary>
+        private const long MaxOrderInputFileBytes = 10 * 1024 * 1024; // 10 MB
+
         private static readonly string[] AllowedImageExtensions = { ".jpg", ".jpeg", ".png", ".gif", ".bmp" };
         private static readonly string[] AllowedVoiceExtensions = { ".mp3", ".wav", ".m4a", ".aac", ".ogg" };
         private static readonly string[] AllowedPdfExtensions = { ".pdf" };
@@ -1289,6 +1292,20 @@ namespace MedicineDelivery.Infrastructure.Services
             {
                 _logger.LogWarning("ValidateOrderInputFile failed: File type {Extension} not supported for {InputType} orders", extension, inputType);
                 throw new ArgumentException($"File type '{extension}' is not supported for {inputType} orders.", nameof(file));
+            }
+
+            // M-08: cap the size — an unbounded upload is a cheap storage/bandwidth DoS.
+            if (file.Length > MaxOrderInputFileBytes)
+            {
+                _logger.LogWarning("ValidateOrderInputFile failed: File {FileName} is {Size} bytes, exceeding the {Max} byte limit", file.FileName, file.Length, MaxOrderInputFileBytes);
+                throw new ArgumentException($"The file exceeds the maximum allowed size of {MaxOrderInputFileBytes / (1024 * 1024)} MB.", nameof(file));
+            }
+
+            // M-08: the extension is attacker-controlled, so confirm the content actually matches it.
+            if (!FileSignatureValidator.Matches(file, extension))
+            {
+                _logger.LogWarning("ValidateOrderInputFile failed: File {FileName} content does not match its {Extension} extension", file.FileName, extension);
+                throw new ArgumentException($"The file content does not match its '{extension}' extension.", nameof(file));
             }
 
             _logger.LogDebug("ValidateOrderInputFile: File '{FileName}' with extension {Extension} is valid for {InputType} orders.", file.FileName, extension, inputType);
