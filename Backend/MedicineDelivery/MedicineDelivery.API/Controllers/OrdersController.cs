@@ -46,6 +46,31 @@ namespace MedicineDelivery.API.Controllers
         private Task<bool> HasFullOrderAccessAsync() =>
             _permissionChecker.HasPermissionAsync(User, "ListAllOrders");
 
+        /// <summary>
+        /// H-02: reveals the delivery OTP on a single order only when it is fully paid AND the
+        /// caller is that order's own customer. The mapping never populates OTP, so anything not
+        /// explicitly revealed here stays null.
+        /// </summary>
+        private async Task<OrderDto> RevealOtpIfPermittedAsync(OrderDto order, CancellationToken ct)
+        {
+            order.OTP = await _accessGuard.GetVisibleOtpAsync(CurrentUserId, order.OrderId, ct);
+            return order;
+        }
+
+        /// <summary>Bulk form of <see cref="RevealOtpIfPermittedAsync"/> for list responses.</summary>
+        private async Task<IEnumerable<OrderDto>> RevealOtpIfPermittedAsync(IEnumerable<OrderDto> orders, CancellationToken ct)
+        {
+            var list = orders?.ToList() ?? new List<OrderDto>();
+            if (list.Count == 0) return list;
+
+            var visible = await _accessGuard.GetVisibleOtpsAsync(CurrentUserId, list.Select(o => o.OrderId), ct);
+            foreach (var o in list)
+            {
+                o.OTP = visible.TryGetValue(o.OrderId, out var otp) ? otp : null;
+            }
+            return list;
+        }
+
         /// <summary>C-02: verifies the caller is actually a party to this order.</summary>
         private async Task<bool> CanAccessOrderAsync(int orderId, CancellationToken ct) =>
             await _accessGuard.CanAccessOrderAsync(CurrentUserId, await HasFullOrderAccessAsync(), orderId, ct);
@@ -67,7 +92,7 @@ namespace MedicineDelivery.API.Controllers
                     return NotFound(new { error = "Order not found." });
                 }
 
-                return Ok(order);
+                return Ok(await RevealOtpIfPermittedAsync(order, cancellationToken));
             }
             catch (OperationCanceledException)
             {
@@ -92,7 +117,7 @@ namespace MedicineDelivery.API.Controllers
                 }
 
                 var orders = await _orderService.GetOrdersByCustomerIdAsync(customerId, cancellationToken);
-                return Ok(orders);
+                return Ok(await RevealOtpIfPermittedAsync(orders, cancellationToken));
             }
             catch (ArgumentException ex)
             {
@@ -122,7 +147,7 @@ namespace MedicineDelivery.API.Controllers
                 }
 
                 var orders = await _orderService.GetActiveOrdersByCustomerIdAsync(customerId, cancellationToken);
-                return Ok(orders);
+                return Ok(await RevealOtpIfPermittedAsync(orders, cancellationToken));
             }
             catch (ArgumentException ex)
             {

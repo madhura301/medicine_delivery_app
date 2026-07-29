@@ -22,5 +22,17 @@ namespace MedicineDelivery.Application.Interfaces
 
         /// <summary>True when the user operates the given medical store (or has full access).</summary>
         Task<bool> CanAccessMedicalStoreAsync(string userId, bool hasFullAccess, Guid medicalStoreId, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Returns the order's delivery OTP ONLY when both conditions hold (finding H-02):
+        /// (1) the order is fully paid, and (2) <paramref name="userId"/> is the order's own customer.
+        /// Returns null in every other case — including for staff, chemists and delivery partners,
+        /// and for the customer's own order while it is unpaid.
+        /// </summary>
+        Task<string?> GetVisibleOtpAsync(string userId, int orderId, CancellationToken cancellationToken = default);
+
+        /// <summary>Bulk form of <see cref="GetVisibleOtpAsync"/> for list endpoints: maps orderId → OTP
+        /// for those the caller may see.</summary>
+        Task<IReadOnlyDictionary<int, string>> GetVisibleOtpsAsync(string userId, IEnumerable<int> orderIds, CancellationToken cancellationToken = default);
     }
 }

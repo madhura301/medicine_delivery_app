@@ -163,6 +163,15 @@ def make_store_eligible(cur, store_id):
         )
 
 
+
+def read_order_otp(order_id):
+    """Reads an order's delivery OTP directly from the DB (see H-02: the API only reveals it
+    to the paying customer, and this harness runs as admin)."""
+    cn = db(); cur = cn.cursor()
+    cur.execute('select "OTP" from "Orders" where "OrderId"=%s', (order_id,))
+    row = cur.fetchone(); cn.close()
+    return row[0] if row else None
+
 def seed_serviceable_area(cur):
     make_store_eligible(cur, STORE_PRIMARY)
     make_store_eligible(cur, STORE_SECONDARY)
@@ -343,7 +352,10 @@ def s2_normal_journey(token):
     record("Customer pays (full) -> order FullyPaid + OTP released", "PDF 6.6",
            st == 201 and ops == 2, f"HTTP {st}, orderPaymentStatus={ops}")
 
-    otp = get_order(token, oid)["otp"]  # OTP readable to authorised staff; never SMS-sent in dev
+    # The delivery OTP is deliberately NOT returned by the API to staff/admin (finding H-02):
+    # it is revealed only to the owning customer once the order is fully paid. This harness
+    # authenticates as admin, so it reads the OTP straight from the database instead.
+    otp = read_order_otp(oid)
     st, _ = _req("PUT", f"/api/orders/{oid}/complete", token=token, json_body={"otp": otp})
     record("Delivery OTP verified -> Completed", "PDF 6.7", st == 200 and get_order(token, oid)["orderStatus"] == COMPLETED, f"HTTP {st}, otp={otp}")
 

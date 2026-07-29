@@ -1,4 +1,5 @@
 using MedicineDelivery.Application.Interfaces;
+using MedicineDelivery.Domain.Enums;
 using MedicineDelivery.Domain.Interfaces;
 using Microsoft.Extensions.Logging;
 
@@ -98,6 +99,48 @@ namespace MedicineDelivery.Infrastructure.Services
             if (!isStaff)
                 _logger.LogWarning("Store-orders access denied: UserId {UserId} for Store {StoreId}", userId, medicalStoreId);
             return isStaff;
+        }
+
+        public async Task<string?> GetVisibleOtpAsync(string userId, int orderId, CancellationToken cancellationToken = default)
+        {
+            if (string.IsNullOrWhiteSpace(userId)) return null;
+
+            var order = await _unitOfWork.Orders.FirstOrDefaultAsync(o => o.OrderId == orderId);
+            if (order == null || string.IsNullOrWhiteSpace(order.OTP)) return null;
+
+            // (1) Only once the order is fully paid.
+            if (order.OrderPaymentStatus != OrderPaymentStatus.FullyPaid) return null;
+
+            // (2) Only to the customer who owns the order.
+            var customer = await _unitOfWork.Customers.FirstOrDefaultAsync(c => c.UserId == userId);
+            if (customer == null || customer.CustomerId != order.CustomerId) return null;
+
+            return order.OTP;
+        }
+
+        public async Task<IReadOnlyDictionary<int, string>> GetVisibleOtpsAsync(string userId, IEnumerable<int> orderIds, CancellationToken cancellationToken = default)
+        {
+            var result = new Dictionary<int, string>();
+            if (string.IsNullOrWhiteSpace(userId)) return result;
+
+            var ids = orderIds?.Distinct().ToList() ?? new List<int>();
+            if (ids.Count == 0) return result;
+
+            // Resolve the caller's customer identity once.
+            var customer = await _unitOfWork.Customers.FirstOrDefaultAsync(c => c.UserId == userId);
+            if (customer == null) return result;
+
+            var orders = await _unitOfWork.Orders.FindAsync(o =>
+                ids.Contains(o.OrderId) &&
+                o.CustomerId == customer.CustomerId &&
+                o.OrderPaymentStatus == OrderPaymentStatus.FullyPaid);
+
+            foreach (var o in orders)
+            {
+                if (!string.IsNullOrWhiteSpace(o.OTP)) result[o.OrderId] = o.OTP!;
+            }
+
+            return result;
         }
     }
 }
