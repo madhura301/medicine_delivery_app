@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using Microsoft.AspNetCore.RateLimiting;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -380,6 +381,9 @@ namespace MedicineDelivery.API.Controllers
 
         [HttpPut("{orderId:int}/complete")]
         [Authorize(Policy = "RequireOrderUpdatePermission")]
+        // M-03/H-06: throttle delivery-OTP guesses — the code is only 4 digits and there is no
+        // per-order attempt counter, so an unthrottled caller can enumerate it.
+        [EnableRateLimiting("otp-verify")]
         public async Task<IActionResult> CompleteOrder(int orderId, [FromBody] CompleteOrderDto completeDto, CancellationToken cancellationToken)
         {
             if (!ModelState.IsValid)

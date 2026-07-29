@@ -21,6 +21,7 @@ using Microsoft.AspNetCore.DataProtection;
 using Azure.Storage.Blobs;
 using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.RateLimiting;
+using System.Security.Claims;
 
 // Bootstrap logger (before config is available) so early log messages are not lost
 Log.Logger = new LoggerConfiguration()
@@ -125,6 +126,35 @@ builder.Services.AddRateLimiter(options =>
                 // Defence-in-depth alongside account lockout (5 failed logins -> 5 min lock).
                 PermitLimit = builder.Configuration.GetValue<int?>("RateLimiting:AuthPermitPerMinute") ?? 30,
                 Window = TimeSpan.FromMinutes(1),
+                QueueLimit = 0
+            }));
+
+    // M-03 / H-06: the delivery OTP is only 4 digits (~9,000 values) and the completion endpoint
+    // has no attempt counter, so without throttling it can be brute-forced in seconds. Partition by
+    // the authenticated USER (the endpoint requires auth) rather than IP: that is attacker-specific
+    // and unaffected by carrier NAT, consistent with the reasoning below.
+    options.AddPolicy("otp-verify", httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: httpContext.User?.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                          ?? httpContext.Connection.RemoteIpAddress?.ToString()
+                          ?? "unknown",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                // A human entering a code needs a handful of tries; a brute-forcer needs thousands.
+                PermitLimit = builder.Configuration.GetValue<int?>("RateLimiting:OtpVerifyPermitPerMinute") ?? 5,
+                Window = TimeSpan.FromMinutes(1),
+                QueueLimit = 0
+            }));
+
+    // M-03: endpoints that send an SMS cost real money per call (MSG91). The 'auth' policy alone
+    // would still permit ~43,000 messages/day from one IP. Cap SMS-triggering requests far tighter.
+    options.AddPolicy("sms", httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = builder.Configuration.GetValue<int?>("RateLimiting:SmsPermitPerWindow") ?? 3,
+                Window = TimeSpan.FromMinutes(builder.Configuration.GetValue<int?>("RateLimiting:SmsWindowMinutes") ?? 5),
                 QueueLimit = 0
             }));
 
@@ -498,8 +528,12 @@ builder.Services.AddAuthorization(options =>
     options.AddPolicy("RequireDeliveryUpdatePermission", policy => 
         policy.Requirements.Add(new MedicineDelivery.API.Authorization.PermissionRequirement("DeliveryUpdate")));
     
-    options.AddPolicy("RequireDeliveryDeletePermission", policy => 
+    options.AddPolicy("RequireDeliveryDeletePermission", policy =>
         policy.Requirements.Add(new MedicineDelivery.API.Authorization.PermissionRequirement("DeliveryDelete")));
+
+    // M-07: uploading/replacing publicly served policy documents is an administrative action.
+    options.AddPolicy("RequireManagePolicyDocumentsPermission", policy =>
+        policy.Requirements.Add(new MedicineDelivery.API.Authorization.PermissionRequirement("ManagePolicyDocuments")));
 });
 
 // Register the permission authorization handler
@@ -580,8 +614,6 @@ app.UseSerilogRequestLogging();
 
 app.UseHttpsRedirection();
 
-app.UseRateLimiter();
-
 // Add global exception handling middleware
 app.UseMiddleware<GlobalExceptionMiddleware>();
 
@@ -592,6 +624,13 @@ app.UseStaticFiles();
 app.UseCors(CorsPolicyName);
 
 app.UseAuthentication();
+
+// M-03: MUST run after UseAuthentication — the 'otp-verify' policy partitions by the authenticated
+// user id, and HttpContext.User is only populated once authentication has run. Placed earlier, that
+// policy would silently degrade to a per-IP limit (which carrier NAT makes ineffective).
+// IP-partitioned policies ('auth', 'sms') are unaffected by the position.
+app.UseRateLimiter();
+
 app.UseAuthorization();
 
 app.MapControllers();
