@@ -17,7 +17,9 @@ class EnvironmentConfig {
    //"http://10.0.2.2:5000/api";
       //"http://188.241.187.172/MediMartAPI1/api";
       "https://pharmaish-api-test.mangodesert-af3f37ba.centralindia.azurecontainerapps.io/api";
-  static const String _prodApiBaseUrl = "http://188.241.187.172/MediMartAPIProd/api";
+  static const String _prodApiBaseUrl = 
+  "https://pharmaish-api-prod.mangodesert-af3f37ba.centralindia.azurecontainerapps.io/api";
+  //"http://188.241.187.172/MediMartAPIProd/api";
 
   // Timeout configurations
   static const Duration _devTimeout = Duration(seconds: 30);

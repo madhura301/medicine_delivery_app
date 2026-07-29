@@ -44,15 +44,36 @@ class _AssignedOrdersPageState extends State<AssignedOrdersPage>
 
   Future<void> _loadCustomerSupportIdAndOrders() async {
     try {
-      final userId = await StorageService.getUserId();
-      if (userId == null || userId.isEmpty) {
+      // Look the id up by email rather than reusing the id cached at login: that
+      // one is the ASP.NET Identity user id, and CustomerSupport rows are created
+      // with `CustomerSupportId = Guid.NewGuid()` plus a separate `UserId`. The
+      // orders endpoint filters on CustomerSupportId, so the login id matches
+      // nothing and the list comes back empty.
+      final email = await StorageService.getUserEmail();
+      if (email == null || email.isEmpty) {
         setState(() {
           _errorMessage = 'Customer Support ID not found. Please login again.';
           _isLoading = false;
         });
         return;
       }
-      setState(() => _customerSupportId = userId);
+
+      final response = await widget.dio.get('/CustomerSupports/by-email/$email');
+      final customerSupportId =
+          response.statusCode == 200 && response.data != null
+              ? (response.data['customerSupportId']?.toString() ?? '')
+              : '';
+
+      if (customerSupportId.isEmpty) {
+        setState(() {
+          _errorMessage =
+              'Customer Support profile not found. Please login again.';
+          _isLoading = false;
+        });
+        return;
+      }
+
+      setState(() => _customerSupportId = customerSupportId);
       await _loadAssignedOrders();
     } catch (e) {
       AppLogger.error('Error loading customer support ID', e);

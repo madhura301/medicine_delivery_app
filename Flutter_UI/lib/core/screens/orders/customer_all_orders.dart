@@ -539,6 +539,15 @@ class _CustomerAllOrdersState extends State<CustomerAllOrders> {
                     const SizedBox(height: 10),
                     _buildPaidBadge(),
                   ],
+                  // Delivery OTP — shown on the tile as soon as the order is
+                  // paid, so the customer has it ready ahead of hand-off. Kept
+                  // here rather than in _buildActionButtons because that only
+                  // renders it on the out-for-delivery branch, hiding it while
+                  // the order sits at bill-uploaded or assigned-to-delivery.
+                  if (order.shouldShowDeliveryOtp) ...[
+                    const SizedBox(height: 10),
+                    _buildDeliveryOtpChip(order.completionOtp!.trim()),
+                  ],
                   if (getChemistPhone(order) != null) ...[
                     const SizedBox(height: 8),
                     _buildInfoRow(
@@ -617,12 +626,6 @@ class _CustomerAllOrdersState extends State<CustomerAllOrders> {
               ],
             ),
           ),
-          // Delivery OTP — shown once paid, so the customer has it ready to
-          // share with the delivery person at hand-off.
-          if (order.shouldShowDeliveryOtp) ...[
-            const SizedBox(height: 8),
-            _buildDeliveryOtpChip(order.completionOtp!.trim()),
-          ],
           const SizedBox(height: 10),
           Row(
             children: [

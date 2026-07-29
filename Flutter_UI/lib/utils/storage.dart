@@ -277,6 +277,15 @@ class StorageService {
     }
   }
 
+  static Future<String?> getUserLastName() async {
+    try {
+      return await _storage.read(key: _userLastNameKey);
+    } catch (e) {
+      AppLogger.error('Error retrieving user last name: $e');
+      return null;
+    }
+  }
+
   /// Store the logged-in chemist's pharmacy (medical store) name.
   static Future<void> storePharmacyName(String pharmacyName) async {
     try {

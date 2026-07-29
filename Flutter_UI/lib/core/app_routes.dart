@@ -10,6 +10,7 @@ import 'package:pharmaish/core/screens/orders/create_whatsapp_order_screen.dart'
 import 'package:pharmaish/core/screens/orders/customer_order_details_page.dart';
 import 'package:pharmaish/core/screens/orders/rejected_orders_screen.dart';
 import 'package:pharmaish/core/screens/payment/payment_summary_page.dart';
+import 'package:pharmaish/core/screens/profiles/admin_profile_page.dart';
 import 'package:pharmaish/core/screens/profiles/customer_profile_page.dart';
 import 'package:pharmaish/core/screens/profiles/pharmacist_profile_page.dart';
 import 'package:pharmaish/core/screens/profiles/delivery_profile_page.dart';
@@ -34,6 +35,7 @@ class AppRoutes {
   static const String customerProfile = '/customerProfile';
   static const String deliveryProfile = '/deliveryProfile';
   static const String managerProfile = '/managerProfile';
+  static const String adminProfile = '/adminProfile';
   static const String customerDashboard = '/customerDashboard';
   static const String adminDashboard = '/adminDashboard';
   static const String chemistDashboard = '/chemistDashboard';
@@ -56,6 +58,7 @@ class AppRoutes {
     customerProfile: (context) => const CustomerProfilePage(),
     deliveryProfile: (context) => const DeliveryProfilePage(),
     managerProfile: (context) => const ManagerProfilePage(),
+    adminProfile: (context) => const AdminProfilePage(),
     pharmacistProfile: (context) {
       final args =
           ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;

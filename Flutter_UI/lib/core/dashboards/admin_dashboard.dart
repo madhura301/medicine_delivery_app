@@ -111,7 +111,9 @@ class _AdminDashboardState extends State<AdminDashboard> {
   }
 
   void _goToAdminProfile(BuildContext context) {
-    Navigator.pushNamed(context, '/customerProfile');
+    // Not '/customerProfile' — that page calls GET /Customers/my-profile, which
+    // 404s for an admin because admins have no Customer record.
+    Navigator.pushNamed(context, '/adminProfile');
   }
 
   void _goToUserManagement(BuildContext context) {
