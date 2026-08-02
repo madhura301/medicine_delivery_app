@@ -672,7 +672,12 @@ namespace MedicineDelivery.Infrastructure.Services
                 
                 orderDto.AssignmentHistory = extendedHistory;
             }
-            
+
+            if (orderDto != null)
+            {
+                await EnrichAssigneeNamesAsync(new[] { orderDto }, cancellationToken);
+            }
+
             return orderDto;
         }
 
@@ -1087,7 +1092,9 @@ namespace MedicineDelivery.Infrastructure.Services
                 o.ManagerId == managerId &&
                 o.OrderStatus == OrderStatus.AssignedToManager);
 
-            return _mapper.Map<IEnumerable<OrderDto>>(orders);
+            var dtos = _mapper.Map<List<OrderDto>>(orders);
+            await EnrichAssigneeNamesAsync(dtos, cancellationToken);
+            return dtos;
         }
 
         public async Task<IEnumerable<OrderDto>> GetAllOrdersByManagerIdAsync(Guid managerId, CancellationToken cancellationToken = default)
@@ -1102,7 +1109,9 @@ namespace MedicineDelivery.Infrastructure.Services
 
             var orders = await _unitOfWork.Orders.FindAsync(o => o.ManagerId == managerId);
 
-            return _mapper.Map<IEnumerable<OrderDto>>(orders);
+            var dtos = _mapper.Map<List<OrderDto>>(orders);
+            await EnrichAssigneeNamesAsync(dtos, cancellationToken);
+            return dtos;
         }
 
         public async Task<OrderDto> CompleteOrderAsync(int orderId, CompleteOrderDto completeDto, CancellationToken cancellationToken = default)
@@ -1484,7 +1493,108 @@ namespace MedicineDelivery.Infrastructure.Services
             cancellationToken.ThrowIfCancellationRequested();
 
             var orders = await _unitOfWork.Orders.GetAllAsync();
-            return _mapper.Map<IEnumerable<OrderDto>>(orders);
+            var dtos = _mapper.Map<List<OrderDto>>(orders);
+            await EnrichAssigneeNamesAsync(dtos, cancellationToken);
+            return dtos;
+        }
+
+        /// <summary>
+        /// Fills the display names on order DTOs — customer, chemist store, support agent, manager
+        /// and delivery partner — using one batched lookup per party rather than a query per order.
+        /// Called by the staff-facing endpoints so a console can render an order list without
+        /// downloading every roster to resolve ids itself.
+        /// </summary>
+        private async Task EnrichAssigneeNamesAsync(IReadOnlyCollection<OrderDto> dtos, CancellationToken cancellationToken = default)
+        {
+            if (dtos.Count == 0)
+            {
+                return;
+            }
+
+            cancellationToken.ThrowIfCancellationRequested();
+
+            var customerIds = dtos.Select(d => d.CustomerId).Where(id => id != Guid.Empty).Distinct().ToList();
+            if (customerIds.Count > 0)
+            {
+                var customers = await _unitOfWork.Customers.FindAsync(c => customerIds.Contains(c.CustomerId));
+                var nameById = customers.ToDictionary(
+                    c => c.CustomerId,
+                    c => $"{c.CustomerFirstName} {c.CustomerLastName}".Trim());
+
+                foreach (var dto in dtos)
+                {
+                    if (nameById.TryGetValue(dto.CustomerId, out var name) && !string.IsNullOrWhiteSpace(name))
+                    {
+                        dto.CustomerName = name;
+                    }
+                }
+            }
+
+            var medicalStoreIds = dtos.Where(d => d.MedicalStoreId.HasValue).Select(d => d.MedicalStoreId!.Value).Distinct().ToList();
+            if (medicalStoreIds.Count > 0)
+            {
+                var stores = await _unitOfWork.MedicalStores.FindAsync(ms => medicalStoreIds.Contains(ms.MedicalStoreId));
+                var nameById = stores.ToDictionary(ms => ms.MedicalStoreId, ms => ms.MedicalName);
+
+                foreach (var dto in dtos)
+                {
+                    if (dto.MedicalStoreId.HasValue && nameById.TryGetValue(dto.MedicalStoreId.Value, out var name))
+                    {
+                        dto.MedicalStoreName = name;
+                    }
+                }
+            }
+
+            var customerSupportIds = dtos.Where(d => d.CustomerSupportId.HasValue).Select(d => d.CustomerSupportId!.Value).Distinct().ToList();
+            if (customerSupportIds.Count > 0)
+            {
+                var customerSupports = await _unitOfWork.CustomerSupports.FindAsync(cs => customerSupportIds.Contains(cs.CustomerSupportId));
+                var nameById = customerSupports.ToDictionary(
+                    cs => cs.CustomerSupportId,
+                    cs => $"{cs.CustomerSupportFirstName} {cs.CustomerSupportLastName}".Trim());
+
+                foreach (var dto in dtos)
+                {
+                    if (dto.CustomerSupportId.HasValue && nameById.TryGetValue(dto.CustomerSupportId.Value, out var name) && !string.IsNullOrWhiteSpace(name))
+                    {
+                        dto.CustomerSupportName = name;
+                    }
+                }
+            }
+
+            var managerIds = dtos.Where(d => d.ManagerId.HasValue).Select(d => d.ManagerId!.Value).Distinct().ToList();
+            if (managerIds.Count > 0)
+            {
+                var managers = await _unitOfWork.Managers.FindAsync(m => managerIds.Contains(m.ManagerId));
+                var nameById = managers.ToDictionary(
+                    m => m.ManagerId,
+                    m => $"{m.ManagerFirstName} {m.ManagerLastName}".Trim());
+
+                foreach (var dto in dtos)
+                {
+                    if (dto.ManagerId.HasValue && nameById.TryGetValue(dto.ManagerId.Value, out var name) && !string.IsNullOrWhiteSpace(name))
+                    {
+                        dto.ManagerName = name;
+                    }
+                }
+            }
+
+            var deliveryIds = dtos.Where(d => d.DeliveryId.HasValue).Select(d => d.DeliveryId!.Value).Distinct().ToList();
+            if (deliveryIds.Count > 0)
+            {
+                var deliveries = await _unitOfWork.Deliveries.FindAsync(d => deliveryIds.Contains(d.Id));
+                var nameById = deliveries.ToDictionary(
+                    d => d.Id,
+                    d => $"{d.FirstName ?? string.Empty} {d.LastName ?? string.Empty}".Trim());
+
+                foreach (var dto in dtos)
+                {
+                    if (dto.DeliveryId.HasValue && nameById.TryGetValue(dto.DeliveryId.Value, out var name) && !string.IsNullOrWhiteSpace(name))
+                    {
+                        dto.DeliveryBoyName = name;
+                    }
+                }
+            }
         }
 
         public async Task<IEnumerable<MedicalStoreBasicDto>> GetMedicalStoresByOrderCityAsync(int orderId, CancellationToken cancellationToken = default)
@@ -1513,9 +1623,13 @@ namespace MedicineDelivery.Infrastructure.Services
                 throw new InvalidOperationException("Customer address does not have a city.");
             }
 
-            // Find all active MedicalStores in the same city
+            // Find all active MedicalStores in the same city.
+            // Compare with ToLower() rather than string.Equals(StringComparison): EF Core cannot
+            // translate the StringComparison overload, and the whole query threw at runtime.
+            var city = customerAddress.City.Trim().ToLower();
             var medicalStores = await _unitOfWork.MedicalStores.FindAsync(
-                ms => ms.City.Equals(customerAddress.City.Trim(), StringComparison.OrdinalIgnoreCase) &&
+                ms => ms.City != null &&
+                      ms.City.Trim().ToLower() == city &&
                       ms.IsActive &&
                       !ms.IsDeleted);
 
@@ -1537,11 +1651,13 @@ namespace MedicineDelivery.Infrastructure.Services
                 throw new ArgumentException("CustomerSupportId is required.", nameof(customerSupportId));
             }
 
-            var orders = await _unitOfWork.Orders.FindAsync(o => 
-                o.CustomerSupportId == customerSupportId && 
+            var orders = await _unitOfWork.Orders.FindAsync(o =>
+                o.CustomerSupportId == customerSupportId &&
                 o.OrderStatus == OrderStatus.AssignedToCustomerSupport);
-            
-            return _mapper.Map<IEnumerable<OrderDto>>(orders);
+
+            var dtos = _mapper.Map<List<OrderDto>>(orders);
+            await EnrichAssigneeNamesAsync(dtos, cancellationToken);
+            return dtos;
         }
 
         public async Task<IEnumerable<OrderDto>> GetAllOrdersByCustomerSupportIdAsync(Guid customerSupportId, CancellationToken cancellationToken = default)
@@ -1555,8 +1671,10 @@ namespace MedicineDelivery.Infrastructure.Services
             }
 
             var orders = await _unitOfWork.Orders.FindAsync(o => o.CustomerSupportId == customerSupportId);
-            
-            return _mapper.Map<IEnumerable<OrderDto>>(orders);
+
+            var dtos = _mapper.Map<List<OrderDto>>(orders);
+            await EnrichAssigneeNamesAsync(dtos, cancellationToken);
+            return dtos;
         }
 
         public async Task<IEnumerable<DeliveryDto>> GetEligibleDeliveryBoysByOrderIdAsync(int orderId, CancellationToken cancellationToken = default)
