@@ -431,25 +431,64 @@ The same local values are kept in [WorkingAppSettings/](../../WorkingAppSettings
 
 ## 9. Open items
 
+Status is honest: `[x]` means decided or done, `[ ]` means genuinely still open.
+
+### Resolved
 - [x] Spec §14 Q1 — **Angular Material confirmed** (2026-08-02)
-- [x] Spec §13.1 — **`OrderDto` change approved and shipped** (Phase 0, 2026-08-02)
-- [x] Spec §14 Q2 — include "assign delivery boy" in the console?
-- [x] Spec §14 Q3 — allow reassignment from *Awaiting Assignment* / *With Chemist*?
-- [x] Spec §14 Q4 — does this replace the React WebApp, chemist portal included?
-- [x] Spec §14 Q5 — confirm the dev/prod API URLs
-- [x] Spec §13.3 — decide whether CustomerSupport should be able to list delivery boys
-- [x] Spec §13.4 — decide whether the over-permissive endpoints get fixed in this effort or tracked separately
-- [x] **New (Phase 0 finding):** fix `MedicineDelivery.API/Services/AuthService.LoginAsync` to populate
-      `role`, `userId`, `entityId` and `expiresAt` — currently all null, so every client has to decode
-      the JWT and make an extra call for `entityId`. Small change; the React app benefits too.
-      Phase 1 works around it either way.
-- [x] **New (Phase 0 finding):** two `AuthResult` classes and two `AuthService` implementations exist
-      (API layer + Infrastructure). Only the API-layer one is registered; the Infrastructure one looks
-      like dead code and violates the layering rule in `Backend/MedicineDelivery/CLAUDE.md`.
-- [x] **New (Phase 1):** sidebar rail mode at 768–1023px was specced but not built — the drawer is
-      either docked or off-canvas. Decide whether the rail is worth adding.
-- [x] **New (Phase 5):** the chemists list omits the payout/activation column (one request per row).
-      If it is wanted there, the API needs a bulk payout-status endpoint.
-- [x] **Testing debt:** the app has no unit or component tests yet — Karma/Jasmine came with the
-      scaffold but Phase 12 plans a Vitest migration. Everything so far is verified manually against
-      the live API.
+- [x] Spec §13.1 — **`OrderDto` change approved and shipped** (Phase 0)
+- [x] **Fixed (Phase 10):** `GET /api/Orders/{id}/medical-stores-by-city` threw
+      `InvalidOperationException` — the predicate used `string.Equals(..., StringComparison)`, which
+      EF Core cannot translate, so "widen to city" never worked and the raw EF text leaked to the
+      client. Rewritten with `ToLower()`.
+
+### Waiting on a decision from the owner
+- [x] Spec §14 Q2 — **answered 2026-08-03: yes.** The chemist still does this in the normal flow, but
+      Admin, Manager and Customer Support can now step in. Built as `AssignDeliveryDialog`, offered on
+      the order detail page whenever the status is `BillUploaded` or `Paid`. No backend change was
+      needed — `UpdateOrders` already covers all three roles. Verified end to end on order 89
+      (BillUploaded → OutForDelivery, `AssignTo` → Delivery, history entry written); test write reverted.
+- [ ] Spec §14 Q3 — should Admin/Manager be able to **reassign from *Awaiting Assignment* and
+      *With Chemist***? Today reassignment is offered only in the *With Customer Support* and
+      *With Manager* buckets, matching the original request.
+- [ ] Spec §14 Q4 — does this console **replace the React `WebApp/`**, chemist portal included?
+      Until this is settled the two overlap and both need maintaining.
+- [ ] Spec §14 Q5 — confirm the **API URLs**. Dev `http://localhost:5000/api` is verified; prod
+      `http://188.241.187.172/MediMartAPI1/api` was copied from the React app and never tested.
+- [ ] Spec §13.3 — should **CustomerSupport be able to list delivery partners**? They can create and
+      edit them (`UpdateOrders`) but not list them (`DeliveryRead`), so the menu is hidden from them.
+- [ ] Spec §13.4 — do the **over-permissive endpoints** get fixed in this effort or tracked
+      separately? Delivery-boy writes and all region writes are gated by `UpdateOrders`, which the
+      Customer and DeliveryBoy roles hold.
+
+### Follow-ups raised by the assign-delivery work (2026-08-03)
+- [ ] A delivery partner **cannot be swapped once assigned** — `AssignOrderToDeliveryAsync` only
+      accepts `BillUploaded` or `Paid`, and assigning moves the order to `OutForDelivery`. If staff
+      need to correct a wrong partner, the status gate has to allow `OutForDelivery` too.
+- [ ] `PUT /api/Orders/{id}/assign-delivery` does **not** call `CanAccessOrderAsync`, unlike the
+      eligible-partners call next to it. A support agent who knows an order id could assign a partner
+      to an order that is not theirs. The console never does this, but the API allows it.
+- [ ] Assignment history records `AssignedByType = System` even when a human did it, so the timeline
+      reads "by the system" for staff actions.
+
+### Backend defects found but not fixed
+- [ ] `MedicineDelivery.API/Services/AuthService.LoginAsync` returns `role`, `userId`, `entityId` and
+      `expiresAt` as null. The console decodes the JWT and makes an extra `by-email` call instead.
+      A small fix that would benefit the React app too.
+- [ ] Two `AuthResult` classes and two `AuthService` implementations exist (API layer +
+      Infrastructure). Only the API-layer one is registered; the Infrastructure one appears to be
+      dead code and violates the layering rule in `Backend/MedicineDelivery/CLAUDE.md`.
+- [ ] `GET /api/Orders` is unpaginated — the console pages client-side. Fine at 104 orders; revisit
+      as volume grows.
+- [ ] Region delete is a hard delete with no referential check. The console refuses while staff are
+      attached, but the API itself is still unguarded.
+- [ ] Region assignment does not validate `RegionType`. The console filters the dropdowns; the API
+      would happily put a support agent in a delivery region.
+
+### Deferred UI work
+- [ ] Sidebar **rail mode** at 768–1023px was specced but not built — the drawer is docked or
+      off-canvas only.
+- [ ] The chemists list omits the **payout/activation column** (one request per row). Showing it
+      there needs a bulk payout-status endpoint.
+- [ ] **Component tests** and a **Playwright smoke suite**. 32 unit specs cover the pure logic
+      (JWT, buckets, validators, menu); screens are verified manually. The runner is Karma/Jasmine
+      from the scaffold — the Vitest migration named in §1 has not happened.

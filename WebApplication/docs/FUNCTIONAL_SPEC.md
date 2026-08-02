@@ -347,6 +347,11 @@ The delivery OTP is never shown to staff — the API deliberately withholds it.
 | **With Manager** | **Yes** (Admin, Manager) | **Yes** (Admin, Manager) | The escalation workflow |
 | Out for Delivery | — | Admin, Manager | View only |
 
+**Assign a delivery partner** (§11.7) is offered independently of the bucket: it appears whenever the
+order's status is `BillUploaded` or `Paid`, for Admin, Manager and Customer Support. In practice that
+means orders in the *With Chemist* bucket, which is where an order sits once the chemist has billed
+it.
+
 ### 11.5 Reassign to another chemist
 Dialog: shows the order's delivery pin code, then a searchable list of candidate chemists.
 Candidate source, in order of preference:
@@ -361,10 +366,30 @@ On success the order moves to **With Chemist** and the user is returned to the l
 Dialog requiring a **reason** (free text, mandatory, 10–500 chars) and a confirmation checkbox.
 `PUT /api/Orders/{orderId}/cancel` with the reason. The reason is then shown permanently on the order detail.
 
-### 11.7 Assign a delivery boy *(optional — see §13, Q2)*
-Not in your list, but the API supports it and Managers may need it:
-`GET /api/Orders/{orderId}/eligible-delivery-boys` (filtered by the delivery region covering the order's pin code) → `PUT /api/Orders/{orderId}/assign-delivery` with `{ deliveryId }`.
-Included behind a flag; confirm whether you want it.
+### 11.7 Assign a delivery partner — **confirmed and built**
+In the normal flow the **chemist** hands the order to a delivery partner from their own portal.
+The owner asked to extend this so **Admin, Manager and Customer Support can do it too**, and the
+console now offers it on the order detail page.
+
+- Candidates: `GET /api/Orders/{orderId}/eligible-delivery-boys` — partners whose **delivery region
+  covers the order's pin code**, filtered further to active, non-deleted rows.
+- Assign: `PUT /api/Orders/{orderId}/assign-delivery` with `{ deliveryId }`.
+- The order moves to `OutForDelivery`, `AssignTo` becomes `Delivery`, and a history entry is added.
+
+**Two rules the UI has to respect, both enforced by the API:**
+
+1. **Only from `BillUploaded` or `Paid`.** `AssignOrderToDeliveryAsync` rejects any other status, so
+   the button is hidden outside those two states rather than shown and then failing.
+   A consequence: once an order is `OutForDelivery` the partner **cannot be swapped** — the status
+   gate blocks a second assignment. If reassigning a delivery partner is wanted, the backend rule
+   has to change.
+2. **Customer Support is scoped to their own orders.** Admin and Manager hold `ListAllOrders`, which
+   gives `OrderAccessGuard` full access. Customer Support does not, so the eligible-partners call
+   only succeeds for orders where they are the assigned agent.
+
+**Empty list is a coverage gap, not a missing person.** When no partner is eligible the dialog says
+so explicitly — either no delivery region covers the pin code or the region has no active partner —
+and links to *Regions → Delivery Regions*.
 
 ### 11.8 Order lifecycle reference (rendered as a status legend)
 ```
@@ -434,7 +459,7 @@ There is no audit table. "Manager / support / admin activity" is therefore serve
 ## 14. Open questions
 
 1. ~~**UI library**~~ — **Angular Material confirmed (2026-08-02).**
-2. **Assign delivery boy from the console** (§11.7) — include it or leave it to the chemist's own portal?
+2. ~~**Assign delivery boy from the console**~~ — **confirmed 2026-08-03: yes**, extended to Admin, Manager and Customer Support. Built; see §11.7.
 3. **Reassign from the *Awaiting Assignment* and *With Chemist* buckets** — currently view-only. Should Admin/Manager be able to push those orders to a chemist too?
 4. **Relationship to the existing React app** ([WebApp/](../../WebApp/)) — does this Angular console eventually replace it, and if so does the chemist portal need to move here as well?
 5. **API environment** — dev `http://localhost:5000/api`, prod `http://188.241.187.172/MediMartAPI1/api` (taken from the React app). Confirm these are the right targets.

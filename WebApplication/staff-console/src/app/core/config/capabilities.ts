@@ -20,6 +20,11 @@ export interface Capabilities {
   listAllOrders: boolean;
   reassignOrder: boolean;
   cancelOrder: boolean;
+  /**
+   * Hand an order to a delivery partner. Normally the chemist's job, deliberately extended to
+   * staff so they can step in. Gated server-side by UpdateOrders, which all three roles hold.
+   */
+  assignDelivery: boolean;
 }
 
 const CAPABILITIES: Record<UserRole, Capabilities> = {
@@ -34,6 +39,7 @@ const CAPABILITIES: Record<UserRole, Capabilities> = {
     listAllOrders: true,
     reassignOrder: true,
     cancelOrder: true,
+    assignDelivery: true,
   },
   Manager: {
     // Only an Admin holds ManagerSupportCreate, so a Manager sees the roster read-only.
@@ -47,6 +53,7 @@ const CAPABILITIES: Record<UserRole, Capabilities> = {
     listAllOrders: true,
     reassignOrder: true,
     cancelOrder: true,
+    assignDelivery: true,
   },
   CustomerSupport: {
     manageManagers: false,
@@ -59,6 +66,7 @@ const CAPABILITIES: Record<UserRole, Capabilities> = {
     listAllOrders: false,
     reassignOrder: true,
     cancelOrder: true,
+    assignDelivery: true,
   },
   Customer: emptyCapabilities(),
   Chemist: emptyCapabilities(),
@@ -77,6 +85,7 @@ function emptyCapabilities(): Capabilities {
     listAllOrders: false,
     reassignOrder: false,
     cancelOrder: false,
+    assignDelivery: false,
   };
 }
 

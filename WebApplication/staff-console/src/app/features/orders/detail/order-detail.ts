@@ -22,6 +22,7 @@ import { Customer, CustomerAddress, Order } from '../../../core/models/api.model
 import {
   AssignTo,
   OrderInputType,
+  OrderStatus,
   assignToLabel,
   orderInputTypeLabel,
   orderStatusLabel,
@@ -43,6 +44,7 @@ import {
 } from '../data/order-buckets';
 import { OrdersApiService } from '../data/orders-api.service';
 import { OrdersStore } from '../data/orders.store';
+import { AssignDeliveryData, AssignDeliveryDialog } from '../dialogs/assign-delivery-dialog';
 import { CancelOrderData, CancelOrderDialog } from '../dialogs/cancel-order-dialog';
 import { ReassignOrderData, ReassignOrderDialog } from '../dialogs/reassign-order-dialog';
 
@@ -79,6 +81,12 @@ import { ReassignOrderData, ReassignOrderDialog } from '../dialogs/reassign-orde
             <button matButton="filled" (click)="reassign()">
               <mat-icon>swap_horiz</mat-icon>
               Reassign to chemist
+            </button>
+          }
+          @if (canAssignDelivery()) {
+            <button matButton="filled" (click)="assignDelivery()">
+              <mat-icon>local_shipping</mat-icon>
+              Assign delivery partner
             </button>
           }
           @if (canCancel()) {
@@ -379,6 +387,22 @@ export class OrderDetail {
     return !order.cancellationReason;
   });
 
+  /**
+   * Normally the chemist assigns the delivery partner; Admin, Manager and Customer Support can
+   * step in from here. The API only accepts the hand-off once the bill is up or the order is paid
+   * (`AssignOrderToDeliveryAsync`), so the button is hidden outside those two states rather than
+   * offered and then rejected.
+   */
+  protected readonly canAssignDelivery = computed(() => {
+    const order = this.order();
+    if (!order || !this.capabilities.can('assignDelivery')) {
+      return false;
+    }
+    return (
+      order.orderStatus === OrderStatus.BillUploaded || order.orderStatus === OrderStatus.Paid
+    );
+  });
+
   constructor() {
     effect(() => {
       const id = Number(this.id());
@@ -467,6 +491,32 @@ export class OrderDetail {
           orderNumber: order.orderNumber,
           pinCode: this.pinCode(),
           currentStoreName: order.medicalStoreName,
+        },
+        width: '520px',
+        maxWidth: '94vw',
+      },
+    );
+
+    if (await firstValueFrom(ref.afterClosed())) {
+      this.store.invalidate();
+      await this.load();
+    }
+  }
+
+  protected async assignDelivery(): Promise<void> {
+    const order = this.order();
+    if (!order) {
+      return;
+    }
+
+    const ref = this.dialog.open<AssignDeliveryDialog, AssignDeliveryData, boolean>(
+      AssignDeliveryDialog,
+      {
+        data: {
+          orderId: order.orderId,
+          orderNumber: order.orderNumber,
+          pinCode: this.pinCode(),
+          currentPartnerName: order.deliveryBoyName,
         },
         width: '520px',
         maxWidth: '94vw',
