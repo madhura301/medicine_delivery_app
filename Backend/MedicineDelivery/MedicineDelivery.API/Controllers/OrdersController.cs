@@ -533,6 +533,30 @@ namespace MedicineDelivery.API.Controllers
             }
         }
 
+        /// <summary>
+        /// Alias for <see cref="AssignOrderToMedicalStore"/> using the REST-style shape some clients
+        /// call: the order id in the route, the target store in the body. Reassigns a rejected order
+        /// to a different medical store. The route's orderId always wins over any value in the body.
+        /// </summary>
+        [HttpPut("{orderId:int}/reassign")]
+        [Authorize(Policy = "RequireOrderUpdatePermission")]
+        public Task<IActionResult> ReassignOrder(int orderId, [FromBody] AssignOrderDto? assignDto, CancellationToken cancellationToken)
+        {
+            if (assignDto == null || assignDto.MedicalStoreId == Guid.Empty)
+            {
+                // Without a target store the server cannot guess where to reassign — say so plainly
+                // rather than failing with a misleading error.
+                _logger.LogWarning("ReassignOrder: missing medicalStoreId for Order {OrderId}", orderId);
+                return Task.FromResult<IActionResult>(BadRequest(new
+                {
+                    error = "A 'medicalStoreId' is required in the request body to reassign the order."
+                }));
+            }
+
+            assignDto.OrderId = orderId;
+            return AssignOrderToMedicalStore(assignDto, cancellationToken);
+        }
+
         [HttpPost]
         [HttpPost("CreateOrder")] // Alias: some clients POST to /api/Orders/CreateOrder
         [Consumes("multipart/form-data")]
