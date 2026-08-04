@@ -34,11 +34,9 @@ import { firstErrorMessage, mobileNumberValidator } from '../../shared/util/vali
 
         <mat-card-content>
           <div class="brand">
-            <mat-icon class="brand-icon">medical_services</mat-icon>
-            <div>
-              <h1>Pharmaish</h1>
-              <p>Staff console</p>
-            </div>
+            <!-- The logo carries the Pharmaish wordmark, so the heading is the image itself. -->
+            <h1><img src="logo.png" alt="Pharmaish" width="96" height="96" /></h1>
+            <p>Staff console</p>
           </div>
 
           @if (error()) {
@@ -111,13 +109,21 @@ import { firstErrorMessage, mobileNumberValidator } from '../../shared/util/vali
 
     .brand {
       display: flex;
+      flex-direction: column;
       align-items: center;
-      gap: 12px;
-      margin-bottom: 24px;
+      text-align: center;
+      gap: 4px;
+      margin-bottom: 28px;
     }
-    .brand-icon { color: var(--mat-sys-primary); width: 36px; height: 36px; font-size: 36px; }
-    h1 { margin: 0; font: var(--mat-sys-headline-small); }
-    .brand p { margin: 0; color: var(--mat-sys-on-surface-variant); font: var(--mat-sys-body-small); }
+    h1 { margin: 0; line-height: 0; }
+    h1 img { width: 96px; height: 96px; object-fit: contain; }
+    .brand p {
+      margin: 0;
+      color: var(--mat-sys-on-surface-variant);
+      font: var(--mat-sys-title-small);
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
 
     form { display: flex; flex-direction: column; gap: 4px; }
     mat-form-field { width: 100%; }

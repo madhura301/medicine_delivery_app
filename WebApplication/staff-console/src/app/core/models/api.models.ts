@@ -233,6 +233,9 @@ export interface CreateCustomerAddress {
   city: string | null;
   state: string | null;
   postalCode: string | null;
+  /** Set from the map picker; null when no geo location has been captured. */
+  latitude: number | null;
+  longitude: number | null;
   isDefault: boolean;
 }
 

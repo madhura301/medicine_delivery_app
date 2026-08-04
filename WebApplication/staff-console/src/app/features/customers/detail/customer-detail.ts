@@ -23,6 +23,7 @@ import { ConfirmService } from '../../../core/ui/confirm-dialog';
 import { ToastService } from '../../../core/ui/toast.service';
 import { PageHeader } from '../../../shared/ui/page-header';
 import { ErrorState, LoadingState } from '../../../shared/ui/state-panels';
+import { LocationMap } from '../../../shared/ui/location-map';
 import { StatusChip } from '../../../shared/ui/status-chip';
 import { CustomersApiService, customerFullName, formatAddress } from '../data/customers-api.service';
 import { AddressFormData, AddressFormDialog } from '../dialogs/address-form-dialog';
@@ -41,6 +42,7 @@ import { CustomerFormData, CustomerFormDialog } from '../dialogs/customer-form-d
     LoadingState,
     ErrorState,
     StatusChip,
+    LocationMap,
   ],
   template: `
     @if (loading()) {
@@ -110,11 +112,20 @@ import { CustomerFormData, CustomerFormDialog } from '../dialogs/customer-form-d
               <ul>
                 @for (address of addresses(); track address.id) {
                   <li>
-                    <div class="address-text">
-                      <span>{{ format(address) }}</span>
-                      @if (address.isDefault) {
-                        <app-status-chip label="Default" tone="info" />
-                      }
+                    <div class="address-main">
+                      <div class="address-text">
+                        <span>{{ format(address) }}</span>
+                        @if (address.isDefault) {
+                          <app-status-chip label="Default" tone="info" />
+                        }
+                      </div>
+
+                      <app-location-map
+                        [latitude]="address.latitude"
+                        [longitude]="address.longitude"
+                        [label]="format(address)"
+                        [startOpen]="address.isDefault"
+                      />
                     </div>
 
                     @if (canManage()) {
@@ -162,13 +173,15 @@ import { CustomerFormData, CustomerFormDialog } from '../dialogs/customer-form-d
     ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
     li {
       display: flex;
-      align-items: center;
+      align-items: flex-start;
       justify-content: space-between;
       gap: 12px;
       padding: 10px 12px;
       border: 1px solid var(--mat-sys-outline-variant);
       border-radius: 10px;
     }
+    .address-main { flex: 1 1 auto; min-width: 0; display: grid; gap: 8px; }
+    app-location-map { --map-height: 220px; }
     .address-text {
       display: flex;
       flex-wrap: wrap;

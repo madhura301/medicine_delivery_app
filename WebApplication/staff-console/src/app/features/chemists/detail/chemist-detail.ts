@@ -27,6 +27,7 @@ import { ConfirmService } from '../../../core/ui/confirm-dialog';
 import { ToastService } from '../../../core/ui/toast.service';
 import { PageHeader } from '../../../shared/ui/page-header';
 import { ErrorState, LoadingState } from '../../../shared/ui/state-panels';
+import { LocationMap } from '../../../shared/ui/location-map';
 import { StatusChip } from '../../../shared/ui/status-chip';
 import { ChemistsApiService, chemistAddress, chemistOwnerName } from '../data/chemists-api.service';
 import { ChemistFormData, ChemistFormDialog } from '../dialogs/chemist-form-dialog';
@@ -43,6 +44,7 @@ import { ChemistFormData, ChemistFormDialog } from '../dialogs/chemist-form-dial
     LoadingState,
     ErrorState,
     StatusChip,
+    LocationMap,
   ],
   template: `
     @if (loading()) {
@@ -110,21 +112,23 @@ import { ChemistFormData, ChemistFormDialog } from '../dialogs/chemist-form-dial
           </mat-card-content>
         </mat-card>
 
-        <mat-card appearance="outlined">
-          <mat-card-header><mat-card-title>Address</mat-card-title></mat-card-header>
+        <mat-card appearance="outlined" class="wide">
+          <mat-card-header><mat-card-title>Address &amp; location</mat-card-title></mat-card-header>
           <mat-card-content>
             <dl>
               <dt>Address</dt>
               <dd>{{ address() }}</dd>
               <dt>Pin code</dt>
               <dd>{{ row.postalCode || '—' }}</dd>
-              <dt>Coordinates</dt>
-              <dd>
-                {{ row.latitude !== null && row.longitude !== null
-                  ? row.latitude + ', ' + row.longitude
-                  : 'Not set' }}
-              </dd>
             </dl>
+
+            <app-location-map
+              class="map"
+              [latitude]="row.latitude"
+              [longitude]="row.longitude"
+              [label]="row.medicalName"
+              [collapsible]="false"
+            />
           </mat-card-content>
         </mat-card>
 
@@ -220,6 +224,8 @@ import { ChemistFormData, ChemistFormDialog } from '../dialogs/chemist-form-dial
       color: var(--mat-sys-on-surface-variant);
       font: var(--mat-sys-body-small);
     }
+    .wide { grid-column: 1 / -1; }
+    .map { display: block; margin-top: 16px; --map-height: 300px; }
     [headerActions] { display: flex; gap: 8px; flex-wrap: wrap; }
   `,
 })

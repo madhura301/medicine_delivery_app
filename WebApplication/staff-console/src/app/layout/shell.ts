@@ -42,7 +42,7 @@ import { HANDSET_QUERY } from '../shared/ui/breakpoints';
         [fixedInViewport]="isHandset()"
       >
         <div class="brand">
-          <mat-icon class="brand-icon">medical_services</mat-icon>
+          <img src="logo.png" alt="" width="40" height="40" />
           <span class="brand-text">Pharmaish</span>
         </div>
 
@@ -83,6 +83,8 @@ import { HANDSET_QUERY } from '../shared/ui/breakpoints';
             <button matIconButton aria-label="Open navigation" (click)="drawer.toggle()">
               <mat-icon>menu</mat-icon>
             </button>
+            <!-- The drawer is off-canvas here, so the toolbar carries the brand instead. -->
+            <img class="topbar-logo" src="logo.png" alt="Pharmaish" width="32" height="32" />
           }
 
           <span class="topbar-title">{{ currentLabel() }}</span>
@@ -132,9 +134,10 @@ import { HANDSET_QUERY } from '../shared/ui/breakpoints';
       display: flex;
       align-items: center;
       gap: 10px;
-      padding: 18px 20px;
+      padding: 16px 20px;
     }
-    .brand-icon { color: var(--mat-sys-primary); }
+    /* The wordmark inside the logo is unreadable at this size, so the text label stays. */
+    .brand img { width: 40px; height: 40px; object-fit: contain; flex: none; }
     .brand-text { font: var(--mat-sys-title-medium); }
 
     .group-label {
@@ -159,6 +162,7 @@ import { HANDSET_QUERY } from '../shared/ui/breakpoints';
       border-bottom: 1px solid var(--mat-sys-outline-variant);
     }
 
+    .topbar-logo { width: 32px; height: 32px; object-fit: contain; margin-right: 4px; }
     .topbar-title { font: var(--mat-sys-title-medium); }
     .spacer { flex: 1 1 auto; }
 

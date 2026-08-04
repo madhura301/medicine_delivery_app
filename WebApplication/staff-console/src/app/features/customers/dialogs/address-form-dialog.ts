@@ -11,6 +11,7 @@ import { firstValueFrom } from 'rxjs';
 import { describeHttpError } from '../../../core/http/interceptors';
 import { CustomerAddress } from '../../../core/models/api.models';
 import { ToastService } from '../../../core/ui/toast.service';
+import { MapLocationPicker } from '../../../shared/ui/map-location-picker';
 import { firstErrorMessage, pinCodeValidator } from '../../../shared/util/validators';
 import { CustomersApiService } from '../data/customers-api.service';
 
@@ -30,6 +31,7 @@ export interface AddressFormData {
     MatButtonModule,
     MatCheckboxModule,
     MatProgressBarModule,
+    MapLocationPicker,
   ],
   template: `
     <h2 mat-dialog-title>{{ isEdit() ? 'Edit address' : 'Add address' }}</h2>
@@ -73,6 +75,13 @@ export interface AddressFormData {
           <mat-hint>Decides which chemist and delivery region serve this address.</mat-hint>
         </mat-form-field>
 
+        <app-map-location-picker
+          class="span-2 picker"
+          [(latitude)]="latitude"
+          [(longitude)]="longitude"
+          [label]="pickerLabel()"
+        />
+
         <mat-checkbox formControlName="isDefault" class="span-2">
           Use as the default delivery address
         </mat-checkbox>
@@ -97,6 +106,11 @@ export interface AddressFormData {
     mat-form-field { width: 100%; }
     .span-2 { grid-column: 1 / -1; }
     mat-checkbox { margin: 8px 0 4px; }
+    .picker {
+      margin: 12px 0 4px;
+      padding-top: 12px;
+      border-top: 1px solid var(--mat-sys-outline-variant);
+    }
 
     @media (max-width: 599px) {
       .grid { grid-template-columns: 1fr; min-width: 0; }
@@ -113,6 +127,10 @@ export class AddressFormDialog {
   protected readonly busy = signal(false);
   protected readonly isEdit = computed(() => !!this.data.address);
 
+  /** Bound two-way to the picker; kept outside the form because the map writes to them. */
+  protected readonly latitude = signal<number | null>(this.data.address?.latitude ?? null);
+  protected readonly longitude = signal<number | null>(this.data.address?.longitude ?? null);
+
   protected readonly form = this.fb.nonNullable.group({
     addressLine1: [this.data.address?.addressLine1 ?? ''],
     addressLine2: [this.data.address?.addressLine2 ?? ''],
@@ -122,6 +140,11 @@ export class AddressFormDialog {
     postalCode: [this.data.address?.postalCode ?? '', [pinCodeValidator()]],
     isDefault: [this.data.address?.isDefault ?? false],
   });
+
+  protected pickerLabel(): string {
+    const value = this.form.getRawValue();
+    return [value.addressLine1, value.city, value.postalCode].filter(Boolean).join(', ');
+  }
 
   protected invalid(control: keyof typeof this.form.controls): boolean {
     const field = this.form.controls[control];
@@ -147,6 +170,8 @@ export class AddressFormDialog {
       state: value.state || null,
       postalCode: value.postalCode || null,
       isDefault: value.isDefault,
+      latitude: this.latitude(),
+      longitude: this.longitude(),
       // Keep the free-text field in step with the structured lines so both readers agree.
       address:
         [value.addressLine1, value.addressLine2, value.addressLine3, value.city, value.state, value.postalCode]

@@ -5,7 +5,15 @@
   <title>Pharmaish Staff Console</title>
   <base href="/">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link rel="icon" type="image/x-icon" href="favicon.ico">
+  <!--
+    favicon.ico is generated from logo.png, not the Angular default: browsers request
+    /favicon.ico from the site root whatever these tags say. The ?v= bumps past cached copies —
+    favicons are cached far more aggressively than ordinary assets.
+  -->
+  <link rel="icon" type="image/x-icon" href="favicon.ico?v=2" sizes="any">
+  <link rel="icon" type="image/png" sizes="192x192" href="logo.png?v=2">
+  <link rel="apple-touch-icon" href="logo.png?v=2">
+  <meta name="theme-color" content="#f47b20">
   <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500&display=swap" rel="stylesheet">
   <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
 </head>
