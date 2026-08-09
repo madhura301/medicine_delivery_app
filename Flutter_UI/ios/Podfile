@@ -2,9 +2,12 @@
 #
 # 13.0 is the floor imposed by this app's plugins (flutter_sound 9.x and
 # permission_handler 11.x both require iOS 12+; razorpay_flutter and
-# file_picker 8.x pull it to 13). It must stay in sync with
-# IPHONEOS_DEPLOYMENT_TARGET in Runner.xcodeproj, currently 13.0.
-platform :ios, '13.0'
+# file_picker 8.x pull it to 13), but we target 15.0: Apple requires a
+# MinimumOSVersion of 15.0 or later for all uploads from Spring 2027, and
+# App Store Connect already warns on anything lower. It must stay in sync with
+# IPHONEOS_DEPLOYMENT_TARGET in Runner.xcodeproj and MinimumOSVersion in
+# Flutter/AppFrameworkInfo.plist, both currently 15.0.
+platform :ios, '15.0'
 
 # CocoaPods analytics sends network stats synchronously affecting flutter build latency.
 ENV['COCOAPODS_DISABLE_STATS'] = 'true'
