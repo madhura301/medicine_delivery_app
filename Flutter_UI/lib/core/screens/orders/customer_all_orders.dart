@@ -539,6 +539,15 @@ class _CustomerAllOrdersState extends State<CustomerAllOrders> {
                     const SizedBox(height: 10),
                     _buildPaidBadge(),
                   ],
+                  // Delivery OTP — shown on the tile as soon as the order is
+                  // paid, so the customer has it ready ahead of hand-off. Kept
+                  // here rather than in _buildActionButtons because that only
+                  // renders it on the out-for-delivery branch, hiding it while
+                  // the order sits at bill-uploaded or assigned-to-delivery.
+                  if (order.shouldShowDeliveryOtp) ...[
+                    const SizedBox(height: 10),
+                    _buildDeliveryOtpChip(order.completionOtp!.trim()),
+                  ],
                   if (getChemistPhone(order) != null) ...[
                     const SizedBox(height: 8),
                     _buildInfoRow(
@@ -798,6 +807,43 @@ class _CustomerAllOrdersState extends State<CustomerAllOrders> {
     );
   }
 
+  /// Compact delivery-OTP banner shown on the out-for-delivery tile. The
+  /// customer shares this code with the delivery person to confirm delivery.
+  Widget _buildDeliveryOtpChip(String otp) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.teal.shade50,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.teal.shade200),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.lock_clock, size: 18, color: Colors.teal.shade700),
+          const SizedBox(width: 8),
+          Text(
+            'Delivery OTP: ',
+            style: TextStyle(
+              fontSize: 12,
+              color: Colors.teal.shade800,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          Text(
+            otp,
+            style: TextStyle(
+              fontSize: 16,
+              color: Colors.teal.shade900,
+              fontWeight: FontWeight.bold,
+              letterSpacing: 3,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildStatusChip(String status) => OrderStatusChip(status);
 
   String _getOrderTypeLabel(String? type) {
@@ -949,17 +995,14 @@ class _CustomerAllOrdersState extends State<CustomerAllOrders> {
 
   void _goToPayment(OrderModel order) {
     final amount = order.totalAmount!;
-    // Convenience fee is currently a flat ₹20. The percentage-based logic
-    // (2.5%, min ₹20) is retained for future use:
-    //   final fee = (amount * 0.025) < 20 ? 20.0 : amount * 0.025;
-    const double fee = 20.0;
+    // Razorpay charges (2% of the bill) and the GST on them are derived by
+    // PaymentSummaryPage itself.
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (_) => PaymentSummaryPage(
           orderId: int.tryParse(order.orderId) ?? 0,
           medicinesTotal: amount,
-          convenienceFee: fee,
           orderNumber: order.orderNumber ?? order.orderId,
           onPaymentSuccess: _loadAllOrders,
         ),

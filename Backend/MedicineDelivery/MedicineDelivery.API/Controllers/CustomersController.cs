@@ -41,7 +41,8 @@ namespace MedicineDelivery.API.Controllers
         }
 
         [HttpGet("{id}")]
-        [Authorize(Policy = "RequireCustomerReadPermission")]
+        // Dual-use: customer reads their own record, staff read any (see by-mobile).
+        [Authorize(Policy = "RequireCustomerReadAnyPermission")]
         public async Task<IActionResult> GetCustomer(Guid id)
         {
             try
@@ -80,7 +81,9 @@ namespace MedicineDelivery.API.Controllers
         }
 
         [HttpGet("by-mobile/{mobileNumber}")]
-        [Authorize(Policy = "RequireCustomerReadPermission")]
+        // Dual-use: a customer looks up their own record (CustomerRead) during the order
+        // flow, and staff (CustomerSupport/Admin/Manager) look up any customer (AllCustomerRead).
+        [Authorize(Policy = "RequireCustomerReadAnyPermission")]
         public async Task<IActionResult> GetCustomerByMobile(string mobileNumber)
         {
             try

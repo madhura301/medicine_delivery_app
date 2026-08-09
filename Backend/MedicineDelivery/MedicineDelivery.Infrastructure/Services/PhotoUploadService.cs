@@ -69,7 +69,11 @@ namespace MedicineDelivery.Infrastructure.Services
                 return false;
 
             var fileExtension = Path.GetExtension(file.FileName).ToLowerInvariant();
-            return _allowedExtensions.Contains(fileExtension);
+            if (!_allowedExtensions.Contains(fileExtension))
+                return false;
+
+            // M-08: the extension is attacker-controlled — confirm the bytes are really an image.
+            return FileSignatureValidator.Matches(file, fileExtension);
         }
 
         public long GetMaxFileSizeInBytes()

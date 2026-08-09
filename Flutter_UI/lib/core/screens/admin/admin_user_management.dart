@@ -6,8 +6,11 @@
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import 'package:pharmaish/core/services/chemist_payout_service.dart';
+import 'package:pharmaish/core/services/location_service.dart';
+import 'package:pharmaish/core/theme/app_theme.dart';
 import 'package:pharmaish/shared/widgets/app_button.dart';
 import 'package:pharmaish/shared/widgets/app_snackbar.dart';
+import 'package:pharmaish/shared/widgets/map_location_picker_page.dart';
 import 'package:pharmaish/utils/app_logger.dart';
 import 'package:pharmaish/utils/role_entity_manager.dart';
 import 'package:pharmaish/core/screens/admin/create_user_screen.dart';
@@ -700,6 +703,133 @@ class _AdminUserManagementPageState extends State<AdminUserManagementPage> {
   }
 
   // ==========================================================================
+  // STORE LOCATION PICKER (used by the chemist edit sheet)
+  // ==========================================================================
+
+  /// Editable store coordinates. Orders are routed to the nearest store by a
+  /// radius search that skips stores with a null Latitude/Longitude, so a store
+  /// missing these can never be assigned an order — this is how existing stores
+  /// get corrected.
+  ///
+  /// [onChanged] receives the picked coordinates plus the resolved address parts
+  /// so the caller can refresh its own address controllers.
+  Widget _buildStoreLocationField({
+    required double? latitude,
+    required double? longitude,
+    required void Function(LocationResult) onChanged,
+  }) {
+    final hasLocation = latitude != null && longitude != null;
+
+    Future<void> useCurrentLocation() async {
+      final locationService = LocationService();
+      final isAvailable = await locationService.isLocationServiceAvailable();
+      if (!isAvailable) {
+        final granted = await locationService.requestLocationPermission();
+        if (granted != true) {
+          if (mounted) {
+            _showError('Location permission denied — use "Pick on Map" instead');
+          }
+          return;
+        }
+      }
+
+      try {
+        final result = await locationService.getCurrentLocation(
+          includeAddress: true,
+          timeLimit: const Duration(seconds: 20),
+        );
+        if (!result.isValid) {
+          if (mounted) {
+            _showError(result.error ?? 'Unable to get location');
+          }
+          return;
+        }
+        onChanged(result);
+      } catch (e) {
+        AppLogger.error('Store location error: $e');
+        if (mounted) {
+          _showError('Could not get location — try "Pick on Map"');
+        }
+      }
+    }
+
+    Future<void> pickOnMap() async {
+      final result = await pickLocationOnMap(
+        context,
+        initialLatitude: latitude,
+        initialLongitude: longitude,
+      );
+      if (result == null) return;
+      onChanged(result);
+    }
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 14),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          border: Border.all(
+              color: hasLocation ? AppTheme.primaryColor : Colors.red.shade300),
+          borderRadius: BorderRadius.circular(10),
+          color: Colors.grey.shade50,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.map,
+                    size: 20,
+                    color: hasLocation
+                        ? AppTheme.primaryColor
+                        : Colors.red.shade400),
+                const SizedBox(width: 8),
+                const Text('Store Location *',
+                    style: TextStyle(fontWeight: FontWeight.bold)),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Text(
+              hasLocation
+                  ? 'Lat: ${latitude.toStringAsFixed(6)}, Long: ${longitude.toStringAsFixed(6)}'
+                  : 'Not set — this store cannot receive orders until a location is saved.',
+              style: TextStyle(
+                fontSize: 12,
+                color: hasLocation ? Colors.black87 : Colors.red.shade700,
+                fontWeight: hasLocation ? FontWeight.w600 : FontWeight.normal,
+              ),
+            ),
+            const SizedBox(height: 10),
+            OutlinedButton.icon(
+              onPressed: pickOnMap,
+              icon: const Icon(Icons.map_outlined, size: 18),
+              label: Text(hasLocation ? 'Change on Map' : 'Pick on Map'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppTheme.primaryColor,
+                side: const BorderSide(color: AppTheme.primaryColor),
+                minimumSize: const Size(double.infinity, 44),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8)),
+              ),
+            ),
+            const SizedBox(height: 6),
+            TextButton.icon(
+              onPressed: useCurrentLocation,
+              icon: const Icon(Icons.my_location, size: 18),
+              label: const Text('Use My Current Location'),
+              style: TextButton.styleFrom(
+                foregroundColor: AppTheme.primaryColor,
+                minimumSize: const Size(double.infinity, 40),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ==========================================================================
   // EDIT – CHEMIST
   // ==========================================================================
 
@@ -726,17 +856,30 @@ class _AdminUserManagementPageState extends State<AdminUserManagementPage> {
     final pharmRegCtrl    = TextEditingController(text: store['pharmacistRegistrationNumber'] ?? '');
     final pharmMobileCtrl = TextEditingController(text: store['pharmacistMobileNumber'] ?? '');
 
+    // Existing coordinates, if the store has any. Mutated by the location picker
+    // and always sent back on save — PUT /MedicalStores assigns Latitude and
+    // Longitude unconditionally, so omitting them from the body clears them.
+    double? latitude  = (store['latitude']  as num?)?.toDouble();
+    double? longitude = (store['longitude'] as num?)?.toDouble();
+
     final result = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => _EditSheet(
+      builder: (_) => StatefulBuilder(
+        builder: (ctx, setSheetState) => _EditSheet(
         title: 'Edit Chemist',
         formKey: formKey,
         onSave: () async {
           if (!formKey.currentState!.validate()) return false;
+          if (latitude == null || longitude == null) {
+            _showError('Please set the store location before saving');
+            return false;
+          }
           final id = store['medicalStoreId'];
           final body = <String, dynamic>{
+            'latitude':                latitude,
+            'longitude':               longitude,
             'medicalName':             medNameCtrl.text.trim(),
             'ownerFirstName':          ownerFirstCtrl.text.trim(),
             'ownerMiddleName':         ownerMiddleCtrl.text.trim(),
@@ -774,6 +917,20 @@ class _AdminUserManagementPageState extends State<AdminUserManagementPage> {
           _EditSheet.field(altCtrl, 'Alt. Mobile', keyboard: TextInputType.phone),
           _EditSheet.field(emailCtrl, 'Email *', required: true,
               keyboard: TextInputType.emailAddress),
+          // Above the address fields because picking a location refills them.
+          _buildStoreLocationField(
+            latitude: latitude,
+            longitude: longitude,
+            onChanged: (r) => setSheetState(() {
+              latitude  = r.latitude;
+              longitude = r.longitude;
+              if (r.street     != null && r.street!.isNotEmpty)     addr1Ctrl.text  = r.street!;
+              if (r.locality   != null && r.locality!.isNotEmpty)   addr2Ctrl.text  = r.locality!;
+              if (r.city       != null && r.city!.isNotEmpty)       cityCtrl.text   = r.city!;
+              if (r.state      != null && r.state!.isNotEmpty)      stateCtrl.text  = r.state!;
+              if (r.postalCode != null && r.postalCode!.isNotEmpty) postalCtrl.text = r.postalCode!;
+            }),
+          ),
           _EditSheet.field(addr1Ctrl, 'Address Line 1 *', required: true),
           _EditSheet.field(addr2Ctrl, 'Address Line 2'),
           _EditSheet.row([
@@ -794,6 +951,7 @@ class _AdminUserManagementPageState extends State<AdminUserManagementPage> {
           _EditSheet.field(pharmMobileCtrl, 'Pharmacist Mobile *', required: true,
               keyboard: TextInputType.phone),
         ],
+        ),
       ),
     );
 

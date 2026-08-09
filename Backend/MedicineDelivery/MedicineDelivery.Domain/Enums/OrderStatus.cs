@@ -10,7 +10,9 @@ namespace MedicineDelivery.Domain.Enums
         Paid = 5,
         OutForDelivery = 6,
         Completed = 7,
-        AssignedToCustomerSupport = 8
+        AssignedToCustomerSupport = 8,
+        AssignedToManager = 9,
+        Cancelled = 10
     }
 }
 

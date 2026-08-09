@@ -20,6 +20,13 @@ class ContactUsPage extends StatelessWidget {
     }
   }
 
+  Future<void> _launchWebsite(String url) async {
+    final uri = Uri.parse(url);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -103,6 +110,16 @@ class ContactUsPage extends StatelessWidget {
               subtitle: 'Business and partnership enquiries',
               detail: 'admin@pharmaish.com',
               onTap: () => _launchEmail('admin@pharmaish.com'),
+            ),
+
+            _ContactCard(
+              icon: Icons.language,
+              iconColor: AppTheme.primaryColor,
+              title: 'Website',
+              subtitle: 'Visit our website',
+              detail: 'pharmaish.com',
+              trailingIcon: Icons.open_in_new,
+              onTap: () => _launchWebsite(AppConstants.websiteUrl),
             ),
           ],
         ),

@@ -22,6 +22,9 @@ class AppConstants {
   static bool get isDevelopment => EnvironmentConfig.isDevelopment;
   static bool get isStaging => EnvironmentConfig.isStaging;
 
+  // Public website
+  static const String websiteUrl = 'https://pharmaish.com';
+
   // Public web pages for legal policies
   static const String termsAndConditionsUrl =
       'https://pharmaish.com/terms-condition.html';
@@ -32,7 +35,7 @@ class AppConstants {
   static const String paymentPolicyUrl =
       'https://pharmaish.com/payment-policy.html';
   static const String retailerGuideUrl =
-      'https://pharmaish.com/retailer-guide.html';
+      'https://www.pharmaish.com/retailer-onboarding-policy.html#retailer-guide';
 
   // Customer support contact
   /// Support phone number (10-digit, for display).

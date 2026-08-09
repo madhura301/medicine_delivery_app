@@ -90,7 +90,11 @@ namespace MedicineDelivery.API.Authorization
                 new PermissionSeedDefinition(62, "DeliveryRead", "Delivery", "Can read delivery boy information"),
                 new PermissionSeedDefinition(63, "DeliveryUpdate", "Delivery", "Can update delivery boy information"),
                 new PermissionSeedDefinition(64, "DeliveryCreate", "Delivery", "Can create delivery boy accounts"),
-                new PermissionSeedDefinition(65, "DeliveryDelete", "Delivery", "Can delete delivery boy accounts")
+                new PermissionSeedDefinition(65, "DeliveryDelete", "Delivery", "Can delete delivery boy accounts"),
+                new PermissionSeedDefinition(66, "CancelOrders", "Orders", "Can cancel orders with a reason"),
+                // M-07: policy/legal document upload was authenticated-only, so any self-registered
+                // customer could overwrite the publicly served Terms & Conditions or Privacy Policy.
+                new PermissionSeedDefinition(67, "ManagePolicyDocuments", "PolicyDocuments", "Can upload and replace policy/legal documents")
             });
 
         private static readonly IReadOnlyDictionary<string, string[]> RolePermissionNames = new ReadOnlyDictionary<string, string[]>(
@@ -109,7 +113,7 @@ namespace MedicineDelivery.API.Authorization
                     "AllCustomerRead", "AllCustomerUpdate", "AllCustomerDelete",
                     "CustomerCreate",
                     "AllChemistRead", "AllChemistUpdate", "AllChemistDelete",
-                    "ReadOrders", "CreateOrders", "UpdateOrders", "DeleteOrders", "ListAllOrders",
+                    "ReadOrders", "CreateOrders", "UpdateOrders", "DeleteOrders", "ListAllOrders", "CancelOrders",
                     "ReadConsents", "CreateConsents", "UpdateConsents", "DeleteConsents", "ReadConsentLogs",
                     "DeliveryRead", "DeliveryCreate", "DeliveryUpdate", "DeliveryDelete"
                 },
@@ -123,7 +127,7 @@ namespace MedicineDelivery.API.Authorization
                     "AllCustomerRead", "AllCustomerUpdate", "AllCustomerDelete",
                     "CustomerCreate",
                     "AllChemistRead", "AllChemistUpdate", "AllChemistDelete",
-                    "ReadOrders", "CreateOrders", "UpdateOrders"
+                    "ReadOrders", "CreateOrders", "UpdateOrders", "CancelOrders"
                 },
                 [CustomerRoleId] = new[]
                 {

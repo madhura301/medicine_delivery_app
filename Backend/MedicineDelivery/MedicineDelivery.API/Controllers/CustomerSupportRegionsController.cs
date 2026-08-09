@@ -44,6 +44,12 @@ namespace MedicineDelivery.API.Controllers
                 _logger.LogWarning("CreateServiceRegion: {Message}", ex.Message);
                 return BadRequest(new { error = ex.Message });
             }
+            catch (InvalidOperationException ex)
+            {
+                // e.g. a pin code already assigned to another region of the same type.
+                _logger.LogWarning("CreateServiceRegion: {Message}", ex.Message);
+                return BadRequest(new { error = ex.Message });
+            }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error creating service region");
@@ -133,6 +139,17 @@ namespace MedicineDelivery.API.Controllers
             {
                 _logger.LogWarning("UpdateServiceRegion: {Message}", ex.Message);
                 return NotFound(new { error = ex.Message });
+            }
+            catch (ArgumentException ex)
+            {
+                _logger.LogWarning("UpdateServiceRegion: {Message}", ex.Message);
+                return BadRequest(new { error = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                // e.g. a pin code already assigned to another region of the same type.
+                _logger.LogWarning("UpdateServiceRegion: {Message}", ex.Message);
+                return BadRequest(new { error = ex.Message });
             }
             catch (Exception ex)
             {

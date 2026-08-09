@@ -54,7 +54,7 @@ namespace MedicineDelivery.Infrastructure.Services
                 };
             }
 
-            var result = await _signInManager.CheckPasswordSignInAsync(user, password, false);
+            var result = await _signInManager.CheckPasswordSignInAsync(user, password, lockoutOnFailure: true);
             if (!result.Succeeded)
             {
                 return new AuthResult

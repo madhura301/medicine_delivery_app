@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using MedicineDelivery.API.Models;
@@ -42,7 +43,15 @@ namespace MedicineDelivery.API.Authorization
 
             try
             {
-                var hasPermission = await _roleService.HasPermissionAsync(userId, requirement.Permission);
+                var hasPermission = false;
+                foreach (var permission in requirement.Permissions)
+                {
+                    if (await _roleService.HasPermissionAsync(userId, permission))
+                    {
+                        hasPermission = true;
+                        break;
+                    }
+                }
 
                 if (hasPermission)
                 {
@@ -65,12 +74,21 @@ namespace MedicineDelivery.API.Authorization
 
     public class PermissionRequirement : IAuthorizationRequirement
     {
-        public string Permission { get; }
+        /// <summary>The user must hold AT LEAST ONE of these permissions.</summary>
+        public IReadOnlyList<string> Permissions { get; }
 
-        public PermissionRequirement(string permission)
+        /// <summary>
+        /// Requires the user to have at least one of the given permissions. Pass a
+        /// single permission for the common case, or several for "any of" access
+        /// (e.g. a dual-use endpoint readable with either CustomerRead or AllCustomerRead).
+        /// </summary>
+        public PermissionRequirement(params string[] permissions)
         {
-            Permission = permission;
+            Permissions = permissions;
         }
+
+        /// <summary>Human-readable description of the accepted permissions (for logging).</summary>
+        public string Permission => string.Join(" or ", Permissions);
     }
 
     public static class PermissionAuthorizationExtensions

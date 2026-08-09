@@ -16,6 +16,10 @@ namespace MedicineDelivery.API.Controllers
 {
     [ApiController]
     [Route("api/setup")]
+    // SECURITY: these endpoints create roles, permissions and privileged users. They were
+    // previously [AllowAnonymous], which allowed anonymous creation of an Admin account.
+    // Access now requires an authenticated Admin or a valid X-Setup-Token (fails closed).
+    [Authorize(Policy = "RequireSetupAccess")]
     public class SetupController : ControllerBase
     {
         private readonly RoleManager<IdentityRole> _roleManager;
@@ -39,7 +43,6 @@ namespace MedicineDelivery.API.Controllers
         /// Adds a single Identity role to the system.
         /// </summary>
         [HttpPost("roles")]
-        [AllowAnonymous]
         public async Task<IActionResult> CreateRole([FromBody] CreateRoleRequest request)
         {
             _logger.LogInformation("CreateRole requested for {RoleName}", request.Name);
@@ -88,7 +91,6 @@ namespace MedicineDelivery.API.Controllers
         /// Adds a single permission record.
         /// </summary>
         [HttpPost("permissions")]
-        [AllowAnonymous]
         public async Task<IActionResult> CreatePermission([FromBody] CreatePermissionRequest request)
         {
             _logger.LogInformation("CreatePermission requested for {PermissionName}", request.Name);
@@ -153,7 +155,6 @@ namespace MedicineDelivery.API.Controllers
         /// Creates all predefined Identity roles with deterministic IDs.
         /// </summary>
         [HttpPost("roles/predefined")]
-        [AllowAnonymous]
         public async Task<IActionResult> CreatePredefinedRoles()
         {
             _logger.LogInformation("CreatePredefinedRoles requested");
@@ -204,7 +205,6 @@ namespace MedicineDelivery.API.Controllers
         /// Inserts or updates all predefined permission records (based on controller attributes).
         /// </summary>
         [HttpPost("permissions/predefined")]
-        [AllowAnonymous]
         public async Task<IActionResult> CreatePredefinedPermissions()
         {
             _logger.LogInformation("CreatePredefinedPermissions requested");
@@ -277,7 +277,6 @@ namespace MedicineDelivery.API.Controllers
         /// Maps predefined roles to their predefined permission sets.
         /// </summary>
         [HttpPost("role-permissions/predefined")]
-        [AllowAnonymous]
         public async Task<IActionResult> MapPredefinedRolePermissions()
         {
             _logger.LogInformation("MapPredefinedRolePermissions requested");
@@ -360,7 +359,6 @@ namespace MedicineDelivery.API.Controllers
         /// Mobile: 9999999999, Email: admin@medicine.com, Password: Admin@123
         /// </summary>
         [HttpPost("users/admin/firstuser")]
-        [AllowAnonymous]
         public async Task<IActionResult> CreateAdminFirstUser()
         {
             try
@@ -386,7 +384,6 @@ namespace MedicineDelivery.API.Controllers
         /// Mobile: 9999999999, Email: admin@medicine.com, Password: Admin@123
         /// </summary>
         [HttpPost("users/admin")]
-        [AllowAnonymous]
         public async Task<IActionResult> CreateAdminUser()
         {
             try
@@ -411,7 +408,6 @@ namespace MedicineDelivery.API.Controllers
         /// Creates the Manager user with predefined credentials if it does not already exist.
         /// </summary>
         [HttpPost("users/manager")]
-        [AllowAnonymous]
         public async Task<IActionResult> CreateManagerUser()
         {
             try
@@ -436,7 +432,6 @@ namespace MedicineDelivery.API.Controllers
         /// Creates the CustomerSupport user with predefined credentials if it does not already exist.
         /// </summary>
         [HttpPost("users/customer-support")]
-        [AllowAnonymous]
         public async Task<IActionResult> CreateCustomerSupportUser()
         {
             try
@@ -461,7 +456,6 @@ namespace MedicineDelivery.API.Controllers
         /// Creates the Customer user with predefined credentials if it does not already exist.
         /// </summary>
         [HttpPost("users/customer")]
-        [AllowAnonymous]
         public async Task<IActionResult> CreateCustomerUser()
         {
             try
@@ -486,7 +480,6 @@ namespace MedicineDelivery.API.Controllers
         /// Creates the Chemist user with predefined credentials if it does not already exist.
         /// </summary>
         [HttpPost("users/chemist")]
-        [AllowAnonymous]
         public async Task<IActionResult> CreateChemistUser()
         {
             try
@@ -511,7 +504,6 @@ namespace MedicineDelivery.API.Controllers
         /// Finds all customers that do not have a CustomerNumber and assigns them a unique one.
         /// </summary>
         [HttpPost("customers/fix-missing-customer-numbers")]
-        [AllowAnonymous]
         public async Task<IActionResult> FixMissingCustomerNumbers()
         {
             _logger.LogInformation("FixMissingCustomerNumbers requested");

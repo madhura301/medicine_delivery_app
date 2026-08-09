@@ -10,9 +10,15 @@ import 'package:pharmaish/core/services/payment_service.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class PaymentSummaryPage extends StatefulWidget {
+  /// Razorpay payment charges as a share of the medicine bill amount.
+  static const double razorpayChargeRate = 0.02; // 2%
+
   final int orderId; // ← required to record payment
   final double medicinesTotal;
-  final double convenienceFee;
+
+  /// Razorpay payment charges, exclusive of GST. Defaults to
+  /// [razorpayChargeRate] of [medicinesTotal] when the caller doesn't override it.
+  final double? convenienceFee;
   final String? orderNumber;
   final VoidCallback? onPaymentSuccess;
 
@@ -20,7 +26,7 @@ class PaymentSummaryPage extends StatefulWidget {
     super.key,
     required this.orderId,
     required this.medicinesTotal,
-    this.convenienceFee = 20.0,
+    this.convenienceFee,
     this.orderNumber,
     this.onPaymentSuccess,
   });
@@ -44,7 +50,23 @@ class _PaymentSummaryPageState extends State<PaymentSummaryPage> {
   static const Color _green = Color(0xFF16A34A);
   static const Color _payGreen = Color(0xFF22C55E);
 
-  double get totalAmount => widget.medicinesTotal + widget.convenienceFee;
+  /// GST charged on the Razorpay payment charges.
+  static const double _gstRate = 0.18; // 18%
+
+  /// Razorpay payment charges (2% of the bill amount), exclusive of GST.
+  double get razorpayCharges => _round2(widget.convenienceFee ??
+      widget.medicinesTotal * PaymentSummaryPage.razorpayChargeRate);
+
+  /// GST charged on top of [razorpayCharges].
+  double get gstOnRazorpayCharges => _round2(razorpayCharges * _gstRate);
+
+  /// Everything the customer pays over and above the medicine bill.
+  double get totalGatewayCharges => razorpayCharges + gstOnRazorpayCharges;
+
+  double get totalAmount => widget.medicinesTotal + totalGatewayCharges;
+
+  /// Rounds to paise so the displayed rows always add up to the total charged.
+  double _round2(double value) => (value * 100).roundToDouble() / 100;
 
   String _money(double amount) => NumberFormat.currency(
         locale: 'en_IN',
@@ -112,7 +134,9 @@ class _PaymentSummaryPageState extends State<PaymentSummaryPage> {
               children: [
                 _buildMedicineBillRow(),
                 const Divider(height: 28),
-                _buildConvenienceFeeRow(),
+                _buildRazorpayChargesRow(),
+                const Divider(height: 28),
+                _buildGstOnRazorpayChargesRow(),
                 const SizedBox(height: 16),
                 _buildTotalBox(),
               ],
@@ -246,7 +270,7 @@ class _PaymentSummaryPageState extends State<PaymentSummaryPage> {
     );
   }
 
-  Widget _buildConvenienceFeeRow() {
+  Widget _buildRazorpayChargesRow() {
     return _buildAmountRow(
       icon: Icons.account_balance_wallet_outlined,
       iconColor: _green,
@@ -255,7 +279,7 @@ class _PaymentSummaryPageState extends State<PaymentSummaryPage> {
         children: [
           const Flexible(
             child: Text(
-              'Convenience / Payment Processing Fee',
+              'Razorpay Payment Charges',
               style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
             ),
           ),
@@ -274,7 +298,24 @@ class _PaymentSummaryPageState extends State<PaymentSummaryPage> {
           ),
         ),
       ),
-      amount: widget.convenienceFee,
+      amount: razorpayCharges,
+    );
+  }
+
+  Widget _buildGstOnRazorpayChargesRow() {
+    return _buildAmountRow(
+      icon: Icons.receipt_outlined,
+      iconColor: _green,
+      iconBg: Colors.green.shade50,
+      title: const Text(
+        'GST on Razorpay Charges',
+        style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+      ),
+      subtitle: Text(
+        'GST @ 18% on payment gateway charges',
+        style: TextStyle(fontSize: 12.5, color: Colors.grey.shade600),
+      ),
+      amount: gstOnRazorpayCharges,
     );
   }
 
@@ -741,11 +782,12 @@ class _PaymentSummaryPageState extends State<PaymentSummaryPage> {
       context: context,
       builder: (_) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Convenience / Payment Processing Fee'),
+        title: const Text('Razorpay Payment Charges'),
         content: const Text(
-          'This is a small platform fee that covers secure online payment '
-          'processing and facilitation of your offline medicine order. '
-          'The full medicine bill amount is settled to the pharmacy.',
+          'These are the payment gateway charges levied by Razorpay for '
+          'processing your online payment securely — 2% of the bill amount, '
+          'plus 18% GST on those charges. The full medicine bill amount is '
+          'settled to the pharmacy.',
           style: TextStyle(height: 1.4),
         ),
         actions: [
@@ -781,7 +823,8 @@ class _PaymentSummaryPageState extends State<PaymentSummaryPage> {
         orderId: widget.orderId,
         amount: totalAmount,
         billAmount: widget.medicinesTotal,
-        convenienceFee: widget.convenienceFee,
+        // Razorpay charges + GST on them — the full amount collected over the bill.
+        convenienceFee: totalGatewayCharges,
       );
 
       _currentRazorpayOrderId = rzpOrder.razorpayOrderId;

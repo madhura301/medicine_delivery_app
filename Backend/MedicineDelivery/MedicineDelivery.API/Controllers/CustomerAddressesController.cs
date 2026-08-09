@@ -14,13 +14,46 @@ namespace MedicineDelivery.API.Controllers
     {
         private readonly ICustomerAddressService _customerAddressService;
         private readonly IPermissionCheckerService _permissionCheckerService;
+        private readonly IOrderAccessGuard _accessGuard;
         private readonly ILogger<CustomerAddressesController> _logger;
 
-        public CustomerAddressesController(ICustomerAddressService customerAddressService, IPermissionCheckerService permissionCheckerService, ILogger<CustomerAddressesController> logger)
+        public CustomerAddressesController(
+            ICustomerAddressService customerAddressService,
+            IPermissionCheckerService permissionCheckerService,
+            IOrderAccessGuard accessGuard,
+            ILogger<CustomerAddressesController> logger)
         {
             _customerAddressService = customerAddressService;
             _permissionCheckerService = permissionCheckerService;
+            _accessGuard = accessGuard;
             _logger = logger;
+        }
+
+        /// <summary>Current caller's Identity user id.</summary>
+        private string CurrentUserId => User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? string.Empty;
+
+        /// <summary>
+        /// H-01: object-level ownership check. Holding <c>CustomerRead</c> only proves the caller may
+        /// read *their own* customer data — it says nothing about whose record is being requested.
+        /// Every endpoint that accepts a customer or address id must call this before touching data.
+        /// </summary>
+        private async Task<bool> CanAccessCustomerAsync(Guid customerId, CancellationToken ct = default)
+        {
+            var hasFullAccess = await _permissionCheckerService.HasPermissionAsync(User, "AllCustomerRead");
+            return await _accessGuard.CanAccessCustomerRecordAsync(CurrentUserId, hasFullAccess, customerId, ct);
+        }
+
+        /// <summary>
+        /// Resolves the owning customer of an address and verifies the caller may act on it.
+        /// Returns null when the address does not exist so the action can answer 404.
+        /// </summary>
+        private async Task<(bool Found, bool Allowed, CustomerAddressDto? Address)> ResolveAddressAccessAsync(Guid addressId, CancellationToken ct = default)
+        {
+            var address = await _customerAddressService.GetCustomerAddressByIdAsync(addressId);
+            if (address == null) return (false, false, null);
+
+            var allowed = await CanAccessCustomerAsync(address.CustomerId, ct);
+            return (true, allowed, address);
         }
 
         [HttpGet("{id}")]
@@ -29,23 +62,15 @@ namespace MedicineDelivery.API.Controllers
         {
             try
             {
-                var customerAddress = await _customerAddressService.GetCustomerAddressByIdAsync(id);
-                if (customerAddress == null)
+                var (found, allowed, customerAddress) = await ResolveAddressAccessAsync(id);
+                if (!found)
                 {
                     return NotFound(new { error = "Customer address not found." });
                 }
 
-                // Check if user has AllCustomerRead permission or CustomerRead permission
-                var hasAllCustomerRead = await _permissionCheckerService.HasPermissionAsync(User, "AllCustomerRead");
-                var hasCustomerRead = await _permissionCheckerService.HasPermissionAsync(User, "CustomerRead");
-
-                if (!hasAllCustomerRead && hasCustomerRead)
+                if (!allowed)
                 {
-                    // User only has CustomerRead permission, can only access their own addresses
-                    var currentUserId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-                    // We need to check if the address belongs to the current user's customer record
-                    // This would require getting the customer by user ID and checking if the address belongs to them
-                    // For now, we'll implement a basic check - in a real scenario, you might want to add this validation
+                    return Forbid();
                 }
 
                 return Ok(customerAddress);
@@ -63,6 +88,11 @@ namespace MedicineDelivery.API.Controllers
         {
             try
             {
+                if (!await CanAccessCustomerAsync(customerId))
+                {
+                    return Forbid();
+                }
+
                 var customerAddresses = await _customerAddressService.GetCustomerAddressesByCustomerIdAsync(customerId);
                 return Ok(customerAddresses);
             }
@@ -79,6 +109,11 @@ namespace MedicineDelivery.API.Controllers
         {
             try
             {
+                if (!await CanAccessCustomerAsync(customerId))
+                {
+                    return Forbid();
+                }
+
                 var defaultAddress = await _customerAddressService.GetDefaultCustomerAddressAsync(customerId);
                 if (defaultAddress == null)
                 {
@@ -105,6 +140,12 @@ namespace MedicineDelivery.API.Controllers
 
             try
             {
+                // H-01: prevent creating an address on someone else's account.
+                if (!await CanAccessCustomerAsync(request.CustomerId))
+                {
+                    return Forbid();
+                }
+
                 var customerAddress = await _customerAddressService.CreateCustomerAddressAsync(request);
                 return CreatedAtAction(nameof(GetCustomerAddress), new { id = customerAddress.Id }, customerAddress);
             }
@@ -126,6 +167,18 @@ namespace MedicineDelivery.API.Controllers
 
             try
             {
+                // H-01: verify ownership before mutating.
+                var (found, allowed, _) = await ResolveAddressAccessAsync(id);
+                if (!found)
+                {
+                    return NotFound(new { error = "Customer address not found." });
+                }
+
+                if (!allowed)
+                {
+                    return Forbid();
+                }
+
                 var updatedAddress = await _customerAddressService.UpdateCustomerAddressAsync(id, request);
                 if (updatedAddress == null)
                 {
@@ -147,6 +200,18 @@ namespace MedicineDelivery.API.Controllers
         {
             try
             {
+                // H-01: verify ownership before deleting.
+                var (found, allowed, _) = await ResolveAddressAccessAsync(id);
+                if (!found)
+                {
+                    return NotFound(new { error = "Customer address not found." });
+                }
+
+                if (!allowed)
+                {
+                    return Forbid();
+                }
+
                 var result = await _customerAddressService.DeleteCustomerAddressAsync(id);
                 if (result)
                 {
@@ -170,6 +235,11 @@ namespace MedicineDelivery.API.Controllers
         {
             try
             {
+                if (!await CanAccessCustomerAsync(customerId))
+                {
+                    return Forbid();
+                }
+
                 var result = await _customerAddressService.SetDefaultAddressAsync(customerId, addressId);
                 if (result)
                 {

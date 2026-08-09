@@ -1,8 +1,8 @@
 import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:open_filex/open_filex.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:permission_handler/permission_handler.dart';
 import 'package:pharmaish/utils/app_logger.dart';
 import 'package:pharmaish/utils/constants.dart';
 import 'package:pharmaish/utils/storage.dart';
@@ -34,25 +34,16 @@ Future<void> _downloadAuthFile(
   String? fileUrl,
 }) async {
   try {
-    // Request storage permission on Android
-    if (Platform.isAndroid) {
-      final status = await Permission.storage.request();
-      if (!status.isGranted) {
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Storage permission is required to download')),
-          );
-        }
-        return;
-      }
-    }
-
     final token = await StorageService.getAuthToken();
     final fileName = extractFileName(fileUrl);
     final saveName = fileName.isNotEmpty ? fileName : fallbackName;
 
+    // App-specific storage: no storage/media permission is required (the app
+    // declares none), and it works on every Android version under scoped
+    // storage. The file is opened afterwards so the user can view or share it.
     final dir = Platform.isAndroid
-        ? Directory('/storage/emulated/0/Download')
+        ? (await getExternalStorageDirectory() ??
+            await getApplicationDocumentsDirectory())
         : await getApplicationDocumentsDirectory();
 
     final savePath = '${dir.path}/$saveName';
@@ -73,7 +64,14 @@ Future<void> _downloadAuthFile(
 
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Saved to $savePath')),
+        SnackBar(
+          content: Text('Saved to $savePath'),
+          duration: const Duration(seconds: 5),
+          action: SnackBarAction(
+            label: 'Open',
+            onPressed: () => OpenFilex.open(savePath),
+          ),
+        ),
       );
     }
   } catch (e) {

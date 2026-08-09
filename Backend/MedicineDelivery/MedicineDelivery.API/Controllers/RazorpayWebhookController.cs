@@ -19,17 +19,20 @@ namespace MedicineDelivery.API.Controllers
         private readonly IChemistActivationService _activationService;
         private readonly IChemistPayoutService _payoutService;
         private readonly IConfiguration _configuration;
+        private readonly IWebHostEnvironment _environment;
         private readonly ILogger<RazorpayWebhookController> _logger;
 
         public RazorpayWebhookController(
             IChemistActivationService activationService,
             IChemistPayoutService payoutService,
             IConfiguration configuration,
+            IWebHostEnvironment environment,
             ILogger<RazorpayWebhookController> logger)
         {
             _activationService = activationService;
             _payoutService = payoutService;
             _configuration = configuration;
+            _environment = environment;
             _logger = logger;
         }
 
@@ -108,9 +111,20 @@ namespace MedicineDelivery.API.Controllers
             var secret = _configuration["RazorpaySettings:WebhookSecret"];
             if (string.IsNullOrWhiteSpace(secret))
             {
-                // No secret configured (e.g. local dev). Process but warn — do NOT do this in prod.
-                _logger.LogWarning("RazorpaySettings:WebhookSecret not configured; skipping webhook signature check.");
-                return true;
+                // SECURITY: fail CLOSED. Previously this returned true, so with no secret configured
+                // (the case in every deployed environment) ANY unsigned payload was accepted — allowing
+                // forged payment.captured events to mark orders paid. Only Development may skip the check.
+                if (_environment.IsDevelopment())
+                {
+                    _logger.LogWarning("RazorpaySettings:WebhookSecret not configured; skipping signature check (Development only).");
+                    return true;
+                }
+
+                _logger.LogError(
+                    "RazorpaySettings:WebhookSecret is not configured in {Environment}; rejecting webhook. "
+                    + "Set RazorpaySettings__WebhookSecret to enable payment webhooks.",
+                    _environment.EnvironmentName);
+                return false;
             }
 
             var signature = Request.Headers["X-Razorpay-Signature"].FirstOrDefault();

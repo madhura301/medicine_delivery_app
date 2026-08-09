@@ -3,7 +3,7 @@ description: Pharmaish Mobile App
 
 publish_to: 'none'
 
-version: 1.0.0+1
+version: 1.0.1+3
 
 environment:
   sdk: '>=3.0.0 <4.0.0'
@@ -17,10 +17,17 @@ dependencies:
   # Location & Maps
   geolocator: ^9.0.2
   geocoding: ^2.1.1
+  # Map picker (OpenStreetMap tiles — no API key required)
+  flutter_map: ^7.0.2
+  latlong2: ^0.9.1
 
  # File handling
   file_picker: ^8.0.0+1
   image_picker: ^1.0.7
+  # Direct deps so the Android System Photo Picker can be switched on
+  # (ImagePickerAndroid.useAndroidPhotoPicker) - see utils/media_pickers.dart
+  image_picker_android: ^0.8.12
+  image_picker_platform_interface: ^2.10.0
   camera: ^0.10.5+9
   path: ^1.8.3
   path_provider: ^2.1.2
@@ -82,11 +89,11 @@ flutter:
 flutter_launcher_icons:
   android: "launcher_icon"
   ios: true
-  image_path: "assets/images/full_logo_animated.jpeg"
+  image_path: "assets/images/logo_for_opening page.png"
   min_sdk_android: 21
   # iOS app icons must be opaque (no alpha) for the App Store.
   remove_alpha_ios: true
   background_color_ios: "#ffffff"
   web:
     generate: true
-    image_path: "assets/images/full_logo_animated.jpeg"
+    image_path: "assets/images/logo_for_opening page.png"

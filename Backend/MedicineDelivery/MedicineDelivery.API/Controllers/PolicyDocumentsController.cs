@@ -30,6 +30,10 @@ namespace MedicineDelivery.API.Controllers
         /// </summary>
         [HttpPost("upload")]
         [Consumes("multipart/form-data")]
+        // M-07: previously authenticated-only, so any self-registered customer could upload — and,
+        // because same-named files overwrite, replace the publicly served Terms & Conditions or
+        // Privacy Policy. Restricted to holders of ManagePolicyDocuments (Admin).
+        [Authorize(Policy = "RequireManagePolicyDocumentsPermission")]
         public async Task<IActionResult> UploadDocument([FromForm] UploadPolicyDocumentDto uploadDto, CancellationToken cancellationToken)
         {
             if (!ModelState.IsValid)

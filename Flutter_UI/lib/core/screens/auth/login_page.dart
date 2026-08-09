@@ -438,57 +438,6 @@ class _LoginPageState extends State<LoginPage> {
                         ],
                       ),
                       const SizedBox(height: 20),
-
-                      const SizedBox(height: 16),
-
-// Platform Terms Text
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                        child: RichText(
-                          textAlign: TextAlign.center,
-                          text: TextSpan(
-                            style: TextStyle(
-                              color: Colors.grey.shade700,
-                              fontSize: 12,
-                              height: 1.4,
-                            ),
-                            children: [
-                              const TextSpan(
-                                text:
-                                    'By continuing, you allow us to contact you and provide assistance in availing our platform services. ',
-                              ),
-                              TextSpan(
-                                text: 'T&C',
-                                style: const TextStyle(
-                                  color: AppTheme.primaryColor,
-                                  fontWeight: FontWeight.w600,
-                                  decoration: TextDecoration.underline,
-                                ),
-                                recognizer: TapGestureRecognizer()
-                                  ..onTap = _openTermsAndConditions,
-                              ),
-                              const TextSpan(
-                                text: ' * apply and ',
-                              ),
-                              TextSpan(
-                                text: 'Privacy Policy',
-                                style: const TextStyle(
-                                  color: AppTheme.primaryColor,
-                                  fontWeight: FontWeight.w600,
-                                  decoration: TextDecoration.underline,
-                                ),
-                                recognizer: TapGestureRecognizer()
-                                  ..onTap = _openPrivacyPolicy,
-                              ),
-                              const TextSpan(
-                                text: ' apply.',
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-
-                      const SizedBox(height: 20),
                       // Security Notice
                       if (_rememberPassword)
                         Container(
@@ -522,6 +471,78 @@ class _LoginPageState extends State<LoginPage> {
 
                       const SizedBox(height: 20),
                     ],
+                  ),
+                ),
+              ),
+            ),
+
+            // Consent notice pinned outside the scroll view. It used to sit at
+            // the end of the scrolling form, which put it below the fold on
+            // first open — a user who didn't know to scroll never saw the T&C
+            // or Privacy Policy links at all. Pinned here it is visible on any
+            // screen height, right next to the Login button that relies on it.
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 8, 24, 0),
+              child: RichText(
+                textAlign: TextAlign.center,
+                text: TextSpan(
+                  style: TextStyle(
+                    color: Colors.grey.shade700,
+                    fontSize: 12,
+                    height: 1.4,
+                  ),
+                  children: [
+                    const TextSpan(
+                      text:
+                          'By continuing, you allow us to contact you and provide assistance in availing our platform services. ',
+                    ),
+                    TextSpan(
+                      text: 'T&C',
+                      style: const TextStyle(
+                        color: AppTheme.primaryColor,
+                        fontWeight: FontWeight.w600,
+                        decoration: TextDecoration.underline,
+                      ),
+                      recognizer: TapGestureRecognizer()
+                        ..onTap = _openTermsAndConditions,
+                    ),
+                    const TextSpan(
+                      text: ' * apply and ',
+                    ),
+                    TextSpan(
+                      text: 'Privacy Policy',
+                      style: const TextStyle(
+                        color: AppTheme.primaryColor,
+                        fontWeight: FontWeight.w600,
+                        decoration: TextDecoration.underline,
+                      ),
+                      recognizer: TapGestureRecognizer()
+                        ..onTap = _openPrivacyPolicy,
+                    ),
+                    const TextSpan(
+                      text: ' apply.',
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+            // Website link pinned at the bottom so it stays visible without
+            // scrolling the login form.
+            Padding(
+              padding: const EdgeInsets.only(top: 0, bottom: 8),
+              child: Center(
+                child: TextButton.icon(
+                  onPressed: () => _openUrl(AppConstants.websiteUrl),
+                  icon: const Icon(Icons.language,
+                      size: 18, color: AppTheme.primaryColor),
+                  label: const Text(
+                    'Visit pharmaish.com',
+                    style: TextStyle(
+                      color: AppTheme.primaryColor,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
+                    ),
                   ),
                 ),
               ),

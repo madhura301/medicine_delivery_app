@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.Mvc;
 using MedicineDelivery.Application.DTOs;
 using MedicineDelivery.Domain.Interfaces;
@@ -7,6 +8,8 @@ namespace MedicineDelivery.API.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    // C-04: strict per-IP throttling on login / OTP / password-reset.
+    [EnableRateLimiting("auth")]
     public class AuthController : ControllerBase
     {
         private readonly IAuthService _authService;
@@ -85,6 +88,9 @@ namespace MedicineDelivery.API.Controllers
         /// Always returns 200 OK — the response body does not reveal whether the number is registered.
         /// </summary>
         [HttpPost("forgot-password")]
+        // M-03: this endpoint sends a real (chargeable) SMS. The class-level 'auth' limit alone would
+        // still allow thousands of messages a day from one IP, so cap SMS-triggering calls far tighter.
+        [EnableRateLimiting("sms")]
         public async Task<IActionResult> ForgotPassword([FromBody] SendOtpRequestDto request)
         {
             _logger.LogInformation("Forgot-password OTP request for phone: {PhoneNumber}", request.PhoneNumber);

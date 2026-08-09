@@ -8,6 +8,7 @@ import 'package:pharmaish/core/screens/profiles/manager_profile_page.dart';
 import 'package:pharmaish/shared/models/order_model.dart';
 import 'package:pharmaish/core/services/dio_client.dart';
 import 'package:pharmaish/shared/widgets/app_button.dart';
+import 'package:pharmaish/shared/widgets/cancel_order_dialog.dart';
 import 'package:pharmaish/shared/widgets/confirm_dialog.dart';
 
 class ManagerDashboard extends StatefulWidget {
@@ -786,10 +787,47 @@ class _ManagerAllOrdersPageState extends State<_ManagerAllOrdersPage>
                 ],
               ],
             ),
+            if (isOrderCancellable(order)) ...[
+              const SizedBox(height: 10),
+              Align(
+                alignment: Alignment.centerRight,
+                child: OutlinedButton.icon(
+                  onPressed: () => _cancelOrder(order),
+                  icon: const Icon(Icons.cancel_outlined, size: 16),
+                  label: const Text('Cancel Order',
+                      style: TextStyle(
+                          fontSize: 13, fontWeight: FontWeight.w600)),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.red.shade700,
+                    side: BorderSide(color: Colors.red.shade700, width: 1.5),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 14, vertical: 8),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8)),
+                  ),
+                ),
+              ),
+            ],
           ],
         ),
       ),
     );
+  }
+
+  Future<void> _cancelOrder(OrderModel order) async {
+    final cancelled = await showCancelOrderDialog(context, order: order);
+    if (cancelled) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Order cancelled'),
+            backgroundColor: Colors.green.shade700,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+      await _loadOrders();
+    }
   }
 }
 

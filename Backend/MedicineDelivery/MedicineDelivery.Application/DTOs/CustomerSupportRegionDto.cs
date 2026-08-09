@@ -44,7 +44,8 @@ namespace MedicineDelivery.Application.DTOs
 
     public class AssignCustomerSupportRegionDto
     {
-        public int ServiceRegionId { get; set; }
+        /// <summary>Region to assign; null clears the customer support's region.</summary>
+        public int? ServiceRegionId { get; set; }
         public Guid CustomerSupportId { get; set; }
     }
 
@@ -56,7 +57,8 @@ namespace MedicineDelivery.Application.DTOs
 
     public class AssignDeliveryRegionDto
     {
-        public int ServiceRegionId { get; set; }
+        /// <summary>Region to assign; null clears the delivery's region.</summary>
+        public int? ServiceRegionId { get; set; }
         public int DeliveryId { get; set; }
     }
 

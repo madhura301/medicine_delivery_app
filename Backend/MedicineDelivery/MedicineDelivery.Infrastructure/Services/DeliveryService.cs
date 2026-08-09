@@ -1,5 +1,7 @@
+using MedicineDelivery.Domain.Constants;
 using AutoMapper;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using MedicineDelivery.Application.DTOs;
 using MedicineDelivery.Application.Interfaces;
@@ -34,14 +36,14 @@ namespace MedicineDelivery.Infrastructure.Services
                 throw new ArgumentException("MobileNumber is required to create a delivery boy.");
             }
 
-            if (string.IsNullOrWhiteSpace(createDto.Password))
-            {
-                _logger.LogWarning("CreateDeliveryAsync failed: Password is required");
-                throw new ArgumentException("Password is required to create a delivery boy.");
-            }
+            // Delivery boys are ALWAYS created with the standard staff default password.
+            // Any client-supplied password is intentionally ignored.
+            var password = DefaultCredentials.StaffPassword;
 
-            // Check if user with this mobile number already exists
-            var existingUser = await _userManager.FindByNameAsync(createDto.MobileNumber);
+            // Check if user with this mobile number already exists (as username or as phone
+            // number under any role) so mobile numbers stay globally unique.
+            var existingUser = await _userManager.FindByNameAsync(createDto.MobileNumber)
+                ?? await _userManager.Users.FirstOrDefaultAsync(u => u.PhoneNumber == createDto.MobileNumber);
             if (existingUser != null)
             {
                 _logger.LogWarning("CreateDeliveryAsync failed: User with mobile number {MobileNumber} already exists", createDto.MobileNumber);
@@ -93,7 +95,7 @@ namespace MedicineDelivery.Infrastructure.Services
                     EmailConfirmed = true
                 };
 
-                var userResult = await _userManager.CreateAsync(identityUser, createDto.Password);
+                var userResult = await _userManager.CreateAsync(identityUser, password);
                 if (!userResult.Succeeded)
                 {
                     await _unitOfWork.RollbackTransactionAsync();

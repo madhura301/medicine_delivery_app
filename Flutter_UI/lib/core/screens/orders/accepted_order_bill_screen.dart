@@ -84,6 +84,8 @@ class _AcceptedOrderBillScreenState extends State<AcceptedOrderBillScreen> {
 
   Future<void> _pickFile() async {
     try {
+      // FileType.any routes through the system document picker
+      // (ACTION_OPEN_DOCUMENT / SAF) - no storage permission required.
       FilePickerResult? result = await FilePicker.platform.pickFiles(
         type: FileType.any,
         allowMultiple: false,

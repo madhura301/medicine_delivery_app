@@ -7,7 +7,7 @@ class PaymentSummaryDialog {
     BuildContext context, {
     required int orderId ,
     required double medicinesTotal,
-    double convenienceFee = 20.0,
+    double? convenienceFee,
     String? orderNumber,
     VoidCallback? onPaymentSuccess,
   }) async {

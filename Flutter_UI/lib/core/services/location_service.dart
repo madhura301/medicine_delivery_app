@@ -103,6 +103,13 @@ class LocationService {
     }
   }
 
+  /// Reverse-geocode arbitrary coordinates (e.g. a point the user picked on a
+  /// map) into a [LocationResult] with the same structured address fields the
+  /// GPS flow produces.
+  Future<LocationResult> getAddressFromCoordinates(double lat, double lng) {
+    return _getAddressComponents(lat, lng);
+  }
+
   /// Get address components from coordinates
   Future<LocationResult> _getAddressComponents(double lat, double lng) async {
     try {

@@ -1,12 +1,12 @@
 # Medicine Delivery App (Pharmaish)
 
-Multi-platform medicine delivery management system with .NET 8 backend, React 19 web app, and Flutter mobile app.
+Multi-platform medicine delivery management system with .NET 10 backend, React 19 web app, and Flutter mobile app.
 
 ## Project Structure
 
 ```
 medicine_delivery_app/
-├── Backend/MedicineDelivery/     # .NET 8 Clean Architecture backend
+├── Backend/MedicineDelivery/     # .NET 10 Clean Architecture backend
 │   ├── MedicineDelivery.API/     # REST API (controllers, middleware, auth)
 │   ├── MedicineDelivery.Application/  # Use cases (CQRS, DTOs, validators)
 │   ├── MedicineDelivery.Domain/  # Core entities, enums, interfaces
@@ -37,7 +37,7 @@ Six roles with permission-based access control:
 
 ## Quick Commands
 
-### Backend (.NET 8)
+### Backend (.NET 10)
 ```bash
 cd Backend/MedicineDelivery
 dotnet restore
@@ -95,7 +95,7 @@ API → Application → Domain ← Infrastructure
 
 | Layer | Stack |
 |-------|-------|
-| Backend | C# .NET 8, EF Core, PostgreSQL, MediatR, AutoMapper, FluentValidation, Serilog |
+| Backend | C# .NET 10, EF Core, PostgreSQL, MediatR, AutoMapper, FluentValidation, Serilog |
 | Web | React 19, TypeScript, Vite, MobX, MUI v7, Axios, React Hook Form, Yup |
 | Mobile | Flutter/Dart, BLoC, Dio, Geolocator |
 | Auth | JWT Bearer tokens, ASP.NET Core Identity |

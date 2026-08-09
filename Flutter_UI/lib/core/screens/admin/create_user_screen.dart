@@ -4,7 +4,11 @@
 
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
+import 'package:pharmaish/core/services/location_service.dart';
+import 'package:pharmaish/core/theme/app_theme.dart';
+import 'package:pharmaish/shared/widgets/app_button.dart';
 import 'package:pharmaish/shared/widgets/app_snackbar.dart';
+import 'package:pharmaish/shared/widgets/map_location_picker_page.dart';
 import 'package:pharmaish/utils/app_logger.dart';
 
 class CreateUserScreen extends StatefulWidget {
@@ -18,7 +22,15 @@ class CreateUserScreen extends StatefulWidget {
 
 class _CreateUserScreenState extends State<CreateUserScreen> {
   final _formKey = GlobalKey<FormState>();
-  
+
+  // Store geolocation (Chemist role only). Orders are matched to a chemist by a
+  // 5 km radius search that only considers stores with coordinates, so a store
+  // saved without these can never be assigned an order — hence they are required.
+  final LocationService _locationService = LocationService();
+  double? _storeLatitude;
+  double? _storeLongitude;
+  String _storeLocationText = 'No location selected';
+
   // Role selection
   String? _selectedRole;
   final List<Map<String, dynamic>> _roles = [
@@ -64,6 +76,9 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
 
   // Customer specific fields
   final _dobController = TextEditingController();
+  // Holds the picked date so we always send a valid ISO-8601 value to the API.
+  // Never parse _dobController.text — it is display-only.
+  DateTime? _selectedDob;
 
   // Customer Support specific fields
   final _employeeIdController = TextEditingController();
@@ -170,7 +185,7 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
             'customerFirstName': _firstNameController.text.trim(),
             'customerLastName': _lastNameController.text.trim(),
             'gender': _selectedGender,
-            'dateOfBirth': _dobController.text.isNotEmpty ? _dobController.text : null,
+            'dateOfBirth': _selectedDob!.toIso8601String(),
             'isActive': true,
           };
           break;
@@ -193,8 +208,17 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
           break;
 
         case 'Chemist':
+          // Without coordinates the store is invisible to the nearest-chemist
+          // radius search and will never receive an order, so refuse to create it.
+          if (_storeLatitude == null || _storeLongitude == null) {
+            setState(() => _isLoading = false);
+            _showError('Please set the store location before creating a chemist');
+            return;
+          }
           endpoint = '/MedicalStores/register';
           userData = {
+            'latitude': _storeLatitude,
+            'longitude': _storeLongitude,
             'medicalName': _medicalNameController.text.trim(),
             'ownerFirstName': _firstNameController.text.trim(),
             'ownerLastName': _lastNameController.text.trim(),
@@ -813,20 +837,48 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
     );
   }
 
+  Future<void> _selectDateOfBirth() async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: _selectedDob ?? DateTime(2000),
+      firstDate: DateTime(1900),
+      lastDate: DateTime.now(),
+    );
+
+    if (picked != null) {
+      setState(() {
+        _selectedDob = picked;
+        // Display only — the payload uses _selectedDob.toIso8601String().
+        _dobController.text =
+            '${picked.year.toString().padLeft(4, '0')}-${picked.month.toString().padLeft(2, '0')}-${picked.day.toString().padLeft(2, '0')}';
+      });
+    }
+  }
+
   Widget _buildCustomerFields() {
     return Column(
       children: [
         TextFormField(
           controller: _dobController,
+          // Read-only + picker: TextInputType.datetime shows a digits-only
+          // keypad on Android, so a hand-typed value could never contain the
+          // dashes the API needs. Mirrors register_customer_page.dart.
+          readOnly: true,
+          onTap: _selectDateOfBirth,
           decoration: InputDecoration(
-            labelText: 'Date of Birth (Optional)',
+            labelText: 'Date of Birth *',
             prefixIcon: const Icon(Icons.calendar_today),
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
             filled: true,
             fillColor: Colors.grey.shade50,
-            hintText: 'YYYY-MM-DD',
+            hintText: 'Tap to select date',
           ),
-          keyboardType: TextInputType.datetime,
+          // POST /Customers binds to CreateCustomerDto, whose DateOfBirth is a
+          // non-nullable DateTime — sending null fails deserialization with the
+          // same 400 a free-text value did. So the date is required, matching
+          // register_customer_page.dart.
+          validator: (_) =>
+              _selectedDob == null ? 'Please select a date of birth' : null,
         ),
       ],
     );
@@ -992,6 +1044,163 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
     );
   }
 
+  // =========================================================================
+  // STORE GEOLOCATION (Chemist role)
+  // =========================================================================
+
+  Future<void> _checkStoreLocationAndRequest() async {
+    final isAvailable = await _locationService.isLocationServiceAvailable();
+
+    if (!isAvailable) {
+      final granted = await _locationService.requestLocationPermission();
+      if (granted != true) {
+        if (mounted) {
+          setState(() => _storeLocationText =
+              'Location permission denied — use "Pick on Map" instead');
+        }
+        return;
+      }
+    }
+    await _getCurrentStoreLocation();
+  }
+
+  Future<void> _getCurrentStoreLocation() async {
+    setState(() => _storeLocationText = 'Getting location...');
+
+    try {
+      final LocationResult result = await _locationService.getCurrentLocation(
+        includeAddress: true,
+        timeLimit: const Duration(seconds: 20),
+      );
+      AppLogger.info(
+          'Store location result: ${result.latitude}, ${result.longitude} - ${result.address}');
+      if (!mounted) return;
+      setState(() {
+        if (result.isValid) {
+          _applyStoreLocationResult(result);
+        } else {
+          _storeLocationText =
+              result.error ?? 'Unable to get location — try "Pick on Map"';
+        }
+      });
+    } catch (e) {
+      AppLogger.error('Store location error: $e');
+      if (mounted) {
+        setState(() => _storeLocationText =
+            'Could not get location — try "Pick on Map"');
+      }
+    }
+  }
+
+  /// Lets the admin drop a pin anywhere on a map — needed when creating a store
+  /// they are not physically standing in, which is the normal case here.
+  Future<void> _pickStoreOnMap() async {
+    final result = await pickLocationOnMap(
+      context,
+      initialLatitude: _storeLatitude,
+      initialLongitude: _storeLongitude,
+    );
+    if (result == null || !mounted) return;
+    setState(() => _applyStoreLocationResult(result));
+  }
+
+  /// Stores the coordinates and auto-fills the address fields. Call inside setState.
+  void _applyStoreLocationResult(LocationResult result) {
+    _storeLatitude = result.latitude;
+    _storeLongitude = result.longitude;
+
+    if (result.street != null && result.street!.isNotEmpty) {
+      _addressLine1Controller.text = result.street!;
+    }
+    if (result.locality != null && result.locality!.isNotEmpty) {
+      _addressLine2Controller.text = result.locality!;
+    }
+    if (result.city != null && result.city!.isNotEmpty) {
+      _cityController.text = result.city!;
+    }
+    if (result.state != null && result.state!.isNotEmpty) {
+      _stateController.text = result.state!;
+    }
+    if (result.postalCode != null && result.postalCode!.isNotEmpty) {
+      _postalCodeController.text = result.postalCode!;
+    }
+
+    final coords = 'Lat: ${result.latitude.toStringAsFixed(6)}, '
+        'Long: ${result.longitude.toStringAsFixed(6)}';
+    _storeLocationText = result.address != null && result.address!.isNotEmpty
+        ? '${result.address}\n$coords'
+        : 'Location selected\n$coords';
+
+    AppLogger.info('Store address auto-populated from location');
+  }
+
+  Widget _buildStoreLocationPicker() {
+    final hasLocation = _storeLatitude != null && _storeLongitude != null;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        border: Border.all(
+            color: hasLocation ? AppTheme.primaryColor : Colors.red.shade300),
+        borderRadius: BorderRadius.circular(10),
+        color: Colors.grey.shade50,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.map,
+                  color:
+                      hasLocation ? AppTheme.primaryColor : Colors.red.shade400),
+              const SizedBox(width: 8),
+              const Text(
+                'Store Location *',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Orders are routed to the nearest store, so coordinates are required. '
+            'Selecting a location also fills in the address fields below.',
+            style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            _storeLocationText,
+            style: TextStyle(
+              color: hasLocation ? Colors.black : Colors.grey.shade600,
+            ),
+          ),
+          const SizedBox(height: 12),
+          ElevatedButton.icon(
+            onPressed: _checkStoreLocationAndRequest,
+            icon: const Icon(Icons.my_location),
+            label: Text(hasLocation
+                ? 'Update to Current Location'
+                : 'Use Current Location'),
+            style: AppButton.primary(),
+          ),
+          const SizedBox(height: 8),
+          OutlinedButton.icon(
+            onPressed: _pickStoreOnMap,
+            icon: const Icon(Icons.map_outlined),
+            label: const Text('Pick on Map'),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: AppTheme.primaryColor,
+              side: const BorderSide(color: AppTheme.primaryColor),
+              minimumSize: const Size(double.infinity, 48),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildChemistFields() {
     return Column(
       children: [
@@ -1028,7 +1237,12 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
           },
         ),
         const SizedBox(height: 16),
-        
+
+        // Store Location — placed above the address fields because selecting a
+        // location auto-fills them.
+        _buildStoreLocationPicker(),
+        const SizedBox(height: 16),
+
         // Address Line 1
         TextFormField(
           controller: _addressLine1Controller,

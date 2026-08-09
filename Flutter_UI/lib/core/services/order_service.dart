@@ -67,6 +67,17 @@ class OrderService {
     });
   }
 
+  /// PUT /Orders/{orderId}/cancel — manager / customer support cancels an
+  /// order with a mandatory reason (backend policy: CancelOrders).
+  static Future<void> cancelOrder({
+    required String orderId,
+    required String cancellationReason,
+  }) async {
+    await _dio.put('/Orders/$orderId/cancel', data: {
+      'CancellationReason': cancellationReason,
+    });
+  }
+
   /// POST /Orders/{orderId}/upload-bill — chemist uploads a bill (multipart).
   static Future<void> uploadBill({
     required String orderId,

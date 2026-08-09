@@ -57,8 +57,22 @@ test.describe('Auth API', () => {
     }
 
     test('rejects a wrong password with 400 and success=false', async ({ api }) => {
+      // Uses a THROWAWAY account, never a shared seeded one: account lockout is now
+      // enforced (security finding C-04, lockoutOnFailure: true), so repeatedly failing
+      // a login against e.g. the admin account would lock it and break every other spec.
+      const n = Date.now().toString().slice(-9) + Math.floor(Math.random() * 100);
+      const mobileNumber = `95${n.slice(0, 8)}`;
+      const reg = await api.post('/api/customers/register', {
+        data: {
+          customerFirstName: 'Wrong', customerLastName: 'Pass',
+          mobileNumber, password: 'Correct@123',
+          emailId: `wrongpass_${n}@example.com`, dateOfBirth: '1991-03-03T00:00:00Z',
+        },
+      });
+      expect(reg.status(), await reg.text()).toBe(201);
+
       const res = await api.post('/api/auth/login', {
-        data: { mobileNumber: credentials.admin.mobileNumber, password: 'WrongPassword!1', stayLoggedIn: false },
+        data: { mobileNumber, password: 'WrongPassword!1', stayLoggedIn: false },
       });
       expect(res.status()).toBe(400);
       const body = await res.json();

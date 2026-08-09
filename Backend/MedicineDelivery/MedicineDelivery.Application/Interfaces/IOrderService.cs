@@ -17,6 +17,7 @@ namespace MedicineDelivery.Application.Interfaces
         Task<OrderDto> AcceptOrderByChemistAsync(int orderId, CancellationToken cancellationToken = default);
         Task<OrderDto> RejectOrderByChemistAsync(int orderId, RejectOrderDto rejectDto, CancellationToken cancellationToken = default);
         Task<OrderDto> CompleteOrderAsync(int orderId, CompleteOrderDto completeDto, CancellationToken cancellationToken = default);
+        Task<OrderDto> CancelOrderAsync(int orderId, CancelOrderDto cancelDto, CancellationToken cancellationToken = default);
         Task<OrderDto> AssignOrderToMedicalStoreAsync(AssignOrderDto assignDto, CancellationToken cancellationToken = default);
         Task AssignOrderToNearestChemist(int orderId);
         Task<OrderDto> UploadOrderBillAsync(UploadOrderBillDto uploadDto, CancellationToken cancellationToken = default);
@@ -26,6 +27,8 @@ namespace MedicineDelivery.Application.Interfaces
         Task<IEnumerable<MedicalStoreBasicDto>> GetMedicalStoresByOrderCityAsync(int orderId, CancellationToken cancellationToken = default);
         Task<IEnumerable<OrderDto>> AssignedToCustomerSupportByCustomerSupportIdAsync(Guid customerSupportId, CancellationToken cancellationToken = default);
         Task<IEnumerable<OrderDto>> GetAllOrdersByCustomerSupportIdAsync(Guid customerSupportId, CancellationToken cancellationToken = default);
+        Task<IEnumerable<OrderDto>> AssignedToManagerByManagerIdAsync(Guid managerId, CancellationToken cancellationToken = default);
+        Task<IEnumerable<OrderDto>> GetAllOrdersByManagerIdAsync(Guid managerId, CancellationToken cancellationToken = default);
         Task<IEnumerable<DeliveryDto>> GetEligibleDeliveryBoysByOrderIdAsync(int orderId, CancellationToken cancellationToken = default);
         Task<IEnumerable<OrderDto>> GetOrdersByDeliveryIdAsync(int deliveryId, CancellationToken cancellationToken = default);
         Task<IEnumerable<MedicalStoreBasicDto>> GetMedicalStoresByOrderPinCodeAsync(int orderId, CancellationToken cancellationToken = default);

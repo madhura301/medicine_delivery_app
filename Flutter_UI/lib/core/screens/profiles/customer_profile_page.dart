@@ -6,6 +6,7 @@ import 'package:pharmaish/core/theme/app_theme.dart';
 import 'package:pharmaish/shared/models/customer_profile_dtos.dart';
 import 'package:pharmaish/shared/widgets/app_button.dart';
 import 'package:pharmaish/shared/widgets/app_snackbar.dart';
+import 'package:pharmaish/shared/widgets/map_location_picker_page.dart';
 import 'package:pharmaish/utils/app_logger.dart';
 import 'dart:convert';
 
@@ -1286,40 +1287,11 @@ class _AddAddressDialogState extends State<AddAddressDialog> {
       );
       AppLogger.info(
           'Location result: ${result.latitude}, ${result.longitude} - ${result.address}');
+      if (!mounted) return;
       setState(() {
         _isFetchingLocation = false;
-
         if (result.isValid) {
-          // Auto-populate fields with location data
-          if (result.street != null && result.street!.isNotEmpty) {
-            _addressLine1Controller.text = result.street!;
-          }
-
-          if (result.locality != null && result.locality!.isNotEmpty) {
-            _addressLine2Controller.text = result.locality!;
-          }
-
-          if (result.city != null && result.city!.isNotEmpty) {
-            _cityController.text = result.city!;
-          }
-
-          if (result.state != null && result.state!.isNotEmpty) {
-            _stateController.text = result.state!;
-          }
-
-          if (result.postalCode != null && result.postalCode!.isNotEmpty) {
-            _postalCodeController.text = result.postalCode!;
-          }
-
-           // ✅ Store lat/lng from GPS
-          _latitude = result.latitude;
-          _longitude = result.longitude;
-
-          _locationMessage = '📍 Location captured!\n'
-              'Lat: ${result.latitude.toStringAsFixed(6)}, '
-              'Long: ${result.longitude.toStringAsFixed(6)}';
-
-          AppLogger.info('Address auto-populated from GPS location');
+          _applyLocationResult(result);
         } else {
           _locationMessage = result.error ?? 'Unable to get location';
         }
@@ -1331,6 +1303,45 @@ class _AddAddressDialogState extends State<AddAddressDialog> {
       });
       AppLogger.error('Location error in AddAddressDialog: $e');
     }
+  }
+
+  /// Lets the user pick any point on a map, then fills the address fields from
+  /// the chosen coordinates (same handling as the GPS flow).
+  Future<void> _pickOnMap() async {
+    final result = await pickLocationOnMap(
+      context,
+      initialLatitude: _latitude,
+      initialLongitude: _longitude,
+    );
+    if (result == null || !mounted) return;
+    setState(() => _applyLocationResult(result));
+  }
+
+  /// Auto-fills the address fields and stores the coordinates from a resolved
+  /// location. Call inside setState.
+  void _applyLocationResult(LocationResult result) {
+    if (result.street != null && result.street!.isNotEmpty) {
+      _addressLine1Controller.text = result.street!;
+    }
+    if (result.locality != null && result.locality!.isNotEmpty) {
+      _addressLine2Controller.text = result.locality!;
+    }
+    if (result.city != null && result.city!.isNotEmpty) {
+      _cityController.text = result.city!;
+    }
+    if (result.state != null && result.state!.isNotEmpty) {
+      _stateController.text = result.state!;
+    }
+    if (result.postalCode != null && result.postalCode!.isNotEmpty) {
+      _postalCodeController.text = result.postalCode!;
+    }
+
+    _latitude = result.latitude;
+    _longitude = result.longitude;
+
+    _locationMessage = '📍 Location captured!\n'
+        'Lat: ${result.latitude.toStringAsFixed(6)}, '
+        'Long: ${result.longitude.toStringAsFixed(6)}';
   }
 
   @override
@@ -1379,6 +1390,20 @@ class _AddAddressDialogState extends State<AddAddressDialog> {
                           backgroundColor: AppTheme.primaryColor,
                           foregroundColor: Colors.white,
                           minimumSize: const Size(double.infinity, 48),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      OutlinedButton.icon(
+                        onPressed: _isFetchingLocation ? null : _pickOnMap,
+                        icon: const Icon(Icons.map_outlined),
+                        label: const Text('Pick on Map'),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: AppTheme.primaryColor,
+                          minimumSize: const Size(double.infinity, 48),
+                          side: const BorderSide(color: AppTheme.primaryColor),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(8),
                           ),

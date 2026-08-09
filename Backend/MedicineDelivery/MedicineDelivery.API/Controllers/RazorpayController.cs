@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using MedicineDelivery.Application.DTOs;
 using MedicineDelivery.Application.Interfaces;
 using MedicineDelivery.Domain.Interfaces;
+using System.Security.Claims;
 
 namespace MedicineDelivery.API.Controllers
 {
@@ -12,12 +13,21 @@ namespace MedicineDelivery.API.Controllers
     {
         private readonly IRazorpayService _razorpayService;
         private readonly IPaymentService _paymentService;
+        private readonly IOrderAccessGuard _accessGuard;
+        private readonly IPermissionCheckerService _permissionChecker;
         private readonly ILogger<RazorpayController> _logger;
 
-        public RazorpayController(IRazorpayService razorpayService, IPaymentService paymentService, ILogger<RazorpayController> logger)
+        public RazorpayController(
+            IRazorpayService razorpayService,
+            IPaymentService paymentService,
+            IOrderAccessGuard accessGuard,
+            IPermissionCheckerService permissionChecker,
+            ILogger<RazorpayController> logger)
         {
             _razorpayService = razorpayService;
             _paymentService = paymentService;
+            _accessGuard = accessGuard;
+            _permissionChecker = permissionChecker;
             _logger = logger;
         }
 
@@ -104,9 +114,20 @@ namespace MedicineDelivery.API.Controllers
         /// Returns how the captured payment for an order was split between the chemist and Pharmaish.
         /// </summary>
         [HttpGet("payment-split/{orderId:int}")]
-        [Authorize]
+        // H-01: order ids are sequential, so a bare [Authorize] let any logged-in user enumerate
+        // per-order commercial data. Require an order-read permission AND party-to-the-order status.
+        [Authorize(Policy = "RequireOrderReadPermission")]
         public async Task<IActionResult> GetPaymentSplit(int orderId, CancellationToken ct)
         {
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? string.Empty;
+            var hasFullAccess = await _permissionChecker.HasPermissionAsync(User, "ListAllOrders");
+
+            if (!await _accessGuard.CanAccessOrderAsync(userId, hasFullAccess, orderId, ct))
+            {
+                _logger.LogWarning("Payment-split access denied: UserId {UserId} for Order {OrderId}", userId, orderId);
+                return Forbid();
+            }
+
             var split = await _paymentService.GetPaymentSplitAsync(orderId, ct);
             if (split == null)
                 return NotFound(new { message = "No payment split found for this order." });

@@ -118,21 +118,29 @@ class RegionService {
     return Map<String, dynamic>.from(response.data as Map);
   }
 
-  /// DELETE /CustomerSupportRegions/{regionId} — delete a service region.
-  /// NOTE: endpoint path is `/CustomerSupportRegions/...` (legacy), not
-  /// `/ServiceRegions/...`. Preserve as-is until backend confirms.
+  /// DELETE /ServiceRegions/{regionId} — delete a service region.
+  ///
+  /// This used to call `/CustomerSupportRegions/{id}`, assumed to be a legacy
+  /// path. There is no such route: the controller file is named
+  /// CustomerSupportRegionsController.cs but the class is ServiceRegionsController
+  /// with `[Route("api/ServiceRegions")]`, so every delete returned 404. Every
+  /// other method in this service already used /ServiceRegions.
   static Future<void> deleteRegion(int regionId) async {
-    await _dio.delete('/CustomerSupportRegions/$regionId');
+    await _dio.delete('/ServiceRegions/$regionId');
   }
 
-  /// PUT /Deliveries/{personId} — set delivery boy's service region.
+  /// POST /ServiceRegions/assign-delivery — set delivery boy's service region.
   /// Pass [serviceRegionId] = null to unassign.
+  ///
+  /// [deliveryId] is the integer `id` of the Delivery record (DeliveryDto.id),
+  /// not the delivery boy's user GUID.
   static Future<void> setDeliveryBoyServiceRegion({
-    required String personId,
+    required int deliveryId,
     required int? serviceRegionId,
   }) async {
-    await _dio.put('/Deliveries/$personId', data: {
-      'serviceRegionId': serviceRegionId,
+    await _dio.post('/ServiceRegions/assign-delivery', data: {
+      'ServiceRegionId': serviceRegionId,
+      'DeliveryId': deliveryId,
     });
   }
 }

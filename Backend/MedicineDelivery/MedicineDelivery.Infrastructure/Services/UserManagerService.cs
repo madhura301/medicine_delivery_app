@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using MedicineDelivery.Domain.Interfaces;
 using MedicineDelivery.Infrastructure.Data;
@@ -22,6 +23,18 @@ namespace MedicineDelivery.Infrastructure.Services
             return user != null ? new ApplicationUserWrapper(user) : null;
         }
 
+        public async Task<IApplicationUser?> FindByPhoneNumberAsync(string phoneNumber)
+        {
+            if (string.IsNullOrWhiteSpace(phoneNumber))
+            {
+                return null;
+            }
+
+            var user = await _userManager.Users
+                .FirstOrDefaultAsync(u => u.PhoneNumber == phoneNumber);
+            return user != null ? new ApplicationUserWrapper(user) : null;
+        }
+
         public async Task<MedicineDelivery.Domain.Interfaces.IdentityResult> CreateAsync(IApplicationUser user, string password)
         {
             var appUser = new Domain.Entities.ApplicationUser
@@ -37,10 +50,13 @@ namespace MedicineDelivery.Infrastructure.Services
 
             var result = await _userManager.CreateAsync(appUser, password);
             
-            // Update the user ID in the wrapper
+            // Write the generated Id back through the IApplicationUser interface.
+            // (A hard cast to ApplicationUserWrapper here threw InvalidCastException
+            // for callers that pass a different IApplicationUser implementation, e.g.
+            // the /api/users register & create-with-role handlers' ApplicationUserImpl.)
             if (result.Succeeded)
             {
-                ((ApplicationUserWrapper)user).Id = appUser.Id;
+                user.Id = appUser.Id;
             }
             else
             {

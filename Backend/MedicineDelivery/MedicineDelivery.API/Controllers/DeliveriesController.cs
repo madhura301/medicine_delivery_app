@@ -62,7 +62,9 @@ namespace MedicineDelivery.API.Controllers
         /// </summary>
         /// <returns>List of deliveries</returns>
         [HttpGet]
-        [Authorize(Policy = "RequireOrderReadPermission")]
+        // H-01: the full delivery-partner roster (names, mobiles, licence numbers) is staff-only.
+        // ReadOrders is held by customers so they can see their own orders — it must not gate this.
+        [Authorize(Policy = "RequireDeliveryReadPermission")]
         public async Task<ActionResult<IEnumerable<DeliveryDto>>> GetAllDeliveries()
         {
             try

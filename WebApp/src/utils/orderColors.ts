@@ -8,6 +8,8 @@ export const ORDER_STATUS_COLORS: Record<number, string> = {
   6: '#FF5722', // Out for Delivery - deep orange
   7: '#4CAF50', // Completed - green
   8: '#607D8B', // Assigned to Customer Support - grey-blue
+  9: '#00897B', // Assigned to Manager - teal
+  10: '#9E9E9E', // Cancelled - grey
 };
 
 export function getStatusColor(status: number): string {

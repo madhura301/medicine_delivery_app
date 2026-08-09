@@ -12,6 +12,7 @@ namespace MedicineDelivery.Application.DTOs
         public decimal BillAmount { get; set; }
         public decimal ConvenienceFee { get; set; }
         public decimal PlatformFee { get; set; }
+        public decimal PlatformFeeGst { get; set; }
         public decimal ChemistAmount { get; set; }
         public decimal PharmaishAmount { get; set; }
         public string? RazorpayTransferId { get; set; }

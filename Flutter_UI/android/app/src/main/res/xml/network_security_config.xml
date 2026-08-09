@@ -1,12 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <network-security-config>
-    <!-- Cleartext (HTTP) traffic is blocked app-wide by default. -->
+    <!-- Cleartext (HTTP) traffic is blocked app-wide. Every environment in
+         lib/config/environment_config.dart is now served over HTTPS, so no
+         per-domain exceptions are needed. Do not add one back for a production
+         domain - Google Play flags cleartext traffic during review. -->
     <base-config cleartextTrafficPermitted="false" />
-
-    <!-- TEMPORARY exception: production API is still served over HTTP.
+    
+     <!-- TEMPORARY exception: production API is still served over HTTP.
          Remove this once MediMartAPIProd is migrated to HTTPS
          (see lib/config/environment_config.dart _prodApiBaseUrl). -->
-    <domain-config cleartextTrafficPermitted="true">
+    <!-- <domain-config cleartextTrafficPermitted="true">
         <domain includeSubdomains="false">188.241.187.172</domain>
-    </domain-config>
+    </domain-config> -->
+    
 </network-security-config>

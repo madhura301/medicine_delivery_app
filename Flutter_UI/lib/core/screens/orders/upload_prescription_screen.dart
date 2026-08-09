@@ -1,6 +1,5 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:file_picker/file_picker.dart';
 import 'package:pharmaish/core/services/order_service.dart';
 import 'package:pharmaish/core/services/customer_service.dart';
 import 'package:pharmaish/shared/models/order_enums.dart';
@@ -10,7 +9,11 @@ import 'package:pharmaish/shared/widgets/app_snackbar.dart';
 import 'package:pharmaish/shared/widgets/step_progress_indicator.dart';
 import 'package:pharmaish/shared/widgets/address_selector_widget.dart';
 import 'package:pharmaish/utils/consent_manager.dart';
+import 'package:pharmaish/utils/media_pickers.dart';
 import 'package:pharmaish/utils/order_exceptions.dart';
+
+/// Where the user takes the prescription file from on the upload screen.
+enum _PrescriptionSource { photo, pdf }
 
 class UploadPrescriptionScreen extends StatefulWidget {
   final String customerId;
@@ -83,22 +86,60 @@ class _UploadPrescriptionScreenState extends State<UploadPrescriptionScreen> {
     super.dispose();
   }
 
+  /// Lets the user choose where the prescription comes from. Photos go through
+  /// the system photo picker and PDFs through the system document picker, so
+  /// the app never needs media or storage permissions.
   Future<void> _pickFile() async {
-    try {
-      FilePickerResult? result = await FilePicker.platform.pickFiles(
-        type: FileType.custom,
-        allowedExtensions: ['pdf', 'jpg', 'jpeg', 'png'],
-        allowMultiple: false,
-      );
+    final source = await showModalBottomSheet<_PrescriptionSource>(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Padding(
+              padding: EdgeInsets.fromLTRB(20, 20, 20, 8),
+              child: Text(
+                'Select prescription',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library, color: Colors.black),
+              title: const Text('Photo from gallery'),
+              subtitle: const Text('JPG, JPEG, PNG'),
+              onTap: () =>
+                  Navigator.pop(sheetContext, _PrescriptionSource.photo),
+            ),
+            ListTile(
+              leading: const Icon(Icons.picture_as_pdf, color: Colors.black),
+              title: const Text('PDF document'),
+              subtitle: const Text('Choose a PDF from your files'),
+              onTap: () => Navigator.pop(sheetContext, _PrescriptionSource.pdf),
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
 
-      if (result != null && result.files.single.path != null) {
-        setState(() {
-          _selectedFile = File(result.files.single.path!);
-          _fileName = result.files.single.name;
-          _fileExtension = result.files.single.extension?.toLowerCase();
-        });
-        AppLogger.info('File selected: $_fileName');
-      }
+    if (source == null) return;
+
+    try {
+      final picked = source == _PrescriptionSource.photo
+          ? await pickImageFromGallery()
+          : await pickPdfDocument();
+
+      if (picked == null) return;
+
+      setState(() {
+        _selectedFile = picked.file;
+        _fileName = picked.name;
+        _fileExtension = picked.extension;
+      });
+      AppLogger.info('File selected: $_fileName');
     } catch (e) {
       AppLogger.error('Error picking file: $e');
       if (mounted) {

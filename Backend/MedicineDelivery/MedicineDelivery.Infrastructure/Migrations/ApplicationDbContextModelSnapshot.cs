@@ -886,6 +886,10 @@ namespace MedicineDelivery.Infrastructure.Migrations
                     b.Property<decimal?>("BillAmount")
                         .HasColumnType("decimal(10,2)");
 
+                    b.Property<string>("CancellationReason")
+                        .HasMaxLength(250)
+                        .HasColumnType("character varying(250)");
+
                     b.Property<decimal?>("ConvenienceFee")
                         .HasColumnType("decimal(10,2)");
 
@@ -905,6 +909,9 @@ namespace MedicineDelivery.Infrastructure.Migrations
 
                     b.Property<int?>("DeliveryId")
                         .HasColumnType("integer");
+
+                    b.Property<Guid?>("ManagerId")
+                        .HasColumnType("uuid");
 
                     b.Property<Guid?>("MedicalStoreId")
                         .HasColumnType("uuid");
@@ -962,6 +969,8 @@ namespace MedicineDelivery.Infrastructure.Migrations
 
                     b.HasIndex("DeliveryId");
 
+                    b.HasIndex("ManagerId");
+
                     b.HasIndex("MedicalStoreId");
 
                     b.HasIndex("OrderStatus");
@@ -1001,6 +1010,9 @@ namespace MedicineDelivery.Infrastructure.Migrations
                     b.Property<int?>("DeliveryId")
                         .HasColumnType("integer");
 
+                    b.Property<Guid?>("ManagerId")
+                        .HasColumnType("uuid");
+
                     b.Property<Guid?>("MedicalStoreId")
                         .HasColumnType("uuid");
 
@@ -1026,6 +1038,8 @@ namespace MedicineDelivery.Infrastructure.Migrations
                     b.HasIndex("CustomerId");
 
                     b.HasIndex("DeliveryId");
+
+                    b.HasIndex("ManagerId");
 
                     b.HasIndex("MedicalStoreId");
 
@@ -1111,6 +1125,9 @@ namespace MedicineDelivery.Infrastructure.Migrations
                         .HasColumnType("decimal(10,2)");
 
                     b.Property<decimal>("PlatformFee")
+                        .HasColumnType("decimal(10,2)");
+
+                    b.Property<decimal>("PlatformFeeGst")
                         .HasColumnType("decimal(10,2)");
 
                     b.Property<string>("RazorpayPaymentId")
@@ -1666,6 +1683,11 @@ namespace MedicineDelivery.Infrastructure.Migrations
                         .HasForeignKey("DeliveryId")
                         .OnDelete(DeleteBehavior.SetNull);
 
+                    b.HasOne("MedicineDelivery.Domain.Entities.Manager", "Manager")
+                        .WithMany()
+                        .HasForeignKey("ManagerId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("MedicineDelivery.Domain.Entities.MedicalStore", "MedicalStore")
                         .WithMany()
                         .HasForeignKey("MedicalStoreId")
@@ -1676,6 +1698,8 @@ namespace MedicineDelivery.Infrastructure.Migrations
                     b.Navigation("CustomerAddress");
 
                     b.Navigation("CustomerSupport");
+
+                    b.Navigation("Manager");
 
                     b.Navigation("MedicalStore");
                 });
@@ -1698,6 +1722,11 @@ namespace MedicineDelivery.Infrastructure.Migrations
                         .HasForeignKey("DeliveryId")
                         .OnDelete(DeleteBehavior.SetNull);
 
+                    b.HasOne("MedicineDelivery.Domain.Entities.Manager", "Manager")
+                        .WithMany()
+                        .HasForeignKey("ManagerId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("MedicineDelivery.Domain.Entities.MedicalStore", "MedicalStore")
                         .WithMany()
                         .HasForeignKey("MedicalStoreId")
@@ -1712,6 +1741,8 @@ namespace MedicineDelivery.Infrastructure.Migrations
                     b.Navigation("Customer");
 
                     b.Navigation("CustomerSupport");
+
+                    b.Navigation("Manager");
 
                     b.Navigation("MedicalStore");
 

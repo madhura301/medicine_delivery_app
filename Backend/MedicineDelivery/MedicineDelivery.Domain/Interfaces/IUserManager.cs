@@ -3,6 +3,7 @@ namespace MedicineDelivery.Domain.Interfaces
     public interface IUserManager
     {
         Task<IApplicationUser?> FindByEmailAsync(string email);
+        Task<IApplicationUser?> FindByPhoneNumberAsync(string phoneNumber);
         Task<IdentityResult> CreateAsync(IApplicationUser user, string password);
         Task<IdentityResult> AddToRoleAsync(IApplicationUser user, string role);
         Task<string> GenerateEmailConfirmationTokenAsync(IApplicationUser user);

@@ -6,7 +6,6 @@
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import 'package:pharmaish/utils/app_logger.dart';
-import 'package:pharmaish/utils/storage.dart';
 import 'package:pharmaish/shared/models/order_model.dart';
 import 'package:pharmaish/shared/widgets/app_button.dart';
 import 'package:pharmaish/shared/widgets/app_snackbar.dart';
@@ -37,51 +36,29 @@ class _AssignDeliveryBoyScreenState extends State<AssignDeliveryBoyScreen> {
   bool _isLoading = true;
   bool _isAssigning = false;
   String? _errorMessage;
-  String? _medicalStoreId;
 
   @override
   void initState() {
     super.initState();
-    _loadMedicalStoreId();
-  }
-
-  Future<void> _loadMedicalStoreId() async {
-    try {
-      final userId = await StorageService.getUserId();
-      if (userId != null) {
-        setState(() {
-          _medicalStoreId = userId;
-        });
-        await _loadDeliveryBoys();
-      }
-    } catch (e) {
-      AppLogger.error('Error loading medical store ID: $e');
-      setState(() {
-        _errorMessage = 'Failed to load medical store information';
-        _isLoading = false;
-      });
-    }
+    _loadDeliveryBoys();
   }
 
   Future<void> _loadDeliveryBoys() async {
-    if (_medicalStoreId == null) {
-      setState(() {
-        _errorMessage = 'Medical store ID not found';
-        _isLoading = false;
-      });
-      return;
-    }
-
     setState(() {
       _isLoading = true;
       _errorMessage = null;
     });
 
     try {
-      AppLogger.info('Fetching active delivery boys for medical store: $_medicalStoreId');
+      AppLogger.info(
+          'Fetching eligible delivery boys for order: ${widget.order.orderId}');
 
-      // GET /api/Delivery/medicalstore/{medicalStoreId}/active
-      final response = await _dio.get('/Deliveries/medicalstore/$_medicalStoreId/active');
+      // Delivery boys are matched to the order's delivery pin code via their
+      // service region — they are not tied to a medical store, so querying by
+      // store returns nothing.
+      // GET /api/Orders/{orderId}/eligible-delivery-boys
+      final response = await _dio
+          .get('/Orders/${widget.order.orderId}/eligible-delivery-boys');
 
       if (response.statusCode == 200) {
         final data = response.data;
@@ -112,8 +89,12 @@ class _AssignDeliveryBoyScreenState extends State<AssignDeliveryBoyScreen> {
       String errorMsg = 'Failed to load delivery boys';
       if (e.response?.statusCode == 401) {
         errorMsg = 'Authentication failed. Please login again.';
-      } else if (e.response?.statusCode == 404) {
-        errorMsg = 'No active delivery boys found';
+      } else if (e.response?.data is Map) {
+        // 404 (order/address missing) and 400 (address has no pin code) both
+        // carry a usable reason from the API.
+        final data = e.response!.data as Map;
+        final reason = data['error'] ?? data['message'];
+        if (reason != null) errorMsg = reason.toString();
       }
 
       setState(() {
@@ -382,7 +363,8 @@ class _AssignDeliveryBoyScreenState extends State<AssignDeliveryBoyScreen> {
               ),
               const SizedBox(height: 8),
               Text(
-                'Please add delivery boys to your medical store first',
+                'No active delivery boy serves this order\'s delivery pin code. '
+                'Assign one to the matching service region first.',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 14,

@@ -1,4 +1,5 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.INTERNET"/>
@@ -9,16 +10,25 @@
     <uses-feature android:name="android.hardware.camera" android:required="false" />
     <uses-feature android:name="android.hardware.camera.autofocus" android:required="false" />
     
-    <!-- STORAGE PERMISSIONS -->
-    <!-- Required for file upload and image selection -->
-    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
-    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" 
-        android:maxSdkVersion="32" />
-    
-    <!-- Android 13+ Photo Picker -->
-    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
-    <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
-    
+    <!-- STORAGE / MEDIA PERMISSIONS - INTENTIONALLY NOT DECLARED -->
+    <!-- Google Play policy "Use alternative system pickers for photos/videos":
+         prescriptions are selected with the Android System Photo Picker
+         (image_picker + useAndroidPhotoPicker) and PDFs with the Storage Access
+         Framework (ACTION_OPEN_DOCUMENT via file_picker). Both hand back a
+         URI the app already has access to, so no media/storage permission is
+         needed. The tools:node="remove" entries strip the permissions that
+         library manifests (e.g. open_filex) would otherwise merge back in. -->
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES"
+        tools:node="remove" />
+    <uses-permission android:name="android.permission.READ_MEDIA_VIDEO"
+        tools:node="remove" />
+    <uses-permission android:name="android.permission.READ_MEDIA_AUDIO"
+        tools:node="remove" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"
+        tools:node="remove" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        tools:node="remove" />
+
     <!-- AUDIO PERMISSIONS -->
     <!-- Required for voice recording feature -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />

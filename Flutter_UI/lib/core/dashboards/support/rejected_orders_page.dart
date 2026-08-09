@@ -5,6 +5,7 @@ import 'package:pharmaish/shared/models/order_model.dart';
 import 'package:pharmaish/shared/widgets/app_button.dart';
 import 'package:pharmaish/shared/widgets/app_snackbar.dart';
 import 'package:pharmaish/utils/app_logger.dart';
+import 'package:pharmaish/utils/storage.dart';
 
 // ============================================================================
 // REJECTED ORDERS PAGE
@@ -27,12 +28,37 @@ class _RejectedOrdersPageState extends State<RejectedOrdersPage>
   bool _isLoading = true;
   String? _errorMessage;
   List<OrderModel> _rejectedOrders = [];
+  String _customerSupportId = '';
   final Map<String, Map<String, String>> _customerCache = {};
 
   @override
   void initState() {
     super.initState();
     _loadRejectedOrders();
+  }
+
+  /// Resolves this agent's CustomerSupport record id.
+  ///
+  /// The id cached at login is the ASP.NET Identity user id, which is a
+  /// *different* Guid: CustomerSupport rows are created with
+  /// `CustomerSupportId = Guid.NewGuid()` alongside a separate `UserId`. Passing
+  /// the login id to the orders endpoint matches no rows, so it has to be looked
+  /// up by email first.
+  Future<String?> _resolveCustomerSupportId() async {
+    if (_customerSupportId.isNotEmpty) return _customerSupportId;
+
+    final email = await StorageService.getUserEmail();
+    if (email == null || email.isEmpty) return null;
+
+    final response = await widget.dio.get('/CustomerSupports/by-email/$email');
+    if (response.statusCode == 200 && response.data != null) {
+      final id = response.data['customerSupportId']?.toString() ?? '';
+      if (id.isNotEmpty) {
+        _customerSupportId = id;
+        return id;
+      }
+    }
+    return null;
   }
 
   Future<void> _loadRejectedOrders() async {
@@ -42,9 +68,21 @@ class _RejectedOrdersPageState extends State<RejectedOrdersPage>
     });
 
     try {
-      AppLogger.info('Fetching rejected orders');
-      final response = await widget.dio.get('/Orders');
-      AppLogger.info(response.data.toString());
+      final customerSupportId = await _resolveCustomerSupportId();
+      if (customerSupportId == null) {
+        setState(() {
+          _isLoading = false;
+          _errorMessage =
+              'Customer Support profile not found. Please login again.';
+        });
+        return;
+      }
+
+      AppLogger.info(
+          'Fetching orders assigned to customer support: $customerSupportId');
+      final response = await widget.dio.get(
+        '/Orders/customersupport/$customerSupportId/assignedtocustomersupport',
+      );
 
       if (response.statusCode == 200) {
         final data = response.data;
@@ -57,19 +95,19 @@ class _RejectedOrdersPageState extends State<RejectedOrdersPage>
           ordersList = data['orders'] as List;
         }
 
-        final allOrders =
+        // No client-side status filter: the endpoint already returns only orders
+        // with OrderStatus == AssignedToCustomerSupport, which is the state a
+        // chemist rejection puts them in. Filtering for 'rejected' here would
+        // match none of them and empty the list.
+        final orders =
             ordersList.map((json) => OrderModel.fromJson(json)).toList();
-        AppLogger.info('Total orders fetched: \${allOrders.length}');
-        final rejected = allOrders
-            .where((o) => o.status.toLowerCase().contains('rejected'))
-            .toList();
-        AppLogger.info('Found ${rejected.length} rejected orders' ' out of ${allOrders.length} total orders');
-        rejected.sort((a, b) => b.createdOn.compareTo(a.createdOn));
+        orders.sort((a, b) => b.createdOn.compareTo(a.createdOn));
+        AppLogger.info('Loaded ${orders.length} orders for customer support');
 
-        await _loadCustomerInfo(rejected);
+        await _loadCustomerInfo(orders);
 
         setState(() {
-          _rejectedOrders = rejected;
+          _rejectedOrders = orders;
           _isLoading = false;
         });
       }
@@ -87,7 +125,7 @@ class _RejectedOrdersPageState extends State<RejectedOrdersPage>
       if (!_customerCache.containsKey(order.customerId)) {
         try {
           final response =
-              await widget.dio.get('/Customers/\${order.customerId}');
+              await widget.dio.get('/Customers/${order.customerId}');
 
           if (response.statusCode == 200) {
             final customerData = response.data;
@@ -212,7 +250,7 @@ class _RejectedOrdersPageState extends State<RejectedOrdersPage>
             ),
             const SizedBox(height: 4),
             Text(
-              'Order #\${order.orderNumber ?? order.orderId}',
+              'Order #${order.orderNumber ?? order.orderId}',
               style: TextStyle(fontSize: 12, color: Colors.grey[600]),
             ),
             if (order.rejectionReason != null &&
@@ -224,14 +262,14 @@ class _RejectedOrdersPageState extends State<RejectedOrdersPage>
                   color: Colors.red.shade50,
                   borderRadius: BorderRadius.circular(4),
                 ),
-                child: const Row(
+                child: Row(
                   children: [
-                    Icon(Icons.info_outline, size: 16, color: Colors.red),
-                    SizedBox(width: 8),
+                    const Icon(Icons.info_outline, size: 16, color: Colors.red),
+                    const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        'Reason: \${order.rejectionReason}',
-                        style: TextStyle(fontSize: 13, color: Colors.red),
+                        'Reason: ${order.rejectionReason}',
+                        style: const TextStyle(fontSize: 13, color: Colors.red),
                       ),
                     ),
                   ],
@@ -289,8 +327,8 @@ class _RejectedOrdersPageState extends State<RejectedOrdersPage>
             }
 
             return AlertDialog(
-              title: const Text(
-                  'Reassign Order #\${order.orderNumber ?? order.orderId}'),
+              title: Text(
+                  'Reassign Order #${order.orderNumber ?? order.orderId}'),
               content: isLoadingChemists
                   ? const SizedBox(
                       height: 100,
@@ -308,7 +346,7 @@ class _RejectedOrdersPageState extends State<RejectedOrdersPage>
                                 const Icon(Icons.store, color: Colors.blue),
                             title: Text(chemist.medicalName),
                             subtitle:
-                                const Text('\${chemist.city}, \${chemist.state}'),
+                                Text('${chemist.city}, ${chemist.state}'),
                             onTap: () {
                               Navigator.pop(context);
                               _reassignOrder(order, chemist);
@@ -334,12 +372,12 @@ class _RejectedOrdersPageState extends State<RejectedOrdersPage>
     try {
       // This would be your reassign API call
       // For now, we'll update the status
-      await widget.dio.put('/Orders/\${order.orderId}/reassign', data: {
+      await widget.dio.put('/Orders/${order.orderId}/reassign', data: {
         'medicalStoreId': chemist.medicalStoreId,
       });
 
       if (!mounted) return;
-      AppSnackBar.success(context, 'Order reassigned to \${chemist.medicalName}');
+      AppSnackBar.success(context, 'Order reassigned to ${chemist.medicalName}');
       _loadRejectedOrders();
     } catch (e) {
       if (!mounted) return;
