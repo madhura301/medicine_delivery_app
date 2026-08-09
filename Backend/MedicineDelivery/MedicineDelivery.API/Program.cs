@@ -21,6 +21,7 @@ using Microsoft.AspNetCore.DataProtection;
 using Azure.Storage.Blobs;
 using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.RateLimiting;
+using System.Security.Claims;
 
 // Bootstrap logger (before config is available) so early log messages are not lost
 Log.Logger = new LoggerConfiguration()
@@ -128,10 +129,111 @@ builder.Services.AddRateLimiter(options =>
                 QueueLimit = 0
             }));
 
+    // M-03 / H-06: the delivery OTP is only 4 digits (~9,000 values) and the completion endpoint
+    // has no attempt counter, so without throttling it can be brute-forced in seconds. Partition by
+    // the authenticated USER (the endpoint requires auth) rather than IP: that is attacker-specific
+    // and unaffected by carrier NAT, consistent with the reasoning below.
+    options.AddPolicy("otp-verify", httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: httpContext.User?.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                          ?? httpContext.Connection.RemoteIpAddress?.ToString()
+                          ?? "unknown",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                // A human entering a code needs a handful of tries; a brute-forcer needs thousands.
+                PermitLimit = builder.Configuration.GetValue<int?>("RateLimiting:OtpVerifyPermitPerMinute") ?? 5,
+                Window = TimeSpan.FromMinutes(1),
+                QueueLimit = 0
+            }));
+
+    // M-03: endpoints that send an SMS cost real money per call (MSG91). The 'auth' policy alone
+    // would still permit ~43,000 messages/day from one IP. Cap SMS-triggering requests far tighter.
+    options.AddPolicy("sms", httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = builder.Configuration.GetValue<int?>("RateLimiting:SmsPermitPerWindow") ?? 3,
+                Window = TimeSpan.FromMinutes(builder.Configuration.GetValue<int?>("RateLimiting:SmsWindowMinutes") ?? 5),
+                QueueLimit = 0
+            }));
+
     // NOTE: deliberately NO global limiter. Mobile carriers/corporate networks NAT many
     // users behind a single IP, so a global per-IP cap blocks legitimate traffic while adding
     // little security value. Brute-force protection comes from the strict 'auth' policy below
     // plus per-ACCOUNT lockout (5 failures -> 5 min), which is attacker-specific rather than IP-wide.
+});
+
+// CORS (security finding M-01). The API previously ran AllowAnyOrigin(), letting any website on the
+// internet call it from a victim's browser and read the responses. Origins are now an explicit
+// allow-list supplied per environment via Cors:AllowedOrigins (env var Cors__AllowedOrigins__0, ...,
+// or a single comma/semicolon-separated Cors__AllowedOrigins value).
+//
+// Note: CORS is a *browser* control — it does not affect the Flutter mobile app, which is unaffected
+// by this change. Only browser-based callers (the React web app, Swagger UI on another host) matter.
+// AllowCredentials is deliberately NOT enabled: auth uses a Bearer header, not cookies.
+const string CorsPolicyName = "PharmaishCors";
+
+// Accept EITHER the indexed form (Cors__AllowedOrigins__0, __1, ... / a JSON array) OR a single
+// comma/semicolon-separated value, which is far easier to set as one env var. Read without the
+// binder so a scalar value can never throw at startup.
+var corsSection = builder.Configuration.GetSection("Cors:AllowedOrigins");
+var configuredOrigins = corsSection.GetChildren().Any()
+    ? corsSection.GetChildren().Select(c => c.Value ?? string.Empty).ToArray()
+    : (corsSection.Value ?? string.Empty)
+        .Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+// Trailing slashes are a common copy/paste error and make the origin never match.
+configuredOrigins = configuredOrigins
+    .Select(o => o.TrimEnd('/'))
+    .Where(o => !string.IsNullOrWhiteSpace(o) && !o.StartsWith("SET_VIA_ENV", StringComparison.OrdinalIgnoreCase))
+    .Distinct(StringComparer.OrdinalIgnoreCase)
+    .ToArray();
+
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy(CorsPolicyName, policy =>
+    {
+        if (configuredOrigins.Length > 0)
+        {
+            policy.WithOrigins(configuredOrigins).AllowAnyMethod().AllowAnyHeader();
+        }
+        else if (builder.Environment.IsDevelopment())
+        {
+            // Local convenience only: any localhost/127.0.0.1 port (Vite, CRA, Swagger).
+            policy.SetIsOriginAllowed(origin =>
+                    Uri.TryCreate(origin, UriKind.Absolute, out var u) &&
+                    (u.IsLoopback || string.Equals(u.Host, "localhost", StringComparison.OrdinalIgnoreCase)))
+                .AllowAnyMethod()
+                .AllowAnyHeader();
+        }
+        // Otherwise: no origins allowed — fail closed. Same-origin callers (Swagger on the API host)
+        // and non-browser clients (the mobile app, server-to-server, Razorpay webhooks) are unaffected.
+    });
+});
+
+if (configuredOrigins.Length > 0)
+    Log.Information("CORS restricted to {Count} configured origin(s).", configuredOrigins.Length);
+else if (builder.Environment.IsDevelopment())
+    Log.Warning("CORS: no Cors:AllowedOrigins configured; allowing localhost origins (Development only).");
+else
+    Log.Warning("CORS: no Cors:AllowedOrigins configured; all cross-origin browser requests will be blocked. " +
+                "Set Cors__AllowedOrigins if a browser front-end needs access.");
+
+// Upload limits (security finding M-08). Nothing capped multipart bodies, so the only ceiling was
+// Kestrel's ~30 MB default — enough for cheap storage/bandwidth DoS, and far larger than any
+// legitimate prescription photo or policy PDF. Per-endpoint [RequestSizeLimit] attributes tighten
+// this further; services additionally validate size, extension and magic bytes.
+var maxUploadBytes = builder.Configuration.GetValue<long?>("Uploads:MaxRequestBytes") ?? (12L * 1024 * 1024); // 12 MB
+
+builder.Services.Configure<Microsoft.AspNetCore.Http.Features.FormOptions>(options =>
+{
+    options.MultipartBodyLengthLimit = maxUploadBytes;
+});
+
+builder.Services.Configure<Microsoft.AspNetCore.Server.Kestrel.Core.KestrelServerOptions>(options =>
+{
+    options.Limits.MaxRequestBodySize = maxUploadBytes;
 });
 
 // Add services to the container.
@@ -442,8 +544,12 @@ builder.Services.AddAuthorization(options =>
     options.AddPolicy("RequireDeliveryUpdatePermission", policy => 
         policy.Requirements.Add(new MedicineDelivery.API.Authorization.PermissionRequirement("DeliveryUpdate")));
     
-    options.AddPolicy("RequireDeliveryDeletePermission", policy => 
+    options.AddPolicy("RequireDeliveryDeletePermission", policy =>
         policy.Requirements.Add(new MedicineDelivery.API.Authorization.PermissionRequirement("DeliveryDelete")));
+
+    // M-07: uploading/replacing publicly served policy documents is an administrative action.
+    options.AddPolicy("RequireManagePolicyDocumentsPermission", policy =>
+        policy.Requirements.Add(new MedicineDelivery.API.Authorization.PermissionRequirement("ManagePolicyDocuments")));
 });
 
 // Register the permission authorization handler
@@ -524,23 +630,23 @@ app.UseSerilogRequestLogging();
 
 app.UseHttpsRedirection();
 
-app.UseRateLimiter();
-
 // Add global exception handling middleware
 app.UseMiddleware<GlobalExceptionMiddleware>();
 
 // Serve static files from wwwroot
 app.UseStaticFiles();
 
-app.UseCors(builder =>
-{
-    builder
-        .AllowAnyOrigin()
-        .AllowAnyMethod()
-        .AllowAnyHeader();
-});
+// M-01: explicit allow-list policy instead of the previous AllowAnyOrigin().
+app.UseCors(CorsPolicyName);
 
 app.UseAuthentication();
+
+// M-03: MUST run after UseAuthentication — the 'otp-verify' policy partitions by the authenticated
+// user id, and HttpContext.User is only populated once authentication has run. Placed earlier, that
+// policy would silently degrade to a per-IP limit (which carrier NAT makes ineffective).
+// IP-partitioned policies ('auth', 'sms') are unaffected by the position.
+app.UseRateLimiter();
+
 app.UseAuthorization();
 
 app.MapControllers();

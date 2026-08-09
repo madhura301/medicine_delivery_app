@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using Microsoft.AspNetCore.RateLimiting;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -380,6 +381,9 @@ namespace MedicineDelivery.API.Controllers
 
         [HttpPut("{orderId:int}/complete")]
         [Authorize(Policy = "RequireOrderUpdatePermission")]
+        // M-03/H-06: throttle delivery-OTP guesses — the code is only 4 digits and there is no
+        // per-order attempt counter, so an unthrottled caller can enumerate it.
+        [EnableRateLimiting("otp-verify")]
         public async Task<IActionResult> CompleteOrder(int orderId, [FromBody] CompleteOrderDto completeDto, CancellationToken cancellationToken)
         {
             if (!ModelState.IsValid)
@@ -527,6 +531,30 @@ namespace MedicineDelivery.API.Controllers
                 _logger.LogError(ex, "Error in AssignOrderToMedicalStore");
                 return StatusCode(500, new { error = "An error occurred while assigning the order." });
             }
+        }
+
+        /// <summary>
+        /// Alias for <see cref="AssignOrderToMedicalStore"/> using the REST-style shape some clients
+        /// call: the order id in the route, the target store in the body. Reassigns a rejected order
+        /// to a different medical store. The route's orderId always wins over any value in the body.
+        /// </summary>
+        [HttpPut("{orderId:int}/reassign")]
+        [Authorize(Policy = "RequireOrderUpdatePermission")]
+        public Task<IActionResult> ReassignOrder(int orderId, [FromBody] AssignOrderDto? assignDto, CancellationToken cancellationToken)
+        {
+            if (assignDto == null || assignDto.MedicalStoreId == Guid.Empty)
+            {
+                // Without a target store the server cannot guess where to reassign — say so plainly
+                // rather than failing with a misleading error.
+                _logger.LogWarning("ReassignOrder: missing medicalStoreId for Order {OrderId}", orderId);
+                return Task.FromResult<IActionResult>(BadRequest(new
+                {
+                    error = "A 'medicalStoreId' is required in the request body to reassign the order."
+                }));
+            }
+
+            assignDto.OrderId = orderId;
+            return AssignOrderToMedicalStore(assignDto, cancellationToken);
         }
 
         [HttpPost]

@@ -50,8 +50,7 @@ namespace MedicineDelivery.Infrastructure.Services
             var recipient = new Dictionary<string, string>
             {
                 ["mobiles"] = NormalizeMobile(phoneNumber),
-                ["Order ID"] = orderNumber ?? string.Empty,
-                ["OTP"] = otpCode ?? string.Empty
+                ["var"] = otpCode ?? string.Empty
             };
 
             // Log the request shape (not the OTP value itself) so a future "OTP came through blank"

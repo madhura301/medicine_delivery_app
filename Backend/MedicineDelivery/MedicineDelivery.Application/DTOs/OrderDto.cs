@@ -16,6 +16,21 @@ namespace MedicineDelivery.Application.DTOs
         public AssignedByType AssignedByType { get; set; }
         public Guid? CustomerSupportId { get; set; }
         public Guid? ManagerId { get; set; }
+        public int? DeliveryId { get; set; }
+        /// <summary>
+        /// Who currently owns the order. Staff consoles group orders by this value:
+        /// Customer = not assigned to anyone yet, Chemist / CustomerSupport / Delivery / Manager
+        /// = with that party. The matching id above is populated for every value except Customer.
+        /// </summary>
+        public AssignTo AssignTo { get; set; }
+        /// <summary>Assigned chemist's store name. Populated by the staff-facing endpoints only.</summary>
+        public string? MedicalStoreName { get; set; }
+        /// <summary>Assigned support agent's full name. Populated by the staff-facing endpoints only.</summary>
+        public string? CustomerSupportName { get; set; }
+        /// <summary>Assigned manager's full name. Populated by the staff-facing endpoints only.</summary>
+        public string? ManagerName { get; set; }
+        /// <summary>Assigned delivery partner's full name. Populated by the staff-facing endpoints only.</summary>
+        public string? DeliveryBoyName { get; set; }
         public OrderType OrderType { get; set; }
         public OrderInputType OrderInputType { get; set; }
         public string? OrderInputFileLocation { get; set; }

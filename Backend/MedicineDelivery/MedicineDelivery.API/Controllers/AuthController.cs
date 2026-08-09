@@ -88,6 +88,9 @@ namespace MedicineDelivery.API.Controllers
         /// Always returns 200 OK — the response body does not reveal whether the number is registered.
         /// </summary>
         [HttpPost("forgot-password")]
+        // M-03: this endpoint sends a real (chargeable) SMS. The class-level 'auth' limit alone would
+        // still allow thousands of messages a day from one IP, so cap SMS-triggering calls far tighter.
+        [EnableRateLimiting("sms")]
         public async Task<IActionResult> ForgotPassword([FromBody] SendOtpRequestDto request)
         {
             _logger.LogInformation("Forgot-password OTP request for phone: {PhoneNumber}", request.PhoneNumber);

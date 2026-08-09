@@ -19,6 +19,9 @@ namespace MedicineDelivery.Infrastructure.Services
             ".pdf", ".doc", ".docx", ".txt"
         };
 
+        /// <summary>M-08: upper bound for policy/legal documents.</summary>
+        private const long MaxDocumentBytes = 10 * 1024 * 1024; // 10 MB
+
         private readonly IFileStorageService _fileStorage;
         private readonly ILogger<PolicyDocumentService> _logger;
 
@@ -42,6 +45,20 @@ namespace MedicineDelivery.Infrastructure.Services
             if (string.IsNullOrEmpty(extension) || !AllowedExtensions.Contains(extension))
                 throw new ArgumentException(
                     $"File type '{extension}' is not supported. Allowed types: {string.Join(", ", AllowedExtensions)}.",
+                    nameof(file));
+
+            // M-08: bound the size — these documents are served publicly, so an oversized upload is
+            // both a storage and a bandwidth cost.
+            if (file.Length > MaxDocumentBytes)
+                throw new ArgumentException(
+                    $"The file exceeds the maximum allowed size of {MaxDocumentBytes / (1024 * 1024)} MB.",
+                    nameof(file));
+
+            // M-08: verify the content matches the claimed extension, so a renamed payload cannot be
+            // stored and then served from a trusted domain as a "policy document".
+            if (!FileSignatureValidator.Matches(file, extension))
+                throw new ArgumentException(
+                    $"The file content does not match its '{extension}' extension.",
                     nameof(file));
 
             var relativePath = BuildRelativePath(safeFileName);
