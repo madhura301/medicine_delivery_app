@@ -408,14 +408,28 @@ class _AdminServiceRegionsPageState extends State<AdminServiceRegionsPage> {
 
     if (!confirm) return;
 
+    // Resolve the id before the request so a missing/!int id reports itself
+    // instead of throwing an unhandled cast error inside the try below.
+    final rawId = region['id'] ?? region['Id'];
+    final regionId = rawId is num ? rawId.toInt() : int.tryParse('$rawId');
+    if (regionId == null) {
+      AppLogger.error(
+          'Delete region: no usable id. Region keys: ${region.keys.toList()}, raw id: $rawId');
+      _showError('Cannot delete: this region has no valid id');
+      return;
+    }
+
     try {
-      final regionId = region['id'] ?? region['Id'];
-      await RegionService.deleteRegion((regionId as num).toInt());
+      AppLogger.info('Deleting region $regionId ("${region['name']}")');
+      await RegionService.deleteRegion(regionId);
+      AppLogger.info('Region $regionId deleted');
       if (mounted) {
         _showSuccess('Region deleted successfully');
         await _checkPermissionAndLoad();
       }
     } on DioException catch (e) {
+      AppLogger.error(
+          'Delete region $regionId failed: ${e.response?.statusCode} ${e.response?.data}');
       if (mounted) {
         if (e.response?.statusCode == 403) {
           _showError(
@@ -425,6 +439,12 @@ class _AdminServiceRegionsPageState extends State<AdminServiceRegionsPage> {
               'Failed to delete: ${e.response?.data?['error'] ?? e.message}');
         }
       }
+    } catch (e) {
+      // Without this the delete button looks dead: any non-Dio error (a cast,
+      // a null, a parse failure) escaped as an unhandled async exception and
+      // the user saw nothing at all happen.
+      AppLogger.error('Delete region $regionId failed unexpectedly: $e');
+      if (mounted) _showError('Failed to delete region: $e');
     }
   }
 
@@ -1531,20 +1551,6 @@ class _AdminServiceRegionsPageState extends State<AdminServiceRegionsPage> {
     }
   }
 
-  Future<void> _confirmDeleteRegion(Map<String, dynamic> region) async {
-    final confirmed = await confirmAction(
-      context,
-      title: 'Delete Region',
-      message: 'Are you sure you want to delete "${region['name']}"?\n\n'
-          'This action cannot be undone.',
-      confirmLabel: 'Delete',
-    );
-
-    if (confirmed) {
-      await _deleteRegion(region['id'] ?? region['Id']);
-    }
-  }
-
   Widget _buildActionButtons(
       Map<String, dynamic> region, RegionType regionType) {
     return Row(
@@ -1578,7 +1584,12 @@ class _AdminServiceRegionsPageState extends State<AdminServiceRegionsPage> {
           tooltip: 'Edit Region',
         ),
         IconButton(
-          onPressed: () => _confirmDeleteRegion(region),
+          // _deleteRegion takes the whole region map and runs its own
+          // confirmation. It used to be called via a _confirmDeleteRegion
+          // wrapper that passed region['id'] instead — a dynamic, so it
+          // compiled, then threw a TypeError at runtime before the DELETE was
+          // ever sent, and the wrapper's own dialog made it a double prompt.
+          onPressed: () => _deleteRegion(region),
           icon: const Icon(Icons.delete),
           color: Colors.red,
           tooltip: 'Delete Region',

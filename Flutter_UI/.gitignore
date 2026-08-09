@@ -43,3 +43,23 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# iOS/CocoaPods generated artefacts. `pod install` on a Mac creates ios/Pods
+# (hundreds of MB of vendored sources) plus symlinks and generated xcconfigs —
+# none of it belongs in the repo. Podfile and Podfile.lock are deliberately NOT
+# ignored: the lock file pins pod versions so every machine and CI builds the
+# same dependency set.
+**/ios/Pods/
+**/ios/.symlinks/
+**/ios/Flutter/App.framework
+**/ios/Flutter/Flutter.framework
+**/ios/Flutter/Flutter.podspec
+**/ios/Flutter/Generated.xcconfig
+**/ios/Flutter/ephemeral/
+**/ios/Flutter/flutter_export_environment.sh
+**/ios/ServiceDefinitions.json
+**/ios/Runner/GeneratedPluginRegistrant.*
+**/ios/build/
+*.ipa
+*.dSYM.zip
+*.dSYM

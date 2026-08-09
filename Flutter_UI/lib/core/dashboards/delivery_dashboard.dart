@@ -19,6 +19,10 @@ class DeliveryDashboard extends StatefulWidget {
 
 class _DeliveryDashboardState extends State<DeliveryDashboard> {
   int _selectedIndex = 0;
+
+  /// Lets the drawer re-fetch the completed list when that tab is opened.
+  final GlobalKey<_DeliveryCompletedOrdersPageState> _completedKey =
+      GlobalKey<_DeliveryCompletedOrdersPageState>();
   final Dio _dio = DioClient.instance;
   String _userName = 'Delivery Boy';
 
@@ -105,7 +109,7 @@ class _DeliveryDashboardState extends State<DeliveryDashboard> {
         index: _selectedIndex,
         children: [
           _DeliveryActiveOrdersPage(dio: _dio, userName: _userName),
-          _DeliveryCompletedOrdersPage(dio: _dio),
+          _DeliveryCompletedOrdersPage(key: _completedKey, dio: _dio),
         ],
       ),
     );
@@ -188,6 +192,11 @@ class _DeliveryDashboardState extends State<DeliveryDashboard> {
                   selectedTileColor: Colors.black.withValues(alpha: 0.08),
                   onTap: () {
                     setState(() => _selectedIndex = 1);
+                    // Re-fetch on open. The page keeps itself alive inside an
+                    // IndexedStack and only loaded in initState, so a delivery
+                    // completed after the dashboard opened never appeared here
+                    // until the app was restarted.
+                    _completedKey.currentState?.reload();
                     Navigator.of(context).pop();
                   },
                 ),
@@ -662,7 +671,9 @@ class _DeliveryActiveOrdersPageState extends State<_DeliveryActiveOrdersPage>
 class _DeliveryCompletedOrdersPage extends StatefulWidget {
   final Dio dio;
 
-  const _DeliveryCompletedOrdersPage({required this.dio});
+  // Takes a key so the dashboard can hold a GlobalKey and trigger reload()
+  // when this tab is opened.
+  const _DeliveryCompletedOrdersPage({super.key, required this.dio});
 
   @override
   State<_DeliveryCompletedOrdersPage> createState() =>
@@ -685,6 +696,11 @@ class _DeliveryCompletedOrdersPageState
     super.initState();
     _loadOrders();
   }
+
+  /// Re-fetches the completed list. Called by the dashboard when this tab is
+  /// opened, since the page is kept alive and would otherwise show whatever it
+  /// loaded when the dashboard first opened.
+  Future<void> reload() => _loadOrders();
 
   Future<void> _loadOrders() async {
     setState(() {
@@ -717,6 +733,16 @@ class _DeliveryCompletedOrdersPageState
 
         setState(() {
           _orders = orders;
+          _isLoading = false;
+        });
+      } else {
+        // Without this the spinner span forever on any non-200: _isLoading was
+        // only cleared inside the success branch.
+        AppLogger.error(
+            'Completed deliveries: unexpected status ${response.statusCode}');
+        setState(() {
+          _errorMessage =
+              'Failed to load completed deliveries (${response.statusCode})';
           _isLoading = false;
         });
       }
@@ -783,15 +809,36 @@ class _DeliveryCompletedOrdersPageState
     }
 
     if (_orders.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.check_circle_outline, size: 80, color: Colors.grey[400]),
-            const SizedBox(height: 16),
-            const Text('No Completed Deliveries Yet',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
-          ],
+      // Wrapped in a RefreshIndicator over an always-scrollable view: the empty
+      // state is exactly when a refresh is needed, but it used to be a bare
+      // Center with nothing to pull on, so a stale empty list could not be
+      // cleared without restarting the app.
+      return RefreshIndicator(
+        onRefresh: _loadOrders,
+        child: LayoutBuilder(
+          builder: (context, constraints) => SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(minHeight: constraints.maxHeight),
+              child: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.check_circle_outline,
+                        size: 80, color: Colors.grey[400]),
+                    const SizedBox(height: 16),
+                    const Text('No Completed Deliveries Yet',
+                        style: TextStyle(
+                            fontSize: 18, fontWeight: FontWeight.w600)),
+                    const SizedBox(height: 8),
+                    Text('Pull down to refresh',
+                        style:
+                            TextStyle(fontSize: 13, color: Colors.grey[600])),
+                  ],
+                ),
+              ),
+            ),
+          ),
         ),
       );
     }

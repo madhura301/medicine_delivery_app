@@ -126,7 +126,7 @@ class _PharmacistRegistrationPageState
     return Scaffold(
       backgroundColor: Colors.grey.shade50,
       appBar: AppBar(
-        title: const Text('Pharmacist Registration'),
+        title: const Text('Pharmacy Registration'),
         backgroundColor: AppTheme.primaryColor,
         foregroundColor: Colors.white,
         elevation: 0,
@@ -1550,7 +1550,7 @@ class _PharmacistRegistrationPageState
             mainAxisSize: MainAxisSize.min,
             children: [
               const Text(
-                'Your pharmacist registration has been submitted successfully!',
+                'Your pharmacy registration has been submitted successfully!',
                 style: TextStyle(fontSize: 15),
                 textAlign: TextAlign.center,
               ),

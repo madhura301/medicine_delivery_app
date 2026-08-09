@@ -1094,8 +1094,7 @@ class _RegisterPageState extends State<CustomerRegisterPage> {
                   SizedBox(height: 8),
                   Text(
                     '• Account created successfully\n'
-                    '• Login with your mobile number\n'
-                    '• Explore medicines and place orders',
+                    '• Login with your mobile number',
                     style: TextStyle(fontSize: 14),
                   ),
                 ],

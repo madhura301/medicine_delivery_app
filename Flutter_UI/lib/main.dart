@@ -5,11 +5,18 @@ import 'package:pharmaish/core/app_routes.dart';
 import 'package:pharmaish/core/screens/splash/splash_page.dart';
 import 'package:pharmaish/core/theme/app_theme.dart';
 import 'package:pharmaish/utils/app_logger.dart';
+import 'package:pharmaish/utils/media_pickers.dart';
 
 void main() {
+  WidgetsFlutterBinding.ensureInitialized();
+
   // Initialize logging framework
   AppLogger.initialize();
   AppLogger.info('Application starting - PRODUCTION');
+
+  // Gallery selection must go through the Android System Photo Picker: the app
+  // declares no READ_MEDIA_* permissions (Google Play policy).
+  configureSystemPhotoPicker();
 
   //HttpOverrides.global = MyHttpOverrides();
 

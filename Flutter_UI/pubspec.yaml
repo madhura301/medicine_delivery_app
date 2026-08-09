@@ -3,7 +3,7 @@ description: Pharmaish Mobile App
 
 publish_to: 'none'
 
-version: 1.0.0+1
+version: 1.0.1+3
 
 environment:
   sdk: '>=3.0.0 <4.0.0'
@@ -24,6 +24,10 @@ dependencies:
  # File handling
   file_picker: ^8.0.0+1
   image_picker: ^1.0.7
+  # Direct deps so the Android System Photo Picker can be switched on
+  # (ImagePickerAndroid.useAndroidPhotoPicker) - see utils/media_pickers.dart
+  image_picker_android: ^0.8.12
+  image_picker_platform_interface: ^2.10.0
   camera: ^0.10.5+9
   path: ^1.8.3
   path_provider: ^2.1.2
