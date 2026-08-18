@@ -47,10 +47,14 @@ namespace MedicineDelivery.Infrastructure.Services
 
         public Task<bool> SendOrderOtpAsync(string phoneNumber, string orderNumber, string otpCode)
         {
+            // DLT template 6a82c0b8...: "...for Order bearing ID ##var1## is ##var2##."
+            // var1 = order number, var2 = the delivery OTP. The names must match the template
+            // exactly - MSG91 silently substitutes an empty string for any key it does not know.
             var recipient = new Dictionary<string, string>
             {
                 ["mobiles"] = NormalizeMobile(phoneNumber),
-                ["var"] = otpCode ?? string.Empty
+                ["var1"] = orderNumber ?? string.Empty,
+                ["var2"] = otpCode ?? string.Empty
             };
 
             // Log the request shape (not the OTP value itself) so a future "OTP came through blank"
