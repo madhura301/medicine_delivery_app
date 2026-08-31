@@ -4,6 +4,8 @@ using MediatR;
 using MedicineDelivery.Application.DTOs;
 using MedicineDelivery.Application.Features.Users.Commands.CreateUser;
 using MedicineDelivery.Application.Features.Users.Commands.CreateUserWithRole;
+using MedicineDelivery.Application.Features.Users.Commands.ChangeUserName;
+using MedicineDelivery.Application.Features.Users.Commands.AdminResetPassword;
 using MedicineDelivery.Application.Features.Users.Commands.RegisterUser;
 using MedicineDelivery.Application.Features.Users.Queries.GetUsers;
 
@@ -92,6 +94,90 @@ namespace MedicineDelivery.API.Controllers
             {
                 _logger.LogError(ex, "Error in CreateUserWithRole for {Email}", request.Email);
                 return StatusCode(500, new { error = "An error occurred while creating the user." });
+            }
+        }
+
+        /// <summary>
+        /// Administrative rename of a user's login. A username is the user's mobile number, so this
+        /// also updates the owning profile record's MobileNumber and signs the user out everywhere.
+        /// </summary>
+        [HttpPut("{userId}/username")]
+        [Authorize(Policy = "RequireManagerUpdateUsersPermission")]
+        public async Task<IActionResult> ChangeUserName(string userId, [FromBody] ChangeUserNameDto request)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            try
+            {
+                var result = await _mediator.Send(new ChangeUserNameCommand
+                {
+                    UserId = userId,
+                    NewUserName = request.NewUserName
+                });
+
+                if (result.Success)
+                {
+                    _logger.LogInformation("Username changed for {UserId} (profile synced: {Profile})",
+                        userId, result.ProfileUpdated ?? "none");
+                    return Ok(result);
+                }
+
+                // A taken number is a conflict, not a malformed request - let the UI tell them apart.
+                if (result.Message.Contains("already exists", StringComparison.OrdinalIgnoreCase))
+                    return Conflict(result);
+
+                if (result.Message.Contains("not found", StringComparison.OrdinalIgnoreCase))
+                    return NotFound(result);
+
+                return BadRequest(result);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error in ChangeUserName for {UserId}", userId);
+                return StatusCode(500, new { error = "An error occurred while changing the username." });
+            }
+        }
+
+        /// <summary>
+        /// Administrative password reset. Does not require the user's current password, and signs
+        /// the user out of existing sessions.
+        /// </summary>
+        [HttpPost("{userId}/reset-password")]
+        [Authorize(Policy = "RequireManagerUpdateUsersPermission")]
+        public async Task<IActionResult> AdminResetPassword(string userId, [FromBody] AdminResetPasswordDto request)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            try
+            {
+                var result = await _mediator.Send(new AdminResetPasswordCommand
+                {
+                    UserId = userId,
+                    NewPassword = request.NewPassword
+                });
+
+                if (result.Success)
+                {
+                    // Never log the password value itself.
+                    _logger.LogInformation("Password reset by administrator for {UserId}", userId);
+                    return Ok(result);
+                }
+
+                if (result.Message.Contains("not found", StringComparison.OrdinalIgnoreCase))
+                    return NotFound(result);
+
+                return BadRequest(result);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error in AdminResetPassword for {UserId}", userId);
+                return StatusCode(500, new { error = "An error occurred while resetting the password." });
             }
         }
 

@@ -9,6 +9,24 @@ namespace MedicineDelivery.Domain.Interfaces
         Task<string> GenerateEmailConfirmationTokenAsync(IApplicationUser user);
         Task<IdentityResult> ConfirmEmailAsync(IApplicationUser user, string token);
         Task<IdentityResult> DeleteAsync(IApplicationUser user);
+
+        /// <summary>Looks a user up by their Identity id.</summary>
+        Task<IApplicationUser?> FindByIdAsync(string userId);
+
+        /// <summary>Looks a user up by login name. Usernames are mobile numbers in this system.</summary>
+        Task<IApplicationUser?> FindByUserNameAsync(string userName);
+
+        /// <summary>
+        /// Administrative rename: sets UserName, NormalizedUserName and PhoneNumber together
+        /// (they are the same value here) and invalidates the user's existing sessions.
+        /// </summary>
+        Task<IdentityResult> ChangeUserNameAsync(string userId, string newUserName);
+
+        /// <summary>
+        /// Administrative password reset - does NOT require the user's current password.
+        /// Uses a generated reset token internally and invalidates existing sessions.
+        /// </summary>
+        Task<IdentityResult> AdminResetPasswordAsync(string userId, string newPassword);
     }
 
     public interface IApplicationUser

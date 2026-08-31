@@ -36,6 +36,9 @@ export const MENU: readonly MenuEntry[] = [
   { label: 'Delivery Boys', icon: 'two_wheeler', route: '/delivery-boys', roles: ADMIN_MANAGER },
   { label: 'Chemists', icon: 'local_pharmacy', route: '/chemists', roles: ALL_STAFF },
   { label: 'Customers', icon: 'people', route: '/customers', roles: ALL_STAFF },
+  // Username/password maintenance. Admin+Manager only: CustomerSupport lacks
+  // ManagerUpdateUsers, so the API would 403 for them.
+  { label: 'User Accounts', icon: 'manage_accounts', route: '/user-accounts', roles: ADMIN_MANAGER },
   {
     label: 'Regions',
     icon: 'map',

@@ -37,6 +37,12 @@ export const routes: Routes = [
         title: 'Change password · Pharmaish',
       },
       {
+        path: 'user-accounts',
+        canActivate: [roleGuard('Admin', 'Manager')],
+        loadChildren: () =>
+          import('./features/user-accounts/user-accounts.routes').then((m) => m.routes),
+      },
+      {
         path: 'managers',
         canActivate: [roleGuard('Admin', 'Manager')],
         loadChildren: () => import('./features/managers/managers.routes').then((m) => m.routes),
