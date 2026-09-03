@@ -194,6 +194,63 @@ import { ChemistFormData, ChemistFormDialog } from '../dialogs/chemist-form-dial
         </mat-card>
 
         <mat-card appearance="outlined">
+          <mat-card-header>
+            <mat-card-title>Chemist account status in Razorpay</mat-card-title>
+          </mat-card-header>
+          <mat-card-content>
+            <dl>
+              <dt>Live status</dt>
+              <dd><app-status-chip [label]="razorpayLabel()" [tone]="razorpayTone()" /></dd>
+
+              @if (payout()?.razorpayRawStatus; as raw) {
+                <dt>Razorpay value</dt>
+                <dd><code>{{ raw }}</code></dd>
+              }
+
+              @if (payout()?.razorpayLinkedAccountId; as acct) {
+                <dt>Linked account</dt>
+                <dd><code>{{ acct }}</code></dd>
+              }
+
+              <dt>Database on load</dt>
+              <dd>
+                @if (inSync() === true) {
+                  <app-status-chip label="Was in sync" tone="positive" />
+                } @else if (inSync() === false) {
+                  <app-status-chip label="Was stale — corrected" tone="warning" />
+                } @else {
+                  <app-status-chip label="Unknown" tone="neutral" />
+                }
+              </dd>
+
+              @if (payout()?.razorpayCheckedAt; as checked) {
+                <dt>Checked</dt>
+                <dd>{{ checked | date: 'medium' }}</dd>
+              }
+            </dl>
+
+            @if (payout()?.razorpayError; as err) {
+              <p class="hint error">Razorpay lookup failed: {{ err }}</p>
+            }
+
+            <button
+              mat-stroked-button
+              type="button"
+              [disabled]="!canSync() || syncing()"
+              (click)="syncFromRazorpay()"
+            >
+              {{ syncing() ? 'Syncing…' : 'Sync with database' }}
+            </button>
+
+            <p class="hint">
+              Read live from Razorpay each time this page loads, and the stored status is updated to
+              match. "Was stale" means a webhook had been missed and the database has now been
+              corrected. Use Sync to re-pull on demand — for example after Razorpay was unreachable.
+            </p>
+          </mat-card-content>
+        </mat-card>
+
+        <mat-card appearance="outlined">
           <mat-card-header><mat-card-title>Record</mat-card-title></mat-card-header>
           <mat-card-content>
             <dl>
@@ -260,15 +317,75 @@ export class ChemistDetail {
 
   protected readonly payoutLabel = computed(() => {
     const account = this.payout();
-    return account ? chemistPayoutStatusLabel(account.status) : 'Not onboarded';
+    return account ? chemistPayoutStatusLabel(account.onboardingStatus) : 'Not onboarded';
   });
+
+  // ----- Live Razorpay view -----
+  // The stored status can lag the gateway when a webhook is missed, so these read the per-request
+  // `razorpay*` block rather than the persisted columns.
+
+  protected readonly syncing = signal(false);
+
+  protected readonly razorpayLabel = computed(() => {
+    const account = this.payout();
+    if (!account) return 'Not onboarded';
+    if (!account.razorpayLinkedAccountId) return 'No linked account';
+    if (!account.razorpayReachable) return 'Could not reach Razorpay';
+    return account.razorpayStatus != null
+      ? chemistPayoutStatusLabel(account.razorpayStatus)
+      : 'Unknown';
+  });
+
+  protected readonly razorpayTone = computed(() => {
+    const account = this.payout();
+    if (!account?.razorpayReachable || account.razorpayStatus == null) {
+      return 'neutral' as const;
+    }
+    switch (account.razorpayStatus) {
+      case ChemistPayoutStatus.Active:
+        return 'positive' as const;
+      case ChemistPayoutStatus.Rejected:
+      case ChemistPayoutStatus.Suspended:
+        return 'danger' as const;
+      case ChemistPayoutStatus.NotStarted:
+        return 'neutral' as const;
+      default:
+        return 'warning' as const;
+    }
+  });
+
+  /** null = undeterminable (no linked account, or gateway unreachable). */
+  protected readonly inSync = computed(() => this.payout()?.inSync ?? null);
+
+  /** Only offer the sync when there is a live gateway value that could be written. */
+  protected readonly canSync = computed(() => {
+    const account = this.payout();
+    return !!account?.razorpayLinkedAccountId && account.razorpayReachable === true;
+  });
+
+  protected async syncFromRazorpay(): Promise<void> {
+    const id = this.id();
+    if (!id || this.syncing()) return;
+
+    this.syncing.set(true);
+    try {
+      await firstValueFrom(this.api.syncPayoutFromRazorpay(id));
+      this.toast.success('Payout status synced from Razorpay.');
+      // Reload so both cards reflect the newly written value.
+      await this.load(id);
+    } catch (err) {
+      this.toast.error(describeHttpError(err as HttpErrorResponse));
+    } finally {
+      this.syncing.set(false);
+    }
+  }
 
   protected readonly payoutTone = computed(() => {
     const account = this.payout();
     if (!account) {
       return 'neutral' as const;
     }
-    switch (account.status) {
+    switch (account.onboardingStatus) {
       case ChemistPayoutStatus.Active:
         return 'positive' as const;
       case ChemistPayoutStatus.Rejected:

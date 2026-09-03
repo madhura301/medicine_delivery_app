@@ -53,6 +53,14 @@ export class ChemistsApiService {
   activation(storeId: string): Observable<ChemistActivation> {
     return this.http.get<ChemistActivation>(`${this.payoutBase}/${storeId}/activation`);
   }
+
+  /**
+   * Pulls the account's current state from Razorpay and writes it to our database.
+   * Used by "Sync with database" when a missed webhook has left the two out of step.
+   */
+  syncPayoutFromRazorpay(storeId: string): Observable<ChemistPayoutAccount> {
+    return this.http.post<ChemistPayoutAccount>(`${this.payoutBase}/refresh/${storeId}`, {});
+  }
 }
 
 export function chemistOwnerName(store: MedicalStore): string {

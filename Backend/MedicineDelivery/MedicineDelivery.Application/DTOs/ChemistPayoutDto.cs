@@ -49,6 +49,34 @@ namespace MedicineDelivery.Application.DTOs
         public DateTime? ActivatedOn { get; set; }
         public DateTime CreatedOn { get; set; }
         public DateTime? UpdatedOn { get; set; }
+
+        // ----- Live view from Razorpay -----
+        // Populated per-request from the payment gateway and never persisted. Webhooks can be
+        // missed, so the stored status above can lag reality; these fields let the console show
+        // what Razorpay says right now, alongside what we hold.
+
+        /// <summary>True when Razorpay was reachable and answered for this request.</summary>
+        public bool RazorpayReachable { get; set; }
+
+        /// <summary>Razorpay's own status string (e.g. "created", "activated"), as returned.</summary>
+        public string? RazorpayRawStatus { get; set; }
+
+        /// <summary>Razorpay's status mapped onto our onboarding states. Null when unreachable.</summary>
+        public ChemistPayoutStatus? RazorpayStatus { get; set; }
+
+        public string? RazorpayStatusName => RazorpayStatus?.ToString();
+
+        /// <summary>Why the live lookup failed, when it did. Not stored.</summary>
+        public string? RazorpayError { get; set; }
+
+        /// <summary>When this live lookup ran (UTC). Null when no lookup was attempted.</summary>
+        public DateTime? RazorpayCheckedAt { get; set; }
+
+        /// <summary>
+        /// True when the stored status matches Razorpay's. Null when it could not be determined -
+        /// no linked account yet, or Razorpay was unreachable.
+        /// </summary>
+        public bool? InSync { get; set; }
     }
 
     /// <summary>Summary returned by the "refresh pending statuses" job.</summary>

@@ -186,13 +186,39 @@ export type MedicalStoreUpdate = Omit<
   'medicalStoreId' | 'isDeleted' | 'createdOn' | 'updatedOn' | 'userId'
 >;
 
+/**
+ * GET /api/chemist-payout/{storeId}.
+ *
+ * Field names mirror the API's ChemistPayoutStatusDto exactly. The `razorpay*` block is a LIVE
+ * reading taken from the payment gateway on each request and is never stored: webhooks can be
+ * missed, so the persisted `onboardingStatus` may lag what the gateway actually holds.
+ */
 export interface ChemistPayoutAccount {
   medicalStoreId: string;
-  status: ChemistPayoutStatus;
-  accountNumber?: string | null;
-  ifsc?: string | null;
-  beneficiaryName?: string | null;
-  razorpayAccountId?: string | null;
+  razorpayLinkedAccountId?: string | null;
+  businessName?: string | null;
+  onboardingStatus: ChemistPayoutStatus;
+  onboardingStatusName?: string | null;
+  onboardingError?: string | null;
+  bankAccountNumberMasked?: string | null;
+  bankIfscCode?: string | null;
+  bankAccountHolderName?: string | null;
+  activatedOn?: string | null;
+  createdOn?: string | null;
+  updatedOn?: string | null;
+
+  /** True when Razorpay answered this request. */
+  razorpayReachable: boolean;
+  /** Razorpay's own status string, e.g. "created" / "activated". */
+  razorpayRawStatus?: string | null;
+  /** Razorpay's status mapped onto our states; null when unreachable. */
+  razorpayStatus?: ChemistPayoutStatus | null;
+  razorpayStatusName?: string | null;
+  /** Why the live lookup failed, when it did. */
+  razorpayError?: string | null;
+  razorpayCheckedAt?: string | null;
+  /** null when undeterminable: no linked account, or the gateway was unreachable. */
+  inSync?: boolean | null;
 }
 
 export interface ChemistActivation {
