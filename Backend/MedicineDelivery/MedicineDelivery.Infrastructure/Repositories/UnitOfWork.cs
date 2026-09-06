@@ -29,6 +29,7 @@ namespace MedicineDelivery.Infrastructure.Repositories
         private IRepository<ChemistPayoutAccount>? _chemistPayoutAccounts;
         private IRepository<ChemistActivationPayment>? _chemistActivationPayments;
         private IRepository<PaymentSplit>? _paymentSplits;
+        private IRepository<OrderLog>? _orderLogs;
 
         public UnitOfWork(ApplicationDbContext context)
         {
@@ -51,6 +52,7 @@ namespace MedicineDelivery.Infrastructure.Repositories
         public IRepository<ServiceRegionPinCode> ServiceRegionPinCodes => _serviceRegionPinCodes ??= new Repository<ServiceRegionPinCode>(_context);
         public IRepository<Consent> Consents => _consents ??= new Repository<Consent>(_context);
         public IRepository<ConsentLog> ConsentLogs => _consentLogs ??= new Repository<ConsentLog>(_context);
+        public IRepository<OrderLog> OrderLogs => _orderLogs ??= new Repository<OrderLog>(_context);
         public IRepository<UserOtp> UserOtps => _userOtps ??= new Repository<UserOtp>(_context);
         public IRepository<RazorpayOrder> RazorpayOrders => _razorpayOrders ??= new Repository<RazorpayOrder>(_context);
         public IRepository<ChemistPayoutAccount> ChemistPayoutAccounts => _chemistPayoutAccounts ??= new Repository<ChemistPayoutAccount>(_context);

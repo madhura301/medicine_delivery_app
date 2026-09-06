@@ -35,6 +35,7 @@ namespace MedicineDelivery.Infrastructure.Data
         public DbSet<ChemistPayoutAccount> ChemistPayoutAccounts { get; set; }
         public DbSet<ChemistActivationPayment> ChemistActivationPayments { get; set; }
         public DbSet<PaymentSplit> PaymentSplits { get; set; }
+        public DbSet<OrderLog> OrderLogs { get; set; }
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
@@ -889,6 +890,27 @@ namespace MedicineDelivery.Infrastructure.Data
                 entity.HasIndex(cl => cl.UserType);
                 entity.HasIndex(cl => cl.CreatedOn);
             });
+
+            // Configure OrderLog entity.
+            // Deliberately has NO foreign keys: it is an audit trail of failed order attempts and
+            // must survive the customer or address it refers to being deleted.
+            builder.Entity<OrderLog>(entity =>
+            {
+                entity.HasKey(ol => ol.OrderLogId);
+
+                entity.Property(ol => ol.CustomerName).HasMaxLength(200);
+                entity.Property(ol => ol.CustomerMobileNumber).HasMaxLength(20);
+                entity.Property(ol => ol.DeliveryAddress).HasMaxLength(1000);
+                entity.Property(ol => ol.PostalCode).HasMaxLength(20);
+                entity.Property(ol => ol.ReasonSummary).IsRequired().HasMaxLength(500);
+
+                entity.Property(ol => ol.Reason).HasConversion<int>();
+
+                // The list view is always "most recent first", and support filters by pin code.
+                entity.HasIndex(ol => ol.CreatedOn);
+                entity.HasIndex(ol => ol.PostalCode);
+                entity.HasIndex(ol => ol.CustomerId);
+            });
         }
 
         private void ConfigureDatabaseProviderSpecific(ModelBuilder builder)
@@ -1109,6 +1131,20 @@ namespace MedicineDelivery.Infrastructure.Data
                 .Property(cl => cl.CreatedOn)
                 .HasColumnType("timestamp with time zone")
                 .HasDefaultValueSql("now() at time zone 'utc'");
+
+            // Configure OrderLog DateTime / numeric properties for PostgreSQL
+            builder.Entity<OrderLog>()
+                .Property(ol => ol.CreatedOn)
+                .HasColumnType("timestamp with time zone")
+                .HasDefaultValueSql("now() at time zone 'utc'");
+
+            builder.Entity<OrderLog>()
+                .Property(ol => ol.Latitude)
+                .HasColumnType("numeric(18,6)");
+
+            builder.Entity<OrderLog>()
+                .Property(ol => ol.Longitude)
+                .HasColumnType("numeric(18,6)");
 
             // Configure UserOtp DateTime properties for PostgreSQL
             builder.Entity<UserOtp>()

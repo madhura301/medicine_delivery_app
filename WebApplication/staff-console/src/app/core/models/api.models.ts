@@ -4,6 +4,7 @@ import {
   ChemistActivationStatus,
   ChemistPayoutStatus,
   OrderInputType,
+  OrderLogReason,
   OrderPaymentStatus,
   OrderStatus,
   OrderType,
@@ -380,4 +381,43 @@ export interface Order {
 export interface MedicalStoreBasic {
   medicalStoreId: string;
   medicalName: string;
+}
+
+/* ── Order log ────────────────────────────────────────────────────────────── */
+
+/**
+ * One refused order attempt. The API records these whenever a customer's order is turned away —
+ * most often because the delivery area has no chemist, no customer support agent, or no delivery
+ * partner. The three `*Unavailable` flags say which, and `details` carries the full free-text
+ * diagnostic that used to exist only in the server log file.
+ */
+export interface OrderLogListItem {
+  orderLogId: number;
+  customerId: string | null;
+  customerName: string | null;
+  customerMobileNumber: string | null;
+  deliveryAddress: string | null;
+  postalCode: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  reason: OrderLogReason;
+  reasonName: string;
+  reasonSummary: string;
+  chemistUnavailable: boolean;
+  customerSupportUnavailable: boolean;
+  deliveryBoyUnavailable: boolean;
+  createdOn: string;
+}
+
+export interface OrderLog extends OrderLogListItem {
+  customerAddressId: string | null;
+  /** Only populated by the single-log endpoint. */
+  details: string | null;
+}
+
+export interface PagedResult<T> {
+  items: T[];
+  totalCount: number;
+  page: number;
+  pageSize: number;
 }

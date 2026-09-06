@@ -8,7 +8,7 @@ using MedicineDelivery.Domain.Interfaces;
 using MedicineDelivery.Infrastructure.Data;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
-
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NetTopologySuite;
 using NetTopologySuite.Geometries;
@@ -32,6 +32,7 @@ namespace MedicineDelivery.Infrastructure.Services
         private readonly ApplicationDbContext _context;
         private readonly ILogger<OrderService> _logger;
         private readonly ISmsService _smsService;
+        private readonly IServiceScopeFactory _scopeFactory;
         /// <summary>M-08: upper bound for order input files (prescription image / voice note) and bills.</summary>
         private const long MaxOrderInputFileBytes = 10 * 1024 * 1024; // 10 MB
 
@@ -39,7 +40,7 @@ namespace MedicineDelivery.Infrastructure.Services
         private static readonly string[] AllowedVoiceExtensions = { ".mp3", ".wav", ".m4a", ".aac", ".ogg" };
         private static readonly string[] AllowedPdfExtensions = { ".pdf" };
 
-        public OrderService(IUnitOfWork unitOfWork, IMapper mapper, IFileStorageService fileStorageService, ApplicationDbContext context, ILogger<OrderService> logger, ISmsService smsService)
+        public OrderService(IUnitOfWork unitOfWork, IMapper mapper, IFileStorageService fileStorageService, ApplicationDbContext context, ILogger<OrderService> logger, ISmsService smsService, IServiceScopeFactory scopeFactory)
         {
             _unitOfWork = unitOfWork;
             _mapper = mapper;
@@ -47,9 +48,48 @@ namespace MedicineDelivery.Infrastructure.Services
             _context = context;
             _logger = logger;
             _smsService = smsService;
+            _scopeFactory = scopeFactory;
         }
 
+        /// <summary>
+        /// Places an order, recording an <see cref="OrderLog"/> row whenever the attempt is refused.
+        /// The refusal is still thrown to the caller — the log is an additional audit trail so support
+        /// staff can see, in the console, why a customer could not order.
+        /// </summary>
         public async Task<OrderDto> CreateOrderAsync(CreateOrderDto createDto, CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                return await CreateOrderInternalAsync(createDto, cancellationToken);
+            }
+            catch (ServiceAreaUnavailableException)
+            {
+                // Already logged with full per-role detail inside EnsureOrderAreaIsServiceableAsync.
+                throw;
+            }
+            catch (OperationCanceledException)
+            {
+                // The client went away; not a refusal worth recording.
+                throw;
+            }
+            catch (KeyNotFoundException)
+            {
+                // Customer / address lookups log their own rows with the little context they have.
+                throw;
+            }
+            catch (ArgumentException ex)
+            {
+                await TryWriteOrderLogAsync(createDto, OrderLogReason.ValidationFailed, ex.Message, cancellationToken);
+                throw;
+            }
+            catch (Exception ex)
+            {
+                await TryWriteOrderLogAsync(createDto, OrderLogReason.UnexpectedError, ex.Message, cancellationToken);
+                throw;
+            }
+        }
+
+        private async Task<OrderDto> CreateOrderInternalAsync(CreateOrderDto createDto, CancellationToken cancellationToken = default)
         {
             ArgumentNullException.ThrowIfNull(createDto);
 
@@ -92,6 +132,8 @@ namespace MedicineDelivery.Infrastructure.Services
             if (customer == null)
             {
                 _logger.LogWarning("CreateOrderAsync failed: Customer {CustomerId} not found or inactive", createDto.CustomerId);
+                await TryWriteOrderLogAsync(createDto, OrderLogReason.CustomerNotFound,
+                    "Customer record was not found or is deactivated.", cancellationToken);
                 throw new KeyNotFoundException("Customer not found or inactive.");
             }
 
@@ -106,6 +148,9 @@ namespace MedicineDelivery.Infrastructure.Services
             if (address == null)
             {
                 _logger.LogWarning("CreateOrderAsync failed: Address {CustomerAddressId} not found or inactive for Customer {CustomerId}", createDto.CustomerAddressId, createDto.CustomerId);
+                await TryWriteOrderLogAsync(createDto, OrderLogReason.AddressNotFound,
+                    "The selected delivery address was not found, is deactivated, or does not belong to this customer.",
+                    cancellationToken);
                 throw new KeyNotFoundException("Customer address not found or inactive.");
             }
 
@@ -118,7 +163,7 @@ namespace MedicineDelivery.Infrastructure.Services
             // The delivery area must be fully serviceable — an eligible chemist within 5 km, plus a
             // customer support agent and a delivery partner covering the pin code. If any is missing,
             // no order is created (throws ServiceAreaUnavailableException -> HTTP 400).
-            await EnsureOrderAreaIsServiceableAsync(address, cancellationToken);
+            await EnsureOrderAreaIsServiceableAsync(customer, address, cancellationToken);
 
             _logger.LogInformation("CreateOrderAsync STEP 4/7: Serviceability check passed. Validating {OrderInputType} input payload.", createDto.OrderInputType);
 
@@ -219,7 +264,7 @@ namespace MedicineDelivery.Infrastructure.Services
         /// </list>
         /// Throws <see cref="ServiceAreaUnavailableException"/> listing every missing role if any is unavailable.
         /// </summary>
-        private async Task EnsureOrderAreaIsServiceableAsync(CustomerAddress address, CancellationToken cancellationToken = default)
+        private async Task EnsureOrderAreaIsServiceableAsync(Customer customer, CustomerAddress address, CancellationToken cancellationToken = default)
         {
             cancellationToken.ThrowIfCancellationRequested();
 
@@ -240,6 +285,11 @@ namespace MedicineDelivery.Infrastructure.Services
             // postal code neither can be resolved, so both count as unavailable.
             var customerSupportAvailable = false;
             var deliveryAvailable = false;
+            // Hoisted so the OrderLog row can record how far the pin-code lookup got: zero regions
+            // means "this pin code is not mapped at all", which is a different fix from
+            // "the region exists but has nobody active in it".
+            var customerSupportRegionMatches = 0;
+            var deliveryRegionMatches = 0;
 
             if (!string.IsNullOrWhiteSpace(postalCode))
             {
@@ -254,6 +304,8 @@ namespace MedicineDelivery.Infrastructure.Services
                     .Where(rpc => customerSupportRegionIds.Contains(rpc.ServiceRegionId))
                     .Select(rpc => rpc.ServiceRegionId)
                     .ToHashSet();
+
+                customerSupportRegionMatches = customerSupportPinRegionIds.Count;
 
                 if (customerSupportPinRegionIds.Count > 0)
                 {
@@ -278,6 +330,8 @@ namespace MedicineDelivery.Infrastructure.Services
                     .Where(rpc => deliveryRegionIds.Contains(rpc.ServiceRegionId))
                     .Select(rpc => rpc.ServiceRegionId)
                     .ToHashSet();
+
+                deliveryRegionMatches = deliveryPinRegionIds.Count;
 
                 if (deliveryPinRegionIds.Count > 0)
                 {
@@ -308,12 +362,148 @@ namespace MedicineDelivery.Infrastructure.Services
                     "CreateOrderAsync blocked: area not serviceable for pincode {PostalCode}. Missing: {MissingRoles}",
                     string.IsNullOrWhiteSpace(postalCode) ? "(none)" : postalCode,
                     string.Join(", ", missingRoles));
+
+                var details = new StringBuilder()
+                    .AppendLine("Order refused: the delivery area is not fully serviceable.")
+                    .AppendLine($"Pin code: {(string.IsNullOrWhiteSpace(postalCode) ? "(not set on the address)" : postalCode)}")
+                    .AppendLine($"Coordinates: {(address.Latitude.HasValue && address.Longitude.HasValue ? $"{address.Latitude}, {address.Longitude}" : "(not captured)")}")
+                    .AppendLine($"Missing: {string.Join(", ", missingRoles)}")
+                    .AppendLine()
+                    .AppendLine($"Chemist available .......... {chemistAvailable} (eligible = active + payout account Active + activation fee Paid; within 5 km when coordinates exist, otherwise same pin code)")
+                    .AppendLine($"Customer support available . {customerSupportAvailable} (customer-support regions covering this pin code: {customerSupportRegionMatches})")
+                    .AppendLine($"Delivery partner available . {deliveryAvailable} (delivery regions covering this pin code: {deliveryRegionMatches})")
+                    .ToString();
+
+                await WriteOrderLogAsync(new OrderLog
+                {
+                    CustomerId = customer.CustomerId,
+                    CustomerName = BuildCustomerName(customer),
+                    CustomerMobileNumber = customer.MobileNumber,
+                    CustomerAddressId = address.Id,
+                    DeliveryAddress = FlattenAddress(address),
+                    PostalCode = string.IsNullOrWhiteSpace(postalCode) ? null : postalCode,
+                    Latitude = address.Latitude,
+                    Longitude = address.Longitude,
+                    Reason = OrderLogReason.ServiceAreaUnavailable,
+                    ReasonSummary = $"Area not serviceable — no {string.Join(", ", missingRoles)} available.",
+                    ChemistUnavailable = !chemistAvailable,
+                    CustomerSupportUnavailable = !customerSupportAvailable,
+                    DeliveryBoyUnavailable = !deliveryAvailable,
+                    Details = details
+                }, cancellationToken);
+
                 throw new ServiceAreaUnavailableException(postalCode, missingRoles);
             }
 
             _logger.LogInformation("EnsureOrderAreaIsServiceableAsync EXIT: Area is fully serviceable for pincode {PostalCode} (chemist + customer support + delivery partner all available).",
                 string.IsNullOrWhiteSpace(postalCode) ? "(none)" : postalCode);
         }
+
+        /// <summary>
+        /// Persists an <see cref="OrderLog"/> row on a best-effort basis.
+        ///
+        /// Uses its own DI scope, and therefore its own <see cref="ApplicationDbContext"/>, for two
+        /// reasons: the caller's context may be holding half-saved entities when order creation blew
+        /// up (saving through it would flush those), and the audit row must land even though the
+        /// request is about to fail. A failure to write is swallowed — the customer's error must not
+        /// be replaced by a logging error.
+        /// </summary>
+        private async Task WriteOrderLogAsync(OrderLog log, CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                using var scope = _scopeFactory.CreateScope();
+                var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+
+                log.CreatedOn = DateTime.UtcNow;
+                context.OrderLogs.Add(log);
+                await context.SaveChangesAsync(cancellationToken);
+
+                _logger.LogInformation("OrderLog {OrderLogId} recorded: {Reason} — {ReasonSummary}",
+                    log.OrderLogId, log.Reason, log.ReasonSummary);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to record OrderLog row for reason {Reason}. The order outcome is unaffected.", log.Reason);
+            }
+        }
+
+        /// <summary>
+        /// Records a refused order attempt when only the incoming DTO is trusted — the customer and
+        /// address are re-read for context and simply left blank if they cannot be resolved.
+        /// </summary>
+        private async Task TryWriteOrderLogAsync(CreateOrderDto createDto, OrderLogReason reason, string summary, CancellationToken cancellationToken = default)
+        {
+            var log = new OrderLog
+            {
+                CustomerId = createDto.CustomerId == Guid.Empty ? null : createDto.CustomerId,
+                CustomerAddressId = createDto.CustomerAddressId == Guid.Empty ? null : createDto.CustomerAddressId,
+                Reason = reason,
+                ReasonSummary = Truncate(summary, 500)
+            };
+
+            var details = new StringBuilder()
+                .AppendLine($"Order refused: {summary}")
+                .AppendLine($"Order type: {createDto.OrderType}, input type: {createDto.OrderInputType}")
+                .AppendLine($"Input file: {createDto.OrderInputFile?.FileName ?? "(none)"} ({createDto.OrderInputFile?.Length ?? 0} bytes)")
+                .AppendLine($"Has input text: {!string.IsNullOrWhiteSpace(createDto.OrderInputText)}");
+
+            try
+            {
+                using var scope = _scopeFactory.CreateScope();
+                var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+
+                var customer = await context.Customers.AsNoTracking()
+                    .FirstOrDefaultAsync(c => c.CustomerId == createDto.CustomerId, cancellationToken);
+                if (customer != null)
+                {
+                    log.CustomerName = BuildCustomerName(customer);
+                    log.CustomerMobileNumber = customer.MobileNumber;
+                }
+
+                var address = await context.CustomerAddresses.AsNoTracking()
+                    .FirstOrDefaultAsync(a => a.Id == createDto.CustomerAddressId, cancellationToken);
+                if (address != null)
+                {
+                    log.DeliveryAddress = FlattenAddress(address);
+                    log.PostalCode = string.IsNullOrWhiteSpace(address.PostalCode) ? null : address.PostalCode.Trim();
+                    log.Latitude = address.Latitude;
+                    log.Longitude = address.Longitude;
+                }
+            }
+            catch (Exception ex)
+            {
+                // Context is only decoration here — record the row without it.
+                _logger.LogWarning(ex, "Could not enrich OrderLog with customer/address detail; recording the row as-is.");
+                details.AppendLine("(customer/address detail could not be read)");
+            }
+
+            log.Details = details.ToString();
+            await WriteOrderLogAsync(log, cancellationToken);
+        }
+
+        private static string BuildCustomerName(Customer customer) =>
+            Truncate(string.Join(' ', new[] { customer.CustomerFirstName, customer.CustomerMiddleName, customer.CustomerLastName }
+                .Where(part => !string.IsNullOrWhiteSpace(part))).Trim(), 200);
+
+        /// <summary>Flattens an address to one readable line for the log. Falls back to the free-text line the mobile app captures.</summary>
+        private static string FlattenAddress(CustomerAddress address)
+        {
+            var structured = string.Join(", ", new[]
+                {
+                    address.AddressLine1, address.AddressLine2, address.AddressLine3,
+                    address.City, address.State, address.PostalCode
+                }
+                .Where(part => !string.IsNullOrWhiteSpace(part)));
+
+            if (!string.IsNullOrWhiteSpace(structured))
+                return Truncate(structured, 1000);
+
+            return Truncate(address.Address ?? string.Empty, 1000);
+        }
+
+        private static string Truncate(string value, int maxLength) =>
+            string.IsNullOrEmpty(value) || value.Length <= maxLength ? value : value[..maxLength];
 
         /// <summary>
         /// Determines whether an eligible chemist (active payout + paid activation) can serve the address:

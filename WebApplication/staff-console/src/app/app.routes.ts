@@ -63,6 +63,11 @@ export const routes: Routes = [
         loadChildren: () => import('./features/chemists/chemists.routes').then((m) => m.routes),
       },
       {
+        path: 'order-logs',
+        canActivate: [roleGuard('Admin', 'Manager')],
+        loadChildren: () => import('./features/order-logs/order-logs.routes').then((m) => m.routes),
+      },
+      {
         path: 'customers',
         loadChildren: () => import('./features/customers/customers.routes').then((m) => m.routes),
       },

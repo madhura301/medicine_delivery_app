@@ -67,6 +67,9 @@ export const MENU: readonly MenuEntry[] = [
       },
       { label: 'With Manager', icon: 'escalator_warning', route: '/orders/with-manager', roles: ALL_STAFF },
       { label: 'Out for Delivery', icon: 'local_shipping', route: '/orders/with-delivery', roles: ALL_STAFF },
+      // Refused order attempts. Admin+Manager only: gated server-side by ListAllOrders, which
+      // CustomerSupport does not hold — the same permission as All Orders above.
+      { label: 'Order Log', icon: 'fact_check', route: '/order-logs', roles: ADMIN_MANAGER },
     ],
   },
 ];
