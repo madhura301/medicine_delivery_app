@@ -17,7 +17,7 @@ namespace MedicineDelivery.Infrastructure.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "8.0.0")
+                .HasAnnotation("ProductVersion", "10.0.10")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -1048,6 +1048,78 @@ namespace MedicineDelivery.Infrastructure.Migrations
                     b.HasIndex("Status");
 
                     b.ToTable("OrderAssignmentHistories");
+                });
+
+            modelBuilder.Entity("MedicineDelivery.Domain.Entities.OrderLog", b =>
+                {
+                    b.Property<long>("OrderLogId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("OrderLogId"));
+
+                    b.Property<bool>("ChemistUnavailable")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime>("CreatedOn")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("now() at time zone 'utc'");
+
+                    b.Property<Guid?>("CustomerAddressId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("CustomerId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("CustomerMobileNumber")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("CustomerName")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<bool>("CustomerSupportUnavailable")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("DeliveryAddress")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<bool>("DeliveryBoyUnavailable")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Details")
+                        .HasColumnType("text");
+
+                    b.Property<decimal?>("Latitude")
+                        .HasColumnType("numeric(18,6)");
+
+                    b.Property<decimal?>("Longitude")
+                        .HasColumnType("numeric(18,6)");
+
+                    b.Property<string>("PostalCode")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<int>("Reason")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("ReasonSummary")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.HasKey("OrderLogId");
+
+                    b.HasIndex("CreatedOn");
+
+                    b.HasIndex("CustomerId");
+
+                    b.HasIndex("PostalCode");
+
+                    b.ToTable("OrderLogs");
                 });
 
             modelBuilder.Entity("MedicineDelivery.Domain.Entities.Payment", b =>

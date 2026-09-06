@@ -3,7 +3,7 @@ description: Pharmaish Mobile App
 
 publish_to: 'none'
 
-version: 1.0.1+3
+version: 1.0.1+4
 
 environment:
   sdk: '>=3.0.0 <4.0.0'
@@ -77,6 +77,7 @@ dev_dependencies:
     sdk: flutter
   flutter_lints: ^3.0.0
   flutter_launcher_icons: ^0.13.1
+  flutter_native_splash: ^2.4.1
 
 flutter:
   uses-material-design: true
@@ -89,7 +90,12 @@ flutter:
 flutter_launcher_icons:
   android: "launcher_icon"
   ios: true
-  image_path: "assets/images/logo_for_opening page.png"
+  # The P mark on its own, with no wordmark - this is what the Android launcher
+  # icon already shows, and iOS must match it. An app icon renders as small as
+  # 40x40pt, where the PHARMAISH wordmark and tagline in
+  # "logo_for_opening page.png" are an illegible smudge.
+  # full_logo_animated.png is the same mark without any text.
+  image_path: "assets/images/full_logo_animated.png"
   min_sdk_android: 21
   # iOS app icons must be opaque (no alpha) for the App Store.
   remove_alpha_ios: true
@@ -97,3 +103,27 @@ flutter_launcher_icons:
   web:
     generate: true
     image_path: "assets/images/logo_for_opening page.png"
+
+# Native launch screen, shown before the Flutter engine boots. Without this the
+# iOS LaunchImage asset is Flutter's 68-byte placeholder and the app opens on a
+# blank white screen ("flutter build ipa" flags this under App Icon and Launch
+# Image Assets Validation).
+#
+# Deliberately mirrors SplashPage (core/screens/splash/splash_page.dart), which
+# is a white Scaffold showing opening_logo_animated.png centred. Using the same
+# image and background here means the native screen hands off to the Flutter one
+# with no visible jump. Unlike the app icon, the wordmark belongs here: the logo
+# is drawn large, so the text is legible.
+#
+# Regenerate after changing anything below:
+#   flutter pub get && dart run flutter_native_splash:create
+flutter_native_splash:
+  color: "#ffffff"
+  image: "assets/images/opening_logo_animated.png"
+  ios: true
+  android: true
+  web: false
+  # Android 12+ ignores the legacy splash and uses its own windowSplashScreen API.
+  android_12:
+    color: "#ffffff"
+    image: "assets/images/opening_logo_animated.png"

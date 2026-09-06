@@ -100,7 +100,111 @@ namespace MedicineDelivery.Infrastructure.Services
             if (account == null)
                 return ChemistPayoutResult.Fail($"No payout account found for medical store {medicalStoreId}.");
 
-            return ChemistPayoutResult.Ok(ToDto(account));
+            // Always report Razorpay's current view rather than whatever was last written locally.
+            // The stored OnboardingError is a snapshot of one past attempt: it goes stale the moment
+            // anything changes at Razorpay, and reading it back made a failed onboarding look like a
+            // live failure of this endpoint.
+            // Capture the stored status BEFORE refreshing. Comparing Razorpay against the
+            // post-refresh value would always match (we just wrote it), which would hide exactly
+            // the drift this is meant to expose - a missed webhook leaving us stale.
+            var storedStatusOnArrival = account.OnboardingStatus;
+
+            var live = await RefreshFromRazorpayAsync(account, ct);
+
+            var dto = ToDto(account);
+            ApplyLiveView(dto, storedStatusOnArrival, live);
+            return ChemistPayoutResult.Ok(dto);
+        }
+
+        /// <summary>
+        /// Copies the live Razorpay reading onto the DTO. These fields are per-request only - they
+        /// describe what the gateway said just now, which is what lets the console show gateway
+        /// state next to stored state (and flag when the gateway could not be reached at all).
+        /// </summary>
+        private void ApplyLiveView(ChemistPayoutStatusDto dto, ChemistPayoutStatus storedStatusOnArrival, RazorpayAccountStatusResult? live)
+        {
+            if (live == null)
+            {
+                // No linked account exists, so there was nothing to look up.
+                dto.RazorpayReachable = false;
+                dto.RazorpayCheckedAt = null;
+                dto.InSync = null;
+                return;
+            }
+
+            dto.RazorpayCheckedAt = DateTime.UtcNow;
+
+            if (!live.Success)
+            {
+                dto.RazorpayReachable = false;
+                dto.RazorpayError = live.Error;
+                dto.InSync = null;   // unknown, not "out of sync"
+                return;
+            }
+
+            var mapped = MapState(live.State);
+            dto.RazorpayReachable = true;
+            dto.RazorpayRawStatus = live.RawStatus;
+            dto.RazorpayStatus = mapped;
+            // False here means the database WAS stale when this request arrived (a webhook was
+            // missed) - the refresh above has since corrected it.
+            dto.InSync = mapped == storedStatusOnArrival;
+        }
+
+        /// <summary>
+        /// Pulls the linked account's current state from Razorpay and writes any change back.
+        ///
+        /// No-ops when there is no linked account yet - nothing exists at Razorpay to ask about, so
+        /// the account is genuinely "not started" regardless of what a previous attempt recorded.
+        /// A lookup failure leaves the stored status untouched: a transient Razorpay outage must not
+        /// rewrite an account's onboarding state.
+        /// </summary>
+        private async Task<RazorpayAccountStatusResult?> RefreshFromRazorpayAsync(ChemistPayoutAccount account, CancellationToken ct)
+        {
+            if (string.IsNullOrWhiteSpace(account.RazorpayLinkedAccountId))
+            {
+                // Never onboarded (or the attempt never got as far as creating an account).
+                // Drop any stale error so callers see a clean "NotStarted" rather than an old failure.
+                if (account.OnboardingError != null)
+                {
+                    account.OnboardingError = null;
+                    _unitOfWork.ChemistPayoutAccounts.Update(account);
+                    await _unitOfWork.SaveChangesAsync();
+                }
+                return null;
+            }
+
+            var statusResult = await _routeClient.GetAccountStatusAsync(
+                account.RazorpayLinkedAccountId!, account.RazorpayProductConfigurationId, ct);
+
+            if (!statusResult.Success)
+            {
+                _logger.LogWarning("GetStatus: Razorpay lookup failed for store {StoreId}: {Error}. Returning last known status.",
+                    account.MedicalStoreId, statusResult.Error);
+                return statusResult;
+            }
+
+            var newStatus = MapState(statusResult.State);
+            var changed = newStatus != account.OnboardingStatus || account.OnboardingError != null;
+            if (!changed)
+                return statusResult;
+
+            var previous = account.OnboardingStatus;
+            account.OnboardingStatus = newStatus;
+            // Razorpay is now the source of truth, so any locally stored error is superseded.
+            account.OnboardingError = null;
+
+            if (newStatus == ChemistPayoutStatus.Active)
+                account.ActivatedOn ??= DateTime.UtcNow;
+
+            account.UpdatedOn = DateTime.UtcNow;
+            _unitOfWork.ChemistPayoutAccounts.Update(account);
+            await _unitOfWork.SaveChangesAsync();
+
+            _logger.LogInformation("GetStatus refreshed store {StoreId}: {Old} -> {New} (razorpay={Raw})",
+                account.MedicalStoreId, previous, newStatus, statusResult.RawStatus);
+
+            return statusResult;
         }
 
         public async Task<ChemistPayoutResult> UpdateBankDetailsAsync(Guid medicalStoreId, UpdateChemistBankDto request, CancellationToken ct = default)

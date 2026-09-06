@@ -1,128 +1,126 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
-<dict>
- <!-- CAMERA PERMISSION -->
-    <!-- Shown when user tries to capture prescription photo -->
-    <key>NSCameraUsageDescription</key>
-    <string>Pharmaish needs camera access to capture prescription photos for your medicine orders</string>
-    
-    <!-- PHOTO LIBRARY PERMISSION -->
-    <!-- Shown when user tries to select image from gallery -->
-    <key>NSPhotoLibraryUsageDescription</key>
-    <string>Pharmaish needs photo library access to select prescription images from your photos</string>
-    
-    <!-- MICROPHONE PERMISSION -->
-    <!-- Shown when user tries to record voice order -->
-    <key>NSMicrophoneUsageDescription</key>
-	<string>Pharmaish needs microphone access to record your voice orders</string>
-
-    <!-- URL SCHEMES THE APP MAY QUERY OR LAUNCH -->
-    <!-- iOS only reports canLaunchUrl() == true for schemes listed here.
+	<dict>
+		<!-- CAMERA PERMISSION -->
+		<!-- Shown when user tries to capture prescription photo -->
+		<key>NSCameraUsageDescription</key>
+		<string>Pharmaish needs camera access to capture prescription photos for your medicine orders</string>
+		<!-- PHOTO LIBRARY PERMISSION -->
+		<!-- Shown when user tries to select image from gallery -->
+		<key>NSPhotoLibraryUsageDescription</key>
+		<string>Pharmaish needs photo library access to select prescription images from your photos</string>
+		<!-- MICROPHONE PERMISSION -->
+		<!-- Shown when user tries to record voice order -->
+		<key>NSMicrophoneUsageDescription</key>
+		<string>Pharmaish needs microphone access to record your voice orders</string>
+		<!-- URL SCHEMES THE APP MAY QUERY OR LAUNCH -->
+		<!-- iOS only reports canLaunchUrl() == true for schemes listed here.
          whatsapp: order sharing. tel/mailto: pharmacy contact links.
          The UPI entries let Razorpay detect installed payment apps for the
          UPI intent flow; without them iOS reports none installed and the
          customer is silently limited to card/netbanking. -->
-    <key>LSApplicationQueriesSchemes</key>
-    <array>
-        <string>whatsapp</string>
-        <string>whatsapp-biz</string>
-        <string>https</string>
-        <string>http</string>
-        <string>tel</string>
-        <string>mailto</string>
-        <!-- UPI apps used by Razorpay's iOS UPI intent flow -->
-        <string>gpay</string>
-        <string>tez</string>
-        <string>phonepe</string>
-        <string>paytm</string>
-        <string>bhim</string>
-        <string>credpay</string>
-    </array>
-    
-    <!-- BACKGROUND MODES (Optional - if you want to allow background audio) -->
-    <!-- Uncomment if you need background audio playback -->
-    <!--
+		<key>LSApplicationQueriesSchemes</key>
+		<array>
+			<string>whatsapp</string>
+			<string>whatsapp-biz</string>
+			<string>https</string>
+			<string>http</string>
+			<string>tel</string>
+			<string>mailto</string>
+			<!-- UPI apps used by Razorpay's iOS UPI intent flow -->
+			<string>gpay</string>
+			<string>tez</string>
+			<string>phonepe</string>
+			<string>paytm</string>
+			<string>bhim</string>
+			<string>credpay</string>
+		</array>
+		<!-- BACKGROUND MODES (Optional - if you want to allow background audio) -->
+		<!-- Uncomment if you need background audio playback -->
+		<!--
     <key>UIBackgroundModes</key>
     <array>
         <string>audio</string>
     </array>
     -->
-    
-    <!-- FILE SHARING -->
-    <!-- Downloaded prescriptions and bills are saved into the app's Documents
+		<!-- FILE SHARING -->
+		<!-- Downloaded prescriptions and bills are saved into the app's Documents
          directory (see shared/widgets/authenticated_image.dart). These two keys
          are what make that directory browsable: UIFileSharingEnabled exposes it
          under "On My iPhone > Pharmaish" in the Files app (and iTunes file
          sharing), LSSupportsOpeningDocumentsInPlace lets Files open those
          documents in place instead of handing back a copy. Without them the
          downloads exist but the user has no way to reach them. -->
-    <key>UIFileSharingEnabled</key>
-    <true/>
-    <key>LSSupportsOpeningDocumentsInPlace</key>
-    <true/>
-	<!-- App Transport Security is intentionally left at Apple's secure default.
+		<key>UIFileSharingEnabled</key>
+		<true/>
+		<key>LSSupportsOpeningDocumentsInPlace</key>
+		<true/>
+		<!-- App Transport Security is intentionally left at Apple's secure default.
 	     NSAllowsArbitraryLoads was removed: every environment in
 	     lib/config/environment_config.dart is HTTPS, and Apple requires written
 	     justification at review for apps that disable ATS. This mirrors
 	     cleartextTrafficPermitted="false" in the Android network security config. -->
-
-	<!-- UIBackgroundModes (fetch, remote-notification) was removed: the app
+		<!-- UIBackgroundModes (fetch, remote-notification) was removed: the app
 	     registers no push notification handler and no background fetch task.
 	     Declaring background modes the binary never implements is a documented
 	     App Store rejection reason. Re-add only alongside a real implementation. -->
-
-	<!-- Declares the app uses no non-exempt encryption, so App Store Connect
+		<!-- Declares the app uses no non-exempt encryption, so App Store Connect
 	     stops asking for export-compliance answers on every upload. Only HTTPS
 	     is used, which is exempt. -->
-	<key>ITSAppUsesNonExemptEncryption</key>
-	<false/>
-	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>This app needs access to location to help you set your pharmacy's location for deliveries.</string>
-	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
-	<string>This app needs access to location to help you set your pharmacy's location for deliveries.</string>
-	<key>CFBundleDevelopmentRegion</key>
-	<string>$(DEVELOPMENT_LANGUAGE)</string>
-	<key>CFBundleDisplayName</key>
-	<string>Pharmaish</string>
-	<key>CFBundleExecutable</key>
-	<string>$(EXECUTABLE_NAME)</string>
-	<key>CFBundleIdentifier</key>
-	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
-	<key>CFBundleInfoDictionaryVersion</key>
-	<string>6.0</string>
-	<key>CFBundleName</key>
-	<string>Pharmaish</string>
-	<key>CFBundlePackageType</key>
-	<string>APPL</string>
-	<key>CFBundleShortVersionString</key>
-	<string>$(FLUTTER_BUILD_NAME)</string>
-	<key>CFBundleSignature</key>
-	<string>????</string>
-	<key>CFBundleVersion</key>
-	<string>$(FLUTTER_BUILD_NUMBER)</string>
-	<key>LSRequiresIPhoneOS</key>
-	<true/>
-	<key>UILaunchStoryboardName</key>
-	<string>LaunchScreen</string>
-	<key>UIMainStoryboardFile</key>
-	<string>Main</string>
-	<key>UISupportedInterfaceOrientations</key>
-	<array>
-		<string>UIInterfaceOrientationPortrait</string>
-		<string>UIInterfaceOrientationLandscapeLeft</string>
-		<string>UIInterfaceOrientationLandscapeRight</string>
-	</array>
-	<key>UISupportedInterfaceOrientations~ipad</key>
-	<array>
-		<string>UIInterfaceOrientationPortrait</string>
-		<string>UIInterfaceOrientationPortraitUpsideDown</string>
-		<string>UIInterfaceOrientationLandscapeLeft</string>
-		<string>UIInterfaceOrientationLandscapeRight</string>
-	</array>
-	<key>CADisableMinimumFrameDurationOnPhone</key>
-	<true/>
-	<key>UIApplicationSupportsIndirectInputEvents</key>
-	<true/>
-</dict>
+		<key>ITSAppUsesNonExemptEncryption</key>
+		<false/>
+		<!-- Foreground location only. LocationService (core/services/location_service.dart)
+	     calls getCurrentPosition and never opens a position stream, so
+	     NSLocationAlwaysAndWhenInUseUsageDescription was removed: requesting Always
+	     access the binary never uses draws heavy review scrutiny and is a documented
+	     rejection reason. Re-add it only alongside real background tracking. -->
+		<key>NSLocationWhenInUseUsageDescription</key>
+		<string>This app needs access to location to help you set your pharmacy's location for deliveries.</string>
+		<key>CFBundleDevelopmentRegion</key>
+		<string>$(DEVELOPMENT_LANGUAGE)</string>
+		<key>CFBundleDisplayName</key>
+		<string>Pharmaish</string>
+		<key>CFBundleExecutable</key>
+		<string>$(EXECUTABLE_NAME)</string>
+		<key>CFBundleIdentifier</key>
+		<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+		<key>CFBundleInfoDictionaryVersion</key>
+		<string>6.0</string>
+		<key>CFBundleName</key>
+		<string>Pharmaish</string>
+		<key>CFBundlePackageType</key>
+		<string>APPL</string>
+		<key>CFBundleShortVersionString</key>
+		<string>$(FLUTTER_BUILD_NAME)</string>
+		<key>CFBundleSignature</key>
+		<string>????</string>
+		<key>CFBundleVersion</key>
+		<string>$(FLUTTER_BUILD_NUMBER)</string>
+		<key>LSRequiresIPhoneOS</key>
+		<true/>
+		<key>UILaunchStoryboardName</key>
+		<string>LaunchScreen</string>
+		<key>UIMainStoryboardFile</key>
+		<string>Main</string>
+		<key>UISupportedInterfaceOrientations</key>
+		<array>
+			<string>UIInterfaceOrientationPortrait</string>
+			<string>UIInterfaceOrientationLandscapeLeft</string>
+			<string>UIInterfaceOrientationLandscapeRight</string>
+		</array>
+		<key>UISupportedInterfaceOrientations~ipad</key>
+		<array>
+			<string>UIInterfaceOrientationPortrait</string>
+			<string>UIInterfaceOrientationPortraitUpsideDown</string>
+			<string>UIInterfaceOrientationLandscapeLeft</string>
+			<string>UIInterfaceOrientationLandscapeRight</string>
+		</array>
+		<key>CADisableMinimumFrameDurationOnPhone</key>
+		<true/>
+		<key>UIApplicationSupportsIndirectInputEvents</key>
+		<true/>
+		<key>UIStatusBarHidden</key>
+		<false/>
+	</dict>
 </plist>

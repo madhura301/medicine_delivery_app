@@ -25,6 +25,11 @@ export interface Capabilities {
    * staff so they can step in. Gated server-side by UpdateOrders, which all three roles hold.
    */
   assignDelivery: boolean;
+  /**
+   * Change a user's login username or reset their password. Gated server-side by
+   * ManagerUpdateUsers, which Admin and Manager hold but CustomerSupport does not.
+   */
+  manageUserAccounts: boolean;
 }
 
 const CAPABILITIES: Record<UserRole, Capabilities> = {
@@ -39,6 +44,7 @@ const CAPABILITIES: Record<UserRole, Capabilities> = {
     listAllOrders: true,
     reassignOrder: true,
     cancelOrder: true,
+    manageUserAccounts: true,
     assignDelivery: true,
   },
   Manager: {
@@ -53,6 +59,7 @@ const CAPABILITIES: Record<UserRole, Capabilities> = {
     listAllOrders: true,
     reassignOrder: true,
     cancelOrder: true,
+    manageUserAccounts: true,
     assignDelivery: true,
   },
   CustomerSupport: {
@@ -66,6 +73,7 @@ const CAPABILITIES: Record<UserRole, Capabilities> = {
     listAllOrders: false,
     reassignOrder: true,
     cancelOrder: true,
+    manageUserAccounts: false,
     assignDelivery: true,
   },
   Customer: emptyCapabilities(),
@@ -85,6 +93,7 @@ function emptyCapabilities(): Capabilities {
     listAllOrders: false,
     reassignOrder: false,
     cancelOrder: false,
+    manageUserAccounts: false,
     assignDelivery: false,
   };
 }

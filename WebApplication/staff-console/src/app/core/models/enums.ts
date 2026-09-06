@@ -124,10 +124,33 @@ export const CHEMIST_ACTIVATION_STATUS_LABELS: Record<ChemistActivationStatus, s
   [ChemistActivationStatus.Expired]: 'Expired',
 };
 
+/** Why an order attempt was refused — the `reason` column of the Order Log. */
+export enum OrderLogReason {
+  Unknown = 0,
+  ServiceAreaUnavailable = 1,
+  CustomerNotFound = 2,
+  AddressNotFound = 3,
+  ValidationFailed = 4,
+  UnexpectedError = 5,
+}
+
+export const ORDER_LOG_REASON_LABELS: Record<OrderLogReason, string> = {
+  [OrderLogReason.Unknown]: 'Unknown',
+  [OrderLogReason.ServiceAreaUnavailable]: 'Area not serviceable',
+  [OrderLogReason.CustomerNotFound]: 'Customer not found',
+  [OrderLogReason.AddressNotFound]: 'Address not found',
+  [OrderLogReason.ValidationFailed]: 'Invalid order details',
+  [OrderLogReason.UnexpectedError]: 'Unexpected error',
+};
+
 /**
  * Label lookups. TypeScript treats the maps above as total over their enum, but the values come
  * from an API that could add a member before the client is updated — these tolerate that.
  */
+export function orderLogReasonLabel(reason: OrderLogReason): string {
+  return ORDER_LOG_REASON_LABELS[reason] ?? 'Unknown';
+}
+
 export function orderStatusLabel(status: OrderStatus): string {
   return ORDER_STATUS_LABELS[status] ?? 'Unknown';
 }

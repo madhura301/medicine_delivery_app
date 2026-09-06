@@ -593,6 +593,7 @@ else
 builder.Services.AddScoped<MedicineDelivery.Application.Interfaces.IPolicyDocumentService, MedicineDelivery.Infrastructure.Services.PolicyDocumentService>();
 builder.Services.AddScoped<MedicineDelivery.Application.Interfaces.IPermissionCheckerService, MedicineDelivery.Infrastructure.Services.PermissionCheckerService>();
 builder.Services.AddScoped<MedicineDelivery.Application.Interfaces.IOrderService, MedicineDelivery.Infrastructure.Services.OrderService>();
+builder.Services.AddScoped<MedicineDelivery.Application.Interfaces.IOrderLogService, MedicineDelivery.Infrastructure.Services.OrderLogService>();
 builder.Services.AddScoped<MedicineDelivery.Application.Interfaces.IConsentService, MedicineDelivery.Infrastructure.Services.ConsentService>();
 builder.Services.AddScoped<MedicineDelivery.Application.Interfaces.IPaymentService, MedicineDelivery.Infrastructure.Services.PaymentService>();
 builder.Services.AddScoped<MedicineDelivery.Infrastructure.Services.IBrowserInfoService, MedicineDelivery.Infrastructure.Services.BrowserInfoService>();

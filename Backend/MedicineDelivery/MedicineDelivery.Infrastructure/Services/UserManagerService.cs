@@ -124,6 +124,91 @@ namespace MedicineDelivery.Infrastructure.Services
             return ConvertToDomainResult(result);
         }
 
+        public async Task<IApplicationUser?> FindByIdAsync(string userId)
+        {
+            if (string.IsNullOrWhiteSpace(userId)) return null;
+            var user = await _userManager.FindByIdAsync(userId);
+            return user != null ? new ApplicationUserWrapper(user) : null;
+        }
+
+        public async Task<IApplicationUser?> FindByUserNameAsync(string userName)
+        {
+            if (string.IsNullOrWhiteSpace(userName)) return null;
+            var user = await _userManager.FindByNameAsync(userName);
+            return user != null ? new ApplicationUserWrapper(user) : null;
+        }
+
+        public async Task<MedicineDelivery.Domain.Interfaces.IdentityResult> ChangeUserNameAsync(string userId, string newUserName)
+        {
+            var appUser = await _userManager.FindByIdAsync(userId);
+            if (appUser == null)
+            {
+                _logger.LogWarning("ChangeUserNameAsync: User {UserId} not found", userId);
+                return NotFound();
+            }
+
+            var previous = appUser.UserName;
+
+            // UserName and PhoneNumber are the same value in this system - a login IS a mobile
+            // number - so they must move together or the account desynchronises.
+            var setName = await _userManager.SetUserNameAsync(appUser, newUserName);
+            if (!setName.Succeeded)
+            {
+                _logger.LogWarning("ChangeUserNameAsync: SetUserName failed for {UserId}. Errors: {Errors}",
+                    userId, string.Join(", ", setName.Errors.Select(e => e.Description)));
+                return ConvertToDomainResult(setName);
+            }
+
+            var setPhone = await _userManager.SetPhoneNumberAsync(appUser, newUserName);
+            if (!setPhone.Succeeded)
+            {
+                _logger.LogWarning("ChangeUserNameAsync: SetPhoneNumber failed for {UserId}. Errors: {Errors}",
+                    userId, string.Join(", ", setPhone.Errors.Select(e => e.Description)));
+                return ConvertToDomainResult(setPhone);
+            }
+
+            // Force existing tokens/sessions issued against the old identity to stop working.
+            await _userManager.UpdateSecurityStampAsync(appUser);
+
+            _logger.LogInformation("Username changed for {UserId}: {Previous} -> {New}", userId, previous, newUserName);
+            return ConvertToDomainResult(setPhone);
+        }
+
+        public async Task<MedicineDelivery.Domain.Interfaces.IdentityResult> AdminResetPasswordAsync(string userId, string newPassword)
+        {
+            var appUser = await _userManager.FindByIdAsync(userId);
+            if (appUser == null)
+            {
+                _logger.LogWarning("AdminResetPasswordAsync: User {UserId} not found", userId);
+                return NotFound();
+            }
+
+            // Generate-and-consume a reset token so the caller never needs the current password,
+            // while still going through Identity's password validation and hashing.
+            var token = await _userManager.GeneratePasswordResetTokenAsync(appUser);
+            var result = await _userManager.ResetPasswordAsync(appUser, token, newPassword);
+
+            if (!result.Succeeded)
+            {
+                _logger.LogWarning("AdminResetPasswordAsync: reset failed for {UserId}. Errors: {Errors}",
+                    userId, string.Join(", ", result.Errors.Select(e => e.Description)));
+                return ConvertToDomainResult(result);
+            }
+
+            await _userManager.UpdateSecurityStampAsync(appUser);
+
+            // Never log the password itself.
+            _logger.LogInformation("Password reset by administrator for {UserId}", userId);
+            return ConvertToDomainResult(result);
+        }
+
+        private static MedicineDelivery.Domain.Interfaces.IdentityResult NotFound() =>
+            new()
+            {
+                Succeeded = false,
+                Errors = new[] { new MedicineDelivery.Domain.Interfaces.IdentityError { Code = "UserNotFound", Description = "User not found" } }
+            };
+
         private static MedicineDelivery.Domain.Interfaces.IdentityResult ConvertToDomainResult(Microsoft.AspNetCore.Identity.IdentityResult aspNetResult)
         {
             return new MedicineDelivery.Domain.Interfaces.IdentityResult
