@@ -527,6 +527,17 @@ class _CustomerAllOrdersState extends State<CustomerAllOrders> {
                     'Order Type',
                     _getOrderTypeLabel(order.orderInputTypeDisplayName),
                   ),
+                  if (order.hasDeliveryAddress) ...[
+                    const SizedBox(height: 8),
+                    // Which address this order is going to — customers with more
+                    // than one saved address could not tell them apart here.
+                    _buildInfoRow(
+                      Icons.location_on,
+                      'Deliver To',
+                      order.deliveryAddressLine!,
+                      maxLines: 2,
+                    ),
+                  ],
                   if (order.totalAmount != null) ...[
                     const SizedBox(height: 8),
                     _buildInfoRow(
@@ -757,13 +768,19 @@ class _CustomerAllOrdersState extends State<CustomerAllOrders> {
     );
   }
 
-  Widget _buildInfoRow(IconData icon, String label, String value) {
+  Widget _buildInfoRow(IconData icon, String label, String value,
+      {int maxLines = 1}) {
     return Row(
+      // Top-aligned so a value that wraps (an address) keeps its icon on the
+      // first line rather than floating to the vertical centre.
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Icon(icon, size: 16, color: Colors.grey[600]),
         const SizedBox(width: 8),
         Expanded(
           child: RichText(
+            maxLines: maxLines,
+            overflow: TextOverflow.ellipsis,
             text: TextSpan(
               style: TextStyle(fontSize: 13, color: Colors.grey[700]),
               children: [

@@ -913,21 +913,25 @@ class _AssignedOrderCard extends StatelessWidget {
                   ],
                 ),
 
-                // ── Delivery city + pincode ───────────────────────────────
-                if (order.shippingPincode != null &&
-                    order.shippingPincode!.isNotEmpty) ...[
+                // ── Delivery address ──────────────────────────────────────
+                // Support reassigns a rejected order to another store, so they
+                // need the whole destination, not just the city and pincode.
+                if (order.hasDeliveryAddress) ...[
                   const SizedBox(height: 4),
                   Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Icon(Icons.location_on_outlined,
                           size: 13, color: Colors.grey.shade400),
                       const SizedBox(width: 4),
-                      Text(
-                        [order.shippingCity, order.shippingPincode]
-                            .where((s) => s != null && s.isNotEmpty)
-                            .join(' – '),
-                        style: TextStyle(
-                            fontSize: 12, color: Colors.grey.shade500),
+                      Expanded(
+                        child: Text(
+                          order.deliveryAddressLine!,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                              fontSize: 12, color: Colors.grey.shade600),
+                        ),
                       ),
                     ],
                   ),

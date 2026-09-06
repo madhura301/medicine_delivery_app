@@ -10,6 +10,7 @@ import 'package:pharmaish/utils/storage.dart';
 import 'package:pharmaish/shared/models/order_model.dart';
 import 'package:pharmaish/shared/widgets/app_button.dart';
 import 'package:pharmaish/shared/widgets/authenticated_image.dart';
+import 'package:pharmaish/shared/widgets/delivery_address_view.dart';
 import 'package:pharmaish/shared/widgets/order_assignment_history_widget.dart';
 import 'package:pharmaish/shared/widgets/order_payments_dialog.dart';
 import 'package:pharmaish/core/services/dio_client.dart';
@@ -35,8 +36,6 @@ class _CustomerOrderDetailsPageState extends State<CustomerOrderDetailsPage> {
 
   // Detailed data
   Map<String, dynamic>? _chemistData;
-  Map<String, dynamic>? _addressData;
-  bool _isLoadingAddress = false;
   bool _isLoadingChemist = false;
   bool _chemistLoadFailed = false;
 
@@ -107,10 +106,10 @@ class _CustomerOrderDetailsPageState extends State<CustomerOrderDetailsPage> {
 
     try {
       await _refreshOrder(); // ✅ Load complete order first!
-      // Load chemist and delivery address
+      // The delivery address rides along on the order itself now, so only the
+      // chemist record still needs fetching.
       await Future.wait([
         if (_currentOrder.medicalStoreId != null) _loadChemistDetails(),
-        _loadDeliveryAddress(),
       ]);
 
       setState(() {
@@ -147,29 +146,6 @@ class _CustomerOrderDetailsPageState extends State<CustomerOrderDetailsPage> {
       if (mounted) setState(() => _chemistLoadFailed = true);
     } finally {
       if (mounted) setState(() => _isLoadingChemist = false);
-    }
-  }
-
-  Future<void> _loadDeliveryAddress() async {
-    try {
-      setState(() => _isLoadingAddress = true);
-      final orderJson =
-          await OrderService.getOrderById(_currentOrder.orderId);
-      final addressId = orderJson['customerAddressId']?.toString() ??
-          orderJson['CustomerAddressId']?.toString();
-      if (addressId == null || addressId.isEmpty) return;
-
-      final addrResp = await _dio.get('/CustomerAddresses/$addressId');
-      if (addrResp.statusCode == 200) {
-        setState(() {
-          _addressData =
-              _normaliseCasing(addrResp.data as Map<String, dynamic>);
-          _isLoadingAddress = false;
-        });
-      }
-    } catch (e) {
-      AppLogger.error('Error loading delivery address: $e');
-      setState(() => _isLoadingAddress = false);
     }
   }
 
@@ -713,56 +689,10 @@ class _CustomerOrderDetailsPageState extends State<CustomerOrderDetailsPage> {
     );
   }
 
-// REPLACE WITH:
   Widget _buildDeliveryAddress() {
-    if (_isLoadingAddress) {
-      return const Row(children: [
-        SizedBox(
-            width: 16,
-            height: 16,
-            child: CircularProgressIndicator(strokeWidth: 2)),
-        SizedBox(width: 8),
-        Text('Loading address...',
-            style: TextStyle(fontSize: 13, color: Colors.grey)),
-      ]);
-    }
-
-    if (_addressData == null) {
-      return const Text('Address not available',
-          style: TextStyle(color: Colors.grey));
-    }
-
-    String g(String key) => (_addressData![key] ?? '').toString().trim();
-
-    final parts = <String>[];
-    void add(String key) {
-      final v = g(key);
-      if (v.isNotEmpty) parts.add(v);
-    }
-
-    add('address');
-    add('addressLine1');
-    add('addressLine2');
-    add('addressLine3');
-    final city = g('city');
-    final state = g('state');
-    final pincode = g('pincode').isNotEmpty ? g('pincode') : g('postalCode');
-    final last = [city, state, pincode].where((s) => s.isNotEmpty).join(' - ');
-    if (last.isNotEmpty) parts.add(last);
-
-    if (parts.isEmpty) {
-      return const Text('Address on file',
-          style: TextStyle(color: Colors.grey));
-    }
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: parts
-          .map((line) => Padding(
-                padding: const EdgeInsets.only(bottom: 2),
-                child: Text(line, style: const TextStyle(fontSize: 14)),
-              ))
-          .toList(),
+    return DeliveryAddressView(
+      address: _currentOrder.deliveryAddress,
+      emptyText: 'Address not available',
     );
   }
 

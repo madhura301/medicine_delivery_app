@@ -692,7 +692,9 @@ namespace MedicineDelivery.Infrastructure.Services
             }
 
             var orders = await _unitOfWork.Orders.FindAsync(o => o.CustomerId == customerId);
-            return _mapper.Map<IEnumerable<OrderDto>>(orders);
+            var dtos = _mapper.Map<List<OrderDto>>(orders);
+            await EnrichAssigneeNamesAsync(dtos, cancellationToken);
+            return dtos;
         }
 
         public async Task<IEnumerable<OrderDto>> GetActiveOrdersByCustomerIdAsync(Guid customerId, CancellationToken cancellationToken = default)
@@ -706,10 +708,12 @@ namespace MedicineDelivery.Infrastructure.Services
             }
 
             var orders = await _unitOfWork.Orders.FindAsync(o => 
-                o.CustomerId == customerId && 
+                o.CustomerId == customerId &&
                 o.OrderStatus != OrderStatus.Completed);
-            
-            return _mapper.Map<IEnumerable<OrderDto>>(orders);
+
+            var dtos = _mapper.Map<List<OrderDto>>(orders);
+            await EnrichAssigneeNamesAsync(dtos, cancellationToken);
+            return dtos;
         }
 
         public async Task<IEnumerable<OrderDto>> GetActiveOrdersByMedicalStoreIdAsync(Guid medicalStoreId, CancellationToken cancellationToken = default)
@@ -723,10 +727,12 @@ namespace MedicineDelivery.Infrastructure.Services
             }
 
             var orders = await _unitOfWork.Orders.FindAsync(o => 
-                o.MedicalStoreId == medicalStoreId && 
+                o.MedicalStoreId == medicalStoreId &&
                 o.OrderStatus == OrderStatus.AssignedToChemist);
-            
-            return _mapper.Map<IEnumerable<OrderDto>>(orders);
+
+            var dtos = _mapper.Map<List<OrderDto>>(orders);
+            await EnrichAssigneeNamesAsync(dtos, cancellationToken);
+            return dtos;
         }
 
         public async Task<IEnumerable<OrderDto>> GetAcceptedOrdersByMedicalStoreIdAsync(Guid medicalStoreId, CancellationToken cancellationToken = default)
@@ -740,10 +746,12 @@ namespace MedicineDelivery.Infrastructure.Services
             }
 
             var orders = await _unitOfWork.Orders.FindAsync(o => 
-                o.MedicalStoreId == medicalStoreId && 
+                o.MedicalStoreId == medicalStoreId &&
                 o.OrderStatus == OrderStatus.AcceptedByChemist);
-            
-            return _mapper.Map<IEnumerable<OrderDto>>(orders);
+
+            var dtos = _mapper.Map<List<OrderDto>>(orders);
+            await EnrichAssigneeNamesAsync(dtos, cancellationToken);
+            return dtos;
         }
 
         public async Task<IEnumerable<OrderDto>> GetRejectedOrdersByMedicalStoreIdAsync(Guid medicalStoreId, CancellationToken cancellationToken = default)
@@ -757,10 +765,12 @@ namespace MedicineDelivery.Infrastructure.Services
             }
 
             var orders = await _unitOfWork.Orders.FindAsync(o => 
-                o.MedicalStoreId == medicalStoreId && 
+                o.MedicalStoreId == medicalStoreId &&
                 o.OrderStatus == OrderStatus.RejectedByChemist);
-            
-            return _mapper.Map<IEnumerable<OrderDto>>(orders);
+
+            var dtos = _mapper.Map<List<OrderDto>>(orders);
+            await EnrichAssigneeNamesAsync(dtos, cancellationToken);
+            return dtos;
         }
 
         public async Task<IEnumerable<OrderDto>> GetAllOrdersByMedicalStoreIdAsync(Guid medicalStoreId, CancellationToken cancellationToken = default)
@@ -774,8 +784,10 @@ namespace MedicineDelivery.Infrastructure.Services
             }
 
             var orders = await _unitOfWork.Orders.FindAsync(o => o.MedicalStoreId == medicalStoreId);
-            
-            return _mapper.Map<IEnumerable<OrderDto>>(orders);
+
+            var dtos = _mapper.Map<List<OrderDto>>(orders);
+            await EnrichAssigneeNamesAsync(dtos, cancellationToken);
+            return dtos;
         }
 
         public async Task<OrderDto> AcceptOrderByChemistAsync(int orderId, CancellationToken cancellationToken = default)
@@ -1500,9 +1512,9 @@ namespace MedicineDelivery.Infrastructure.Services
 
         /// <summary>
         /// Fills the display names on order DTOs — customer, chemist store, support agent, manager
-        /// and delivery partner — using one batched lookup per party rather than a query per order.
-        /// Called by the staff-facing endpoints so a console can render an order list without
-        /// downloading every roster to resolve ids itself.
+        /// and delivery partner — plus the delivery address, using one batched lookup per party
+        /// rather than a query per order. Called by EVERY order read path so that any caller can
+        /// render an order without downloading every roster to resolve ids itself.
         /// </summary>
         private async Task EnrichAssigneeNamesAsync(IReadOnlyCollection<OrderDto> dtos, CancellationToken cancellationToken = default)
         {
@@ -1512,6 +1524,8 @@ namespace MedicineDelivery.Infrastructure.Services
             }
 
             cancellationToken.ThrowIfCancellationRequested();
+
+            await EnrichDeliveryAddressesAsync(dtos, cancellationToken);
 
             var customerIds = dtos.Select(d => d.CustomerId).Where(id => id != Guid.Empty).Distinct().ToList();
             if (customerIds.Count > 0)
@@ -1641,6 +1655,44 @@ namespace MedicineDelivery.Infrastructure.Services
             }).ToList();
         }
 
+        /// <summary>
+        /// Resolves each order's <see cref="OrderDto.CustomerAddressId"/> into the inline
+        /// <see cref="OrderDto.DeliveryAddress"/>, in one batched query for the whole page of orders.
+        ///
+        /// Every party to an order needs the destination: the delivery partner to reach the door,
+        /// the chemist to judge the run, support to sort out a failed delivery. They cannot fetch it
+        /// themselves — GET /api/CustomerAddresses/{id} is gated on CustomerRead/AllCustomerRead, so
+        /// chemists and delivery partners get a 403 there. Carrying it on the order they are already
+        /// authorised to read is the only route that works for them, and it mirrors how CustomerName
+        /// is embedded for the same reason.
+        /// </summary>
+        private async Task EnrichDeliveryAddressesAsync(IReadOnlyCollection<OrderDto> dtos, CancellationToken cancellationToken = default)
+        {
+            var addressIds = dtos
+                .Select(d => d.CustomerAddressId)
+                .Where(id => id != Guid.Empty)
+                .Distinct()
+                .ToList();
+
+            if (addressIds.Count == 0)
+            {
+                return;
+            }
+
+            cancellationToken.ThrowIfCancellationRequested();
+
+            var addresses = await _unitOfWork.CustomerAddresses.FindAsync(a => addressIds.Contains(a.Id));
+            var addressById = addresses.ToDictionary(a => a.Id, a => _mapper.Map<OrderDeliveryAddressDto>(a));
+
+            foreach (var dto in dtos)
+            {
+                if (addressById.TryGetValue(dto.CustomerAddressId, out var address))
+                {
+                    dto.DeliveryAddress = address;
+                }
+            }
+        }
+
         public async Task<IEnumerable<OrderDto>> AssignedToCustomerSupportByCustomerSupportIdAsync(Guid customerSupportId, CancellationToken cancellationToken = default)
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -1742,25 +1794,11 @@ namespace MedicineDelivery.Infrastructure.Services
             var orders = (await _unitOfWork.Orders.FindAsync(o => o.DeliveryId == deliveryId)).ToList();
             var dtos = _mapper.Map<List<OrderDto>>(orders);
 
-            // Delivery boys can't read customer records directly (CustomerRead is
-            // scoped to their own record), so resolve the customer name here and
-            // embed it in the order payload.
-            var customerIds = orders.Select(o => o.CustomerId).Distinct().ToList();
-            if (customerIds.Count > 0)
-            {
-                var customers = await _unitOfWork.Customers.FindAsync(c => customerIds.Contains(c.CustomerId));
-                var nameByCustomerId = customers.ToDictionary(
-                    c => c.CustomerId,
-                    c => $"{c.CustomerFirstName} {c.CustomerLastName}".Trim());
-
-                foreach (var dto in dtos)
-                {
-                    if (nameByCustomerId.TryGetValue(dto.CustomerId, out var name) && !string.IsNullOrWhiteSpace(name))
-                    {
-                        dto.CustomerName = name;
-                    }
-                }
-            }
+            // Delivery boys can read neither customer records nor the address book directly
+            // (CustomerRead is scoped to their own record), so the shared enrichment embeds the
+            // customer name AND the delivery address in the order payload — without them the
+            // partner has no way to see who they are delivering to, or where.
+            await EnrichAssigneeNamesAsync(dtos, cancellationToken);
 
             return dtos;
         }

@@ -4,6 +4,7 @@ import 'package:pharmaish/core/services/order_service.dart';
 import 'package:pharmaish/shared/models/order_enums.dart';
 import 'package:pharmaish/shared/models/order_model.dart';
 import 'package:pharmaish/shared/widgets/authenticated_image.dart';
+import 'package:pharmaish/shared/widgets/delivery_address_view.dart';
 import 'package:pharmaish/shared/widgets/order_assignment_history_widget.dart';
 import 'package:pharmaish/utils/app_logger.dart';
 import 'package:pharmaish/utils/consent_manager.dart';
@@ -573,18 +574,10 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
   }
 
   Widget _buildDeliveryAddressCard() {
-    final address = [
-      _currentOrder.shippingAddressLine1,
-      _currentOrder.shippingAddressLine2,
-      _currentOrder.shippingArea,
-      _currentOrder.shippingCity,
-     _currentOrder.shippingPincode,
-    ].where((e) => e != null && e.isNotEmpty).join(', ');
-
-    if (address.isEmpty) {
-      return const SizedBox.shrink();
-    }
-
+    // Always rendered, even with no address on file: the chemist is deciding
+    // whether to take this delivery, so a visible "not available" is the useful
+    // answer. This card used to collapse to nothing — and always did, because the
+    // fields it read were never sent by the API.
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Padding(
@@ -606,12 +599,10 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
                 const Icon(Icons.location_on, color: Colors.black, size: 24),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: Text(
-                    address,
-                    style: const TextStyle(
-                      fontSize: 15,
-                      height: 1.5,
-                    ),
+                  child: DeliveryAddressView(
+                    address: _currentOrder.deliveryAddress,
+                    showActions: true,
+                    textStyle: const TextStyle(fontSize: 15, height: 1.5),
                   ),
                 ),
               ],

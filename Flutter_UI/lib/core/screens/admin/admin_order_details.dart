@@ -36,8 +36,6 @@ class _AdminOrderDetailsPageState extends State<AdminOrderDetailsPage> {
   // Detailed data
   Map<String, dynamic>? _customerData;
   Map<String, dynamic>? _chemistData;
-  Map<String, dynamic>? _addressData;
-  bool _isLoadingAddress = false;
 
   late OrderModel _currentOrder;
 
@@ -76,10 +74,10 @@ class _AdminOrderDetailsPageState extends State<AdminOrderDetailsPage> {
 
     try {
       await _refreshOrder(); // Load complete order first!
-      // Load customer and delivery details
+      // The delivery address comes back on the order itself; only the customer
+      // record still needs a separate fetch.
       await Future.wait([
         _loadCustomerDetails(),
-        _loadDeliveryAddress(),
       ]);
 
       // Load chemist details if assigned
@@ -188,30 +186,6 @@ class _AdminOrderDetailsPageState extends State<AdminOrderDetailsPage> {
       }
     } catch (e) {
       AppLogger.error('Error loading chemist details: $e');
-    }
-  }
-
-// ADD these two new methods right after:
-  Future<void> _loadDeliveryAddress() async {
-    try {
-      setState(() => _isLoadingAddress = true);
-      final orderJson =
-          await OrderService.getOrderById(_currentOrder.orderId);
-      final addressId = orderJson['customerAddressId']?.toString() ??
-          orderJson['CustomerAddressId']?.toString();
-      if (addressId == null || addressId.isEmpty) return;
-
-      final addrResp = await _dio.get('/CustomerAddresses/$addressId');
-      if (addrResp.statusCode == 200) {
-        setState(() {
-          _addressData =
-              _normaliseCasing(addrResp.data as Map<String, dynamic>);
-          _isLoadingAddress = false;
-        });
-      }
-    } catch (e) {
-      AppLogger.error('Error loading delivery address: $e');
-      setState(() => _isLoadingAddress = false);
     }
   }
 
@@ -612,24 +586,9 @@ class _AdminOrderDetailsPageState extends State<AdminOrderDetailsPage> {
               color: Colors.green,
             ),
           ),
-        // REPLACE WITH:
-        if (_isLoadingAddress)
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 8),
-            child: Row(children: [
-              SizedBox(
-                  width: 16,
-                  height: 16,
-                  child: CircularProgressIndicator(strokeWidth: 2)),
-              SizedBox(width: 8),
-              Text('Loading delivery address...',
-                  style: TextStyle(fontSize: 13, color: Colors.grey)),
-            ]),
-          )
-        else if (_addressData != null)
-          _buildDetailRow('Delivery Address', _formatAddress(_addressData!))
-        else
-          _buildDetailRow('Delivery Address', 'Not available'),
+        // Arrives inline on the order — no separate fetch, so no loading state.
+        _buildDetailRow('Delivery Address',
+            _currentOrder.deliveryAddressLine ?? 'Not available'),
       ],
     );
   }
@@ -745,27 +704,6 @@ class _AdminOrderDetailsPageState extends State<AdminOrderDetailsPage> {
         if (addressParts.isNotEmpty) _buildDetailRow('Address', addressParts),
       ],
     );
-  }
-
-// ADD this new helper method right after _buildChemistInfo:
-  String _formatAddress(Map<String, dynamic> addr) {
-    final parts = <String>[];
-    void add(String key) {
-      final v = (addr[key] ?? '').toString().trim();
-      if (v.isNotEmpty) parts.add(v);
-    }
-
-    add('address');
-    add('addressLine1');
-    add('addressLine2');
-    add('addressLine3');
-    final city = (addr['city'] ?? '').toString().trim();
-    final state = (addr['state'] ?? '').toString().trim();
-    final pincode =
-        (addr['pincode'] ?? addr['postalCode'] ?? '').toString().trim();
-    final last = [city, state, pincode].where((s) => s.isNotEmpty).join(' - ');
-    if (last.isNotEmpty) parts.add(last);
-    return parts.isEmpty ? 'Address on file' : parts.join('\n');
   }
 
   Widget _buildPrescriptionSection() {

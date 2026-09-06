@@ -577,9 +577,11 @@ class _AcceptedOrderBillScreenState extends State<AcceptedOrderBillScreen> {
                         _buildInfoRow('Status', widget.order.status),
                         if (widget.order.orderInputType.name.isNotEmpty)
                           _buildInfoRow('Type', widget.order.orderInputType.name),
-                        if (widget.order.shippingAddressLine1 != null)
-                          _buildInfoRow('Address', widget.order.shippingAddressLine1!,
-                              maxLines: 3),
+                        _buildInfoRow(
+                            'Delivery Address',
+                            widget.order.deliveryAddressLine ??
+                                'Not available',
+                            maxLines: 3),
                       ],
                     ),
 

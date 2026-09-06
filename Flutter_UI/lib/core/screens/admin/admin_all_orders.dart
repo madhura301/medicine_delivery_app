@@ -222,13 +222,10 @@ class _AdminAllOrdersState extends State<AdminAllOrders> {
         if ((order.orderNumber ?? '').toLowerCase().contains(query)) {
           return true;
         }
-        if ((order.shippingAddressLine1 ?? '').toLowerCase().contains(query)) {
-          return true;
-        }
-        if ((order.shippingCity ?? '').toLowerCase().contains(query)) {
-          return true;
-        }
-        if ((order.shippingArea ?? '').toLowerCase().contains(query)) {
+        // One pass over the whole formatted address covers street, city, state
+        // and pincode — the three separate checks here previously read fields the
+        // API never sent, so address search matched nothing.
+        if ((order.deliveryAddressLine ?? '').toLowerCase().contains(query)) {
           return true;
         }
 

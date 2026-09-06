@@ -432,7 +432,9 @@ class _ChemistDeliveryManagementState extends State<ChemistDeliveryManagement> {
               _buildInfoRow(
                 Icons.location_on,
                 'Address',
-                order.shippingAddressLine1 ?? 'N/A',
+                // The full address, not just line 1 — this row is what the store
+                // reads out when handing the order to a delivery partner.
+                order.deliveryAddressLine ?? 'N/A',
                 maxLines: 3,
               ),
               const SizedBox(height: 8),

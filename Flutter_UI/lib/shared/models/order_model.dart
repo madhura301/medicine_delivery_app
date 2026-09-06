@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:pharmaish/shared/models/delivery_address_model.dart';
 import 'package:pharmaish/shared/models/order_assignment_history_model.dart';
 import 'package:pharmaish/utils/app_logger.dart';
 
@@ -35,14 +36,16 @@ class OrderModel {
 // ✨ NEW: Assignment History
   final List<OrderAssignmentHistoryModel> assignmentHistory;
 
-  // Shipping Address
-  final String? shippingAddressLine1;
-  final String? shippingAddressLine2;
-  final String? shippingArea;
-  final String? shippingCity;
-  final String? shippingPincode;
-  final double? shippingLatitude;
-  final double? shippingLongitude;
+  /// Id of the customer address this order is delivered to. Kept so screens can
+  /// correlate with the address book without digging through raw JSON.
+  final String? customerAddressId;
+
+  /// Where this order is to be delivered, embedded in every `/Orders` payload by
+  /// the backend. Null only when the order's address record is missing.
+  ///
+  /// Prefer this over re-fetching `/CustomerAddresses/{id}`: that endpoint is
+  /// gated on `CustomerRead`, so it 403s for chemists and delivery partners.
+  final DeliveryAddressModel? deliveryAddress;
 
   final bool isActive;
   final DateTime createdOn;
@@ -67,13 +70,8 @@ class OrderModel {
     this.rejectionReason,
     this.customerRejectionReason,
     this.customerRejectionPhotoUrl,
-    this.shippingAddressLine1,
-    this.shippingAddressLine2,
-    this.shippingArea,
-    this.shippingCity,
-    this.shippingPincode,
-    this.shippingLatitude,
-    this.shippingLongitude,
+    this.customerAddressId,
+    this.deliveryAddress,
     required this.isActive,
     required this.createdOn,
     this.updatedOn,
@@ -190,17 +188,10 @@ class OrderModel {
 
       orderNumber: _toStringOrNull(json['orderNumber']),
 
-      // Shipping Address - all using safe string conversion
-      shippingAddressLine1: _toStringOrNull(json['shippingAddressLine1']),
-      shippingAddressLine2: _toStringOrNull(json['shippingAddressLine2']),
-      shippingArea: _toStringOrNull(json['shippingArea']),
-      shippingCity: _toStringOrNull(json['shippingCity']),
-
-      // Handle pincode as int or string
-      shippingPincode: _toStringOrNull(json['shippingPincode']),
-
-      shippingLatitude: json['shippingLatitude']?.toDouble(),
-      shippingLongitude: json['shippingLongitude']?.toDouble(),
+      customerAddressId: _toStringOrNull(
+          json['customerAddressId'] ?? json['CustomerAddressId']),
+      deliveryAddress: _parseDeliveryAddress(
+          json['deliveryAddress'] ?? json['DeliveryAddress']),
 
       isActive: json['isActive'] ?? true,
       createdOn: _parseDateAsLocal(json['createdOn']) ?? DateTime.now(),
@@ -279,8 +270,28 @@ class OrderModel {
     }
   }
 
+  /// Parse the inline delivery address, tolerating a missing or malformed object
+  /// rather than failing the whole order parse over it.
+  static DeliveryAddressModel? _parseDeliveryAddress(dynamic value) {
+    if (value is! Map) return null;
+    try {
+      return DeliveryAddressModel.fromJson(Map<String, dynamic>.from(value));
+    } catch (e) {
+      AppLogger.error('Error parsing deliveryAddress: $e');
+      return null;
+    }
+  }
+
   // Helper getters
   String get orderTypeDisplayName => orderType.displayName;
+
+  /// True when there is a delivery address worth rendering.
+  bool get hasDeliveryAddress => deliveryAddress?.isNotEmpty ?? false;
+
+  /// The delivery address on one line, or null when none is available.
+  /// Screens showing a placeholder should fall back to their own wording.
+  String? get deliveryAddressLine =>
+      hasDeliveryAddress ? deliveryAddress!.singleLine : null;
 
   /// ✨ NEW: Assignment history helpers
   bool get hasAssignmentHistory {
@@ -412,13 +423,8 @@ class OrderModel {
       'rejectionReason': rejectionReason,
       'customerRejectionReason': customerRejectionReason,
       'customerRejectionPhotoUrl': customerRejectionPhotoUrl,
-      'shippingAddressLine1': shippingAddressLine1,
-      'shippingAddressLine2': shippingAddressLine2,
-      'shippingArea': shippingArea,
-      'shippingCity': shippingCity,
-      'shippingPincode': shippingPincode,
-      'shippingLatitude': shippingLatitude,
-      'shippingLongitude': shippingLongitude,
+      'customerAddressId': customerAddressId,
+      'deliveryAddress': deliveryAddress?.toJson(),
       'isActive': isActive,
       'createdOn': createdOn.toIso8601String(),
       'updatedOn': updatedOn?.toIso8601String(),

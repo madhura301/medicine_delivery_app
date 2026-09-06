@@ -12,6 +12,13 @@ namespace MedicineDelivery.Application.DTOs
         /// </summary>
         public string? CustomerName { get; set; }
         public Guid CustomerAddressId { get; set; }
+        /// <summary>
+        /// Where the order is to be delivered, resolved from <see cref="CustomerAddressId"/>.
+        /// Populated on every order read so callers — the delivery partner above all — can show
+        /// the destination without a second round trip per order. Null only when the referenced
+        /// address record is missing.
+        /// </summary>
+        public OrderDeliveryAddressDto? DeliveryAddress { get; set; }
         public Guid? MedicalStoreId { get; set; }
         public AssignedByType AssignedByType { get; set; }
         public Guid? CustomerSupportId { get; set; }

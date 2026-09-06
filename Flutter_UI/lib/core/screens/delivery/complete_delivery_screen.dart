@@ -5,19 +5,18 @@ import 'package:pharmaish/utils/app_logger.dart';
 import 'package:pharmaish/shared/models/order_model.dart';
 import 'package:pharmaish/core/services/order_service.dart';
 import 'package:pharmaish/core/services/medical_store_service.dart';
+import 'package:pharmaish/shared/widgets/delivery_address_view.dart';
 
 class CompleteDeliveryScreen extends StatefulWidget {
   final OrderModel order;
   final String customerName;
   final String? customerPhone;
-  final String? deliveryAddress; // ← NEW param
 
   const CompleteDeliveryScreen({
     super.key,
     required this.order,
     required this.customerName,
     this.customerPhone,
-    this.deliveryAddress,       // ← NEW param
   });
 
   @override
@@ -217,18 +216,38 @@ class _CompleteDeliveryScreenState extends State<CompleteDeliveryScreen> {
                       const SizedBox(height: 8),
                       _buildInfoRow('Amount', '₹${widget.order.totalAmount!.toStringAsFixed(2)}'),
                     ],
-                    // Address — prefer passed-in address, fall back to model field
-                    if ((widget.deliveryAddress != null && widget.deliveryAddress!.isNotEmpty) ||
-                        widget.order.shippingAddressLine1 != null) ...[
-                      const SizedBox(height: 8),
-                      _buildInfoRow(
-                        'Address',
-                        widget.deliveryAddress?.isNotEmpty == true
-                            ? widget.deliveryAddress!
-                            : widget.order.shippingAddressLine1!,
-                        maxLines: 4,
-                      ),
-                    ],
+                    const SizedBox(height: 12),
+                    const Divider(height: 1),
+                    const SizedBox(height: 12),
+                    // The destination, with Copy/Navigate — this screen is open
+                    // while the partner is standing at the door.
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(Icons.location_on,
+                            size: 18, color: Colors.red.shade600),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('Deliver to',
+                                  style: TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.purple.shade900)),
+                              const SizedBox(height: 4),
+                              DeliveryAddressView(
+                                address: widget.order.deliveryAddress,
+                                showActions: true,
+                                textStyle: const TextStyle(
+                                    fontSize: 14, height: 1.35),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
                   ],
                 ),
               ),

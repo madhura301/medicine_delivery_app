@@ -8,6 +8,7 @@ import 'package:pharmaish/shared/models/order_model.dart';
 import 'package:pharmaish/core/screens/profiles/delivery_profile_page.dart';
 import 'package:pharmaish/shared/widgets/app_button.dart';
 import 'package:pharmaish/shared/widgets/confirm_dialog.dart';
+import 'package:pharmaish/shared/widgets/delivery_address_view.dart';
 import 'package:pharmaish/core/services/dio_client.dart';
 
 class DeliveryDashboard extends StatefulWidget {
@@ -257,7 +258,6 @@ class _DeliveryActiveOrdersPageState extends State<_DeliveryActiveOrdersPage>
   bool _isLoading = true;
   String? _errorMessage;
   final Map<String, Map<String, String>> _customerCache = {};
-  final Map<String, String> _addressCache = {};
 
   @override
   void initState() {
@@ -296,8 +296,10 @@ class _DeliveryActiveOrdersPageState extends State<_DeliveryActiveOrdersPage>
 
         orders.sort((a, b) => a.createdOn.compareTo(b.createdOn)); // oldest first = FIFO
 
+        // The delivery address now arrives inline on each order — no per-order
+        // fetch. The old two-hop lookup went through /CustomerAddresses/{id},
+        // which 403s for this role, so it never actually produced an address.
         await _loadCustomerInfo(orders);
-        await _loadAddresses(orders);
 
         setState(() {
           _orders = orders;
@@ -358,49 +360,6 @@ class _DeliveryActiveOrdersPageState extends State<_DeliveryActiveOrdersPage>
       }
     }
   }
-
-  Future<void> _loadAddresses(List<OrderModel> orders) async {
-    for (final order in orders) {
-      if (_addressCache.containsKey(order.orderId)) continue;
-      try {
-        // Step 1: get customerAddressId from the order detail endpoint
-        final orderResp = await widget.dio.get('/Orders/${order.orderId}');
-        if (orderResp.statusCode != 200) continue;
-
-        final orderJson = orderResp.data as Map<String, dynamic>;
-        final addressId =
-            orderJson['customerAddressId']?.toString() ??
-            orderJson['CustomerAddressId']?.toString();
-        if (addressId == null || addressId.isEmpty) continue;
-
-        // Step 2: fetch the address record
-        final addrResp = await widget.dio.get('/CustomerAddresses/$addressId');
-        if (addrResp.statusCode != 200) continue;
-
-        final d = addrResp.data as Map<String, dynamic>;
-        String get(String key) =>
-            (d[key] ?? d[key[0].toUpperCase() + key.substring(1)] ?? '').toString().trim();
-
-        final parts = [
-          get('addressLine1'),
-          get('addressLine2'),
-          get('area'),
-          get('city'),
-          get('pincode'),
-        ].where((s) => s.isNotEmpty).toList();
-
-        _addressCache[order.orderId] = parts.isNotEmpty
-            ? parts.join(', ')
-            : 'Address not available';
-      } catch (e) {
-        AppLogger.error('Could not load address for order ${order.orderId}: $e');
-        _addressCache[order.orderId] = 'Address not available';
-      }
-    }
-  }
-
-  String _resolvedAddress(String orderId) =>
-      _addressCache[orderId] ?? 'Loading...';
 
   String _customerName(String id) =>
       _customerCache[id]?['name'] ?? 'Customer';
@@ -584,9 +543,34 @@ class _DeliveryActiveOrdersPageState extends State<_DeliveryActiveOrdersPage>
               const SizedBox(height: 14),
               const Divider(),
               const SizedBox(height: 10),
-              _infoRow(Icons.location_on, 'Address',
-                  _resolvedAddress(order.orderId), maxLines: 3),
-              // city/pincode merged into resolved address above
+              // The destination is the single most important thing on this card,
+              // so it gets the full multi-line treatment plus a Navigate action
+              // rather than one ellipsised row.
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(Icons.location_on, size: 16, color: Colors.red.shade600),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('Deliver to',
+                            style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.black87)),
+                        const SizedBox(height: 2),
+                        DeliveryAddressView(
+                          address: order.deliveryAddress,
+                          showActions: true,
+                          textStyle: const TextStyle(fontSize: 13, height: 1.3),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
               if (phone != null) ...[
                 const SizedBox(height: 6),
                 _infoRow(Icons.phone, 'Customer', phone),
@@ -630,7 +614,6 @@ class _DeliveryActiveOrdersPageState extends State<_DeliveryActiveOrdersPage>
           order: order,
           customerName: _customerName(order.customerId),
           customerPhone: _customerPhone(order.customerId),
-          deliveryAddress: _resolvedAddress(order.orderId),
         ),
       ),
     );
@@ -884,6 +867,18 @@ class _DeliveryCompletedOrdersPageState
                         Text(name,
                             style: TextStyle(
                                 fontSize: 13, color: Colors.grey[600])),
+                        if (order.hasDeliveryAddress) ...[
+                          const SizedBox(height: 2),
+                          // Where it went — the delivery partner's own record of
+                          // a completed run, useful for resolving disputes.
+                          Text(
+                            order.deliveryAddressLine!,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                                fontSize: 12, color: Colors.grey[600]),
+                          ),
+                        ],
                         const SizedBox(height: 2),
                         Text(
                           DateFormat('MMM dd, yyyy • hh:mm a')
