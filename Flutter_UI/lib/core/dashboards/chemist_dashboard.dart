@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
+import 'package:pharmaish/core/dashboards/chemist/customer_info_loader.dart';
 import 'package:pharmaish/core/dashboards/chemist/customer_orders_page.dart';
 import 'package:pharmaish/core/dashboards/chemist/order_details_page.dart';
 import 'package:pharmaish/core/dashboards/chemist/widgets/reject_order_dialog.dart';
 import 'package:pharmaish/core/services/chemist_payout_service.dart';
 import 'package:pharmaish/core/services/consent_service.dart';
-import 'package:pharmaish/core/services/customer_service.dart';
 import 'package:pharmaish/core/services/medical_store_service.dart';
 import 'package:pharmaish/core/services/order_service.dart';
 import 'package:pharmaish/shared/models/chemist_payout_models.dart';
@@ -32,7 +32,8 @@ class ChemistDashboard extends StatefulWidget {
   State<ChemistDashboard> createState() => _ChemistDashboardState();
 }
 
-class _ChemistDashboardState extends State<ChemistDashboard> {
+class _ChemistDashboardState extends State<ChemistDashboard>
+    with WidgetsBindingObserver {
   List<OrderModel> _recentOrders = [];
   List<OrderModel> _allOrders = [];
   bool _isLoading = true;
@@ -70,7 +71,26 @@ class _ChemistDashboardState extends State<ChemistDashboard> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _init();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  /// Orders arrive and change status while the app sits in the background, so
+  /// reload as soon as the chemist brings it back to the foreground.
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed &&
+        !_isCheckingPayout &&
+        _isPayoutUnlocked &&
+        !_isLoading) {
+      _loadDashboardData();
+    }
   }
 
   Future<void> _init() async {
@@ -296,46 +316,28 @@ class _ChemistDashboardState extends State<ChemistDashboard> {
       }
 
       AppLogger.error('Error loading orders', e);
-
-      setState(() {
-        _errorMessage = errorMsg;
-        _isLoading = false;
-      });
+      _failRefresh(errorMsg);
     } catch (e) {
       AppLogger.error('Unexpected error loading orders', e);
-
-      setState(() {
-        _errorMessage = 'An unexpected error occurred: ${e.toString()}';
-        _isLoading = false;
-      });
+      _failRefresh('An unexpected error occurred: ${e.toString()}');
     }
   }
 
-  Future<void> _loadCustomerInfo(List<OrderModel> orders) async {
-    for (var order in orders) {
-      if (!_customerCache.containsKey(order.customerId)) {
-        try {
-          final customerData =
-              await CustomerService.getCustomer(order.customerId);
-          _customerCache[order.customerId] = {
-            'name':
-                '${customerData['customerFirstName'] ?? ''} ${customerData['customerLastName'] ?? ''}'
-                    .trim(),
-            'email': customerData['emailId']?.toString() ?? '',
-            'phone': customerData['mobileNumber']?.toString() ?? '',
-          };
-          AppLogger.info('Loaded customer info for ${order.customerId}');
-        } catch (e) {
-          AppLogger.error('Error loading customer ${order.customerId}: $e');
-          _customerCache[order.customerId] = {
-            'name': 'Customer',
-            'email': '',
-            'phone': '',
-          };
-        }
-      }
+  /// A failed first load shows the full error view; a failed refresh keeps the
+  /// orders already on screen and reports the problem in a snackbar.
+  void _failRefresh(String message) {
+    if (!mounted) return;
+    setState(() {
+      _errorMessage = message;
+      _isLoading = false;
+    });
+    if (_allOrders.isNotEmpty) {
+      AppSnackBar.error(context, 'Refresh failed: $message');
     }
   }
+
+  Future<void> _loadCustomerInfo(List<OrderModel> orders) =>
+      loadCustomerInfoInto(_customerCache, orders);
 
   String getCustomerName(OrderModel order) {
     return _customerCache[order.customerId]?['name'] ?? 'Customer';
@@ -684,7 +686,9 @@ class _ChemistDashboardState extends State<ChemistDashboard> {
   }
 
   Widget _buildBody() {
-    if (_isLoading) {
+    // Full-screen loader only while there is nothing to show yet. A refresh
+    // with orders already on screen keeps them visible and shows a thin bar.
+    if (_isLoading && _allOrders.isEmpty) {
       return const Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -697,7 +701,7 @@ class _ChemistDashboardState extends State<ChemistDashboard> {
       );
     }
 
-    if (_errorMessage != null) {
+    if (_errorMessage != null && _allOrders.isEmpty) {
       return Center(
         child: Padding(
           padding: const EdgeInsets.all(24),
@@ -745,6 +749,9 @@ class _ChemistDashboardState extends State<ChemistDashboard> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            if (_isLoading)
+              const LinearProgressIndicator(
+                  color: Colors.black, backgroundColor: Colors.black12),
             _buildStatsSection(),
             _buildPayoutActivationCard(),
             _buildRecentOrdersSection(),

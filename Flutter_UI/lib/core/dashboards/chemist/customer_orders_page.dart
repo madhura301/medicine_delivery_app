@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:pharmaish/core/dashboards/chemist/customer_info_loader.dart';
 import 'package:pharmaish/core/dashboards/chemist/order_details_page.dart';
 import 'package:pharmaish/core/dashboards/chemist/widgets/reject_order_dialog.dart';
 import 'package:pharmaish/core/services/order_service.dart';
@@ -42,6 +43,7 @@ class _CustomerOrdersPageState extends State<CustomerOrdersPage> {
   // succeeds — without waiting for the dashboard (underneath this pushed route)
   // to reload.
   late List<OrderModel> _orders;
+  bool _isRefreshing = false;
 
   @override
   void initState() {
@@ -72,6 +74,42 @@ class _CustomerOrdersPageState extends State<CustomerOrdersPage> {
       });
     } catch (e) {
       AppLogger.error('Error refreshing order $orderId after action', e);
+    }
+  }
+
+  /// Full refresh from the server (AppBar button / pull-to-refresh) so new
+  /// orders and status changes made elsewhere show up without re-login.
+  /// Also asks the dashboard underneath to reload so it stays in sync.
+  Future<void> _refreshAll() async {
+    if (_isRefreshing) return;
+    setState(() => _isRefreshing = true);
+    try {
+      final storeId = await StorageService.getUserId();
+      if (storeId == null || storeId.isEmpty) {
+        throw StateError('User ID not found. Please login again.');
+      }
+      final list = await OrderService.getOrdersForMedicalStore(storeId);
+      final orders = list.map((json) => OrderModel.fromJson(json)).toList()
+        ..sort((a, b) => b.createdOn.compareTo(a.createdOn));
+      await loadCustomerInfoInto(widget.customerCache, orders);
+      if (!mounted) return;
+      setState(() => _orders = orders);
+      widget.onRefresh?.call();
+    } on DioException catch (e) {
+      AppLogger.error('Error refreshing orders', e);
+      if (!mounted) return;
+      if (e.response?.statusCode == 401) {
+        await StorageService.clearAll();
+        if (mounted) Navigator.of(context).pushReplacementNamed('/login');
+        return;
+      }
+      AppSnackBar.error(context, 'Failed to refresh orders. Please try again.');
+    } catch (e) {
+      AppLogger.error('Error refreshing orders', e);
+      if (!mounted) return;
+      AppSnackBar.error(context, 'Failed to refresh orders: $e');
+    } finally {
+      if (mounted) setState(() => _isRefreshing = false);
     }
   }
 
@@ -200,8 +238,25 @@ class _CustomerOrdersPageState extends State<CustomerOrdersPage> {
         foregroundColor: Colors.white,
         iconTheme: const IconThemeData(color: Colors.white),
         elevation: 0,
+        actions: [
+          IconButton(
+            icon: _isRefreshing
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                        strokeWidth: 2, color: Colors.white),
+                  )
+                : const Icon(Icons.refresh, color: Colors.white),
+            onPressed: _isRefreshing ? null : _refreshAll,
+            tooltip: 'Refresh',
+          ),
+        ],
       ),
-      body: _buildBody(),
+      body: RefreshIndicator(
+        onRefresh: _refreshAll,
+        child: _buildBody(),
+      ),
       bottomNavigationBar: _isFocusedView
           ? null
           : BottomNavigationBar(
@@ -267,26 +322,42 @@ class _CustomerOrdersPageState extends State<CustomerOrdersPage> {
 
   Widget _buildOrderList(List<OrderModel> filteredOrders) {
     if (filteredOrders.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.inbox_outlined, size: 80, color: Colors.grey[400]),
-            const SizedBox(height: 16),
-            Text(
-              'No orders found',
-              style: TextStyle(
-                fontSize: 18,
-                color: Colors.grey[600],
-                fontWeight: FontWeight.w500,
+      // Scrollable so pull-to-refresh still works on an empty list.
+      return LayoutBuilder(
+        builder: (context, constraints) => SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          child: SizedBox(
+            height: constraints.maxHeight,
+            child: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.inbox_outlined,
+                      size: 80, color: Colors.grey[400]),
+                  const SizedBox(height: 16),
+                  Text(
+                    'No orders found',
+                    style: TextStyle(
+                      fontSize: 18,
+                      color: Colors.grey[600],
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Pull down or tap refresh to check for new orders',
+                    style: TextStyle(fontSize: 13, color: Colors.grey[500]),
+                  ),
+                ],
               ),
             ),
-          ],
+          ),
         ),
       );
     }
 
     return ListView.builder(
+      physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.all(12),
       itemCount: filteredOrders.length,
       itemBuilder: (context, index) {

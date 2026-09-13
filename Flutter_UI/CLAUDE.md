@@ -16,7 +16,7 @@
 
 ```
 lib/
-├── main.dart              # Entry point (staging env by default)
+├── main.dart              # Entry point (sets Environment.production before runApp)
 ├── config/                # Environment config (dev, staging, prod)
 ├── core/
 │   ├── app_routes.dart    # Named route definitions
