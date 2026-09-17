@@ -1,37 +1,27 @@
 using MedicineDelivery.Application.Interfaces;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace MedicineDelivery.Infrastructure.Services
 {
     /// <summary>
     /// Order-value slab implementation of the Platform Technology Fee.
-    /// Pure / deterministic — no I/O — so it is trivially unit-testable.
+    /// Deterministic — no I/O — so it is trivially unit-testable.
     ///
-    /// Slab (per order, flat ₹):
+    /// The free period and the slab table come from configuration (<see cref="PlatformFeeOptions"/>).
+    /// Defaults, used when nothing is configured:
     ///   First 30 days after activation → ₹0
     ///   ₹0–200 → ₹5, ₹201–500 → ₹10, ₹501–1,500 → ₹15,
     ///   ₹1,501–3,000 → ₹20, ₹3,001–5,000 → ₹50, above ₹5,000 → ₹100.
     /// </summary>
     public class PlatformFeeCalculator : IPlatformFeeCalculator
     {
-        private const int FreeWindowDays = 30;
-
-        /// <summary>Slab upper bounds (inclusive) and the fee for that band, ascending.</summary>
-        private static readonly (decimal UpperBoundInclusive, decimal Fee)[] Slabs =
-        {
-            (200m, 5m),
-            (500m, 10m),
-            (1500m, 15m),
-            (3000m, 20m),
-            (5000m, 50m)
-        };
-
-        private const decimal AboveTopSlabFee = 100m;
-
+        private readonly PlatformFeeSchedule _schedule;
         private readonly ILogger<PlatformFeeCalculator> _logger;
 
-        public PlatformFeeCalculator(ILogger<PlatformFeeCalculator> logger)
+        public PlatformFeeCalculator(IOptions<PlatformFeeOptions> options, ILogger<PlatformFeeCalculator> logger)
         {
+            _schedule = PlatformFeeSchedule.From(options.Value);
             _logger = logger;
         }
 
@@ -42,24 +32,18 @@ namespace MedicineDelivery.Infrastructure.Services
 
             var asOf = asOfUtc ?? DateTime.UtcNow;
 
-            // First 30 days after activation are free.
-            if (storeActivatedOn.HasValue && asOf <= storeActivatedOn.Value.AddDays(FreeWindowDays))
+            // No fee during the free period after activation.
+            if (storeActivatedOn.HasValue && _schedule.FreeWindowDays > 0
+                && asOf <= storeActivatedOn.Value.AddDays(_schedule.FreeWindowDays))
             {
-                _logger.LogDebug("Platform fee waived (within free window) for BillAmount={BillAmount}, ActivatedOn={ActivatedOn}", billAmount, storeActivatedOn);
+                _logger.LogDebug("Platform fee waived (within {FreeWindowDays}-day free window) for BillAmount={BillAmount}, ActivatedOn={ActivatedOn}",
+                    _schedule.FreeWindowDays, billAmount, storeActivatedOn);
                 return 0m;
             }
 
-            foreach (var slab in Slabs)
-            {
-                if (billAmount <= slab.UpperBoundInclusive)
-                {
-                    _logger.LogDebug("Platform fee calculated: BillAmount={BillAmount} -> Fee={Fee}", billAmount, slab.Fee);
-                    return slab.Fee;
-                }
-            }
-
-            _logger.LogDebug("Platform fee calculated: BillAmount={BillAmount} -> Fee={Fee} (above top slab)", billAmount, AboveTopSlabFee);
-            return AboveTopSlabFee;
+            var fee = _schedule.FeeFor(billAmount);
+            _logger.LogDebug("Platform fee calculated: BillAmount={BillAmount} -> Fee={Fee}", billAmount, fee);
+            return fee;
         }
 
         public PlatformFeeBreakdown CalculateFeeBreakdown(decimal billAmount, DateTime? storeActivatedOn, decimal gstPercent, DateTime? asOfUtc = null)

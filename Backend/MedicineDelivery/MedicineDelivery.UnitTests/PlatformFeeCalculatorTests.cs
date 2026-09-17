@@ -1,5 +1,6 @@
 using MedicineDelivery.Infrastructure.Services;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 using Xunit;
 
 namespace MedicineDelivery.UnitTests;
@@ -13,8 +14,15 @@ public class PlatformFeeCalculatorTests
 {
     private const decimal Gst = 18m;
 
-    private static PlatformFeeCalculator NewCalculator() =>
-        new(NullLogger<PlatformFeeCalculator>.Instance);
+    /// <summary>With no arguments this is the default configuration — the fees that were hard-coded before.</summary>
+    private static PlatformFeeCalculator NewCalculator(int? freeWindowDays = null, string? slabs = null) =>
+        new(
+            Options.Create(new PlatformFeeOptions
+            {
+                FreeWindowDays = freeWindowDays ?? PlatformFeeOptions.DefaultFreeWindowDays,
+                Slabs = slabs ?? PlatformFeeOptions.DefaultSlabs,
+            }),
+            NullLogger<PlatformFeeCalculator>.Instance);
 
     // Store activated long ago so the 30-day free window never applies.
     private static readonly DateTime ActivatedLongAgo = new(2020, 1, 1, 0, 0, 0, DateTimeKind.Utc);
@@ -104,5 +112,113 @@ public class PlatformFeeCalculatorTests
         Assert.Equal(15m, breakdown.Fee);
         Assert.Equal(0m, breakdown.Gst);
         Assert.Equal(15m, breakdown.FeeInclusiveOfGst);
+    }
+
+    /* ── configurable free window ─────────────────────────────────────────── */
+
+    private static readonly DateTime AsOf = new(2026, 9, 20, 12, 0, 0, DateTimeKind.Utc);
+
+    [Theory]
+    // free-window days, days since activation, expected fee on a ₹1,000 bill
+    [InlineData(30, 29, 0)]   // default: inside
+    [InlineData(30, 31, 15)]  // default: just outside
+    [InlineData(45, 40, 0)]   // lengthened: still free at day 40
+    [InlineData(10, 11, 15)]  // shortened: charging from day 11
+    [InlineData(0, 0, 15)]    // 0 turns the free period off entirely
+    public void Free_window_length_comes_from_configuration(int freeWindowDays, int daysSinceActivation, decimal expectedFee)
+    {
+        var activatedOn = AsOf.AddDays(-daysSinceActivation);
+        var fee = NewCalculator(freeWindowDays: freeWindowDays).CalculateFee(1000m, activatedOn, AsOf);
+        Assert.Equal(expectedFee, fee);
+    }
+
+    [Fact]
+    public void A_store_with_no_activation_date_is_never_in_the_free_window()
+    {
+        Assert.Equal(15m, NewCalculator(freeWindowDays: 365).CalculateFee(1000m, storeActivatedOn: null, AsOf));
+    }
+
+    /* ── configurable slabs ───────────────────────────────────────────────── */
+
+    [Theory]
+    [InlineData(100, 2)]
+    [InlineData(100.01, 7)]
+    [InlineData(999, 7)]
+    [InlineData(1000.50, 12)]
+    [InlineData(1000000, 12)]
+    public void Slabs_come_from_configuration(decimal bill, decimal expectedFee)
+    {
+        var calculator = NewCalculator(slabs: "100:2, 1000:7, *:12");
+        Assert.Equal(expectedFee, calculator.CalculateFee(bill, ActivatedLongAgo));
+    }
+
+    [Fact]
+    public void Slabs_tolerate_whitespace_and_decimal_amounts()
+    {
+        var calculator = NewCalculator(slabs: " 250.50 : 4.5 ,  * : 9.25 ");
+        Assert.Equal(4.5m, calculator.CalculateFee(250.50m, ActivatedLongAgo));
+        Assert.Equal(9.25m, calculator.CalculateFee(250.51m, ActivatedLongAgo));
+    }
+
+    [Fact]
+    public void Default_configuration_matches_the_fees_that_were_hard_coded()
+    {
+        var schedule = PlatformFeeSchedule.From(new PlatformFeeOptions());
+
+        Assert.Equal(30, schedule.FreeWindowDays);
+        Assert.Equal(
+            new[] { new PlatformFeeSlab(200, 5), new PlatformFeeSlab(500, 10), new PlatformFeeSlab(1500, 15), new PlatformFeeSlab(3000, 20), new PlatformFeeSlab(5000, 50) },
+            schedule.Slabs);
+        Assert.Equal(100m, schedule.AboveTopSlabFee);
+    }
+
+    /* ── validation: a bad fee table must never load ──────────────────────── */
+
+    [Theory]
+    [InlineData("500:10,200:5,*:100", "ascending")]          // out of order
+    [InlineData("200:5,200:10,*:100", "ascending")]          // duplicate bound
+    [InlineData("200:5,500:10", "must end with")]            // no above-top fee
+    [InlineData("*:100", "at least one")]                    // no bands
+    [InlineData("200:5,*:50,500:10", "must come last")]      // * in the middle
+    [InlineData("200:5,*:50,*:60", "more than one")]         // two * entries
+    [InlineData("200-5,*:100", "must look like")]            // wrong separator
+    [InlineData("200:,*:100", "must look like")]             // missing fee
+    [InlineData("200:-5,*:100", "invalid fee")]              // negative fee
+    [InlineData("0:5,*:100", "invalid upper bound")]         // zero bound
+    [InlineData("abc:5,*:100", "invalid upper bound")]       // not a number
+    [InlineData("₹200:5,*:100", "invalid upper bound")]      // currency symbol
+    [InlineData("", "is empty")]
+    public void Invalid_slab_tables_are_rejected_with_a_specific_reason(string slabs, string expectedMessagePart)
+    {
+        var ok = PlatformFeeSchedule.TryCreate(new PlatformFeeOptions { Slabs = slabs }, out var schedule, out var error);
+
+        Assert.False(ok);
+        Assert.Null(schedule);
+        Assert.Contains(expectedMessagePart, error);
+    }
+
+    [Fact]
+    public void A_negative_free_window_is_rejected()
+    {
+        var ok = PlatformFeeSchedule.TryCreate(new PlatformFeeOptions { FreeWindowDays = -1 }, out _, out var error);
+
+        Assert.False(ok);
+        Assert.Contains("FreeWindowDays", error);
+    }
+
+    [Fact]
+    public void The_calculator_refuses_to_start_with_an_invalid_fee_table()
+    {
+        var ex = Assert.Throws<InvalidOperationException>(() => NewCalculator(slabs: "500:10,200:5,*:100"));
+        Assert.Contains("ascending", ex.Message);
+    }
+
+    [Fact]
+    public void The_startup_validator_reports_the_same_problem()
+    {
+        var result = new PlatformFeeOptionsValidator().Validate(null, new PlatformFeeOptions { Slabs = "200:5" });
+
+        Assert.True(result.Failed);
+        Assert.Contains("must end with", result.FailureMessage);
     }
 }
