@@ -272,12 +272,42 @@ export interface ChemistPayoutAccount {
   inSync?: boolean | null;
 }
 
+/**
+ * GET /api/chemist-payout/{storeId}/activation.
+ *
+ * Mirrors the API's ChemistActivationDto. The `razorpay*` block is a LIVE reading of the payment
+ * link taken on each request and never stored: the `payment_link.paid` webhook is the only thing
+ * that marks an activation paid, so a missed webhook leaves `status` behind what Razorpay holds —
+ * and an un-activated chemist receives no orders.
+ */
 export interface ChemistActivation {
   medicalStoreId: string;
+  amount: number;
+  gst: number;
+  gatewayCharges?: number | null;
+  total: number;
   status: ChemistActivationStatus;
-  amount?: number | null;
+  statusName?: string | null;
   paymentLinkUrl?: string | null;
+  paymentLinkId?: string | null;
+  /** True once MedicalStores.ActivatedOn is stamped — this also starts the platform-fee free period. */
+  isActivated: boolean;
+  createdOn: string;
   paidOn?: string | null;
+
+  /** True when Razorpay answered this request. */
+  razorpayReachable: boolean;
+  /** Razorpay's own wording: created / partially_paid / paid / expired / cancelled. */
+  razorpayRawStatus?: string | null;
+  /** Razorpay's state mapped onto ours; null when unreadable or unrecognised. */
+  razorpayStatus?: ChemistActivationStatus | null;
+  razorpayStatusName?: string | null;
+  razorpayAmountPaid?: number | null;
+  razorpayPaymentId?: string | null;
+  razorpayError?: string | null;
+  razorpayCheckedAt?: string | null;
+  /** null when undeterminable: no payment link, or the gateway was unreachable. */
+  inSync?: boolean | null;
 }
 
 /* ── Customers ────────────────────────────────────────────────────────────── */

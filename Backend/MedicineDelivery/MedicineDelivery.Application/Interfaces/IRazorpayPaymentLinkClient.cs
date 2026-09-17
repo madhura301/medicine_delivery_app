@@ -8,6 +8,15 @@ namespace MedicineDelivery.Application.Interfaces
     public interface IRazorpayPaymentLinkClient
     {
         Task<PaymentLinkResult> CreatePaymentLinkAsync(PaymentLinkRequest request, CancellationToken ct = default);
+
+        /// <summary>
+        /// Reads a payment link's current state straight from Razorpay.
+        ///
+        /// This is how the console shows gateway state beside stored state, and how a payment that
+        /// arrived while the webhook was misconfigured can still be reconciled — the webhook is
+        /// otherwise the only thing that marks an activation paid.
+        /// </summary>
+        Task<PaymentLinkStatusResult> GetPaymentLinkAsync(string paymentLinkId, CancellationToken ct = default);
     }
 
     public class PaymentLinkRequest
@@ -29,5 +38,28 @@ namespace MedicineDelivery.Application.Interfaces
         public string? ShortUrl { get; set; }
         public string? Status { get; set; }
         public string? Error { get; set; }
+    }
+
+    /// <summary>What Razorpay currently holds for one payment link.</summary>
+    public class PaymentLinkStatusResult
+    {
+        /// <summary>False when Razorpay could not be reached or rejected the request — see <see cref="Error"/>.</summary>
+        public bool Success { get; set; }
+
+        /// <summary>Razorpay's own wording: created, partially_paid, paid, expired or cancelled.</summary>
+        public string? RawStatus { get; set; }
+
+        /// <summary>Amount received so far, in rupees.</summary>
+        public decimal? AmountPaid { get; set; }
+
+        /// <summary>The captured payment behind a paid link, when there is one.</summary>
+        public string? PaymentId { get; set; }
+
+        /// <summary>When that payment was captured, per Razorpay.</summary>
+        public DateTime? PaidAt { get; set; }
+
+        public string? Error { get; set; }
+
+        public static PaymentLinkStatusResult Fail(string error) => new() { Success = false, Error = error };
     }
 }

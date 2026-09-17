@@ -75,6 +75,15 @@ export class ChemistsApiService {
   syncPayoutFromRazorpay(storeId: string): Observable<ChemistPayoutAccount> {
     return this.http.post<ChemistPayoutAccount>(`${this.payoutBase}/refresh/${storeId}`, {});
   }
+
+  /**
+   * Pulls the activation payment link's state from Razorpay and writes it to our record.
+   * This is the repair path for a missed `payment_link.paid` webhook — without it, a chemist who
+   * has paid stays un-activated and receives no orders.
+   */
+  syncActivationFromRazorpay(storeId: string): Observable<ChemistActivation> {
+    return this.http.post<ChemistActivation>(`${this.payoutBase}/${storeId}/activation/refresh`, {});
+  }
 }
 
 export function chemistOwnerName(store: MedicalStore): string {
