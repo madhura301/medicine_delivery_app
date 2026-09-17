@@ -59,3 +59,67 @@ body { margin: 0; font-family: Roboto, "Helvetica Neue", sans-serif; }
   .mat-mdc-dialog-panel { max-width: 100vw !important; width: 100vw !important; }
   .mat-mdc-dialog-container .mat-mdc-dialog-surface { border-radius: 0; }
 }
+
+/* ════════════════════════════════════════════════════════════════════════════
+   Customer portal
+   ────────────────────────────────────────────────────────────────────────────
+   Scoped to `.portal-theme`, which the customer shell and every dialog it opens carry, so none of
+   this reaches the staff console. Colours come from the Pharmaish logo: navy for trust and
+   structure, orange kept for the single most important action on a screen.
+   ════════════════════════════════════════════════════════════════════════════ */
+
+.portal-theme {
+  @include mat.theme((
+    color: (
+      primary: mat.$blue-palette,
+      tertiary: mat.$orange-palette,
+    ),
+    typography: Figtree,
+    density: 0,
+  ));
+
+  --pt-navy: #0b3a8f;
+  --pt-navy-deep: #06214f;
+  --pt-navy-soft: #e7eefa;
+  --pt-orange: #e2701d;
+  --pt-orange-deep: #b9560f;
+  --pt-orange-soft: #fdf0e4;
+  --pt-ground: #f4f6fb;
+  --pt-card: #ffffff;
+  --pt-ink: #0f1b33;
+  --pt-muted: #5a6680;
+  --pt-faint: #8a94a8;
+  --pt-line: #e3e8f1;
+  --pt-good: #1b7f53;
+  --pt-good-soft: #e3f3ea;
+  --pt-stop: #b3261e;
+  --pt-stop-soft: #fbeae8;
+  --pt-radius: 18px;
+  --pt-shadow: 0 1px 2px rgba(15, 27, 51, 0.05), 0 8px 24px rgba(15, 27, 51, 0.06);
+
+  /* Material reads these, so buttons, fields and focus rings match the brand. */
+  --mat-sys-primary: var(--pt-navy);
+  --mat-sys-on-primary: #ffffff;
+  --mat-sys-primary-container: var(--pt-navy-soft);
+  --mat-sys-on-primary-container: var(--pt-navy-deep);
+  --mat-sys-surface: var(--pt-ground);
+  --mat-sys-on-surface: var(--pt-ink);
+  --mat-sys-on-surface-variant: var(--pt-muted);
+  --mat-sys-outline-variant: var(--pt-line);
+
+  font-family: Figtree, Roboto, "Helvetica Neue", sans-serif;
+  color: var(--pt-ink);
+
+  .pt-cta {
+    --mat-button-filled-container-color: var(--pt-orange);
+    --mat-button-filled-label-text-color: #ffffff;
+    --mat-button-filled-container-shape: 999px;
+  }
+  .pt-round {
+    --mat-button-filled-container-shape: 999px;
+    --mat-button-outlined-container-shape: 999px;
+    --mat-button-text-container-shape: 999px;
+  }
+
+  .mat-mdc-dialog-surface { border-radius: 22px !important; }
+}

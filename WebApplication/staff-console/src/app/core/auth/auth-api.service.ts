@@ -2,7 +2,14 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
-import { CustomerSupport, LoginRequest, LoginResponse, Manager } from '../models/api.models';
+import {
+  Customer,
+  CustomerSupport,
+  LoginRequest,
+  LoginResponse,
+  Manager,
+  MedicalStore,
+} from '../models/api.models';
 
 @Injectable({ providedIn: 'root' })
 export class AuthApiService {
@@ -48,6 +55,24 @@ export class AuthApiService {
   customerSupportByEmail(email: string): Observable<CustomerSupport> {
     return this.http.get<CustomerSupport>(
       `${environment.apiBaseUrl}/CustomerSupports/by-email/${encodeURIComponent(email)}`,
+    );
+  }
+
+  /**
+   * Resolves the store behind a signed-in chemist. Every chemist screen is scoped by
+   * medicalStoreId, and the token does not carry it — the mobile app resolves it the same way.
+   */
+  /**
+   * The signed-in customer's own record. Unlike staff and chemists, customers are resolved by
+   * their token rather than by email — many customers register without one.
+   */
+  myCustomerProfile(): Observable<Customer> {
+    return this.http.get<Customer>(`${environment.apiBaseUrl}/Customers/my-profile`);
+  }
+
+  medicalStoreByEmail(email: string): Observable<MedicalStore> {
+    return this.http.get<MedicalStore>(
+      `${environment.apiBaseUrl}/MedicalStores/by-email/${encodeURIComponent(email)}`,
     );
   }
 }

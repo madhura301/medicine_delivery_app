@@ -6,6 +6,8 @@ import {
   ChemistActivation,
   ChemistPayoutAccount,
   MedicalStore,
+  MedicalStoreRegistration,
+  MedicalStoreRegistrationResult,
   MedicalStoreUpdate,
 } from '../../../core/models/api.models';
 
@@ -17,6 +19,18 @@ export class ChemistsApiService {
 
   list(): Observable<MedicalStore[]> {
     return this.http.get<MedicalStore[]>(this.base);
+  }
+
+  /**
+   * Creates the store and its login account in one call.
+   *
+   * The endpoint is [AllowAnonymous] because the mobile app's self-registration screen uses it too;
+   * the console still sends its bearer token like every other call. Registration alone does not make
+   * a chemist eligible for orders — payout onboarding and the activation fee are separate steps on
+   * the chemist's detail page.
+   */
+  register(payload: MedicalStoreRegistration): Observable<MedicalStoreRegistrationResult> {
+    return this.http.post<MedicalStoreRegistrationResult>(`${this.base}/register`, payload);
   }
 
   get(id: string): Observable<MedicalStore> {

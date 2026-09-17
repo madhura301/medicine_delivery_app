@@ -44,6 +44,24 @@ export class OrdersApiService {
   }
 
   /** Moves the order to a different chemist; it returns to the AssignedToChemist state. */
+  /** Every order ever routed to this store, whatever its current status. */
+  byMedicalStore(medicalStoreId: string): Observable<Order[]> {
+    return this.http.get<Order[]>(`${this.base}/medicalstore/${medicalStoreId}`);
+  }
+
+  /**
+   * Chemist takes the order. The API refuses unless the order is currently AssignedToChemist, so
+   * a stale list can produce a 400 — callers reload afterwards.
+   */
+  accept(orderId: number): Observable<Order> {
+    return this.http.put<Order>(`${this.base}/${orderId}/accept`, {});
+  }
+
+  /** Chemist declines the order; it is routed on to customer support. The note is required. */
+  reject(orderId: number, rejectNote: string): Observable<Order> {
+    return this.http.put<Order>(`${this.base}/${orderId}/reject`, { rejectNote });
+  }
+
   reassign(orderId: number, medicalStoreId: string): Observable<Order> {
     return this.http.put<Order>(`${this.base}/${orderId}/reassign`, { orderId, medicalStoreId });
   }

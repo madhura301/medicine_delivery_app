@@ -1,5 +1,5 @@
 import { Routes } from '@angular/router';
-import { authGuard, guestGuard, roleGuard } from './core/auth/auth.guards';
+import { authGuard, guestGuard, homeGuard, roleGuard, staffAreaGuard } from './core/auth/auth.guards';
 
 export const routes: Routes = [
   {
@@ -7,6 +7,32 @@ export const routes: Routes = [
     canActivate: [guestGuard],
     loadComponent: () => import('./features/auth/login').then((m) => m.Login),
     title: 'Sign in · Pharmaish',
+  },
+  {
+    // Public chemist sign-up — the web counterpart of the mobile self-registration screen, hitting
+    // the same [AllowAnonymous] endpoint. Deliberately NOT behind guestGuard: a signed-in staff
+    // member following the link should still see the page rather than be bounced to the dashboard.
+    path: 'register-chemist',
+    loadComponent: () =>
+      import('./features/chemists/register/chemist-register-page').then((m) => m.ChemistRegisterPage),
+    title: 'Register your pharmacy · Pharmaish',
+  },
+  {
+    // Public customer sign-up. Signs the new customer straight in on success.
+    path: 'register',
+    canActivate: [guestGuard],
+    loadComponent: () =>
+      import('./features/customer-portal/register/customer-register-page').then(
+        (m) => m.CustomerRegisterPage,
+      ),
+    title: 'Create your account · Pharmaish',
+  },
+  {
+    // The customer portal — its own layout, entirely separate from the staff console below.
+    path: 'my',
+    canActivate: [authGuard, roleGuard('Customer')],
+    loadChildren: () =>
+      import('./features/customer-portal/customer-portal.routes').then((m) => m.routes),
   },
   {
     path: 'forgot-password',
@@ -22,12 +48,14 @@ export const routes: Routes = [
   },
   {
     path: '',
-    canActivate: [authGuard],
+    canActivate: [authGuard, staffAreaGuard],
     loadComponent: () => import('./layout/shell').then((m) => m.Shell),
     children: [
-      { path: '', pathMatch: 'full', redirectTo: 'dashboard' },
+      // Role-aware, because a chemist has no org-wide dashboard to land on.
+      { path: '', pathMatch: 'full', canActivate: [homeGuard], children: [] },
       {
         path: 'dashboard',
+        canActivate: [roleGuard('Admin', 'Manager', 'CustomerSupport')],
         loadComponent: () => import('./features/dashboard/dashboard').then((m) => m.Dashboard),
         title: 'Dashboard · Pharmaish',
       },

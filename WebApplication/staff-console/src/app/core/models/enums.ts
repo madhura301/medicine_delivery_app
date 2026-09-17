@@ -185,7 +185,16 @@ export type UserRole =
   | 'DeliveryBoy';
 
 /** The only roles allowed into this console. */
+/** Internal staff — the roles that see the org-wide screens. */
 export const STAFF_ROLES: readonly UserRole[] = ['Admin', 'Manager', 'CustomerSupport'] as const;
+
+/**
+ * Everyone allowed to sign in to this web application.
+ *
+ * Staff and chemists get the console; customers get their own portal under `/my`, with a
+ * separate layout. Delivery partners remain mobile-only.
+ */
+export const CONSOLE_ROLES: readonly UserRole[] = [...STAFF_ROLES, 'Chemist', 'Customer'] as const;
 
 export const ROLE_LABELS: Record<UserRole, string> = {
   Admin: 'Administrator',

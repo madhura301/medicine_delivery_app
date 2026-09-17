@@ -1,7 +1,7 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { catchError, firstValueFrom, of } from 'rxjs';
-import { STAFF_ROLES, UserRole } from '../models/enums';
+import { CONSOLE_ROLES, UserRole } from '../models/enums';
 import { AuthApiService } from './auth-api.service';
 import { JwtClaims, isExpired, parseJwt } from './jwt.util';
 
@@ -67,7 +67,7 @@ export class AuthStore {
     }
 
     const claims = parseJwt(token);
-    if (!claims || isExpired(claims) || !this.isStaff(claims.role)) {
+    if (!claims || isExpired(claims) || !this.canUseConsole(claims.role)) {
       this.clearStorage();
       return;
     }
@@ -77,8 +77,8 @@ export class AuthStore {
     this._entityId.set(localStorage.getItem(ENTITY_KEY) ?? sessionStorage.getItem(ENTITY_KEY));
   }
 
-  private isStaff(role: UserRole | null): boolean {
-    return !!role && STAFF_ROLES.includes(role);
+  private canUseConsole(role: UserRole | null): boolean {
+    return !!role && CONSOLE_ROLES.includes(role);
   }
 
   async login(mobileNumber: string, password: string, stayLoggedIn: boolean): Promise<LoginOutcome> {
@@ -96,10 +96,10 @@ export class AuthStore {
       return { ok: false, error: 'Sign-in failed: the server returned a token we could not read.' };
     }
 
-    if (!this.isStaff(claims.role)) {
+    if (!this.canUseConsole(claims.role)) {
       return {
         ok: false,
-        error: 'This portal is for staff only. Customers and delivery partners use the mobile app.',
+        error: 'Delivery partners use the Pharmaish mobile app to sign in.',
       };
     }
 
@@ -118,19 +118,45 @@ export class AuthStore {
    * A failure here is not fatal — only the "my queue" screens need it.
    */
   private async resolveEntityId(claims: JwtClaims, store: Storage): Promise<void> {
-    if (!claims.email || (claims.role !== 'Manager' && claims.role !== 'CustomerSupport')) {
+    let id: string | null | undefined;
+
+    // Customers resolve from their token, not by email: plenty of them register without one.
+    if (claims.role === 'Customer') {
+      id = (await firstValueFrom(this.api.myCustomerProfile().pipe(catchError(() => of(null)))))
+        ?.customerId;
+      if (id) {
+        this._entityId.set(id);
+        store.setItem(ENTITY_KEY, id);
+      }
       return;
     }
 
-    const id =
-      claims.role === 'Manager'
-        ? (await firstValueFrom(this.api.managerByEmail(claims.email).pipe(catchError(() => of(null)))))
-            ?.managerId
-        : (
-            await firstValueFrom(
-              this.api.customerSupportByEmail(claims.email).pipe(catchError(() => of(null))),
-            )
-          )?.customerSupportId;
+    const needsLookup =
+      claims.role === 'Manager' || claims.role === 'CustomerSupport' || claims.role === 'Chemist';
+
+    if (!claims.email || !needsLookup) {
+      return;
+    }
+
+    if (claims.role === 'Manager') {
+      id = (
+        await firstValueFrom(this.api.managerByEmail(claims.email).pipe(catchError(() => of(null))))
+      )?.managerId;
+    } else if (claims.role === 'CustomerSupport') {
+      id = (
+        await firstValueFrom(
+          this.api.customerSupportByEmail(claims.email).pipe(catchError(() => of(null))),
+        )
+      )?.customerSupportId;
+    } else {
+      // A chemist's every screen is scoped by store, so without this they see nothing at all —
+      // the orders store turns a missing id into an explanatory message rather than an empty list.
+      id = (
+        await firstValueFrom(
+          this.api.medicalStoreByEmail(claims.email).pipe(catchError(() => of(null))),
+        )
+      )?.medicalStoreId;
+    }
 
     if (id) {
       this._entityId.set(id);

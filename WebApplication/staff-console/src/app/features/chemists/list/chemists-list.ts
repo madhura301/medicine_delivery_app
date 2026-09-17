@@ -1,7 +1,10 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { MatButtonModule } from '@angular/material/button';
+import { MatDialog } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatIconModule } from '@angular/material/icon';
 import { MatSelectModule } from '@angular/material/select';
 import { Router } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
@@ -14,18 +17,37 @@ import { DataTable, RowAction, TableColumn } from '../../../shared/ui/data-table
 import { FilterBar } from '../../../shared/ui/filter-bar';
 import { PageHeader } from '../../../shared/ui/page-header';
 import { ChemistsApiService, chemistOwnerName } from '../data/chemists-api.service';
+import { ChemistRegisterDialog, ChemistRegisterResult } from '../dialogs/chemist-register-dialog';
 
 type StatusFilter = 'all' | 'active' | 'inactive';
 
 @Component({
   selector: 'app-chemists-list',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, MatFormFieldModule, MatSelectModule, PageHeader, FilterBar, DataTable],
+  imports: [
+    FormsModule,
+    MatButtonModule,
+    MatIconModule,
+    MatFormFieldModule,
+    MatSelectModule,
+    PageHeader,
+    FilterBar,
+    DataTable,
+  ],
   template: `
     <app-page-header
       title="Chemists"
       subtitle="Medical stores that fulfil orders. Deactivating a store stops it receiving new assignments."
-    />
+    >
+      <div headerActions>
+        @if (canManage()) {
+          <button matButton="filled" (click)="register()">
+            <mat-icon>add</mat-icon>
+            Register chemist
+          </button>
+        }
+      </div>
+    </app-page-header>
 
     <app-filter-bar
       [(search)]="search"
@@ -62,7 +84,7 @@ type StatusFilter = 'all' | 'active' | 'inactive';
       [trackBy]="trackBy"
       emptyIcon="local_pharmacy"
       emptyTitle="No chemists yet"
-      emptyMessage="Chemists register themselves; once they do they will appear here."
+      emptyMessage="Register a chemist here, or wait for one to sign up through the mobile app."
       clickable
       (rowClick)="openDetail($event)"
       (retry)="load()"
@@ -78,6 +100,7 @@ export class ChemistsList {
   private readonly confirm = inject(ConfirmService);
   private readonly toast = inject(ToastService);
   private readonly router = inject(Router);
+  private readonly dialog = inject(MatDialog);
   private readonly capabilities = inject(CapabilityService);
 
   protected readonly chemists = signal<MedicalStore[]>([]);
@@ -205,6 +228,23 @@ export class ChemistsList {
 
   protected openDetail(chemist: MedicalStore): void {
     void this.router.navigate(['/chemists', chemist.medicalStoreId]);
+  }
+
+  /**
+   * Registration creates the store and its login only. Payout onboarding and the activation fee —
+   * both required before the chemist can receive orders — live on the detail page, so go straight
+   * there rather than dropping staff back on the list.
+   */
+  protected async register(): Promise<void> {
+    const ref = this.dialog.open<ChemistRegisterDialog, void, ChemistRegisterResult>(
+      ChemistRegisterDialog,
+      { width: '760px', maxWidth: '96vw', disableClose: true },
+    );
+
+    const result = await firstValueFrom(ref.afterClosed());
+    if (result?.medicalStoreId) {
+      void this.router.navigate(['/chemists', result.medicalStoreId]);
+    }
   }
 
   private async setActive(chemist: MedicalStore, active: boolean): Promise<void> {

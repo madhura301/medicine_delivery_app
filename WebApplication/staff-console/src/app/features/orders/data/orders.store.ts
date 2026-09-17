@@ -29,7 +29,9 @@ export class OrdersStore {
   readonly forbidden = this._forbidden.asReadonly();
 
   /** True when this user only ever sees their own queue, so "All Orders" is not available. */
-  readonly scopedToOwnQueue = computed(() => this.auth.role() === 'CustomerSupport');
+  readonly scopedToOwnQueue = computed(
+    () => this.auth.role() === 'CustomerSupport' || this.auth.role() === 'Chemist',
+  );
 
   async load(force = false): Promise<void> {
     const age = this._loadedAt();
@@ -69,6 +71,20 @@ export class OrdersStore {
         });
       }
       return (await firstValueFrom(this.api.byCustomerSupport(entityId))) ?? [];
+    }
+
+    if (role === 'Chemist') {
+      if (!entityId) {
+        throw new HttpErrorResponse({
+          status: 409,
+          error: {
+            error:
+              'We could not find the store linked to your login, so your orders cannot be loaded. Ask Pharmaish support to check that your account is linked to your store.',
+          },
+        });
+      }
+      // Scoped to their own store — this is what makes "All Orders" mean "all of MY orders".
+      return (await firstValueFrom(this.api.byMedicalStore(entityId))) ?? [];
     }
 
     return (await firstValueFrom(this.api.listAll())) ?? [];
