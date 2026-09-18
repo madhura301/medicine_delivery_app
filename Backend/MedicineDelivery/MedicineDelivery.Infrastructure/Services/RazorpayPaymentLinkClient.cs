@@ -102,6 +102,65 @@ namespace MedicineDelivery.Infrastructure.Services
             }
         }
 
+        public async Task<PaymentLinkStatusResult> GetPaymentLinkAsync(string paymentLinkId, CancellationToken ct = default)
+        {
+            if (string.IsNullOrWhiteSpace(paymentLinkId))
+                return PaymentLinkStatusResult.Fail("No payment link id was stored for this chemist.");
+
+            try
+            {
+                _logger.LogInformation("Razorpay request GetPaymentLink GET /v1/payment_links/{PaymentLinkId}", paymentLinkId);
+
+                using var response = await _httpClient.GetAsync($"v1/payment_links/{paymentLinkId}", ct);
+                var json = await response.Content.ReadAsStringAsync(ct);
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    var error = ExtractError(json);
+                    _logger.LogWarning("Razorpay GetPaymentLink failed for {PaymentLinkId}: {Error}", paymentLinkId, error);
+                    return PaymentLinkStatusResult.Fail(error);
+                }
+
+                using var doc = JsonDocument.Parse(json);
+                var root = doc.RootElement;
+
+                var result = new PaymentLinkStatusResult
+                {
+                    Success = true,
+                    RawStatus = root.TryGetProperty("status", out var st) ? st.GetString() : null,
+                    // Razorpay reports money in paise.
+                    AmountPaid = root.TryGetProperty("amount_paid", out var paid) && paid.TryGetInt64(out var paise)
+                        ? paise / 100m
+                        : null
+                };
+
+                // A paid link carries its captured payments; take the first for the audit trail.
+                if (root.TryGetProperty("payments", out var payments) && payments.ValueKind == JsonValueKind.Array)
+                {
+                    foreach (var payment in payments.EnumerateArray())
+                    {
+                        result.PaymentId = payment.TryGetProperty("payment_id", out var pid) ? pid.GetString() : null;
+                        if (payment.TryGetProperty("created_at", out var created) && created.TryGetInt64(out var epoch))
+                        {
+                            result.PaidAt = DateTimeOffset.FromUnixTimeSeconds(epoch).UtcDateTime;
+                        }
+                        break;
+                    }
+                }
+
+                _logger.LogInformation(
+                    "Razorpay GetPaymentLink succeeded. PaymentLinkId={PaymentLinkId}, Status={Status}, AmountPaid={AmountPaid}, PaymentId={PaymentId}",
+                    paymentLinkId, result.RawStatus, result.AmountPaid, result.PaymentId);
+
+                return result;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error calling Razorpay GetPaymentLink for {PaymentLinkId}", paymentLinkId);
+                return PaymentLinkStatusResult.Fail("Could not reach Razorpay to check the payment link.");
+            }
+        }
+
         private static string ExtractError(string json)
         {
             try

@@ -13,8 +13,18 @@ namespace MedicineDelivery.Application.Interfaces
         /// </summary>
         Task<ChemistActivationResult> CreateActivationLinkAsync(Guid medicalStoreId, CancellationToken ct = default);
 
-        /// <summary>Current activation status for the store (latest activation payment).</summary>
+        /// <summary>
+        /// Current activation status for the store (latest activation payment), together with a live
+        /// reading from Razorpay. Any drift is corrected as a side effect, so a payment the webhook
+        /// missed is picked up simply by opening the chemist's page.
+        /// </summary>
         Task<ChemistActivationResult> GetActivationStatusAsync(Guid medicalStoreId, CancellationToken ct = default);
+
+        /// <summary>
+        /// Pulls the payment link's state from Razorpay and writes it to our record — the
+        /// "Sync with database" action behind the console's activation box.
+        /// </summary>
+        Task<ChemistActivationResult> RefreshFromRazorpayAsync(Guid medicalStoreId, CancellationToken ct = default);
 
         /// <summary>
         /// Marks the activation paid (from the Razorpay <c>payment_link.paid</c> webhook) and

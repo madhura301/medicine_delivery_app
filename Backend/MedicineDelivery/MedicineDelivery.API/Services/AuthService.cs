@@ -15,6 +15,12 @@ namespace MedicineDelivery.API.Services
 {
     public class AuthService : Domain.Interfaces.IAuthService
     {
+        /// <summary>Session length when "Keep me signed in" is off.</summary>
+        private static readonly TimeSpan StandardSessionLifetime = TimeSpan.FromHours(1);
+
+        /// <summary>Session length when "Keep me signed in" is on — matches the design in the Infrastructure AuthService.</summary>
+        private static readonly TimeSpan PersistentSessionLifetime = TimeSpan.FromDays(30);
+
         private readonly UserManager<Domain.Entities.ApplicationUser> _userManager;
         private readonly SignInManager<Domain.Entities.ApplicationUser> _signInManager;
         private readonly IConfiguration _configuration;
@@ -70,8 +76,9 @@ namespace MedicineDelivery.API.Services
                     };
                 }
 
-                var token = await GenerateJwtTokenAsync(user);
-                _logger.LogInformation("Login successful for mobile number: {MobileNumber}, user ID: {UserId}", mobileNumber, user.Id);
+                var token = await GenerateJwtTokenAsync(user, stayLoggedIn);
+                _logger.LogInformation("Login successful for mobile number: {MobileNumber}, user ID: {UserId}, stayLoggedIn: {StayLoggedIn}",
+                    mobileNumber, user.Id, stayLoggedIn);
                 
                 return new Domain.Interfaces.AuthResult
                 {
@@ -153,7 +160,16 @@ namespace MedicineDelivery.API.Services
             }
         }
 
-        public async Task<string> GenerateJwtTokenAsync(Domain.Entities.ApplicationUser user)
+        /// <summary>
+        /// Issues the access token.
+        ///
+        /// <paramref name="stayLoggedIn"/> is what the clients send for "Keep me signed in" — the mobile
+        /// app sets it on every automatic sign-in. It used to be ignored here, so every session ended
+        /// after one hour: the app's requests started failing with 401 mid-use and the screen appeared
+        /// to hang until the user reopened the app. There is no refresh token, so the access token's
+        /// lifetime is the session's lifetime.
+        /// </summary>
+        public async Task<string> GenerateJwtTokenAsync(Domain.Entities.ApplicationUser user, bool stayLoggedIn = false)
         {
             _logger.LogDebug("Generating JWT token for user ID: {UserId}", user.Id);
             
@@ -194,13 +210,15 @@ namespace MedicineDelivery.API.Services
                 var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey ?? string.Empty));
                 var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
+                var lifetime = stayLoggedIn ? PersistentSessionLifetime : StandardSessionLifetime;
                 var token = new JwtSecurityToken(
                     issuer: issuer,
                     audience: audience,
                     claims: claims,
-                    expires: DateTime.UtcNow.AddHours(1),
+                    expires: DateTime.UtcNow.Add(lifetime),
                     signingCredentials: credentials
                 );
+                _logger.LogDebug("JWT token for user ID: {UserId} expires in {LifetimeHours} hours", user.Id, lifetime.TotalHours);
 
                 return new JwtSecurityTokenHandler().WriteToken(token);
             }

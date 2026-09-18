@@ -3,7 +3,8 @@ namespace MedicineDelivery.Application.Interfaces
     /// <summary>
     /// Computes the flat Platform Technology Fee retained by Pharmaish per order.
     /// The fee is a flat ₹ amount decided by the order's bill value (a slab), with a
-    /// free grace window for the first 30 days after store activation.
+    /// free grace window after store activation. Both the slabs and the length of the free
+    /// window are configured through the PlatformFee settings (30 days by default).
     /// </summary>
     public interface IPlatformFeeCalculator
     {

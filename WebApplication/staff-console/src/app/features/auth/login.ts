@@ -91,6 +91,14 @@ import { firstErrorMessage, mobileNumberValidator } from '../../shared/util/vali
             <button matButton="filled" type="submit" class="submit" [disabled]="busy()">
               Sign in
             </button>
+
+            <p class="signup">
+              New to Pharmaish? <a routerLink="/register">Create an account</a>
+            </p>
+            <p class="signup">
+              Run a pharmacy?
+              <a routerLink="/register-chemist">Register your store</a>
+            </p>
           </form>
         </mat-card-content>
       </mat-card>
@@ -139,6 +147,13 @@ import { firstErrorMessage, mobileNumberValidator } from '../../shared/util/vali
     .row a { color: var(--mat-sys-primary); font: var(--mat-sys-body-small); }
 
     .submit { width: 100%; }
+
+    .signup {
+      margin: 16px 0 0;
+      text-align: center;
+      color: var(--mat-sys-on-surface-variant);
+      font: var(--mat-sys-body-small);
+    }
 
     .error {
       display: flex;

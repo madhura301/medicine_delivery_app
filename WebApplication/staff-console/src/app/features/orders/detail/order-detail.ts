@@ -18,7 +18,12 @@ import { Router } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { CapabilityService } from '../../../core/config/capabilities';
 import { describeHttpError } from '../../../core/http/interceptors';
-import { Customer, CustomerAddress, Order } from '../../../core/models/api.models';
+import {
+  Customer,
+  CustomerAddress,
+  Order,
+  OrderDeliveryAddress,
+} from '../../../core/models/api.models';
 import {
   AssignTo,
   OrderInputType,
@@ -28,9 +33,11 @@ import {
   orderStatusLabel,
   paymentStatusLabel,
 } from '../../../core/models/enums';
+import { ConfirmService } from '../../../core/ui/confirm-dialog';
 import { ToastService } from '../../../core/ui/toast.service';
 import { PageHeader } from '../../../shared/ui/page-header';
 import { ErrorState, LoadingState } from '../../../shared/ui/state-panels';
+import { LocationMap } from '../../../shared/ui/location-map';
 import { StatusChip } from '../../../shared/ui/status-chip';
 import { extensionFrom, saveBlob } from '../../../shared/util/download';
 import { CustomersApiService, formatAddress } from '../../customers/data/customers-api.service';
@@ -47,6 +54,7 @@ import { OrdersStore } from '../data/orders.store';
 import { AssignDeliveryData, AssignDeliveryDialog } from '../dialogs/assign-delivery-dialog';
 import { CancelOrderData, CancelOrderDialog } from '../dialogs/cancel-order-dialog';
 import { ReassignOrderData, ReassignOrderDialog } from '../dialogs/reassign-order-dialog';
+import { RejectOrderData, RejectOrderDialog } from '../dialogs/reject-order-dialog';
 
 @Component({
   selector: 'app-order-detail',
@@ -61,6 +69,7 @@ import { ReassignOrderData, ReassignOrderDialog } from '../dialogs/reassign-orde
     LoadingState,
     ErrorState,
     StatusChip,
+    LocationMap,
   ],
   template: `
     @if (loading()) {
@@ -77,6 +86,16 @@ import { ReassignOrderData, ReassignOrderDialog } from '../dialogs/reassign-orde
             <mat-icon>arrow_back</mat-icon>
             Back
           </button>
+          @if (canAcceptOrReject()) {
+            <button matButton="filled" [disabled]="acting()" (click)="accept()">
+              <mat-icon>check_circle</mat-icon>
+              Accept order
+            </button>
+            <button matButton [disabled]="acting()" (click)="reject()">
+              <mat-icon>cancel</mat-icon>
+              Reject order
+            </button>
+          }
           @if (canReassign()) {
             <button matButton="filled" (click)="reassign()">
               <mat-icon>swap_horiz</mat-icon>
@@ -135,6 +154,15 @@ import { ReassignOrderData, ReassignOrderDialog } from '../dialogs/reassign-orde
               <dt>Pin code</dt>
               <dd>{{ pinCode() || '—' }}</dd>
             </dl>
+
+            <!-- Coordinates ride along with the order, so the destination can be mapped without
+                 reading the customer's address book. -->
+            <app-location-map
+              class="map"
+              [latitude]="deliveryCoordinates().latitude"
+              [longitude]="deliveryCoordinates().longitude"
+              [label]="deliveryAddress()"
+            />
           </mat-card-content>
         </mat-card>
 
@@ -315,6 +343,7 @@ import { ReassignOrderData, ReassignOrderDialog } from '../dialogs/reassign-orde
     .entry-meta { color: var(--mat-sys-on-surface-variant); font: var(--mat-sys-body-small); }
 
     [headerActions] { display: flex; gap: 8px; flex-wrap: wrap; }
+    .map { display: block; margin-top: 16px; --map-height: 260px; }
   `,
 })
 export class OrderDetail {
@@ -324,6 +353,7 @@ export class OrderDetail {
   private readonly customersApi = inject(CustomersApiService);
   private readonly store = inject(OrdersStore);
   private readonly dialog = inject(MatDialog);
+  private readonly confirm = inject(ConfirmService);
   private readonly toast = inject(ToastService);
   private readonly router = inject(Router);
   private readonly capabilities = inject(CapabilityService);
@@ -354,13 +384,23 @@ export class OrderDetail {
     return c ? `${c.customerFirstName} ${c.customerLastName}`.trim() : '';
   });
 
-  /** The address the order was placed against, not merely the customer's current default. */
-  private readonly orderAddress = computed(() => {
+  /**
+   * The address the order was placed against, not merely the customer's current default.
+   *
+   * Prefers the copy the API now carries inline on the order: it is the only one a chemist or
+   * delivery partner can read, since fetching the customer's address book needs AllCustomerRead
+   * and 403s for them. Falls back to the address book for orders served by an older API build.
+   */
+  private readonly orderAddress = computed<OrderDeliveryAddress | CustomerAddress | null>(() => {
     const order = this.order();
     if (!order) {
       return null;
     }
-    return this.addresses().find((a) => a.id === order.customerAddressId) ?? null;
+    return (
+      order.deliveryAddress ??
+      this.addresses().find((a) => a.id === order.customerAddressId) ??
+      null
+    );
   });
 
   protected readonly deliveryAddress = computed(() => {
@@ -369,6 +409,27 @@ export class OrderDetail {
   });
 
   protected readonly pinCode = computed(() => this.orderAddress()?.postalCode ?? null);
+
+  /** Drives the map on the detail page; only the inline copy carries coordinates. */
+  protected readonly deliveryCoordinates = computed(() => {
+    const address = this.orderAddress();
+    return { latitude: address?.latitude ?? null, longitude: address?.longitude ?? null };
+  });
+
+  protected readonly acting = signal(false);
+
+  /**
+   * A chemist may only act while the order is still sitting with them unanswered. The API enforces
+   * the same rule (`AcceptOrderByChemistAsync` refuses any other status), so hiding the buttons
+   * keeps the UI from offering something that would 400.
+   */
+  protected readonly canAcceptOrReject = computed(() => {
+    const order = this.order();
+    if (!order || !this.capabilities.can('acceptRejectOrders')) {
+      return false;
+    }
+    return order.orderStatus === OrderStatus.AssignedToChemist;
+  });
 
   /** Reassignment only makes sense while support or a manager holds the order. */
   protected readonly canReassign = computed(() => {
@@ -418,6 +479,15 @@ export class OrderDetail {
     try {
       const order = await firstValueFrom(this.api.get(orderId));
       this.order.set(order);
+
+      // A chemist holds no customer-read permission, so these two calls would 403 — and the error
+      // interceptor would toast "You do not have permission" on every order they open. They do not
+      // need them either: the delivery address now travels inline on the order itself.
+      if (this.capabilities.can('ownStoreOnly')) {
+        this.customer.set(null);
+        this.addresses.set([]);
+        return;
+      }
 
       // The customer record and their addresses are extras — a 403 here must not kill the page.
       const [customer, addresses] = await Promise.all([
@@ -496,6 +566,55 @@ export class OrderDetail {
         maxWidth: '94vw',
       },
     );
+
+    if (await firstValueFrom(ref.afterClosed())) {
+      this.store.invalidate();
+      await this.load();
+    }
+  }
+
+  protected async accept(): Promise<void> {
+    const order = this.order();
+    if (!order) {
+      return;
+    }
+
+    const confirmed = await this.confirm.ask({
+      title: 'Accept this order?',
+      message: `You are taking on ${order.orderNumber ?? '#' + order.orderId}. Upload the bill next, then hand it to a delivery partner.`,
+      confirmLabel: 'Accept order',
+    });
+
+    if (!confirmed) {
+      return;
+    }
+
+    this.acting.set(true);
+    try {
+      await firstValueFrom(this.api.accept(order.orderId));
+      this.toast.success('Order accepted.');
+      this.store.invalidate();
+      await this.load();
+    } catch (err) {
+      // Most likely someone else moved it on while this page was open.
+      this.toast.error(describeHttpError(err as HttpErrorResponse));
+      await this.load();
+    } finally {
+      this.acting.set(false);
+    }
+  }
+
+  protected async reject(): Promise<void> {
+    const order = this.order();
+    if (!order) {
+      return;
+    }
+
+    const ref = this.dialog.open<RejectOrderDialog, RejectOrderData, boolean>(RejectOrderDialog, {
+      data: { orderId: order.orderId, orderNumber: order.orderNumber },
+      width: '520px',
+      maxWidth: '94vw',
+    });
 
     if (await firstValueFrom(ref.afterClosed())) {
       this.store.invalidate();

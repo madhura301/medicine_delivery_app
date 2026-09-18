@@ -101,6 +101,24 @@ namespace MedicineDelivery.API.Controllers
         }
 
         /// <summary>
+        /// "Sync with database" for the activation fee: reads the payment link's state from Razorpay
+        /// and writes it to our record. This is the repair path when the <c>payment_link.paid</c>
+        /// webhook was missed — without it a chemist who has paid never becomes eligible for orders.
+        /// </summary>
+        [HttpPost("{storeId:guid}/activation/refresh")]
+        [Authorize(Policy = "RequireChemistReadPermission")]
+        public async Task<IActionResult> RefreshActivationStatus(Guid storeId, CancellationToken ct)
+        {
+            _logger.LogInformation("Chemist activation refresh requested for store {StoreId}", storeId);
+
+            var result = await _chemistActivationService.RefreshFromRazorpayAsync(storeId, ct);
+            if (!result.Success)
+                return NotFound(new { errors = result.Errors });
+
+            return Ok(result.Data);
+        }
+
+        /// <summary>
         /// Refreshes every payout account still awaiting activation (Pending / NeedsClarification):
         /// fetches each linked account's live status from Razorpay and updates the database.
         /// Returns a summary of what was checked and changed.

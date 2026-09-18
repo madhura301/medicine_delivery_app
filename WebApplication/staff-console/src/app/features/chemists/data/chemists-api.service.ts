@@ -6,6 +6,8 @@ import {
   ChemistActivation,
   ChemistPayoutAccount,
   MedicalStore,
+  MedicalStoreRegistration,
+  MedicalStoreRegistrationResult,
   MedicalStoreUpdate,
 } from '../../../core/models/api.models';
 
@@ -17,6 +19,18 @@ export class ChemistsApiService {
 
   list(): Observable<MedicalStore[]> {
     return this.http.get<MedicalStore[]>(this.base);
+  }
+
+  /**
+   * Creates the store and its login account in one call.
+   *
+   * The endpoint is [AllowAnonymous] because the mobile app's self-registration screen uses it too;
+   * the console still sends its bearer token like every other call. Registration alone does not make
+   * a chemist eligible for orders — payout onboarding and the activation fee are separate steps on
+   * the chemist's detail page.
+   */
+  register(payload: MedicalStoreRegistration): Observable<MedicalStoreRegistrationResult> {
+    return this.http.post<MedicalStoreRegistrationResult>(`${this.base}/register`, payload);
   }
 
   get(id: string): Observable<MedicalStore> {
@@ -60,6 +74,15 @@ export class ChemistsApiService {
    */
   syncPayoutFromRazorpay(storeId: string): Observable<ChemistPayoutAccount> {
     return this.http.post<ChemistPayoutAccount>(`${this.payoutBase}/refresh/${storeId}`, {});
+  }
+
+  /**
+   * Pulls the activation payment link's state from Razorpay and writes it to our record.
+   * This is the repair path for a missed `payment_link.paid` webhook — without it, a chemist who
+   * has paid stays un-activated and receives no orders.
+   */
+  syncActivationFromRazorpay(storeId: string): Observable<ChemistActivation> {
+    return this.http.post<ChemistActivation>(`${this.payoutBase}/${storeId}/activation/refresh`, {});
   }
 }
 

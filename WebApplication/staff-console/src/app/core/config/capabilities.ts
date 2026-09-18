@@ -30,6 +30,14 @@ export interface Capabilities {
    * ManagerUpdateUsers, which Admin and Manager hold but CustomerSupport does not.
    */
   manageUserAccounts: boolean;
+  /**
+   * Accept or reject an order that has been routed to this chemist's own store. Gated server-side
+   * by UpdateOrders, which the Chemist role holds; the API additionally refuses unless the order is
+   * currently AssignedToChemist.
+   */
+  acceptRejectOrders: boolean;
+  /** True for the store-scoped role: sees only its own orders, never the org-wide screens. */
+  ownStoreOnly: boolean;
 }
 
 const CAPABILITIES: Record<UserRole, Capabilities> = {
@@ -46,6 +54,8 @@ const CAPABILITIES: Record<UserRole, Capabilities> = {
     cancelOrder: true,
     manageUserAccounts: true,
     assignDelivery: true,
+    acceptRejectOrders: false,
+    ownStoreOnly: false,
   },
   Manager: {
     // Only an Admin holds ManagerSupportCreate, so a Manager sees the roster read-only.
@@ -61,6 +71,8 @@ const CAPABILITIES: Record<UserRole, Capabilities> = {
     cancelOrder: true,
     manageUserAccounts: true,
     assignDelivery: true,
+    acceptRejectOrders: false,
+    ownStoreOnly: false,
   },
   CustomerSupport: {
     manageManagers: false,
@@ -75,9 +87,18 @@ const CAPABILITIES: Record<UserRole, Capabilities> = {
     cancelOrder: true,
     manageUserAccounts: false,
     assignDelivery: true,
+    acceptRejectOrders: false,
+    ownStoreOnly: false,
   },
   Customer: emptyCapabilities(),
-  Chemist: emptyCapabilities(),
+  // A chemist signs in to work their own store's order queue and nothing else: no rosters, no
+  // regions, no other store's orders. Assigning a delivery partner is theirs by design.
+  Chemist: {
+    ...emptyCapabilities(),
+    acceptRejectOrders: true,
+    assignDelivery: true,
+    ownStoreOnly: true,
+  },
   DeliveryBoy: emptyCapabilities(),
 };
 
@@ -95,6 +116,8 @@ function emptyCapabilities(): Capabilities {
     cancelOrder: false,
     manageUserAccounts: false,
     assignDelivery: false,
+    acceptRejectOrders: false,
+    ownStoreOnly: false,
   };
 }
 

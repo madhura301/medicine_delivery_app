@@ -188,6 +188,56 @@ export type MedicalStoreUpdate = Omit<
 >;
 
 /**
+ * Body for POST /api/MedicalStores/register.
+ *
+ * Registering creates BOTH the store record and its login account, with the mobile number as the
+ * username — the same endpoint the mobile self-registration screen posts to. Field names match the
+ * API's MedicalStoreRegistrationDto exactly; anything not declared there is silently dropped by
+ * model binding, so do not add fields speculatively.
+ */
+export interface MedicalStoreRegistration {
+  medicalName: string;
+  ownerFirstName: string;
+  ownerMiddleName: string;
+  ownerLastName: string;
+  /** Plain text over HTTPS, as the API's DTO requires. Never logged or stored client-side. */
+  password: string;
+  addressLine1: string;
+  addressLine2: string;
+  city: string;
+  state: string;
+  postalCode: string;
+  /**
+   * Worth capturing at registration: order routing prefers a geo search, and a store with no
+   * coordinates is invisible to it even when the customer is next door.
+   */
+  latitude: number | null;
+  longitude: number | null;
+  mobileNumber: string;
+  emailId: string;
+  alternativeMobileNumber: string;
+  registrationStatus: boolean;
+  gstin: string | null;
+  pan: string;
+  fssaiNo: string;
+  dlNo: string;
+  pharmacistFirstName: string;
+  pharmacistLastName: string;
+  pharmacistRegistrationNumber: string;
+  pharmacistMobileNumber: string;
+}
+
+/**
+ * Response from the register endpoint. Note it returns HTTP 200 with `success: false` for some
+ * failures and HTTP 400 with only `errors` for others, so callers must check both.
+ */
+export interface MedicalStoreRegistrationResult {
+  success: boolean;
+  medicalStore: (MedicalStore & { password?: string }) | null;
+  errors: string[];
+}
+
+/**
  * GET /api/chemist-payout/{storeId}.
  *
  * Field names mirror the API's ChemistPayoutStatusDto exactly. The `razorpay*` block is a LIVE
@@ -222,12 +272,42 @@ export interface ChemistPayoutAccount {
   inSync?: boolean | null;
 }
 
+/**
+ * GET /api/chemist-payout/{storeId}/activation.
+ *
+ * Mirrors the API's ChemistActivationDto. The `razorpay*` block is a LIVE reading of the payment
+ * link taken on each request and never stored: the `payment_link.paid` webhook is the only thing
+ * that marks an activation paid, so a missed webhook leaves `status` behind what Razorpay holds —
+ * and an un-activated chemist receives no orders.
+ */
 export interface ChemistActivation {
   medicalStoreId: string;
+  amount: number;
+  gst: number;
+  gatewayCharges?: number | null;
+  total: number;
   status: ChemistActivationStatus;
-  amount?: number | null;
+  statusName?: string | null;
   paymentLinkUrl?: string | null;
+  paymentLinkId?: string | null;
+  /** True once MedicalStores.ActivatedOn is stamped — this also starts the platform-fee free period. */
+  isActivated: boolean;
+  createdOn: string;
   paidOn?: string | null;
+
+  /** True when Razorpay answered this request. */
+  razorpayReachable: boolean;
+  /** Razorpay's own wording: created / partially_paid / paid / expired / cancelled. */
+  razorpayRawStatus?: string | null;
+  /** Razorpay's state mapped onto ours; null when unreadable or unrecognised. */
+  razorpayStatus?: ChemistActivationStatus | null;
+  razorpayStatusName?: string | null;
+  razorpayAmountPaid?: number | null;
+  razorpayPaymentId?: string | null;
+  razorpayError?: string | null;
+  razorpayCheckedAt?: string | null;
+  /** null when undeterminable: no payment link, or the gateway was unreachable. */
+  inSync?: boolean | null;
 }
 
 /* ── Customers ────────────────────────────────────────────────────────────── */
@@ -346,12 +426,34 @@ export interface Payment {
   paymentDate?: string | null;
 }
 
+/**
+ * The delivery destination, carried inline on every order by the API.
+ *
+ * Deliberately narrower than {@link CustomerAddress}: no owning customer id, no address-book
+ * bookkeeping. That is what lets a chemist or delivery partner read the destination without
+ * holding AllCustomerRead — fetching the customer's address book would 403 for them.
+ */
+export interface OrderDeliveryAddress {
+  id: string;
+  address: string | null;
+  addressLine1: string | null;
+  addressLine2: string | null;
+  addressLine3: string | null;
+  city: string | null;
+  state: string | null;
+  postalCode: string | null;
+  latitude: number | null;
+  longitude: number | null;
+}
+
 export interface Order {
   orderId: number;
   orderNumber: string | null;
   customerId: string;
   customerName: string | null;
   customerAddressId: string;
+  /** Resolved from `customerAddressId` server-side. Null only when that address record is missing. */
+  deliveryAddress: OrderDeliveryAddress | null;
   medicalStoreId: string | null;
   customerSupportId: string | null;
   managerId: string | null;
@@ -371,6 +473,11 @@ export interface Order {
   orderStatus: OrderStatus;
   orderPaymentStatus: OrderPaymentStatus;
   cancellationReason: string | null;
+  /**
+   * The delivery OTP. The API reveals it only to the customer who owns the order, and only once
+   * they have paid — for everyone else it is always null.
+   */
+  otp?: string | null;
   totalAmount: number | null;
   createdOn: string;
   updatedOn: string | null;
@@ -381,6 +488,32 @@ export interface Order {
 export interface MedicalStoreBasic {
   medicalStoreId: string;
   medicalName: string;
+}
+
+/* ── Customer self-service ────────────────────────────────────────────────── */
+
+/** Body for the anonymous POST /api/Customers/register. The mobile number becomes the username. */
+export interface CustomerRegistration {
+  customerFirstName: string;
+  customerMiddleName: string | null;
+  customerLastName: string;
+  mobileNumber: string;
+  password: string;
+  alternativeMobileNumber: string | null;
+  emailId: string | null;
+  /** ISO date; the API stores it as a date of birth. */
+  dateOfBirth: string;
+  gender: string | null;
+}
+
+/** Returned by POST /api/Razorpay/create-order — everything checkout needs to open. */
+export interface RazorpayOrderResponse {
+  razorpayOrderId: string;
+  /** In rupees. */
+  amount: number;
+  currency: string;
+  /** Public key id; safe to hand to the browser. */
+  keyId: string;
 }
 
 /* ── Order log ────────────────────────────────────────────────────────────── */

@@ -6,6 +6,8 @@ import { Routes } from '@angular/router';
  */
 const listSlugs = [
   'all',
+  'to-accept',
+  'accepted',
   'awaiting-assignment',
   'with-chemist',
   'with-support',
@@ -15,6 +17,9 @@ const listSlugs = [
 
 const titles: Record<(typeof listSlugs)[number], string> = {
   all: 'All Orders',
+  // Chemist-only queues; the menu hides them from staff and the orders store scopes them.
+  'to-accept': 'Orders to Accept',
+  accepted: 'Accepted Orders',
   'awaiting-assignment': 'Awaiting Assignment',
   'with-chemist': 'With Chemist',
   'with-support': 'With Customer Support',

@@ -112,8 +112,160 @@ namespace MedicineDelivery.Infrastructure.Services
             if (latest == null)
                 return ChemistActivationResult.Fail("No activation payment found for this chemist.");
 
-            return ChemistActivationResult.Ok(ToDto(latest, store));
+            // Read the stored status BEFORE reconciling. Comparing Razorpay against the post-refresh
+            // value would always match — hiding exactly the drift this is meant to expose.
+            var storedStatusOnArrival = latest.Status;
+            var live = await ReconcileWithRazorpayAsync(latest, store, ct);
+
+            var dto = ToDto(latest, store);
+            ApplyLiveView(dto, storedStatusOnArrival, live);
+            return ChemistActivationResult.Ok(dto);
         }
+
+        /// <summary>
+        /// "Sync with database": takes Razorpay's word for the payment link and writes it to our
+        /// record. This is the repair path for a payment that arrived while the webhook was missing
+        /// or misconfigured — otherwise the chemist stays un-activated despite having paid.
+        /// </summary>
+        public async Task<ChemistActivationResult> RefreshFromRazorpayAsync(Guid medicalStoreId, CancellationToken ct = default)
+        {
+            ct.ThrowIfCancellationRequested();
+
+            _logger.LogInformation("RefreshFromRazorpayAsync requested for store {StoreId}", medicalStoreId);
+
+            var store = await _unitOfWork.MedicalStores.FirstOrDefaultAsync(s => s.MedicalStoreId == medicalStoreId);
+            if (store == null)
+                return ChemistActivationResult.Fail($"Medical store {medicalStoreId} not found.");
+
+            var latest = await GetLatestAsync(medicalStoreId);
+            if (latest == null)
+                return ChemistActivationResult.Fail("No activation payment found for this chemist.");
+
+            var storedStatusOnArrival = latest.Status;
+            var live = await ReconcileWithRazorpayAsync(latest, store, ct);
+
+            if (live is { Success: false })
+                return ChemistActivationResult.Fail(live.Error ?? "Could not reach Razorpay.");
+
+            var dto = ToDto(latest, store);
+            ApplyLiveView(dto, storedStatusOnArrival, live);
+            return ChemistActivationResult.Ok(dto);
+        }
+
+        /// <summary>
+        /// Reads the payment link from Razorpay and brings our record into line with it.
+        /// Returns null when there is no link to look up, otherwise the live reading — including a
+        /// failed one, in which case the stored status is left exactly as it was.
+        /// </summary>
+        private async Task<PaymentLinkStatusResult?> ReconcileWithRazorpayAsync(
+            ChemistActivationPayment record, MedicalStore store, CancellationToken ct)
+        {
+            if (string.IsNullOrWhiteSpace(record.RazorpayPaymentLinkId))
+                return null;
+
+            var live = await _paymentLinkClient.GetPaymentLinkAsync(record.RazorpayPaymentLinkId, ct);
+            if (!live.Success)
+                return live;
+
+            var mapped = MapLinkStatus(live.RawStatus);
+            if (mapped == null)
+                return live;
+
+            var changed = false;
+
+            if (mapped != record.Status)
+            {
+                _logger.LogInformation(
+                    "Activation status drift for store {StoreId}: stored={StoredStatus}, Razorpay={RazorpayStatus} ({RawStatus}). Correcting.",
+                    store.MedicalStoreId, record.Status, mapped, live.RawStatus);
+                record.Status = mapped.Value;
+                changed = true;
+            }
+
+            if (mapped == ChemistActivationStatus.Paid)
+            {
+                // Fill in the payment details Razorpay holds but we may be missing. This happens when
+                // a record was marked paid by hand: the status is right, yet PaidOn, the payment id
+                // and the store's activation date were never set.
+                if (record.PaidOn == null)
+                {
+                    // Prefer Razorpay's own capture time over "now" — the payment may be days old.
+                    record.PaidOn = live.PaidAt ?? DateTime.UtcNow;
+                    changed = true;
+                }
+
+                if (record.RazorpayPaymentId == null && live.PaymentId != null)
+                {
+                    record.RazorpayPaymentId = live.PaymentId;
+                    changed = true;
+                }
+
+                if (store.ActivatedOn == null)
+                {
+                    // Drives the platform-fee free window and the console's "activated" state, so it
+                    // must be stamped here too — the webhook is no longer the only path to Paid.
+                    store.ActivatedOn = record.PaidOn;
+                    store.UpdatedOn = DateTime.UtcNow;
+                    _unitOfWork.MedicalStores.Update(store);
+                    changed = true;
+
+                    _logger.LogInformation(
+                        "Store {StoreId} activation date backfilled to {ActivatedOn} from Razorpay payment {PaymentId}.",
+                        store.MedicalStoreId, store.ActivatedOn, live.PaymentId);
+                }
+            }
+
+            if (changed)
+            {
+                _unitOfWork.ChemistActivationPayments.Update(record);
+                await _unitOfWork.SaveChangesAsync();
+            }
+
+            return live;
+        }
+
+        /// <summary>Copies the live reading onto the DTO. These fields are per-request only.</summary>
+        private static void ApplyLiveView(ChemistActivationDto dto, ChemistActivationStatus storedStatusOnArrival, PaymentLinkStatusResult? live)
+        {
+            if (live == null)
+            {
+                // No payment link exists, so there was nothing to look up.
+                dto.RazorpayReachable = false;
+                dto.RazorpayCheckedAt = null;
+                dto.InSync = null;
+                return;
+            }
+
+            dto.RazorpayCheckedAt = DateTime.UtcNow;
+
+            if (!live.Success)
+            {
+                dto.RazorpayReachable = false;
+                dto.RazorpayError = live.Error;
+                dto.InSync = null;
+                return;
+            }
+
+            dto.RazorpayReachable = true;
+            dto.RazorpayRawStatus = live.RawStatus;
+            dto.RazorpayStatus = MapLinkStatus(live.RawStatus);
+            dto.RazorpayAmountPaid = live.AmountPaid;
+            dto.RazorpayPaymentId = live.PaymentId;
+            dto.InSync = dto.RazorpayStatus == null ? null : dto.RazorpayStatus == storedStatusOnArrival;
+        }
+
+        /// <summary>
+        /// Razorpay payment-link states mapped onto ours. Unknown wording returns null rather than
+        /// guessing, so a new Razorpay state never silently marks an activation paid.
+        /// </summary>
+        private static ChemistActivationStatus? MapLinkStatus(string? rawStatus) => rawStatus?.Trim().ToLowerInvariant() switch
+        {
+            "paid" => ChemistActivationStatus.Paid,
+            "expired" => ChemistActivationStatus.Expired,
+            "cancelled" => ChemistActivationStatus.Failed,
+            "created" or "partially_paid" => ChemistActivationStatus.Created,
+            _ => null
+        };
 
         public async Task<bool> MarkPaidFromWebhookAsync(string paymentLinkId, string? paymentId, CancellationToken ct = default)
         {

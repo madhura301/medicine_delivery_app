@@ -21,6 +21,8 @@ export function isGroup(entry: MenuEntry): entry is MenuGroup {
 
 const ALL_STAFF: readonly UserRole[] = ['Admin', 'Manager', 'CustomerSupport'];
 const ADMIN_MANAGER: readonly UserRole[] = ['Admin', 'Manager'];
+/** Chemists see only their own store's queue — every other entry is hidden from them. */
+const CHEMIST: readonly UserRole[] = ['Chemist'];
 
 /**
  * The single definition the sidebar renders from. Roles here mirror the access matrix in
@@ -31,6 +33,18 @@ const ADMIN_MANAGER: readonly UserRole[] = ['Admin', 'Manager'];
  */
 export const MENU: readonly MenuEntry[] = [
   { label: 'Dashboard', icon: 'dashboard', route: '/dashboard', roles: ALL_STAFF },
+
+  // --- Chemist's own queue. Mirrors the mobile chemist dashboard; the orders store scopes every
+  // one of these to the signed-in chemist's store, so "All Orders" means all of THEIR orders. ---
+  {
+    label: 'Orders to Accept',
+    icon: 'pending_actions',
+    route: '/orders/to-accept',
+    roles: CHEMIST,
+  },
+  { label: 'Accepted Orders', icon: 'task_alt', route: '/orders/accepted', roles: CHEMIST },
+  { label: 'All Orders', icon: 'receipt_long', route: '/orders/all', roles: CHEMIST },
+
   { label: 'Managers', icon: 'manage_accounts', route: '/managers', roles: ADMIN_MANAGER },
   { label: 'Customer Support', icon: 'support_agent', route: '/customer-support', roles: ALL_STAFF },
   { label: 'Delivery Boys', icon: 'two_wheeler', route: '/delivery-boys', roles: ADMIN_MANAGER },

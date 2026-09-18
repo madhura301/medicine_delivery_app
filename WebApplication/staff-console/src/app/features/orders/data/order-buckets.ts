@@ -20,7 +20,24 @@ export interface BucketDefinition {
   icon: string;
   emptyTitle: string;
   emptyMessage: string;
+  /**
+   * Chemist buckets only. Their queue splits by order STATUS within their own store rather than by
+   * `assignTo` — every order they can see is already assigned to them, so `assignTo` would put the
+   * whole queue in one bucket. When set, this replaces the `assignTo` test.
+   */
+  statuses?: readonly OrderStatus[];
+  /** Restricts the bucket to the store-scoped role, so it never appears on a staff menu. */
+  chemistOnly?: boolean;
 }
+
+/** Statuses an order passes through after a chemist has accepted it. */
+export const ACCEPTED_BY_CHEMIST_STATUSES: readonly OrderStatus[] = [
+  OrderStatus.AcceptedByChemist,
+  OrderStatus.BillUploaded,
+  OrderStatus.Paid,
+  OrderStatus.OutForDelivery,
+  OrderStatus.Completed,
+];
 
 export const BUCKETS: readonly BucketDefinition[] = [
   {
@@ -31,6 +48,28 @@ export const BUCKETS: readonly BucketDefinition[] = [
     icon: 'list_alt',
     emptyTitle: 'No orders yet',
     emptyMessage: 'Orders placed in the mobile app appear here.',
+  },
+  {
+    slug: 'to-accept',
+    bucket: AssignTo.Chemist,
+    statuses: [OrderStatus.AssignedToChemist],
+    chemistOnly: true,
+    title: 'Orders to Accept',
+    subtitle: 'Routed to your store and waiting on you to accept or reject.',
+    icon: 'pending_actions',
+    emptyTitle: 'Nothing waiting on you',
+    emptyMessage: 'New orders routed to your store will appear here.',
+  },
+  {
+    slug: 'accepted',
+    bucket: AssignTo.Chemist,
+    statuses: ACCEPTED_BY_CHEMIST_STATUSES,
+    chemistOnly: true,
+    title: 'Accepted Orders',
+    subtitle: 'Orders you accepted — bill them, then hand them to a delivery partner.',
+    icon: 'task_alt',
+    emptyTitle: 'No accepted orders',
+    emptyMessage: 'Orders you accept will appear here until they are delivered.',
   },
   {
     slug: 'awaiting-assignment',
@@ -83,8 +122,14 @@ export function bucketBySlug(slug: string): BucketDefinition {
   return BUCKETS.find((b) => b.slug === slug) ?? BUCKETS[0];
 }
 
+/**
+ * The owner label for an order, used by the staff "All Orders" column.
+ *
+ * Chemist-only buckets are skipped: they reuse `AssignTo.Chemist` to mean "mine, at this status",
+ * so without this filter the first match would relabel every with-chemist order "Orders to Accept".
+ */
 export function bucketLabel(assignTo: AssignTo): string {
-  return BUCKETS.find((b) => b.bucket === assignTo)?.title ?? 'Unknown';
+  return BUCKETS.find((b) => !b.chemistOnly && b.bucket === assignTo)?.title ?? 'Unknown';
 }
 
 export function bucketTone(assignTo: AssignTo): ChipTone {

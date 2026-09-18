@@ -1,4 +1,4 @@
-import { DatePipe } from '@angular/common';
+import { CurrencyPipe, DatePipe } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import {
   ChangeDetectionStrategy,
@@ -19,6 +19,7 @@ import { CapabilityService } from '../../../core/config/capabilities';
 import { describeHttpError } from '../../../core/http/interceptors';
 import { ChemistActivation, ChemistPayoutAccount, MedicalStore } from '../../../core/models/api.models';
 import {
+  ChemistActivationStatus,
   ChemistPayoutStatus,
   chemistActivationStatusLabel,
   chemistPayoutStatusLabel,
@@ -37,6 +38,7 @@ import { ChemistFormData, ChemistFormDialog } from '../dialogs/chemist-form-dial
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     DatePipe,
+    CurrencyPipe,
     MatCardModule,
     MatButtonModule,
     MatIconModule,
@@ -251,6 +253,93 @@ import { ChemistFormData, ChemistFormDialog } from '../dialogs/chemist-form-dial
         </mat-card>
 
         <mat-card appearance="outlined">
+          <mat-card-header>
+            <mat-card-title>Activation fee payment in Razorpay</mat-card-title>
+          </mat-card-header>
+          <mat-card-content>
+            <dl>
+              <dt>In database</dt>
+              <dd><app-status-chip [label]="activationLabel()" [tone]="activationTone()" /></dd>
+
+              <dt>Live at Razorpay</dt>
+              <dd>
+                <app-status-chip [label]="activationLiveLabel()" [tone]="activationLiveTone()" />
+              </dd>
+
+              @if (activation()?.razorpayRawStatus; as raw) {
+                <dt>Razorpay value</dt>
+                <dd><code>{{ raw }}</code></dd>
+              }
+
+              @if (activation()?.razorpayAmountPaid != null) {
+                <dt>Amount received</dt>
+                <dd>{{ activation()!.razorpayAmountPaid | currency: 'INR' : 'symbol' : '1.2-2' }}</dd>
+              }
+
+              @if (activation()?.total; as total) {
+                <dt>Amount due</dt>
+                <dd>{{ total | currency: 'INR' : 'symbol' : '1.2-2' }}</dd>
+              }
+
+              @if (activation()?.razorpayPaymentId; as pay) {
+                <dt>Payment</dt>
+                <dd><code>{{ pay }}</code></dd>
+              }
+
+              @if (activation()?.paymentLinkId; as link) {
+                <dt>Payment link</dt>
+                <dd><code>{{ link }}</code></dd>
+              }
+
+              <dt>Database on load</dt>
+              <dd>
+                @if (activationInSync() === true) {
+                  <app-status-chip label="Was in sync" tone="positive" />
+                } @else if (activationInSync() === false) {
+                  <app-status-chip label="Was stale — corrected" tone="warning" />
+                } @else {
+                  <app-status-chip label="Unknown" tone="neutral" />
+                }
+              </dd>
+
+              <dt>Store activated</dt>
+              <dd>
+                @if (activation()?.isActivated) {
+                  {{ activation()?.paidOn ? (activation()!.paidOn | date: 'medium') : 'Yes' }}
+                } @else {
+                  Not yet
+                }
+              </dd>
+
+              @if (activation()?.razorpayCheckedAt; as checked) {
+                <dt>Checked</dt>
+                <dd>{{ checked | date: 'medium' }}</dd>
+              }
+            </dl>
+
+            @if (activation()?.razorpayError; as err) {
+              <p class="hint error">Razorpay lookup failed: {{ err }}</p>
+            }
+
+            <button
+              mat-stroked-button
+              type="button"
+              [disabled]="!canSyncActivation() || syncingActivation()"
+              (click)="syncActivationFromRazorpay()"
+            >
+              {{ syncingActivation() ? 'Syncing…' : 'Sync with database' }}
+            </button>
+
+            <p class="hint">
+              Read live from Razorpay each time this page loads, and the stored status is updated to
+              match. "Was stale" means the payment webhook had been missed and the database has now
+              been corrected — which also activates the store and starts the platform-fee free
+              period. Use Sync to re-pull on demand.
+            </p>
+          </mat-card-content>
+        </mat-card>
+
+        <mat-card appearance="outlined">
           <mat-card-header><mat-card-title>Record</mat-card-title></mat-card-header>
           <mat-card-content>
             <dl>
@@ -402,6 +491,73 @@ export class ChemistDetail {
     const record = this.activation();
     return record ? chemistActivationStatusLabel(record.status) : 'Not started';
   });
+
+  // ----- Live Razorpay view of the activation fee -----
+  // Same shape as the payout box above: stored status beside the gateway's, so a missed
+  // `payment_link.paid` webhook is visible instead of silently blocking the chemist.
+
+  protected readonly syncingActivation = signal(false);
+
+  protected readonly activationTone = computed(() =>
+    this.activationToneFor(this.activation()?.status),
+  );
+
+  protected readonly activationLiveLabel = computed(() => {
+    const record = this.activation();
+    if (!record) return 'No activation payment';
+    if (!record.paymentLinkId) return 'No payment link';
+    if (!record.razorpayReachable) return 'Could not reach Razorpay';
+    return record.razorpayStatus != null
+      ? chemistActivationStatusLabel(record.razorpayStatus)
+      : (record.razorpayRawStatus ?? 'Unknown');
+  });
+
+  protected readonly activationLiveTone = computed(() => {
+    const record = this.activation();
+    if (!record?.razorpayReachable || record.razorpayStatus == null) {
+      return 'neutral' as const;
+    }
+    return this.activationToneFor(record.razorpayStatus);
+  });
+
+  protected readonly activationInSync = computed(() => this.activation()?.inSync ?? null);
+
+  /** Nothing to sync without a payment link, and nothing to sync against if Razorpay is down. */
+  protected readonly canSyncActivation = computed(() => {
+    const record = this.activation();
+    return !!record?.paymentLinkId && record.razorpayReachable === true;
+  });
+
+  private activationToneFor(status: ChemistActivationStatus | null | undefined) {
+    switch (status) {
+      case ChemistActivationStatus.Paid:
+        return 'positive' as const;
+      case ChemistActivationStatus.Created:
+        return 'warning' as const;
+      case ChemistActivationStatus.Failed:
+      case ChemistActivationStatus.Expired:
+        return 'danger' as const;
+      default:
+        return 'neutral' as const;
+    }
+  }
+
+  protected async syncActivationFromRazorpay(): Promise<void> {
+    const id = this.id();
+    if (!id || this.syncingActivation()) return;
+
+    this.syncingActivation.set(true);
+    try {
+      await firstValueFrom(this.api.syncActivationFromRazorpay(id));
+      this.toast.success('Activation payment synced from Razorpay.');
+      // Reload so the eligibility summary above reflects the newly written status too.
+      await this.load(id);
+    } catch (err) {
+      this.toast.error(describeHttpError(err as HttpErrorResponse));
+    } finally {
+      this.syncingActivation.set(false);
+    }
+  }
 
   constructor() {
     // An effect, not the constructor: route inputs are not bound yet when the constructor runs.

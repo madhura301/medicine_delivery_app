@@ -610,7 +610,15 @@ else
 builder.Services.AddScoped<MedicineDelivery.Domain.Interfaces.IRazorpayService, MedicineDelivery.Infrastructure.Services.RazorpayService>();
 builder.Services.AddScoped<MedicineDelivery.Application.Interfaces.IChemistPayoutService, MedicineDelivery.Infrastructure.Services.ChemistPayoutService>();
 builder.Services.AddScoped<MedicineDelivery.Application.Interfaces.IChemistActivationService, MedicineDelivery.Infrastructure.Services.ChemistActivationService>();
-builder.Services.AddScoped<MedicineDelivery.Application.Interfaces.IPlatformFeeCalculator, MedicineDelivery.Infrastructure.Services.PlatformFeeCalculator>();
+// Platform fee: free period + slab table, configurable via PlatformFee__FreeWindowDays and
+// PlatformFee__Slabs. Validated at startup — an invalid fee table stops the API rather than
+// letting it pay chemists the wrong amount.
+builder.Services.AddSingleton<Microsoft.Extensions.Options.IValidateOptions<PlatformFeeOptions>, PlatformFeeOptionsValidator>();
+builder.Services.AddOptions<PlatformFeeOptions>()
+    .Bind(builder.Configuration.GetSection(PlatformFeeOptions.SectionName))
+    .ValidateOnStart();
+// Singleton: stateless, and it parses the fee table once instead of on every request.
+builder.Services.AddSingleton<MedicineDelivery.Application.Interfaces.IPlatformFeeCalculator, MedicineDelivery.Infrastructure.Services.PlatformFeeCalculator>();
 
 // Razorpay Route onboarding client (typed HttpClient hitting the v2 Accounts API)
 builder.Services.AddHttpClient<MedicineDelivery.Application.Interfaces.IRazorpayRouteClient, MedicineDelivery.Infrastructure.Services.RazorpayRouteClient>();
@@ -621,6 +629,11 @@ builder.Services.AddHttpClient<MedicineDelivery.Application.Interfaces.IRazorpay
 builder.Services.AddScoped<SignInManager<MedicineDelivery.Domain.Entities.ApplicationUser>>();
 
 var app = builder.Build();
+
+// Record the fee table actually in force, so App Insights answers "what were chemists charged
+// on this date?" without anyone reading environment variables.
+app.Logger.LogInformation("Platform fee schedule in effect: {PlatformFeeSchedule}",
+    PlatformFeeSchedule.From(app.Services.GetRequiredService<Microsoft.Extensions.Options.IOptions<PlatformFeeOptions>>().Value));
 
 // Configure the HTTP request pipeline.
 app.UseSwagger();

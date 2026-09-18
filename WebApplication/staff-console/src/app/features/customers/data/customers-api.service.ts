@@ -75,7 +75,16 @@ export function customerFullName(customer: Customer): string {
 }
 
 /** Addresses arrive either as one free-text line or as structured parts — render whichever exists. */
-export function formatAddress(address: CustomerAddress): string {
+/**
+ * Accepts anything address-shaped: the address-book record and the narrower copy the API carries
+ * inline on an order both flatten the same way.
+ */
+export function formatAddress(
+  address: Pick<
+    CustomerAddress,
+    'addressLine1' | 'addressLine2' | 'addressLine3' | 'city' | 'state' | 'postalCode' | 'address'
+  >,
+): string {
   const structured = [
     address.addressLine1,
     address.addressLine2,

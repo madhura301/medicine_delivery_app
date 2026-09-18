@@ -178,7 +178,9 @@ export class OrdersList {
   });
 
   protected readonly filtered = computed(() => {
-    const bucket = this.definition().bucket;
+    const definition = this.definition();
+    const bucket = definition.bucket;
+    const statuses = definition.statuses;
     const term = this.search().trim().toLowerCase();
     const status = this.statusFilter();
     const payment = this.paymentFilter();
@@ -186,7 +188,12 @@ export class OrdersList {
     return this.store
       .orders()
       .filter((order) => {
-        if (bucket !== 'all' && order.assignTo !== bucket) {
+        // A chemist bucket splits by status; the store has already scoped the list to their store.
+        if (statuses) {
+          if (!statuses.includes(order.orderStatus)) {
+            return false;
+          }
+        } else if (bucket !== 'all' && order.assignTo !== bucket) {
           return false;
         }
         if (status !== 'all' && order.orderStatus !== status) {
