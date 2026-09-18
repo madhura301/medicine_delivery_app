@@ -20,7 +20,7 @@ class CustomerOrdersPage extends StatefulWidget {
   /// outForDelivery, billUploaded, completed.
   final String? initialStatusFilter;
 
-  /// Title shown for the focused view (e.g. "Pending Orders").
+  /// Title shown for the focused view (e.g. "New Orders").
   final String? filterTitle;
 
   const CustomerOrdersPage({
@@ -120,10 +120,7 @@ class _CustomerOrdersPageState extends State<CustomerOrdersPage> {
     _refreshOrderById(order.orderId);
   }
 
-  bool _isPending(String status) {
-    final statusLower = status.toLowerCase();
-    return statusLower.contains('pending') || statusLower.contains('assigned');
-  }
+  bool _isPending(OrderModel order) => order.isAwaitingChemistAction;
 
   bool _isAccepted(String status) {
     final statusLower = status.toLowerCase();
@@ -132,23 +129,21 @@ class _CustomerOrdersPageState extends State<CustomerOrdersPage> {
         statusLower.contains('delivery');
   }
 
-  bool _isHistory(String status) {
-    final statusLower = status.toLowerCase();
-    return statusLower.contains('completed') ||
-        statusLower.contains('rejected');
-  }
+  bool _isHistory(OrderModel order) =>
+      order.status.toLowerCase().contains('completed') ||
+      order.isRejectedByChemist;
 
   /// Matches an order's status against an Overview-tile key. Mirrors the count
   /// logic in the dashboard so a tile's number matches its filtered list.
-  bool _matchesStatusKey(String status, String key) {
-    final s = status.toLowerCase();
+  bool _matchesStatusKey(OrderModel order, String key) {
+    final s = order.status.toLowerCase();
     switch (key) {
       case 'pending':
-        return s.contains('pending') || s.contains('assigned');
+        return order.isAwaitingChemistAction;
       case 'accepted':
         return s.contains('accepted');
       case 'rejected':
-        return s.contains('rejected');
+        return order.isRejectedByChemist;
       case 'outForDelivery':
         return s.contains('delivery');
       case 'billUploaded':
@@ -274,7 +269,7 @@ class _CustomerOrdersPageState extends State<CustomerOrdersPage> {
                 ),
                 const BottomNavigationBarItem(
                   icon: Icon(Icons.pending_actions),
-                  label: 'Pending',
+                  label: 'New',
                 ),
                 const BottomNavigationBarItem(
                   icon: Icon(Icons.check_circle_outline),
@@ -295,7 +290,7 @@ class _CustomerOrdersPageState extends State<CustomerOrdersPage> {
     // Focused single-status view (opened from a dashboard Overview tile).
     if (_isFocusedView) {
       filteredOrders = _orders
-          .where((o) => _matchesStatusKey(o.status, widget.initialStatusFilter!))
+          .where((o) => _matchesStatusKey(o, widget.initialStatusFilter!))
           .toList();
       return _buildOrderList(filteredOrders);
     }
@@ -305,13 +300,13 @@ class _CustomerOrdersPageState extends State<CustomerOrdersPage> {
         filteredOrders = _orders;
         break;
       case 1:
-        filteredOrders = _orders.where((o) => _isPending(o.status)).toList();
+        filteredOrders = _orders.where(_isPending).toList();
         break;
       case 2:
         filteredOrders = _orders.where((o) => _isAccepted(o.status)).toList();
         break;
       case 3:
-        filteredOrders = _orders.where((o) => _isHistory(o.status)).toList();
+        filteredOrders = _orders.where(_isHistory).toList();
         break;
       default:
         filteredOrders = _orders;
@@ -369,7 +364,7 @@ class _CustomerOrdersPageState extends State<CustomerOrdersPage> {
           customerName: customerInfo?['name'] ?? 'Customer',
           customerEmail: customerInfo?['email'],
           customerPhone: customerInfo?['phone'],
-          isPending: _isPending(order.status),
+          isPending: _isPending(order),
           onTap: () {
             Navigator.of(context).push(
               MaterialPageRoute(
@@ -378,10 +373,10 @@ class _CustomerOrdersPageState extends State<CustomerOrdersPage> {
                   customerName: customerInfo?['name'] ?? 'Customer',
                   customerEmail: customerInfo?['email'],
                   customerPhone: customerInfo?['phone'],
-                  onAccept: _isPending(order.status)
+                  onAccept: _isPending(order)
                       ? () => _handleAcceptOrder(order)
                       : null,
-                  onReject: _isPending(order.status)
+                  onReject: _isPending(order)
                       ? () => _handleRejectOrder(order)
                       : null,
                   onRefresh: () => _handleOrderChanged(order),
@@ -390,9 +385,9 @@ class _CustomerOrdersPageState extends State<CustomerOrdersPage> {
             );
           },
           onAccept:
-              _isPending(order.status) ? () => _handleAcceptOrder(order) : null,
+              _isPending(order) ? () => _handleAcceptOrder(order) : null,
           onReject:
-              _isPending(order.status) ? () => _handleRejectOrder(order) : null,
+              _isPending(order) ? () => _handleRejectOrder(order) : null,
           onRefresh: () => _handleOrderChanged(order),
         );
       },
