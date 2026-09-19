@@ -293,6 +293,33 @@ class OrderModel {
   String? get deliveryAddressLine =>
       hasDeliveryAddress ? deliveryAddress!.singleLine : null;
 
+  /// True when the order is waiting on the chemist to accept or reject it.
+  ///
+  /// Only "Pending"/"Assigned to Chemist" count. An order the chemist rejected
+  /// and the system escalated keeps this store's [medicalStoreId] but is now
+  /// "Assigned to Customer Support" (or a Manager), so it is no longer the
+  /// chemist's to act on and must not show as a new order.
+  bool get isAwaitingChemistAction {
+    final s = status.toLowerCase();
+    if (s.contains('support') || s.contains('manager')) return false;
+    return s.contains('pending') || s.contains('assigned');
+  }
+
+  /// True when this chemist rejected the order.
+  ///
+  /// Rejecting an order escalates it to Customer Support (or a Manager) in the
+  /// same request, so by the time a list loads the status reads "Assigned to
+  /// Customer Support" rather than "Rejected by Chemist". The store's id stays
+  /// on the order until support reassigns it elsewhere, so an escalated order
+  /// fetched for this store is one this store rejected. Once support hands it
+  /// to another chemist it leaves this store's lists altogether.
+  bool get isRejectedByChemist {
+    final s = status.toLowerCase();
+    return s.contains('rejected') ||
+        s.contains('support') ||
+        s.contains('manager');
+  }
+
   /// ✨ NEW: Assignment history helpers
   bool get hasAssignmentHistory {
     final result = assignmentHistory.isNotEmpty;

@@ -7,12 +7,14 @@ import 'package:pharmaish/shared/models/order_assignment_history_model.dart';
 import 'package:pharmaish/utils/app_logger.dart';
 import 'package:pharmaish/utils/consent_manager.dart';
 import 'package:pharmaish/utils/storage.dart';
+import 'package:pharmaish/shared/models/order_enums.dart';
 import 'package:pharmaish/shared/models/order_model.dart';
 import 'package:pharmaish/shared/widgets/app_button.dart';
 import 'package:pharmaish/shared/widgets/authenticated_image.dart';
 import 'package:pharmaish/shared/widgets/delivery_address_view.dart';
 import 'package:pharmaish/shared/widgets/order_assignment_history_widget.dart';
 import 'package:pharmaish/shared/widgets/order_payments_dialog.dart';
+import 'package:pharmaish/shared/widgets/voice_note_player_widget.dart';
 import 'package:pharmaish/core/services/dio_client.dart';
 import 'package:pharmaish/core/services/order_service.dart';
 
@@ -758,7 +760,13 @@ class _CustomerOrderDetailsPageState extends State<CustomerOrderDetailsPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        if (_currentOrder.prescriptionFileUrl != null) ...[
+        if (_currentOrder.prescriptionFileUrl != null &&
+            _currentOrder.orderInputType == OrderInputType.voice)
+          VoiceNotePlayerWidget(
+            orderId: _currentOrder.orderId,
+            fileUrl: _currentOrder.prescriptionFileUrl,
+          )
+        else if (_currentOrder.prescriptionFileUrl != null) ...[
           ClipRRect(
             borderRadius: BorderRadius.circular(8),
             child: AuthNetworkImage(

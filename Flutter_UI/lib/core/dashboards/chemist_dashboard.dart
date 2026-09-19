@@ -251,11 +251,8 @@ class _ChemistDashboardState extends State<ChemistDashboard>
       await _loadCustomerInfo(allOrders);
 
       // Calculate order counts based on status string
-      final pendingCount = allOrders
-          .where((o) =>
-              o.status.toLowerCase().contains('pending') ||
-              o.status.toLowerCase().contains('assigned'))
-          .length;
+      final pendingCount =
+          allOrders.where((o) => o.isAwaitingChemistAction).length;
 
       final acceptedCount = allOrders
           .where((o) => o.status.toLowerCase().contains('accepted'))
@@ -269,9 +266,8 @@ class _ChemistDashboardState extends State<ChemistDashboard>
           .where((o) => o.status.toLowerCase().contains('bill'))
           .length;
 
-      final rejectedCount = allOrders
-          .where((o) => o.status.toLowerCase().contains('rejected'))
-          .length;
+      final rejectedCount =
+          allOrders.where((o) => o.isRejectedByChemist).length;
 
       final completedCount = allOrders
           .where((o) => o.status.toLowerCase().contains('completed'))
@@ -279,12 +275,8 @@ class _ChemistDashboardState extends State<ChemistDashboard>
 
       setState(() {
         _allOrders = allOrders;
-        _recentOrders = allOrders
-            .where((o) =>
-                o.status.toLowerCase().contains('pending') ||
-                o.status.toLowerCase().contains('assigned'))
-            .take(5)
-            .toList();
+        _recentOrders =
+            allOrders.where((o) => o.isAwaitingChemistAction).take(5).toList();
 
         _orderCounts = {
           'pending': pendingCount,
@@ -353,10 +345,7 @@ class _ChemistDashboardState extends State<ChemistDashboard>
     return (phone != null && phone.isNotEmpty) ? phone : null;
   }
 
-  bool isPendingStatus(String status) {
-    final statusLower = status.toLowerCase();
-    return statusLower.contains('pending') || statusLower.contains('assigned');
-  }
+  bool isPendingStatus(OrderModel order) => order.isAwaitingChemistAction;
 
   Future<void> _navigateToOrderDetails(OrderModel order) async {
     // Check if consent already given
@@ -1014,12 +1003,12 @@ class _ChemistDashboardState extends State<ChemistDashboard>
             children: [
               Expanded(
                 child: _buildStatCard(
-                    'Pending',
+                    'New Orders',
                     '${_orderCounts['pending'] ?? 0}',
                     Icons.pending_actions,
                     Colors.orange,
                     onTap: () =>
-                        _openFilteredOrders('pending', 'Pending Orders')),
+                        _openFilteredOrders('pending', 'New Orders')),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -1182,14 +1171,14 @@ class _ChemistDashboardState extends State<ChemistDashboard>
                   customerName: getCustomerName(order),
                   customerEmail: getCustomerEmail(order),
                   customerPhone: getCustomerPhone(order),
-                  isPending: isPendingStatus(order.status),
+                  isPending: isPendingStatus(order),
                   onTap: () {
                     _navigateToOrderDetails(order);
                   },
-                  onAccept: isPendingStatus(order.status)
+                  onAccept: isPendingStatus(order)
                       ? () => _handleAcceptOrder(order)
                       : null,
-                  onReject: isPendingStatus(order.status)
+                  onReject: isPendingStatus(order)
                       ? () => _handleRejectOrder(order)
                       : null,
                   onRefresh: _loadDashboardData,

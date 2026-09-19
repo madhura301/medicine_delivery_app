@@ -1,7 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:pharmaish/core/dashboards/support/assigned_orders_page.dart';
-import 'package:pharmaish/core/dashboards/support/rejected_orders_page.dart';
 import 'package:pharmaish/core/dashboards/support/whatsapp_order_creation_page.dart';
 import 'package:pharmaish/core/services/dio_client.dart';
 import 'package:pharmaish/shared/widgets/confirm_dialog.dart';
@@ -43,10 +42,8 @@ class _CustomerSupportDashboardState extends State<CustomerSupportDashboard> {
       case 0:
         return 'Support Dashboard';
       case 1:
-        return 'Rejected Orders';
-      case 2:
         return 'Create WhatsApp Order';
-      case 3:
+      case 2:
         return 'Assigned Orders';
       default:
         return 'Customer Support';
@@ -100,7 +97,6 @@ class _CustomerSupportDashboardState extends State<CustomerSupportDashboard> {
         index: _selectedIndex,
         children: [
           _buildDashboardHome(),
-          RejectedOrdersPage(dio: _dio),
           WhatsAppOrderCreationPage(dio: _dio),
           AssignedOrdersPage(dio: _dio),
         ],
@@ -165,9 +161,8 @@ class _CustomerSupportDashboardState extends State<CustomerSupportDashboard> {
                   },
                 ),
                 ListTile(
-                  leading:
-                      const Icon(Icons.assignment_return, color: Colors.red),
-                  title: const Text('Rejected Orders'),
+                  leading: const Icon(Icons.message, color: Colors.green),
+                  title: const Text('WhatsApp Orders'),
                   selected: _selectedIndex == 1,
                   selectedTileColor: Colors.black.withValues(alpha: 0.1),
                   onTap: () {
@@ -176,22 +171,12 @@ class _CustomerSupportDashboardState extends State<CustomerSupportDashboard> {
                   },
                 ),
                 ListTile(
-                  leading: const Icon(Icons.message, color: Colors.green),
-                  title: const Text('WhatsApp Orders'),
+                  leading: const Icon(Icons.assignment_ind, color: Colors.blue),
+                  title: const Text('Assigned Orders'),
                   selected: _selectedIndex == 2,
                   selectedTileColor: Colors.black.withValues(alpha: 0.1),
                   onTap: () {
                     setState(() => _selectedIndex = 2);
-                    Navigator.of(context).pop();
-                  },
-                ),
-                ListTile(
-                  leading: const Icon(Icons.assignment_ind, color: Colors.blue),
-                  title: const Text('Assigned Orders'),
-                  selected: _selectedIndex == 3,
-                  selectedTileColor: Colors.black.withValues(alpha: 0.1),
-                  onTap: () {
-                    setState(() => _selectedIndex = 3);
                     Navigator.of(context).pop();
                   },
                 ),
@@ -234,17 +219,17 @@ class _CustomerSupportDashboardState extends State<CustomerSupportDashboard> {
             ),
             const SizedBox(height: 12),
             Text(
-              'Manage rejected orders and create WhatsApp orders',
+              'Reassign rejected orders and create WhatsApp orders',
               textAlign: TextAlign.center,
               style: TextStyle(fontSize: 16, color: Colors.grey.shade600),
             ),
             const SizedBox(height: 40),
             _buildQuickActionCard(
-              icon: Icons.assignment_return,
-              title: 'Rejected Orders',
-              subtitle: 'Reassign to another chemist',
-              color: Colors.red,
-              onTap: () => setState(() => _selectedIndex = 1),
+              icon: Icons.assignment_ind,
+              title: 'Assigned Orders',
+              subtitle: 'Rejected by a chemist — reassign to another chemist',
+              color: Colors.blue,
+              onTap: () => setState(() => _selectedIndex = 2),
             ),
             const SizedBox(height: 16),
             _buildQuickActionCard(
@@ -252,15 +237,7 @@ class _CustomerSupportDashboardState extends State<CustomerSupportDashboard> {
               title: 'WhatsApp Orders',
               subtitle: 'Create order on behalf of customer',
               color: Colors.green,
-              onTap: () => setState(() => _selectedIndex = 2),
-            ),
-            const SizedBox(height: 16),
-            _buildQuickActionCard(
-              icon: Icons.assignment_ind,
-              title: 'Assigned Orders',
-              subtitle: 'View orders assigned to you',
-              color: Colors.blue,
-              onTap: () => setState(() => _selectedIndex = 3),
+              onTap: () => setState(() => _selectedIndex = 1),
             ),
           ],
         ),

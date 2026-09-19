@@ -6,6 +6,7 @@ import 'package:pharmaish/shared/models/order_model.dart';
 import 'package:pharmaish/shared/widgets/authenticated_image.dart';
 import 'package:pharmaish/shared/widgets/delivery_address_view.dart';
 import 'package:pharmaish/shared/widgets/order_assignment_history_widget.dart';
+import 'package:pharmaish/shared/widgets/voice_note_player_widget.dart';
 import 'package:pharmaish/utils/app_logger.dart';
 import 'package:pharmaish/utils/consent_manager.dart';
 
@@ -34,7 +35,6 @@ class OrderDetailsPage extends StatefulWidget {
 }
 
 class _OrderDetailsPageState extends State<OrderDetailsPage> {
-  bool _isPlaying = false;
   bool _isProcessing = false;
   late OrderModel _currentOrder;
 
@@ -102,15 +102,9 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
           ],
         ),
       ),
-      bottomNavigationBar: _isPendingStatus(_currentOrder.status)
-          ? _buildBottomActionBar()
-          : null,
+      bottomNavigationBar:
+          _currentOrder.isAwaitingChemistAction ? _buildBottomActionBar() : null,
     );
-  }
-
-  bool _isPendingStatus(String status) {
-    final statusLower = status.toLowerCase();
-    return statusLower.contains('pending') || statusLower.contains('assigned');
   }
 
   Widget _buildStatusBanner() {
@@ -120,7 +114,7 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
 
     final statusLower = _currentOrder.status.toLowerCase();
 
-    if (statusLower.contains('pending') || statusLower.contains('assigned')) {
+    if (_currentOrder.isAwaitingChemistAction) {
       backgroundColor = Colors.orange.shade100;
       textColor = Colors.orange.shade900;
       icon = Icons.pending_actions;
@@ -130,7 +124,7 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
       backgroundColor = Colors.green.shade100;
       textColor = Colors.green.shade900;
       icon = Icons.check_circle;
-    } else if (statusLower.contains('rejected')) {
+    } else if (_currentOrder.isRejectedByChemist) {
       backgroundColor = Colors.red.shade100;
       textColor = Colors.red.shade900;
       icon = Icons.cancel;
@@ -457,70 +451,9 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
   }
 
   Widget _buildVoicePrescription() {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.purple.shade50,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.purple.shade200),
-      ),
-      child: Column(
-        children: [
-          Icon(
-            _isPlaying ? Icons.pause_circle : Icons.play_circle,
-            size: 60,
-            color: Colors.purple.shade400,
-          ),
-          const SizedBox(height: 12),
-          Text(
-            _currentOrder.voiceNoteUrl ?? 'Voice Recording',
-            style: const TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.w500,
-            ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              IconButton(
-                onPressed: () {
-                  setState(() => _isPlaying = !_isPlaying);
-                  // TODO: Implement actual audio playback
-                },
-                icon: Icon(
-                  _isPlaying ? Icons.pause : Icons.play_arrow,
-                  size: 32,
-                ),
-                color: Colors.purple,
-              ),
-              Expanded(
-                child: Slider(
-                  value: 0.3,
-                  onChanged: (value) {
-                    // TODO: Implement seek functionality
-                  },
-                  activeColor: Colors.purple,
-                ),
-              ),
-              const Text('0:45 / 2:30'),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              TextButton.icon(
-                onPressed: () {
-                  // TODO: Implement speed control
-                },
-                icon: const Icon(Icons.speed),
-                label: const Text('Speed'),
-              ),
-            ],
-          ),
-        ],
-      ),
+    return VoiceNotePlayerWidget(
+      orderId: _currentOrder.orderId,
+      fileUrl: _currentOrder.prescriptionFileUrl,
     );
   }
 

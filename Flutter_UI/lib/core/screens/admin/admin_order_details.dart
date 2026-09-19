@@ -11,7 +11,9 @@ import 'package:pharmaish/shared/widgets/order_payments_dialog.dart';
 import 'package:pharmaish/utils/app_logger.dart';
 import 'package:pharmaish/utils/storage.dart';
 import 'package:pharmaish/shared/models/order_model.dart';
+import 'package:pharmaish/shared/models/order_enums.dart';
 import 'package:pharmaish/shared/widgets/authenticated_image.dart';
+import 'package:pharmaish/shared/widgets/voice_note_player_widget.dart';
 import 'package:pharmaish/core/services/dio_client.dart';
 import 'package:pharmaish/core/services/order_service.dart';
 
@@ -710,6 +712,12 @@ class _AdminOrderDetailsPageState extends State<AdminOrderDetailsPage> {
     final rawUrl = _currentOrder.prescriptionFileUrl;
     if (rawUrl == null) {
       return const Text('No prescription attached');
+    }
+    if (_currentOrder.orderInputType == OrderInputType.voice) {
+      return VoiceNotePlayerWidget(
+        orderId: _currentOrder.orderId,
+        fileUrl: rawUrl,
+      );
     }
     final imageUrl = getOrderInputFileUrl(_currentOrder.orderId);
     return Column(
