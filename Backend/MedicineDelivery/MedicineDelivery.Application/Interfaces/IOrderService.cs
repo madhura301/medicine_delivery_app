@@ -13,6 +13,10 @@ namespace MedicineDelivery.Application.Interfaces
         Task<IEnumerable<OrderDto>> GetActiveOrdersByMedicalStoreIdAsync(Guid medicalStoreId, CancellationToken cancellationToken = default);
         Task<IEnumerable<OrderDto>> GetAcceptedOrdersByMedicalStoreIdAsync(Guid medicalStoreId, CancellationToken cancellationToken = default);
         Task<IEnumerable<OrderDto>> GetRejectedOrdersByMedicalStoreIdAsync(Guid medicalStoreId, CancellationToken cancellationToken = default);
+        Task<IEnumerable<OrderDto>> GetBillUploadedOrdersByMedicalStoreIdAsync(Guid medicalStoreId, CancellationToken cancellationToken = default);
+        Task<IEnumerable<OrderDto>> GetPaidOrdersByMedicalStoreIdAsync(Guid medicalStoreId, CancellationToken cancellationToken = default);
+        Task<IEnumerable<OrderDto>> GetOutForDeliveryOrdersByMedicalStoreIdAsync(Guid medicalStoreId, CancellationToken cancellationToken = default);
+        Task<IEnumerable<OrderDto>> GetCompletedOrdersByMedicalStoreIdAsync(Guid medicalStoreId, CancellationToken cancellationToken = default);
         Task<IEnumerable<OrderDto>> GetAllOrdersByMedicalStoreIdAsync(Guid medicalStoreId, CancellationToken cancellationToken = default);
         Task<OrderDto> AcceptOrderByChemistAsync(int orderId, CancellationToken cancellationToken = default);
         Task<OrderDto> RejectOrderByChemistAsync(int orderId, RejectOrderDto rejectDto, CancellationToken cancellationToken = default);

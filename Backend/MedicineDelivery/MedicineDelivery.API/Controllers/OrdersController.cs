@@ -166,99 +166,69 @@ namespace MedicineDelivery.API.Controllers
             }
         }
 
+        // Per-store order lists. Every route takes the same request (store id in the path) and returns
+        // the same OrderDto array, newest first, so a client can switch between them without new models.
+
+        /// <summary>Orders waiting for this store to accept or reject (AssignedToChemist).</summary>
         [HttpGet("medicalstore/{medicalStoreId:guid}/active")]
         [Authorize(Policy = "RequireOrderReadPermission")]
-        public async Task<IActionResult> GetActiveOrdersByMedicalStoreId(Guid medicalStoreId, CancellationToken cancellationToken)
-        {
-            try
-            {
-                if (!await _accessGuard.CanAccessMedicalStoreAsync(CurrentUserId, await HasFullOrderAccessAsync(), medicalStoreId, cancellationToken))
-                {
-                    return Forbid();
-                }
+        public Task<IActionResult> GetActiveOrdersByMedicalStoreId(Guid medicalStoreId, CancellationToken cancellationToken)
+            => GetStoreOrdersAsync(medicalStoreId, _orderService.GetActiveOrdersByMedicalStoreIdAsync, nameof(GetActiveOrdersByMedicalStoreId), cancellationToken);
 
-                var orders = await _orderService.GetActiveOrdersByMedicalStoreIdAsync(medicalStoreId, cancellationToken);
-                return Ok(orders);
-            }
-            catch (ArgumentException ex)
-            {
-                _logger.LogWarning("GetActiveOrdersByMedicalStoreId: {Message}", ex.Message);
-                return BadRequest(new { error = ex.Message });
-            }
-            catch (OperationCanceledException)
-            {
-                return StatusCode(499, new { error = "Request was cancelled." });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error in GetActiveOrdersByMedicalStoreId for MedicalStore {MedicalStoreId}", medicalStoreId);
-                return StatusCode(500, new { error = "An error occurred while retrieving the orders." });
-            }
-        }
-
+        /// <summary>Orders this store accepted and has not yet billed (AcceptedByChemist).</summary>
         [HttpGet("medicalstore/{medicalStoreId:guid}/accepted")]
         [Authorize(Policy = "RequireOrderReadPermission")]
-        public async Task<IActionResult> GetAcceptedOrdersByMedicalStoreId(Guid medicalStoreId, CancellationToken cancellationToken)
-        {
-            try
-            {
-                if (!await _accessGuard.CanAccessMedicalStoreAsync(CurrentUserId, await HasFullOrderAccessAsync(), medicalStoreId, cancellationToken))
-                {
-                    return Forbid();
-                }
+        public Task<IActionResult> GetAcceptedOrdersByMedicalStoreId(Guid medicalStoreId, CancellationToken cancellationToken)
+            => GetStoreOrdersAsync(medicalStoreId, _orderService.GetAcceptedOrdersByMedicalStoreIdAsync, nameof(GetAcceptedOrdersByMedicalStoreId), cancellationToken);
 
-                var orders = await _orderService.GetAcceptedOrdersByMedicalStoreIdAsync(medicalStoreId, cancellationToken);
-                return Ok(orders);
-            }
-            catch (ArgumentException ex)
-            {
-                _logger.LogWarning("GetAcceptedOrdersByMedicalStoreId: {Message}", ex.Message);
-                return BadRequest(new { error = ex.Message });
-            }
-            catch (OperationCanceledException)
-            {
-                return StatusCode(499, new { error = "Request was cancelled." });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error in GetAcceptedOrdersByMedicalStoreId for MedicalStore {MedicalStoreId}", medicalStoreId);
-                return StatusCode(500, new { error = "An error occurred while retrieving the orders." });
-            }
-        }
-
+        /// <summary>
+        /// Orders this store rejected: RejectedByChemist, plus the AssignedToCustomerSupport and
+        /// AssignedToManager orders a rejection hands off to, until they are reassigned to another store.
+        /// </summary>
         [HttpGet("medicalstore/{medicalStoreId:guid}/rejected")]
         [Authorize(Policy = "RequireOrderReadPermission")]
-        public async Task<IActionResult> GetRejectedOrdersByMedicalStoreId(Guid medicalStoreId, CancellationToken cancellationToken)
-        {
-            try
-            {
-                if (!await _accessGuard.CanAccessMedicalStoreAsync(CurrentUserId, await HasFullOrderAccessAsync(), medicalStoreId, cancellationToken))
-                {
-                    return Forbid();
-                }
+        public Task<IActionResult> GetRejectedOrdersByMedicalStoreId(Guid medicalStoreId, CancellationToken cancellationToken)
+            => GetStoreOrdersAsync(medicalStoreId, _orderService.GetRejectedOrdersByMedicalStoreIdAsync, nameof(GetRejectedOrdersByMedicalStoreId), cancellationToken);
 
-                var orders = await _orderService.GetRejectedOrdersByMedicalStoreIdAsync(medicalStoreId, cancellationToken);
-                return Ok(orders);
-            }
-            catch (ArgumentException ex)
-            {
-                _logger.LogWarning("GetRejectedOrdersByMedicalStoreId: {Message}", ex.Message);
-                return BadRequest(new { error = ex.Message });
-            }
-            catch (OperationCanceledException)
-            {
-                return StatusCode(499, new { error = "Request was cancelled." });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error in GetRejectedOrdersByMedicalStoreId for MedicalStore {MedicalStoreId}", medicalStoreId);
-                return StatusCode(500, new { error = "An error occurred while retrieving the orders." });
-            }
-        }
+        /// <summary>Orders billed by this store and awaiting the customer's payment (BillUploaded).</summary>
+        [HttpGet("medicalstore/{medicalStoreId:guid}/bill-uploaded")]
+        [Authorize(Policy = "RequireOrderReadPermission")]
+        public Task<IActionResult> GetBillUploadedOrdersByMedicalStoreId(Guid medicalStoreId, CancellationToken cancellationToken)
+            => GetStoreOrdersAsync(medicalStoreId, _orderService.GetBillUploadedOrdersByMedicalStoreIdAsync, nameof(GetBillUploadedOrdersByMedicalStoreId), cancellationToken);
 
+        /// <summary>Orders the customer has paid for, ready to hand to a delivery boy (Paid).</summary>
+        [HttpGet("medicalstore/{medicalStoreId:guid}/paid")]
+        [Authorize(Policy = "RequireOrderReadPermission")]
+        public Task<IActionResult> GetPaidOrdersByMedicalStoreId(Guid medicalStoreId, CancellationToken cancellationToken)
+            => GetStoreOrdersAsync(medicalStoreId, _orderService.GetPaidOrdersByMedicalStoreIdAsync, nameof(GetPaidOrdersByMedicalStoreId), cancellationToken);
+
+        /// <summary>Orders on the way to the customer (OutForDelivery).</summary>
+        [HttpGet("medicalstore/{medicalStoreId:guid}/out-for-delivery")]
+        [Authorize(Policy = "RequireOrderReadPermission")]
+        public Task<IActionResult> GetOutForDeliveryOrdersByMedicalStoreId(Guid medicalStoreId, CancellationToken cancellationToken)
+            => GetStoreOrdersAsync(medicalStoreId, _orderService.GetOutForDeliveryOrdersByMedicalStoreIdAsync, nameof(GetOutForDeliveryOrdersByMedicalStoreId), cancellationToken);
+
+        /// <summary>Delivered orders (Completed).</summary>
+        [HttpGet("medicalstore/{medicalStoreId:guid}/completed")]
+        [Authorize(Policy = "RequireOrderReadPermission")]
+        public Task<IActionResult> GetCompletedOrdersByMedicalStoreId(Guid medicalStoreId, CancellationToken cancellationToken)
+            => GetStoreOrdersAsync(medicalStoreId, _orderService.GetCompletedOrdersByMedicalStoreIdAsync, nameof(GetCompletedOrdersByMedicalStoreId), cancellationToken);
+
+        /// <summary>Every order currently held against this store, in any status.</summary>
         [HttpGet("medicalstore/{medicalStoreId:guid}")]
         [Authorize(Policy = "RequireOrderReadPermission")]
-        public async Task<IActionResult> GetAllOrdersByMedicalStoreId(Guid medicalStoreId, CancellationToken cancellationToken)
+        public Task<IActionResult> GetAllOrdersByMedicalStoreId(Guid medicalStoreId, CancellationToken cancellationToken)
+            => GetStoreOrdersAsync(medicalStoreId, _orderService.GetAllOrdersByMedicalStoreIdAsync, nameof(GetAllOrdersByMedicalStoreId), cancellationToken);
+
+        /// <summary>
+        /// Shared HTTP handling for the per-store lists: a chemist may only read their own store, and
+        /// errors map to the same status codes and bodies on every route.
+        /// </summary>
+        private async Task<IActionResult> GetStoreOrdersAsync(
+            Guid medicalStoreId,
+            Func<Guid, CancellationToken, Task<IEnumerable<OrderDto>>> query,
+            string action,
+            CancellationToken cancellationToken)
         {
             try
             {
@@ -267,12 +237,12 @@ namespace MedicineDelivery.API.Controllers
                     return Forbid();
                 }
 
-                var orders = await _orderService.GetAllOrdersByMedicalStoreIdAsync(medicalStoreId, cancellationToken);
+                var orders = await query(medicalStoreId, cancellationToken);
                 return Ok(orders);
             }
             catch (ArgumentException ex)
             {
-                _logger.LogWarning("GetAllOrdersByMedicalStoreId: {Message}", ex.Message);
+                _logger.LogWarning("{Action}: {Message}", action, ex.Message);
                 return BadRequest(new { error = ex.Message });
             }
             catch (OperationCanceledException)
@@ -281,7 +251,7 @@ namespace MedicineDelivery.API.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error in GetAllOrdersByMedicalStoreId for MedicalStore {MedicalStoreId}", medicalStoreId);
+                _logger.LogError(ex, "Error in {Action} for MedicalStore {MedicalStoreId}", action, medicalStoreId);
                 return StatusCode(500, new { error = "An error occurred while retrieving the orders." });
             }
         }

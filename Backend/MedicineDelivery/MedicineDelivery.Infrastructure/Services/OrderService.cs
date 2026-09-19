@@ -907,76 +907,63 @@ namespace MedicineDelivery.Infrastructure.Services
             return dtos;
         }
 
-        public async Task<IEnumerable<OrderDto>> GetActiveOrdersByMedicalStoreIdAsync(Guid medicalStoreId, CancellationToken cancellationToken = default)
+        public Task<IEnumerable<OrderDto>> GetActiveOrdersByMedicalStoreIdAsync(Guid medicalStoreId, CancellationToken cancellationToken = default)
+            => GetStoreOrdersInStatusAsync(medicalStoreId, cancellationToken, OrderStatus.AssignedToChemist);
+
+        public Task<IEnumerable<OrderDto>> GetAcceptedOrdersByMedicalStoreIdAsync(Guid medicalStoreId, CancellationToken cancellationToken = default)
+            => GetStoreOrdersInStatusAsync(medicalStoreId, cancellationToken, OrderStatus.AcceptedByChemist);
+
+        /// <summary>
+        /// Orders this store rejected. Rejecting hands the order to Customer Support (or a Manager) in
+        /// the same request, so RejectedByChemist alone is almost always empty; the store keeps its
+        /// MedicalStoreId until the order is reassigned elsewhere, which is what scopes these to it.
+        /// </summary>
+        public Task<IEnumerable<OrderDto>> GetRejectedOrdersByMedicalStoreIdAsync(Guid medicalStoreId, CancellationToken cancellationToken = default)
+            => GetStoreOrdersInStatusAsync(
+                medicalStoreId,
+                cancellationToken,
+                OrderStatus.RejectedByChemist,
+                OrderStatus.AssignedToCustomerSupport,
+                OrderStatus.AssignedToManager);
+
+        public Task<IEnumerable<OrderDto>> GetBillUploadedOrdersByMedicalStoreIdAsync(Guid medicalStoreId, CancellationToken cancellationToken = default)
+            => GetStoreOrdersInStatusAsync(medicalStoreId, cancellationToken, OrderStatus.BillUploaded);
+
+        public Task<IEnumerable<OrderDto>> GetPaidOrdersByMedicalStoreIdAsync(Guid medicalStoreId, CancellationToken cancellationToken = default)
+            => GetStoreOrdersInStatusAsync(medicalStoreId, cancellationToken, OrderStatus.Paid);
+
+        public Task<IEnumerable<OrderDto>> GetOutForDeliveryOrdersByMedicalStoreIdAsync(Guid medicalStoreId, CancellationToken cancellationToken = default)
+            => GetStoreOrdersInStatusAsync(medicalStoreId, cancellationToken, OrderStatus.OutForDelivery);
+
+        public Task<IEnumerable<OrderDto>> GetCompletedOrdersByMedicalStoreIdAsync(Guid medicalStoreId, CancellationToken cancellationToken = default)
+            => GetStoreOrdersInStatusAsync(medicalStoreId, cancellationToken, OrderStatus.Completed);
+
+        public Task<IEnumerable<OrderDto>> GetAllOrdersByMedicalStoreIdAsync(Guid medicalStoreId, CancellationToken cancellationToken = default)
+            => GetStoreOrdersInStatusAsync(medicalStoreId, cancellationToken);
+
+        /// <summary>
+        /// Shared body of the per-store order lists: every one returns the same OrderDto shape, newest
+        /// first. No statuses means every order for the store.
+        /// </summary>
+        private async Task<IEnumerable<OrderDto>> GetStoreOrdersInStatusAsync(
+            Guid medicalStoreId,
+            CancellationToken cancellationToken,
+            params OrderStatus[] statuses)
         {
             cancellationToken.ThrowIfCancellationRequested();
 
             if (medicalStoreId == Guid.Empty)
             {
-                _logger.LogWarning("GetActiveOrdersByMedicalStoreIdAsync failed: MedicalStoreId is empty");
+                _logger.LogWarning("Store order list requested with an empty MedicalStoreId");
                 throw new ArgumentException("MedicalStoreId is required.", nameof(medicalStoreId));
             }
 
-            var orders = await _unitOfWork.Orders.FindAsync(o => 
-                o.MedicalStoreId == medicalStoreId &&
-                o.OrderStatus == OrderStatus.AssignedToChemist);
+            var orders = statuses.Length == 0
+                ? await _unitOfWork.Orders.FindAsync(o => o.MedicalStoreId == medicalStoreId)
+                : await _unitOfWork.Orders.FindAsync(o =>
+                    o.MedicalStoreId == medicalStoreId && statuses.Contains(o.OrderStatus));
 
-            var dtos = _mapper.Map<List<OrderDto>>(orders);
-            await EnrichAssigneeNamesAsync(dtos, cancellationToken);
-            return dtos;
-        }
-
-        public async Task<IEnumerable<OrderDto>> GetAcceptedOrdersByMedicalStoreIdAsync(Guid medicalStoreId, CancellationToken cancellationToken = default)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-
-            if (medicalStoreId == Guid.Empty)
-            {
-                _logger.LogWarning("GetAcceptedOrdersByMedicalStoreIdAsync failed: MedicalStoreId is empty");
-                throw new ArgumentException("MedicalStoreId is required.", nameof(medicalStoreId));
-            }
-
-            var orders = await _unitOfWork.Orders.FindAsync(o => 
-                o.MedicalStoreId == medicalStoreId &&
-                o.OrderStatus == OrderStatus.AcceptedByChemist);
-
-            var dtos = _mapper.Map<List<OrderDto>>(orders);
-            await EnrichAssigneeNamesAsync(dtos, cancellationToken);
-            return dtos;
-        }
-
-        public async Task<IEnumerable<OrderDto>> GetRejectedOrdersByMedicalStoreIdAsync(Guid medicalStoreId, CancellationToken cancellationToken = default)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-
-            if (medicalStoreId == Guid.Empty)
-            {
-                _logger.LogWarning("GetRejectedOrdersByMedicalStoreIdAsync failed: MedicalStoreId is empty");
-                throw new ArgumentException("MedicalStoreId is required.", nameof(medicalStoreId));
-            }
-
-            var orders = await _unitOfWork.Orders.FindAsync(o => 
-                o.MedicalStoreId == medicalStoreId &&
-                o.OrderStatus == OrderStatus.RejectedByChemist);
-
-            var dtos = _mapper.Map<List<OrderDto>>(orders);
-            await EnrichAssigneeNamesAsync(dtos, cancellationToken);
-            return dtos;
-        }
-
-        public async Task<IEnumerable<OrderDto>> GetAllOrdersByMedicalStoreIdAsync(Guid medicalStoreId, CancellationToken cancellationToken = default)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-
-            if (medicalStoreId == Guid.Empty)
-            {
-                _logger.LogWarning("GetAllOrdersByMedicalStoreIdAsync failed: MedicalStoreId is empty");
-                throw new ArgumentException("MedicalStoreId is required.", nameof(medicalStoreId));
-            }
-
-            var orders = await _unitOfWork.Orders.FindAsync(o => o.MedicalStoreId == medicalStoreId);
-
-            var dtos = _mapper.Map<List<OrderDto>>(orders);
+            var dtos = _mapper.Map<List<OrderDto>>(orders.OrderByDescending(o => o.CreatedOn));
             await EnrichAssigneeNamesAsync(dtos, cancellationToken);
             return dtos;
         }

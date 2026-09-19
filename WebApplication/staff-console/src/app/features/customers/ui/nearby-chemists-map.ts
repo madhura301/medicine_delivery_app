@@ -239,10 +239,19 @@ export class NearbyChemistsMap implements OnDestroy {
     const lng = this.longitude();
     if (lat == null || lng == null) return;
 
-    const L = await import('leaflet');
+    // Leaflet ships as CommonJS: the production build wraps it so the API sits on `.default`, while
+    // the dev server exposes it directly. Accept either, or `L.map` is undefined in production only.
+    const mod = (await import('leaflet')) as typeof Leaflet & { default?: typeof Leaflet };
+    const L = mod.default ?? mod;
     this.destroyMap();
 
+    const centre = L.latLng(lat, lng);
+    const radiusBounds = centre.toBounds(data.radiusKm * 2000);
+
+    // Set the view before adding layers: Leaflet defers attaching layers until the map has one, and
+    // anything that needs the map in the meantime (e.g. circle.getBounds) throws.
     const map = L.map(host, { scrollWheelZoom: false, attributionControl: true });
+    map.fitBounds(radiusBounds, { padding: [8, 8] });
     this.map = map;
 
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -250,8 +259,7 @@ export class NearbyChemistsMap implements OnDestroy {
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
     }).addTo(map);
 
-    const centre = L.latLng(lat, lng);
-    const radius = L.circle(centre, {
+    L.circle(centre, {
       radius: data.radiusKm * 1000,
       color: COLOUR.radius,
       weight: 1.5,
@@ -292,9 +300,12 @@ export class NearbyChemistsMap implements OnDestroy {
       this.markers.set(c.medicalStoreId, marker);
     }
 
-    map.fitBounds(radius.getBounds(), { padding: [8, 8] });
     // The container may have been laid out after Leaflet measured it.
-    setTimeout(() => map.invalidateSize(), 0);
+    setTimeout(() => {
+      if (this.map !== map) return;
+      map.invalidateSize();
+      map.fitBounds(radiusBounds, { padding: [8, 8] });
+    }, 0);
   }
 
   /** Built from DOM nodes, not an HTML string: store names come from user input. */
