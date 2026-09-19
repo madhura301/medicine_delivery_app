@@ -451,8 +451,13 @@ builder.Services.AddAuthorization(options =>
     options.AddPolicy("RequireManageRolePermission", policy => 
         policy.Requirements.Add(new MedicineDelivery.API.Authorization.PermissionRequirement("ManageRolePermission")));
     
+    // Staff-only view across every chemist. Chemists hold ChemistRead (their own store) but not
+    // AllChemistRead, so this keeps competitors' locations out of a chemist's reach.
+    options.AddPolicy("RequireAllChemistReadPermission", policy =>
+        policy.Requirements.Add(new MedicineDelivery.API.Authorization.PermissionRequirement("AllChemistRead")));
+
     // Chemist CRUD Policies
-    options.AddPolicy("RequireChemistReadPermission", policy => 
+    options.AddPolicy("RequireChemistReadPermission", policy =>
         policy.Requirements.Add(new MedicineDelivery.API.Authorization.PermissionRequirement("ChemistRead")));
     
     options.AddPolicy("RequireChemistCreatePermission", policy => 

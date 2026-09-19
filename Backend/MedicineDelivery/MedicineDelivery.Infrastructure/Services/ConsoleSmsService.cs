@@ -44,5 +44,14 @@ namespace MedicineDelivery.Infrastructure.Services
 
             return Task.FromResult(true);
         }
+
+        public Task<bool> SendBillReadyAsync(string phoneNumber, string customerName, decimal billAmount)
+        {
+            _logger.LogWarning(
+                "[DEV ONLY] Bill ready SMS for {PhoneNumber}: Name={CustomerName}, Amount={BillAmount} — replace ConsoleSmsService with a real provider before going live.",
+                phoneNumber, customerName, billAmount);
+
+            return Task.FromResult(true);
+        }
     }
 }

@@ -1,4 +1,5 @@
 using AutoMapper;
+using MedicineDelivery.Application.Common;
 using MedicineDelivery.Application.DTOs;
 using MedicineDelivery.Application.Interfaces;
 using MedicineDelivery.Domain.Entities;
@@ -537,7 +538,7 @@ namespace MedicineDelivery.Infrastructure.Services
                     .OrderBy(x => x.DistanceKm)
                     .FirstOrDefault();
 
-                var available = nearestWithinRange != null && nearestWithinRange.DistanceKm <= 5.0;
+                var available = nearestWithinRange != null && nearestWithinRange.DistanceKm <= OrderRoutingRules.ChemistSearchRadiusKm;
                 _logger.LogInformation(
                     "IsChemistAvailableForAddressAsync (GEO): active-with-coords stores={StoreCount}, eligible (payout+activation)={EligibleCount}, nearestEligibleKm={NearestKm}, within5km={Available}.",
                     storesWithCoordsList.Count, eligibleStores.Count,
@@ -1631,7 +1632,41 @@ namespace MedicineDelivery.Infrastructure.Services
 
             _logger.LogInformation("Bill uploaded for Order {OrderId}, amount: {OrderAmount}", order.OrderId, uploadDto.OrderAmount);
 
+            // After the save, so the customer is never told about a bill that failed to persist.
+            await SendBillReadySmsAsync(order);
+
             return _mapper.Map<OrderDto>(order);
+        }
+
+        /// <summary>
+        /// Texts the customer that their bill is ready to pay. Best-effort: a texting failure is
+        /// logged but never fails the chemist's upload — the bill is already saved, and the customer
+        /// still sees it in the app.
+        /// </summary>
+        private async Task SendBillReadySmsAsync(Order order)
+        {
+            try
+            {
+                var customer = await _unitOfWork.Customers.FirstOrDefaultAsync(c => c.CustomerId == order.CustomerId);
+                if (customer == null || string.IsNullOrWhiteSpace(customer.MobileNumber))
+                {
+                    _logger.LogWarning("Skipping bill-ready SMS for Order {OrderId}: customer or mobile number missing.", order.OrderId);
+                    return;
+                }
+
+                if (order.TotalAmount is not > 0)
+                {
+                    _logger.LogWarning("Skipping bill-ready SMS for Order {OrderId}: no bill amount recorded.", order.OrderId);
+                    return;
+                }
+
+                var sent = await _smsService.SendBillReadyAsync(customer.MobileNumber, customer.CustomerFirstName, order.TotalAmount.Value);
+                _logger.LogInformation("Bill-ready SMS for Order {OrderId}: {Outcome}.", order.OrderId, sent ? "sent" : "not sent");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to send bill-ready SMS for Order {OrderId}.", order.OrderId);
+            }
         }
 
         public async Task<OrderDto> AssignOrderToDeliveryAsync(AssignOrderToDeliveryDto assignDto, CancellationToken cancellationToken = default)
@@ -2071,7 +2106,7 @@ namespace MedicineDelivery.Infrastructure.Services
                         (double)store.Latitude.Value,
                         (double)store.Longitude.Value);
 
-                    if (distance <= 5.0)
+                    if (distance <= OrderRoutingRules.ChemistSearchRadiusKm)
                     {
                         result.Add(MapToNearbyChemistDto(store, ChemistMatchType.Distance, Math.Round(distance, 2)));
                     }
@@ -2118,6 +2153,76 @@ namespace MedicineDelivery.Infrastructure.Services
                 OrderNumber = orderNumber,
                 TotalChemists = result.Count,
                 Chemists = result
+            };
+        }
+
+        public async Task<ChemistsNearLocationDto> GetChemistsNearLocationAsync(decimal latitude, decimal longitude, CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            // Inactive stores are included on purpose: staff need to see a store next door that is
+            // switched off, not wonder why the map looks empty.
+            var stores = (await _unitOfWork.MedicalStores.FindAsync(ms =>
+                    !ms.IsDeleted && ms.Latitude.HasValue && ms.Longitude.HasValue))
+                .Select(ms => new
+                {
+                    Store = ms,
+                    DistanceKm = CalculateHaversineDistance(
+                        (double)latitude, (double)longitude,
+                        (double)ms.Latitude!.Value, (double)ms.Longitude!.Value)
+                })
+                .Where(x => x.DistanceKm <= OrderRoutingRules.ChemistSearchRadiusKm)
+                .OrderBy(x => x.DistanceKm)
+                .ToList();
+
+            var storeIds = stores.Select(x => x.Store.MedicalStoreId).ToList();
+
+            // Two set-based lookups rather than two per store. Same conditions as
+            // FilterEligibleStoresAsync, which is what routing itself uses.
+            var payoutActive = (await _unitOfWork.ChemistPayoutAccounts.FindAsync(pa =>
+                    storeIds.Contains(pa.MedicalStoreId) && pa.OnboardingStatus == ChemistPayoutStatus.Active))
+                .Select(pa => pa.MedicalStoreId)
+                .ToHashSet();
+
+            var activationPaid = (await _unitOfWork.ChemistActivationPayments.FindAsync(ap =>
+                    storeIds.Contains(ap.MedicalStoreId) && ap.Status == ChemistActivationStatus.Paid))
+                .Select(ap => ap.MedicalStoreId)
+                .ToHashSet();
+
+            var chemists = stores.Select(x =>
+            {
+                var dto = new ChemistNearLocationDto
+                {
+                    MedicalStoreId = x.Store.MedicalStoreId,
+                    MedicalName = x.Store.MedicalName,
+                    Address = string.Join(", ", new[]
+                        {
+                            x.Store.AddressLine1, x.Store.AddressLine2, x.Store.City
+                        }.Where(part => !string.IsNullOrWhiteSpace(part))),
+                    PostalCode = x.Store.PostalCode,
+                    Latitude = x.Store.Latitude!.Value,
+                    Longitude = x.Store.Longitude!.Value,
+                    DistanceKm = Math.Round(x.DistanceKm, 2),
+                    IsActive = x.Store.IsActive,
+                    PayoutActive = payoutActive.Contains(x.Store.MedicalStoreId),
+                    ActivationPaid = activationPaid.Contains(x.Store.MedicalStoreId)
+                };
+
+                if (!dto.IsActive) dto.NotReceivingReasons.Add("Store is deactivated");
+                if (!dto.PayoutActive) dto.NotReceivingReasons.Add("Payout account is not active");
+                if (!dto.ActivationPaid) dto.NotReceivingReasons.Add("Activation fee is not paid");
+                return dto;
+            }).ToList();
+
+            _logger.LogInformation(
+                "GetChemistsNearLocationAsync: {Count} chemist(s) within {RadiusKm} km of ({Latitude}, {Longitude}); {ReceivingCount} receive orders.",
+                chemists.Count, OrderRoutingRules.ChemistSearchRadiusKm, latitude, longitude, chemists.Count(c => c.ReceivesOrders));
+
+            return new ChemistsNearLocationDto
+            {
+                RadiusKm = OrderRoutingRules.ChemistSearchRadiusKm,
+                ReceivingOrdersCount = chemists.Count(c => c.ReceivesOrders),
+                Chemists = chemists
             };
         }
 

@@ -5,6 +5,7 @@ import { environment } from '../../../../environments/environment';
 import {
   ChemistActivation,
   ChemistPayoutAccount,
+  ChemistsNearLocation,
   MedicalStore,
   MedicalStoreRegistration,
   MedicalStoreRegistrationResult,
@@ -35,6 +36,16 @@ export class ChemistsApiService {
 
   get(id: string): Observable<MedicalStore> {
     return this.http.get<MedicalStore>(`${this.base}/${id}`);
+  }
+
+  /**
+   * Every chemist within the order-routing radius of a point, marked with whether an order placed
+   * there would reach it. Staff only — chemists hold ChemistRead but not AllChemistRead.
+   */
+  nearby(latitude: number, longitude: number): Observable<ChemistsNearLocation> {
+    return this.http.get<ChemistsNearLocation>(`${this.base}/nearby`, {
+      params: { latitude, longitude },
+    });
   }
 
   update(id: string, payload: MedicalStoreUpdate): Observable<MedicalStore> {

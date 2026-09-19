@@ -22,6 +22,10 @@ namespace MedicineDelivery.Infrastructure.Services
         private readonly string _otpTemplateId;
         private readonly string _orderOtpTemplateId;
         private readonly string _paymentTemplateId;
+        private readonly string _billReadyTemplateId;
+
+        /// <summary>DLT caps each template variable at 30 characters; longer values are rejected.</summary>
+        private const int MaxVariableLength = 30;
 
         public Msg91SmsService(HttpClient httpClient, IConfiguration configuration, ILogger<Msg91SmsService> logger)
         {
@@ -31,6 +35,7 @@ namespace MedicineDelivery.Infrastructure.Services
             _otpTemplateId = configuration["SmsSettings:OtpTemplateId"] ?? string.Empty;
             _orderOtpTemplateId = configuration["SmsSettings:OrderOtpTemplateId"] ?? string.Empty;
             _paymentTemplateId = configuration["SmsSettings:PaymentTemplateId"] ?? string.Empty;
+            _billReadyTemplateId = configuration["SmsSettings:BillReadyTemplateId"] ?? string.Empty;
         }
 
         public Task<bool> SendOtpAsync(string phoneNumber, string otpCode, string? recipientName = null)
@@ -78,6 +83,30 @@ namespace MedicineDelivery.Infrastructure.Services
             };
 
             return SendFlowAsync(_paymentTemplateId, recipient, phoneNumber, "OrderDelivered");
+        }
+
+        public Task<bool> SendBillReadyAsync(string phoneNumber, string customerName, decimal billAmount)
+        {
+            // Template PHARMAISH_BILL_PAYMENT_NOTIFICATION — MSG91 id 6aa6dcc62be02e22be0e6fa3,
+            // DLT id 1777178923567134191:
+            //   "Dear ##alp##, Your Pharmaish request bill of Rs. ##num## is ready to view. ..."
+            // The keys must be exactly "alp" and "num" — MSG91 silently substitutes an empty string for
+            // any key it does not know, so a misspelt key sends a blank without raising an error.
+            var name = string.IsNullOrWhiteSpace(customerName) ? "Customer" : customerName.Trim();
+            var recipient = new Dictionary<string, string>
+            {
+                ["mobiles"] = NormalizeMobile(phoneNumber),
+                ["alp"] = name.Length > MaxVariableLength ? name[..MaxVariableLength] : name,
+                // Plain digits and a decimal point: no currency symbol (the template already says "Rs.")
+                // and no thousands separator, which a numeric DLT variable may reject.
+                ["num"] = billAmount.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)
+            };
+
+            _logger.LogInformation(
+                "MSG91 request BillReady template={TemplateId} mobile={Mobile} amount={Amount}",
+                _billReadyTemplateId, NormalizeMobile(phoneNumber), recipient["num"]);
+
+            return SendFlowAsync(_billReadyTemplateId, recipient, phoneNumber, "BillReady");
         }
 
         /// <summary>

@@ -23,7 +23,7 @@ import { ConfirmService } from '../../../core/ui/confirm-dialog';
 import { ToastService } from '../../../core/ui/toast.service';
 import { PageHeader } from '../../../shared/ui/page-header';
 import { ErrorState, LoadingState } from '../../../shared/ui/state-panels';
-import { LocationMap } from '../../../shared/ui/location-map';
+import { NearbyChemistsMap } from '../ui/nearby-chemists-map';
 import { StatusChip } from '../../../shared/ui/status-chip';
 import { CustomersApiService, customerFullName, formatAddress } from '../data/customers-api.service';
 import { AddressFormData, AddressFormDialog } from '../dialogs/address-form-dialog';
@@ -42,7 +42,7 @@ import { CustomerFormData, CustomerFormDialog } from '../dialogs/customer-form-d
     LoadingState,
     ErrorState,
     StatusChip,
-    LocationMap,
+    NearbyChemistsMap,
   ],
   template: `
     @if (loading()) {
@@ -120,7 +120,7 @@ import { CustomerFormData, CustomerFormDialog } from '../dialogs/customer-form-d
                         }
                       </div>
 
-                      <app-location-map
+                      <app-nearby-chemists-map
                         [latitude]="address.latitude"
                         [longitude]="address.longitude"
                         [label]="format(address)"
@@ -181,7 +181,7 @@ import { CustomerFormData, CustomerFormDialog } from '../dialogs/customer-form-d
       border-radius: 10px;
     }
     .address-main { flex: 1 1 auto; min-width: 0; display: grid; gap: 8px; }
-    app-location-map { --map-height: 220px; }
+    app-nearby-chemists-map { --map-height: 320px; }
     .address-text {
       display: flex;
       flex-wrap: wrap;
