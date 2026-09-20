@@ -414,6 +414,16 @@ class _CustomerOrderDetailsPageState extends State<CustomerOrderDetailsPage> {
               _buildChemistInfo(),
             ),
 
+          // Bill Section (shown ahead of the prescription: once the pharmacy
+          // has uploaded it, the bill is what the customer needs to review)
+          if (_currentOrder.billFileUrl != null)
+            _buildSection(
+              'Bill',
+              Icons.receipt,
+              Colors.orange,
+              _buildBillSection(),
+            ),
+
           // Prescription Section
           if (_currentOrder.prescriptionFileUrl != null)
             _buildSection(
@@ -421,15 +431,6 @@ class _CustomerOrderDetailsPageState extends State<CustomerOrderDetailsPage> {
               Icons.medical_services,
               Colors.red,
               _buildPrescriptionSection(),
-            ),
-
-          // Bill Section
-          if (_currentOrder.billFileUrl != null)
-            _buildSection(
-              'Bill',
-              Icons.receipt,
-              Colors.orange,
-              _buildBillSection(),
             ),
 
           // Delivery Information
@@ -797,31 +798,83 @@ class _CustomerOrderDetailsPageState extends State<CustomerOrderDetailsPage> {
   }
 
   Widget _buildBillSection() {
+    // The pharmacy may upload the bill as an image or as a document (PDF etc.).
+    // Only images can be previewed inline; anything else is opened on demand.
+    final billFileName = extractFileName(_currentOrder.billFileUrl);
+    final billExtension = billFileName.contains('.')
+        ? billFileName.split('.').last.toLowerCase()
+        : '';
+    final isImageBill = const ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp']
+        .contains(billExtension);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         if (_currentOrder.billFileUrl != null) ...[
-          ClipRRect(
-            borderRadius: BorderRadius.circular(8),
-            child: AuthNetworkImage(
-              url: getOrderBillFileUrl(_currentOrder.orderId),
-              fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) {
-                return Container(
-                  height: 200,
-                  color: Colors.grey[200],
-                  child: const Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.broken_image, size: 48, color: Colors.grey),
-                        SizedBox(height: 8),
-                        Text('Failed to load bill'),
-                      ],
+          if (!isImageBill)
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.grey[100],
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.grey[300]!),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    billExtension == 'pdf'
+                        ? Icons.picture_as_pdf
+                        : Icons.insert_drive_file,
+                    size: 36,
+                    color: Colors.orange,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      billFileName.isNotEmpty ? billFileName : 'Bill document',
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                );
-              },
+                ],
+              ),
+            )
+          else
+            ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: AuthNetworkImage(
+                url: getOrderBillFileUrl(_currentOrder.orderId),
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) {
+                  return Container(
+                    height: 200,
+                    color: Colors.grey[200],
+                    child: const Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.broken_image,
+                              size: 48, color: Colors.grey),
+                          SizedBox(height: 8),
+                          Text('Failed to load bill'),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton.icon(
+              onPressed: () => downloadBillFile(
+                context,
+                orderId: _currentOrder.orderId,
+                billFileUrl: _currentOrder.billFileUrl,
+              ),
+              icon: const Icon(Icons.download, size: 18),
+              label:
+                  Text(isImageBill ? 'Download Bill' : 'View / Download Bill'),
             ),
           ),
           const SizedBox(height: 8),

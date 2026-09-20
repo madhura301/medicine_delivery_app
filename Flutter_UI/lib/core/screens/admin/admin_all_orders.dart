@@ -13,6 +13,7 @@ import 'package:pharmaish/core/services/dio_client.dart';
 import 'package:pharmaish/core/services/customer_service.dart';
 import 'package:pharmaish/core/services/order_service.dart';
 import 'package:pharmaish/shared/widgets/order_status_chip.dart';
+import 'package:pharmaish/shared/widgets/view_bill_button.dart';
 
 class AdminAllOrders extends StatefulWidget {
   const AdminAllOrders({super.key});
@@ -733,8 +734,9 @@ class _AdminAllOrdersState extends State<AdminAllOrders> {
               // View Details indicator
               const SizedBox(height: 12),
               Row(
-                mainAxisAlignment: MainAxisAlignment.end,
                 children: [
+                  ViewBillButton(order: order),
+                  const Spacer(),
                   Text(
                     'Tap to view details',
                     style: TextStyle(

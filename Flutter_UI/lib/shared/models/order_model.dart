@@ -166,13 +166,14 @@ class OrderModel {
 
       totalAmount: json['totalAmount']?.toDouble(),
       orderPaymentStatus: _parseOrderPaymentStatus(json['orderPaymentStatus']),
-      billFileUrl: _toStringOrNull(json['billFileUrl']),
+      billFileUrl:
+          _toStringOrNull(json['billFileUrl'] ?? json['orderBillFileLocation']),
 
       // Delivery-verification OTP. The backend serializes it as "otp"
       // (camelCased "OTP"); keep the older keys as fallbacks. Value may be an
       // int or string.
-      completionOtp: _toStringOrNull(
-          json['otp'] ?? json['completionOtp'] ?? json['OTP']),
+      completionOtp:
+          _toStringOrNull(json['otp'] ?? json['completionOtp'] ?? json['OTP']),
 
       // ✨ NEW: Parse assignment history
       assignmentHistory: _parseAssignmentHistory(json['AssignmentHistory'] ??
@@ -217,8 +218,15 @@ class OrderModel {
     // zone-less string returns a local value whose wall-clock is really UTC.
     final utc = parsed.isUtc
         ? parsed
-        : DateTime.utc(parsed.year, parsed.month, parsed.day, parsed.hour,
-            parsed.minute, parsed.second, parsed.millisecond, parsed.microsecond);
+        : DateTime.utc(
+            parsed.year,
+            parsed.month,
+            parsed.day,
+            parsed.hour,
+            parsed.minute,
+            parsed.second,
+            parsed.millisecond,
+            parsed.microsecond);
     return utc.toLocal();
   }
 

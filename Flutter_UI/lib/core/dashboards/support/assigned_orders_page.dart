@@ -4,6 +4,7 @@ import 'package:pharmaish/shared/models/chemist_model.dart';
 import 'package:pharmaish/shared/models/order_model.dart';
 import 'package:pharmaish/shared/widgets/app_button.dart';
 import 'package:pharmaish/shared/widgets/cancel_order_dialog.dart';
+import 'package:pharmaish/shared/widgets/view_bill_button.dart';
 import 'package:pharmaish/utils/app_logger.dart';
 import 'package:pharmaish/utils/storage.dart';
 
@@ -936,6 +937,13 @@ class _AssignedOrderCard extends StatelessWidget {
                     ],
                   ),
                 ],
+
+                // ── View Bill (only once the pharmacy has uploaded one) ───
+                if (orderHasBill(order))
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: ViewBillButton(order: order),
+                  ),
 
                 // ── Rejection reason (shown whenever present, any status) ─
                 if (order.rejectionReason != null &&

@@ -9,6 +9,7 @@ import 'package:pharmaish/utils/app_logger.dart';
 import 'package:pharmaish/utils/storage.dart';
 import 'package:pharmaish/shared/models/order_model.dart';
 import 'package:pharmaish/shared/widgets/app_button.dart';
+import 'package:pharmaish/shared/widgets/view_bill_button.dart';
 import 'package:pharmaish/core/screens/delivery/complete_delivery_screen.dart';
 import 'package:pharmaish/core/services/customer_service.dart';
 import 'package:pharmaish/core/services/order_service.dart';
@@ -457,6 +458,11 @@ class _ChemistDeliveryManagementState extends State<ChemistDeliveryManagement> {
                 'Assigned',
                 DateFormat('MMM dd, hh:mm a').format(order.createdOn),
               ),
+              if (orderHasBill(order))
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: ViewBillButton(order: order),
+                ),
 
               const SizedBox(height: 16),
 

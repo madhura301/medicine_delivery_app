@@ -8,6 +8,7 @@ import 'package:pharmaish/core/screens/orders/accepted_order_bill_screen.dart';
 import 'package:pharmaish/core/screens/delivery/assign_delivery_boy_screen.dart';
 import 'package:pharmaish/shared/widgets/authenticated_image.dart';
 import 'package:pharmaish/shared/widgets/order_status_chip.dart';
+import 'package:pharmaish/shared/widgets/view_bill_button.dart';
 import 'package:pharmaish/utils/app_logger.dart';
 import 'package:pharmaish/utils/consent_manager.dart';
 
@@ -383,6 +384,9 @@ class OrderTileWithBill extends StatelessWidget {
                           ),
                         ),
                       ),
+
+                    // View Bill Button - hides itself until a bill is uploaded
+                    ViewBillButton(order: order),
                     // // Pay Now Button
                     // if (hasAmount)
                     //   //if (!hasBill || !hasAmount)

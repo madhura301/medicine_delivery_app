@@ -10,6 +10,7 @@ import 'package:pharmaish/core/services/dio_client.dart';
 import 'package:pharmaish/shared/widgets/app_button.dart';
 import 'package:pharmaish/shared/widgets/cancel_order_dialog.dart';
 import 'package:pharmaish/shared/widgets/confirm_dialog.dart';
+import 'package:pharmaish/shared/widgets/view_bill_button.dart';
 
 class ManagerDashboard extends StatefulWidget {
   const ManagerDashboard({super.key});
@@ -787,6 +788,11 @@ class _ManagerAllOrdersPageState extends State<_ManagerAllOrdersPage>
                 ],
               ],
             ),
+            if (orderHasBill(order))
+              Align(
+                alignment: Alignment.centerLeft,
+                child: ViewBillButton(order: order),
+              ),
             if (isOrderCancellable(order)) ...[
               const SizedBox(height: 10),
               Align(
