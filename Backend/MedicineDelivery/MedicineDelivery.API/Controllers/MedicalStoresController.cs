@@ -18,11 +18,31 @@ namespace MedicineDelivery.API.Controllers
         private readonly IPermissionCheckerService _permissionCheckerService;
         private readonly ILogger<MedicalStoresController> _logger;
 
-        public MedicalStoresController(IMedicalStoreService medicalStoreService, IPermissionCheckerService permissionCheckerService, ILogger<MedicalStoresController> logger)
+        public MedicalStoresController(IMedicalStoreService medicalStoreService, IPermissionCheckerService permissionCheckerService, IOrderService orderService, ILogger<MedicalStoresController> logger)
         {
             _medicalStoreService = medicalStoreService;
             _permissionCheckerService = permissionCheckerService;
+            _orderService = orderService;
             _logger = logger;
+        }
+
+        private readonly IOrderService _orderService;
+
+        /// <summary>
+        /// Every chemist within the order-routing radius of a point, each marked with whether an order
+        /// placed there would actually reach it. Staff only — see RequireAllChemistReadPermission.
+        /// </summary>
+        [HttpGet("nearby")]
+        [Authorize(Policy = "RequireAllChemistReadPermission")]
+        public async Task<IActionResult> GetChemistsNearLocation([FromQuery] decimal latitude, [FromQuery] decimal longitude, CancellationToken cancellationToken)
+        {
+            if (latitude is < -90 or > 90 || longitude is < -180 or > 180)
+            {
+                return BadRequest(new { error = "Latitude must be between -90 and 90, and longitude between -180 and 180." });
+            }
+
+            var result = await _orderService.GetChemistsNearLocationAsync(latitude, longitude, cancellationToken);
+            return Ok(result);
         }
 
         /// <summary>

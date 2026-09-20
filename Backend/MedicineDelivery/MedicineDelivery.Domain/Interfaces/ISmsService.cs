@@ -20,5 +20,11 @@ namespace MedicineDelivery.Domain.Interfaces
         /// and Retailer (store name).
         /// </summary>
         Task<bool> SendOrderDeliveredAsync(string phoneNumber, string customerName, string orderNumber, string storeName);
+
+        /// <summary>
+        /// Tells the customer their bill is ready to pay, once the chemist uploads it.
+        /// Maps to template variables alp (customer name) and num (bill amount in rupees).
+        /// </summary>
+        Task<bool> SendBillReadyAsync(string phoneNumber, string customerName, decimal billAmount);
     }
 }

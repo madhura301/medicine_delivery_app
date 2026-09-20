@@ -13,6 +13,10 @@ namespace MedicineDelivery.Application.Interfaces
         Task<IEnumerable<OrderDto>> GetActiveOrdersByMedicalStoreIdAsync(Guid medicalStoreId, CancellationToken cancellationToken = default);
         Task<IEnumerable<OrderDto>> GetAcceptedOrdersByMedicalStoreIdAsync(Guid medicalStoreId, CancellationToken cancellationToken = default);
         Task<IEnumerable<OrderDto>> GetRejectedOrdersByMedicalStoreIdAsync(Guid medicalStoreId, CancellationToken cancellationToken = default);
+        Task<IEnumerable<OrderDto>> GetBillUploadedOrdersByMedicalStoreIdAsync(Guid medicalStoreId, CancellationToken cancellationToken = default);
+        Task<IEnumerable<OrderDto>> GetPaidOrdersByMedicalStoreIdAsync(Guid medicalStoreId, CancellationToken cancellationToken = default);
+        Task<IEnumerable<OrderDto>> GetOutForDeliveryOrdersByMedicalStoreIdAsync(Guid medicalStoreId, CancellationToken cancellationToken = default);
+        Task<IEnumerable<OrderDto>> GetCompletedOrdersByMedicalStoreIdAsync(Guid medicalStoreId, CancellationToken cancellationToken = default);
         Task<IEnumerable<OrderDto>> GetAllOrdersByMedicalStoreIdAsync(Guid medicalStoreId, CancellationToken cancellationToken = default);
         Task<OrderDto> AcceptOrderByChemistAsync(int orderId, CancellationToken cancellationToken = default);
         Task<OrderDto> RejectOrderByChemistAsync(int orderId, RejectOrderDto rejectDto, CancellationToken cancellationToken = default);
@@ -33,6 +37,12 @@ namespace MedicineDelivery.Application.Interfaces
         Task<IEnumerable<OrderDto>> GetOrdersByDeliveryIdAsync(int deliveryId, CancellationToken cancellationToken = default);
         Task<IEnumerable<MedicalStoreBasicDto>> GetMedicalStoresByOrderPinCodeAsync(int orderId, CancellationToken cancellationToken = default);
         Task<NearbyChemistResponseDto> GetNearbyChemistsByOrderNumberAsync(string orderNumber, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Every chemist within the routing radius of a point, with the same eligibility checks order
+        /// routing applies — so staff see exactly which stores an order placed there could reach.
+        /// </summary>
+        Task<ChemistsNearLocationDto> GetChemistsNearLocationAsync(decimal latitude, decimal longitude, CancellationToken cancellationToken = default);
     }
 }
 

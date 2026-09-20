@@ -490,6 +490,32 @@ export interface MedicalStoreBasic {
   medicalName: string;
 }
 
+/**
+ * GET /api/MedicalStores/nearby — every chemist within the order-routing radius of a point.
+ * `receivesOrders` applies the same three checks the router does, so a store that is close but not
+ * eligible is shown as such rather than implying it would get the order.
+ */
+export interface ChemistsNearLocation {
+  radiusKm: number;
+  receivingOrdersCount: number;
+  chemists: ChemistNearLocation[];
+}
+
+export interface ChemistNearLocation {
+  medicalStoreId: string;
+  medicalName: string;
+  address: string;
+  postalCode: string;
+  latitude: number;
+  longitude: number;
+  distanceKm: number;
+  isActive: boolean;
+  payoutActive: boolean;
+  activationPaid: boolean;
+  receivesOrders: boolean;
+  notReceivingReasons: string[];
+}
+
 /* ── Customer self-service ────────────────────────────────────────────────── */
 
 /** Body for the anonymous POST /api/Customers/register. The mobile number becomes the username. */
