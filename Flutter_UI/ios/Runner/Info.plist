@@ -70,13 +70,19 @@
 	     is used, which is exempt. -->
 		<key>ITSAppUsesNonExemptEncryption</key>
 		<false/>
-		<!-- Foreground location only. LocationService (core/services/location_service.dart)
-	     calls getCurrentPosition and never opens a position stream, so
-	     NSLocationAlwaysAndWhenInUseUsageDescription was removed: requesting Always
-	     access the binary never uses draws heavy review scrutiny and is a documented
-	     rejection reason. Re-add it only alongside real background tracking. -->
+		<!-- LOCATION PERMISSIONS -->
+		<!-- The app only ever asks for foreground ("When In Use") location:
+	     LocationService (core/services/location_service.dart) calls
+	     getCurrentPosition and never opens a position stream. However the
+	     geolocator_apple and permission_handler plugins compile in a call to
+	     requestAlwaysAuthorization, and App Store Connect's static validator
+	     (ITMS-90683) rejects the upload if any referenced API lacks a purpose
+	     string. So NSLocationAlwaysAndWhenInUseUsageDescription MUST be present
+	     even though the Always prompt is never shown. Do not remove it. -->
 		<key>NSLocationWhenInUseUsageDescription</key>
-		<string>This app needs access to location to help you set your pharmacy's location for deliveries.</string>
+		<string>Pharmaish uses your location to set your delivery address and help delivery partners find you.</string>
+		<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+		<string>Pharmaish uses your location to set your delivery address and help delivery partners find you.</string>
 		<key>CFBundleDevelopmentRegion</key>
 		<string>$(DEVELOPMENT_LANGUAGE)</string>
 		<key>CFBundleDisplayName</key>
