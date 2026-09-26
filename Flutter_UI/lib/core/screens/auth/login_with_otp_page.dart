@@ -1,4 +1,5 @@
 import 'package:pharmaish/utils/app_logger.dart';
+import 'package:pharmaish/utils/api_error.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:pharmaish/core/app_routes.dart';
@@ -595,7 +596,7 @@ class _LoginWithOTPPageState extends State<LoginWithOTPPage> {
     } catch (e) {
       setState(() {
         _isLoading = false;
-        _errorMessage = 'Network error. Please check your connection.';
+        _errorMessage = ApiErrorMessage.fromException(e);
       });
       AppLogger.error('Login error: $e');
     }

@@ -4,6 +4,7 @@ import 'package:pharmaish/shared/widgets/app_button.dart';
 import 'package:pharmaish/shared/widgets/app_snackbar.dart';
 import 'package:pharmaish/shared/widgets/step_progress_indicator.dart';
 import 'package:pharmaish/utils/app_logger.dart';
+import 'package:pharmaish/utils/api_error.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
@@ -1324,8 +1325,8 @@ class _PharmacistRegistrationPageState
       });
     } catch (e) {
       setState(() {
-        _errorMessage =
-            'Network error. Please check your connection and try again.';
+        _errorMessage = ApiErrorMessage.fromException(e,
+            fallback: 'Unable to get your location. Please try again.');
         _locationText = 'Tap to select location';
       });
       AppLogger.error('Location error: $e');
@@ -1459,61 +1460,29 @@ class _PharmacistRegistrationPageState
           _showSuccessDialog();
         } else {
           setState(() {
-            _errorMessage = _extractErrorMessages(
-                responseData, 'Registration failed. Please try again.');
+            _errorMessage = ApiErrorMessage.fromBody(responseData) ??
+                'Registration failed. Please try again.';
           });
         }
-      } else if (response.statusCode == 400) {
-        try {
-          final errorData = jsonDecode(response.body);
-          setState(() {
-            _errorMessage = _extractErrorMessages(errorData,
-                'Invalid registration data. Please check your inputs.');
-          });
-        } catch (e) {
-          setState(() {
-            _errorMessage =
-                'Invalid registration data. Please check your inputs.';
-          });
-        }
-      } else if (response.statusCode == 409) {
-        setState(() {
-          _errorMessage = 'A pharmacy with this mobile number already exists.';
-        });
       } else {
         setState(() {
-          _errorMessage = 'Server error. Please try again later.';
+          _errorMessage = ApiErrorMessage.fromHttpResponse(
+            response,
+            fallback: response.statusCode == 409
+                ? 'A pharmacy with this mobile number already exists.'
+                : 'Invalid registration data. Please check your inputs.',
+          );
         });
       }
     } catch (e) {
       AppLogger.error('Error during registration: $e');
       setState(() {
         _isLoading = false;
-        _errorMessage = 'Network error. Please check your connection.';
+        _errorMessage = ApiErrorMessage.fromException(e);
       });
     }
   }
 
-  String _extractErrorMessages(dynamic errorData, String fallback) {
-    final errors = errorData['errors'];
-    if (errors is List && errors.isNotEmpty) {
-      return errors.join('\n');
-    }
-    if (errors is Map) {
-      final messages = <String>[];
-      errors.forEach((field, fieldErrors) {
-        if (fieldErrors is List) {
-          for (final msg in fieldErrors) {
-            messages.add('$field: $msg');
-          }
-        }
-      });
-      if (messages.isNotEmpty) return messages.join('\n');
-    }
-    final message = errorData['message'];
-    if (message is String && message.isNotEmpty) return message;
-    return fallback;
-  }
 
   void _showSuccessDialog() {
     showDialog(

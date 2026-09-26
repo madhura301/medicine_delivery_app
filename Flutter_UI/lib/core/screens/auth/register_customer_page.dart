@@ -2,6 +2,7 @@
 import 'package:pharmaish/core/theme/app_theme.dart';
 import 'package:pharmaish/shared/widgets/step_progress_indicator.dart';
 import 'package:pharmaish/utils/app_logger.dart';
+import 'package:pharmaish/utils/api_error.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
@@ -890,7 +891,30 @@ class _RegisterPageState extends State<CustomerRegisterPage> {
         }
         return true;
       case 2:
-        return true; // Address step is optional
+        // Address fields are labelled required in the UI; validate them here
+        // so the user sees which one is missing instead of a generic error.
+        if (_addressController.text.trim().isEmpty) {
+          setState(() => _errorMessage = 'Address Line 1 is required');
+          return false;
+        }
+        if (_cityController.text.trim().isEmpty) {
+          setState(() => _errorMessage = 'City is required');
+          return false;
+        }
+        if (_selectedState == null) {
+          setState(() => _errorMessage = 'Please select a state');
+          return false;
+        }
+        final postalCode = _postalCodeController.text.trim();
+        if (postalCode.isEmpty) {
+          setState(() => _errorMessage = 'Postal code is required');
+          return false;
+        }
+        if (!RegExp(r'^\d{6}$').hasMatch(postalCode)) {
+          setState(() => _errorMessage = 'Postal code must be 6 digits');
+          return false;
+        }
+        return true;
       default:
         return false;
     }
@@ -934,7 +958,7 @@ class _RegisterPageState extends State<CustomerRegisterPage> {
         'address': _selectedAddressType, // Home/Office/Other
         'addressLine1': _addressController.text.trim(),
         'city': _cityController.text.trim(),
-        'state': _selectedState!,
+        'state': _selectedState,
         'postalCode': _postalCodeController.text.trim(),
         'isDefault': true,
       };
@@ -973,61 +997,29 @@ class _RegisterPageState extends State<CustomerRegisterPage> {
           _showSuccessDialog();
         } else {
           setState(() {
-            _errorMessage = _extractErrorMessages(
-                responseData, 'Registration failed. Please try again.');
+            _errorMessage = ApiErrorMessage.fromBody(responseData) ??
+                'Registration failed. Please try again.';
           });
         }
-      } else if (response.statusCode == 400) {
-        try {
-          final errorData = jsonDecode(response.body);
-          setState(() {
-            _errorMessage = _extractErrorMessages(errorData,
-                'Invalid registration data. Please check your inputs.');
-          });
-        } catch (e) {
-          setState(() {
-            _errorMessage =
-                'Invalid registration data. Please check your inputs.';
-          });
-        }
-      } else if (response.statusCode == 409) {
-        setState(() {
-          _errorMessage = 'A customer with this mobile number already exists.';
-        });
       } else {
         setState(() {
-          _errorMessage = 'Server error. Please try again later.';
+          _errorMessage = ApiErrorMessage.fromHttpResponse(
+            response,
+            fallback: response.statusCode == 409
+                ? 'A customer with this mobile number already exists.'
+                : 'Invalid registration data. Please check your inputs.',
+          );
         });
       }
     } catch (e) {
       AppLogger.error('Error during registration: $e');
       setState(() {
         _isLoading = false;
-        _errorMessage = 'Network error. Please check your connection.';
+        _errorMessage = ApiErrorMessage.fromException(e);
       });
     }
   }
 
-  String _extractErrorMessages(dynamic errorData, String fallback) {
-    final errors = errorData['errors'];
-    if (errors is List && errors.isNotEmpty) {
-      return errors.join('\n');
-    }
-    if (errors is Map) {
-      final messages = <String>[];
-      errors.forEach((field, fieldErrors) {
-        if (fieldErrors is List) {
-          for (final msg in fieldErrors) {
-            messages.add('$field: $msg');
-          }
-        }
-      });
-      if (messages.isNotEmpty) return messages.join('\n');
-    }
-    final message = errorData['message'];
-    if (message is String && message.isNotEmpty) return message;
-    return fallback;
-  }
 
   void _showSuccessDialog() {
     showDialog(

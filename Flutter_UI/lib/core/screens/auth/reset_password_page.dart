@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:pharmaish/core/screens/splash/splash_page.dart';
 import 'package:pharmaish/core/services/auth_service.dart';
 import 'package:pharmaish/utils/app_logger.dart';
+import 'package:pharmaish/utils/api_error.dart';
 
 class ResetPasswordPage extends StatefulWidget {
   final String mobileNumber;
@@ -421,7 +422,7 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
     } catch (e) {
       setState(() {
         _isLoading = false;
-        _errorMessage = 'Network error. Please check your connection.';
+        _errorMessage = ApiErrorMessage.fromException(e);
       });
       AppLogger.error('Reset password error: $e');
     }

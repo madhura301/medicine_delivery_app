@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:pharmaish/core/services/auth_service.dart';
 import 'package:pharmaish/core/theme/app_theme.dart';
 import 'package:pharmaish/utils/app_logger.dart';
+import 'package:pharmaish/utils/api_error.dart';
 import 'package:pharmaish/utils/storage.dart';
 
 /// Allows an authenticated user to change their password directly.
@@ -133,7 +134,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
       AppLogger.error('ChangePassword error: $e');
       setState(() {
         _isLoading = false;
-        _errorMessage = 'Network error. Please check your connection.';
+        _errorMessage = ApiErrorMessage.fromException(e);
       });
     }
   }

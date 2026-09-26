@@ -3,6 +3,7 @@ import 'package:pharmaish/core/screens/auth/change_password_page.dart';
 import 'package:pharmaish/core/theme/app_theme.dart';
 import 'package:pharmaish/shared/widgets/app_button.dart';
 import 'package:pharmaish/utils/app_logger.dart';
+import 'package:pharmaish/utils/api_error.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
@@ -167,13 +168,13 @@ class _PharmacistProfilePageState extends State<PharmacistProfilePage> {
         });
       } else {
         setState(() {
-          _errorMessage =
-              'Failed to load profile data (Status: ${response.statusCode})';
+          _errorMessage = ApiErrorMessage.fromHttpResponse(response,
+              fallback: 'Failed to load profile. Please try again.');
         });
       }
     } catch (e) {
       setState(() {
-        _errorMessage = 'Network error. Please check your connection. $e';
+        _errorMessage = ApiErrorMessage.fromException(e);
       });
       AppLogger.error('Profile load error: $e');
     } finally {
@@ -1282,8 +1283,8 @@ class _PharmacistProfilePageState extends State<PharmacistProfilePage> {
       });
     } catch (e) {
       setState(() {
-        _errorMessage =
-            'Network error. Please check your connection and try again.';
+        _errorMessage = ApiErrorMessage.fromException(e,
+            fallback: 'Unable to get your location. Please try again.');
         _locationText = 'Tap to select location';
       });
       AppLogger.error('Location error: $e');
@@ -1447,29 +1448,16 @@ class _PharmacistProfilePageState extends State<PharmacistProfilePage> {
         _showSuccessDialog();
         // Reload profile to get fresh data
         await _loadPharmacistProfile();
-      } else if (response.statusCode == 400) {
-        try {
-          final errorData = jsonDecode(response.body);
-          final errors = errorData['errors'] as List<dynamic>?;
-          setState(() {
-            _errorMessage = errors?.isNotEmpty == true
-                ? errors!.first.toString()
-                : 'Invalid update data. Please check your inputs.';
-          });
-        } catch (e) {
-          setState(() {
-            _errorMessage = 'Invalid update data. Please check your inputs.';
-          });
-        }
       } else {
         setState(() {
-          _errorMessage = 'Server error. Please try again later.';
+          _errorMessage = ApiErrorMessage.fromHttpResponse(response,
+              fallback: 'Invalid update data. Please check your inputs.');
         });
       }
     } catch (e) {
       setState(() {
         _isLoading = false;
-        _errorMessage = 'Network error. Please check your connection.';
+        _errorMessage = ApiErrorMessage.fromException(e);
       });
       AppLogger.error('Update error: $e');
     }

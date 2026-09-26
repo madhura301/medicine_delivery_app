@@ -2,6 +2,7 @@ import 'package:pharmaish/core/services/consent_service.dart';
 import 'package:pharmaish/core/theme/app_theme.dart';
 import 'package:pharmaish/shared/widgets/transparent_pricing_dialog.dart';
 import 'package:pharmaish/utils/app_logger.dart';
+import 'package:pharmaish/utils/api_error.dart';
 import 'package:flutter/material.dart';
 import 'package:pharmaish/core/app_routes.dart';
 import 'package:pharmaish/core/screens/auth/forgot_password_page.dart';
@@ -726,7 +727,7 @@ class _LoginPageState extends State<LoginPage> {
       setState(() {
         _isLoading = false;
         AppLogger.error('Error: $e'); // Logs error message
-        _errorMessage = 'Network error. Please check your connection.';
+        _errorMessage = ApiErrorMessage.fromException(e);
       });
       AppLogger.error('Login error: $e');
     }

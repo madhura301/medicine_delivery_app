@@ -5,6 +5,7 @@ import 'dart:convert';
 import 'package:pharmaish/core/theme/app_theme.dart';
 import 'package:pharmaish/shared/widgets/app_snackbar.dart';
 import 'package:pharmaish/utils/app_logger.dart';
+import 'package:pharmaish/utils/api_error.dart';
 import 'package:pharmaish/utils/storage.dart';
 import 'package:pharmaish/utils/constants.dart';
 
@@ -191,14 +192,15 @@ class _AddressSelectorWidgetState extends State<AddressSelectorWidget> {
         AppLogger.info('Loaded ${_addresses.length} addresses');
       } else {
         setState(() {
-          _errorMessage = 'Failed to load addresses';
+          _errorMessage = ApiErrorMessage.fromHttpResponse(response,
+              fallback: 'Failed to load addresses');
           _isLoading = false;
         });
       }
     } catch (e) {
       AppLogger.error('Error loading addresses: $e');
       setState(() {
-        _errorMessage = 'Network error. Please try again.';
+        _errorMessage = ApiErrorMessage.fromException(e);
         _isLoading = false;
       });
     }

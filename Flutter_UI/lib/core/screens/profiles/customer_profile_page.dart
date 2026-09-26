@@ -8,6 +8,7 @@ import 'package:pharmaish/shared/widgets/app_button.dart';
 import 'package:pharmaish/shared/widgets/app_snackbar.dart';
 import 'package:pharmaish/shared/widgets/map_location_picker_page.dart';
 import 'package:pharmaish/utils/app_logger.dart';
+import 'package:pharmaish/utils/api_error.dart';
 import 'dart:convert';
 
 import 'package:pharmaish/utils/constants.dart';
@@ -89,13 +90,14 @@ class _CustomerProfilePageState extends State<CustomerProfilePage> {
         });
       } else {
         setState(() {
-          _errorMessage = 'Failed to load profile. Please try again.';
+          _errorMessage = ApiErrorMessage.fromHttpResponse(response,
+              fallback: 'Failed to load profile. Please try again.');
           _isLoading = false;
         });
       }
     } catch (e) {
       setState(() {
-        _errorMessage = 'Network error. Please check your connection.';
+        _errorMessage = ApiErrorMessage.fromException(e);
         _isLoading = false;
       });
       AppLogger.error('Profile load error: $e');
@@ -216,13 +218,14 @@ class _CustomerProfilePageState extends State<CustomerProfilePage> {
         _showSuccessMessage('Profile updated successfully!');
       } else {
         setState(() {
-          _errorMessage = 'Failed to update profile. Please try again.';
+          _errorMessage = ApiErrorMessage.fromHttpResponse(response,
+              fallback: 'Failed to update profile. Please try again.');
           _isSaving = false;
         });
       }
     } catch (e) {
       setState(() {
-        _errorMessage = 'Network error. Please check your connection.';
+        _errorMessage = ApiErrorMessage.fromException(e);
         _isSaving = false;
       });
       AppLogger.error('Profile update error: $e');
@@ -251,10 +254,11 @@ class _CustomerProfilePageState extends State<CustomerProfilePage> {
         _showSuccessMessage('Address deleted successfully!');
         _loadAddresses();
       } else {
-        _showErrorMessage('Failed to delete address. Please try again.');
+        _showErrorMessage(ApiErrorMessage.fromHttpResponse(response,
+            fallback: 'Failed to delete address. Please try again.'));
       }
     } catch (e) {
-      _showErrorMessage('Network error. Please check your connection.');
+      _showErrorMessage(ApiErrorMessage.fromException(e));
       AppLogger.error('Delete address error: $e');
     }
   }
@@ -1260,10 +1264,11 @@ class _AddAddressDialogState extends State<AddAddressDialog> {
         Navigator.of(context).pop();
         widget.onAddressAdded();
       } else {
-        _showError('Failed to save address. Please try again.');
+        _showError(ApiErrorMessage.fromHttpResponse(response,
+            fallback: 'Failed to save address. Please try again.'));
       }
     } catch (e) {
-      _showError('Network error. Please check your connection.');
+      _showError(ApiErrorMessage.fromException(e));
       AppLogger.error('Save address error: $e');
     } finally {
       setState(() => _isSaving = false);
