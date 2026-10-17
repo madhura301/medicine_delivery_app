@@ -18,8 +18,8 @@ namespace MedicineDelivery.API.Services
         /// <summary>Session length when "Keep me signed in" is off.</summary>
         private static readonly TimeSpan StandardSessionLifetime = TimeSpan.FromHours(1);
 
-        /// <summary>Session length when "Keep me signed in" is on — matches the design in the Infrastructure AuthService.</summary>
-        private static readonly TimeSpan PersistentSessionLifetime = TimeSpan.FromDays(30);
+        /// <summary>Session length when "Keep me signed in" is on — one year, so a remembered user is not asked to sign in again.</summary>
+        private static readonly TimeSpan PersistentSessionLifetime = TimeSpan.FromDays(365);
 
         private readonly UserManager<Domain.Entities.ApplicationUser> _userManager;
         private readonly SignInManager<Domain.Entities.ApplicationUser> _signInManager;

@@ -163,7 +163,7 @@ namespace MedicineDelivery.Infrastructure.Services
             var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
             // Set token expiry based on StayLoggedIn
-            var expiresAt = stayLoggedIn ? DateTime.UtcNow.AddDays(30) : DateTime.UtcNow.AddHours(1);
+            var expiresAt = stayLoggedIn ? DateTime.UtcNow.AddDays(365) : DateTime.UtcNow.AddHours(1);
 
             var token = new JwtSecurityToken(
                 issuer: issuer,
