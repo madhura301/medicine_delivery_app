@@ -16,6 +16,7 @@ import 'package:pharmaish/shared/widgets/confirm_dialog.dart';
 import 'package:pharmaish/utils/app_logger.dart';
 import 'package:pharmaish/utils/consent_manager.dart';
 import 'package:pharmaish/utils/storage.dart';
+import 'package:pharmaish/core/services/session_service.dart';
 
 // ============================================================================
 // CHEMIST DASHBOARD - WITH BILL UPLOAD SUPPORT
@@ -294,11 +295,7 @@ class _ChemistDashboardState extends State<ChemistDashboard>
       String errorMsg = 'Failed to load orders';
 
       if (e.response?.statusCode == 401) {
-        errorMsg = 'Authentication failed. Please login again.';
-        await StorageService.clearAll();
-        if (mounted) {
-          Navigator.of(context).pushReplacementNamed('/login');
-        }
+        await SessionService.endSession();
         return;
       } else if (e.response?.statusCode == 403) {
         errorMsg =

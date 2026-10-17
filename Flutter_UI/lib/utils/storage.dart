@@ -8,6 +8,7 @@ class StorageService {
   // Keys for different storage items
   static const String _authTokenKey = 'auth_token';
   static const String _refreshTokenKey = 'refresh_token';
+  static const String _sessionPersistentKey = 'session_persistent';
   static const String _savedUsernameKey = 'saved_username';
   static const String _savedPasswordKey = 'saved_password';
   static const String _rememberPasswordKey = 'remember_password';
@@ -21,13 +22,20 @@ class StorageService {
 
   // Authentication Token Methods
 
-  /// Store authentication tokens securely
+  /// Store authentication tokens securely.
+  ///
+  /// [persistent] records whether the user chose Remember Me. Only a
+  /// persistent session is restored when the app is reopened; without it the
+  /// token lasts until the app is closed.
   static Future<void> storeAuthTokens({
     required String token,
     String? refreshToken,
+    bool persistent = false,
   }) async {
     try {
       await _storage.write(key: _authTokenKey, value: token);
+      await _storage.write(
+          key: _sessionPersistentKey, value: persistent.toString());
 
       if (refreshToken != null) {
         await _storage.write(key: _refreshTokenKey, value: refreshToken);
@@ -60,11 +68,23 @@ class StorageService {
     }
   }
 
+  /// Whether the stored session should survive the app being closed, i.e. it
+  /// was started with Remember Me ticked.
+  static Future<bool> isSessionPersistent() async {
+    try {
+      return await _storage.read(key: _sessionPersistentKey) == 'true';
+    } catch (e) {
+      AppLogger.error('Error reading session persistence flag', e);
+      return false;
+    }
+  }
+
   /// Clear authentication tokens
   static Future<void> clearAuthTokens() async {
     try {
       await _storage.delete(key: _authTokenKey);
       await _storage.delete(key: _refreshTokenKey);
+      await _storage.delete(key: _sessionPersistentKey);
       AppLogger.info('Authentication tokens cleared successfully');
     } catch (e) {
       AppLogger.error('Error clearing authentication tokens', e);
@@ -155,6 +175,26 @@ class StorageService {
       AppLogger.error('Error decoding JWT token', e);
       return {};
     }
+  }
+
+  /// Expiry time from the JWT `exp` claim, or null when the token can't be
+  /// decoded or carries no `exp`.
+  static DateTime? tokenExpiry(String token) {
+    final exp = decodeJwtToken(token)['exp'];
+    if (exp is! num) return null;
+    return DateTime.fromMillisecondsSinceEpoch(exp.toInt() * 1000, isUtc: true);
+  }
+
+  /// Whether [token] should no longer be trusted. A token that can't be decoded
+  /// counts as expired; one without an `exp` claim is left to the server to
+  /// judge. [leeway] treats a token about to expire as already expired, so a
+  /// screen isn't opened with a session that dies on its first request.
+  static bool isTokenExpired(String token,
+      {Duration leeway = const Duration(minutes: 1)}) {
+    if (decodeJwtToken(token).isEmpty) return true;
+    final expiry = tokenExpiry(token);
+    if (expiry == null) return false;
+    return DateTime.now().toUtc().add(leeway).isAfter(expiry);
   }
 
   /// Extract user role from JWT token claims

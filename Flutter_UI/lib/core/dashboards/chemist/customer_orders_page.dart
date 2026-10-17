@@ -9,6 +9,7 @@ import 'package:pharmaish/shared/widgets/app_snackbar.dart';
 import 'package:pharmaish/shared/widgets/order_tile_with_bill.dart';
 import 'package:pharmaish/utils/app_logger.dart';
 import 'package:pharmaish/utils/storage.dart';
+import 'package:pharmaish/core/services/session_service.dart';
 
 class CustomerOrdersPage extends StatefulWidget {
   final List<OrderModel> allOrders;
@@ -99,8 +100,7 @@ class _CustomerOrdersPageState extends State<CustomerOrdersPage> {
       AppLogger.error('Error refreshing orders', e);
       if (!mounted) return;
       if (e.response?.statusCode == 401) {
-        await StorageService.clearAll();
-        if (mounted) Navigator.of(context).pushReplacementNamed('/login');
+        await SessionService.endSession();
         return;
       }
       AppSnackBar.error(context, 'Failed to refresh orders. Please try again.');

@@ -2,12 +2,10 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:pharmaish/core/app_routes.dart';
 import 'package:pharmaish/core/services/consent_service.dart';
+import 'package:pharmaish/core/services/session_service.dart';
 import 'package:pharmaish/utils/consent_manager.dart';
 import 'package:pharmaish/utils/storage.dart';
 import 'package:pharmaish/utils/app_logger.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
-import 'package:pharmaish/utils/constants.dart';
 
 class SplashPage extends StatefulWidget {
   const SplashPage({super.key});
@@ -33,115 +31,58 @@ class _SplashPageState extends State<SplashPage> {
 
     if (!mounted) return;
 
-    // First, check if user has a valid auth token (is currently logged in)
+    // A stored token is only trusted while it is unexpired, and only if the
+    // user chose Remember Me. An expired one used to open the dashboard anyway,
+    // where every request then failed with 401; and without Remember Me the
+    // session should end when the app is closed.
+    var hadExpiredToken = false;
     try {
       final authToken = await StorageService.getAuthToken();
-      
-      // If there's a valid token, user is already logged in - go to dashboard
+
       if (authToken != null && authToken.isNotEmpty) {
-        AppLogger.info('Valid token found, navigating to dashboard');
-        
-        // Decode token to get user role
-        final userInfo = StorageService.decodeJwtToken(authToken);
-        final userRole = StorageService.extractUserRole(userInfo);
-        
-        if (mounted) {
-          _navigateToDashboard(userRole);
+        if (!await StorageService.isSessionPersistent()) {
+          AppLogger.info('Session was not kept signed in; ending it');
+        } else if (!StorageService.isTokenExpired(authToken)) {
+          AppLogger.info('Valid token found, navigating to dashboard');
+          final userInfo = StorageService.decodeJwtToken(authToken);
+          final userRole = StorageService.extractUserRole(userInfo);
+          if (mounted) {
+            _navigateToDashboard(userRole);
+          }
+          return;
+        } else {
+          AppLogger.info('Stored token has expired');
+          hadExpiredToken = true;
         }
-        return;
+        await StorageService.clearAuthTokens();
       }
     } catch (e) {
       AppLogger.error('Error checking auth token: $e');
     }
 
-    // No valid token, check if user wants to be auto-logged in
+    // No usable token: sign in again with the Remember Me credentials, if saved.
     try {
-      final credentials = await StorageService.loadSavedCredentials();
-      final rememberPassword = credentials['rememberPassword'] as bool;
-      final username = credentials['username'] as String;
-      final password = credentials['password'] as String;
-
-      if (rememberPassword && username.isNotEmpty && password.isNotEmpty) {
-        // Attempt auto-login
-        AppLogger.info('Auto-login attempt for user: $username');
-        final success = await _attemptAutoLogin(username, password);
-
-        if (success && mounted) {
-          // Auto-login successful, navigation already handled in _attemptAutoLogin
-          return;
-        }
+      final renewal = await SessionService.renewSession();
+      if (renewal == SessionRenewal.renewed && mounted) {
+        final token = await StorageService.getAuthToken() ?? '';
+        final role = StorageService.extractUserRole(
+            StorageService.decodeJwtToken(token));
+        await _checkAndShowTerms(role);
+        return;
       }
     } catch (e) {
-      AppLogger.error('Error during auto-login check: $e');
+      AppLogger.error('Error during auto-login: $e');
     }
 
-    // If no valid token and auto-login failed or not enabled, go to login page
+    // Otherwise go to login, explaining why if a session has just lapsed.
     if (mounted) {
-      Navigator.pushReplacementNamed(context, AppRoutes.login);
+      Navigator.pushReplacementNamed(
+        context,
+        AppRoutes.login,
+        arguments:
+            hadExpiredToken ? SessionService.sessionExpiredMessage : null,
+      );
     }
-  }
-
-  Future<bool> _attemptAutoLogin(String username, String password) async {
-    try {
-      // Make API call to login
-      final response = await http.post(
-        Uri.parse('${AppConstants.apiBaseUrl}/Auth/login'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
-        body: jsonEncode({
-          'mobileNumber': username,
-          'password': password,
-          'stayLoggedIn': true
-        }),
-      ).timeout(const Duration(seconds: 10));
-
-      AppLogger.info('Auto-login response: ${response.statusCode}');
-
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        final responseData = jsonDecode(response.body);
-
-        if (responseData['success'] == true) {
-          // Extract and store tokens
-          final token = responseData['token'];
-          final refreshToken = responseData['refreshToken'];
-
-          await StorageService.storeAuthTokens(
-            token: token,
-            refreshToken: refreshToken,
-          );
-
-          // Store user info
-          final userInfo = StorageService.decodeJwtToken(token);
-          final extractedUserInfo = StorageService.extractUserInfo(userInfo);
-          
-          if (extractedUserInfo.isNotEmpty) {
-            await StorageService.storeUserInfo(extractedUserInfo);
-          }
-
-          // Store user ID if available
-          final userId = responseData['userId'] ?? '';
-          if (userId.isNotEmpty) {
-            await StorageService.storeUserId(userId);
-          }
-
-          // Get role and navigate
-          final role = extractedUserInfo['role'] ?? extractedUserInfo['Role'] ?? '';
-          
-          if (mounted) {
-            // CHECK TERMS AFTER AUTO-LOGIN
-            await _checkAndShowTerms(role);
-          }
-
-          return true;
-        }
-      }
-    } catch (e) {
-      AppLogger.error('Auto-login failed: $e');
-    }
-
-    return false;
   }
 
   // NEW METHOD: Check and show terms after auto-login
@@ -197,6 +138,9 @@ class _SplashPageState extends State<SplashPage> {
         break;
       case 'Manager':
         routeName = AppRoutes.managerDashboard;
+        break;
+      case 'DeliveryBoy':
+        routeName = AppRoutes.deliveryDashboard;
         break;
       default:
         routeName = AppRoutes.customerDashboard;

@@ -10,6 +10,7 @@ import 'package:pharmaish/shared/widgets/app_button.dart';
 import 'package:pharmaish/shared/widgets/confirm_dialog.dart';
 import 'package:pharmaish/shared/widgets/delivery_address_view.dart';
 import 'package:pharmaish/core/services/dio_client.dart';
+import 'package:pharmaish/core/services/session_service.dart';
 
 class DeliveryDashboard extends StatefulWidget {
   const DeliveryDashboard({super.key});
@@ -309,8 +310,7 @@ class _DeliveryActiveOrdersPageState extends State<_DeliveryActiveOrdersPage>
     } on DioException catch (e) {
       AppLogger.error('Error loading delivery orders', e);
       if (e.response?.statusCode == 401) {
-        await StorageService.clearAll();
-        if (mounted) Navigator.of(context).pushReplacementNamed('/login');
+        await SessionService.endSession();
         return;
       }
       if (e.response?.statusCode == 404) {

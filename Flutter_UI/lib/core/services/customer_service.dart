@@ -6,6 +6,7 @@ import 'package:pharmaish/core/services/dio_client.dart';
 import 'package:pharmaish/utils/app_logger.dart';
 import 'package:pharmaish/utils/constants.dart';
 import 'package:pharmaish/utils/storage.dart';
+import 'package:pharmaish/core/services/session_service.dart';
 
 /// Backend API for customers.
 ///
@@ -70,7 +71,7 @@ class CustomerService {
         return jsonDecode(response.body) as Map<String, dynamic>;
       } else if (response.statusCode == 401) {
         AppLogger.warning('Unauthorized access - token may be expired');
-        await StorageService.clearAll();
+        await SessionService.endSession();
         return null;
       } else {
         AppLogger.warning(

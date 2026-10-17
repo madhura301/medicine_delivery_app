@@ -31,12 +31,26 @@ class _LoginPageState extends State<LoginPage> {
   bool _obscurePassword = true;
   bool _rememberPassword = false;
   String _errorMessage = '';
+  bool _routeMessageShown = false;
 
   @override
   void initState() {
     super.initState();
     //AppHelpers.disableScreenshots();
     _loadSavedCredentials();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // The app passes a message here when it sends the user back to log in,
+    // e.g. after a session expires.
+    if (_routeMessageShown) return;
+    _routeMessageShown = true;
+    final message = ModalRoute.of(context)?.settings.arguments;
+    if (message is String && message.isNotEmpty) {
+      _errorMessage = message;
+    }
   }
 
   /// Load saved credentials if "Remember Password" was previously checked
@@ -636,13 +650,6 @@ class _LoginPageState extends State<LoginPage> {
     });
 
     try {
-      // Save credentials using StorageService
-      await StorageService.saveCredentials(
-        username: _userNameController.text.trim(),
-        password: _passwordController.text.trim(),
-        rememberPassword: _rememberPassword,
-      );
-
       final userName = _userNameController.text.trim();
       final password = _passwordController.text.trim();
 
@@ -654,15 +661,26 @@ class _LoginPageState extends State<LoginPage> {
       );
 
       if (response.success) {
+        // Save (or clear) Remember Me credentials only once they are known to
+        // work. Saving before the call let a mistyped password overwrite the
+        // working one, after which every auto-login failed.
+        await StorageService.saveCredentials(
+          username: userName,
+          password: password,
+          rememberPassword: _rememberPassword,
+        );
+
         // Extract tokens and user data
         final token = response.token!;
         final refreshToken = response.refreshToken;
         final userId = response.userId ?? '';
 
-        // Store authentication tokens
+        // Store authentication tokens. Without Remember Me the session ends
+        // when the app is closed (see SplashPage).
         await StorageService.storeAuthTokens(
           token: token,
           refreshToken: refreshToken,
+          persistent: _rememberPassword,
         );
 
         // Store user ID

@@ -7,13 +7,13 @@ import 'package:intl/intl.dart';
 import 'package:pharmaish/core/screens/admin/admin_order_details.dart' show AdminOrderDetailsPage;
 import 'package:pharmaish/shared/widgets/app_button.dart';
 import 'package:pharmaish/utils/app_logger.dart';
-import 'package:pharmaish/utils/storage.dart';
 import 'package:pharmaish/shared/models/order_model.dart';
 import 'package:pharmaish/core/services/dio_client.dart';
 import 'package:pharmaish/core/services/customer_service.dart';
 import 'package:pharmaish/core/services/order_service.dart';
 import 'package:pharmaish/shared/widgets/order_status_chip.dart';
 import 'package:pharmaish/shared/widgets/view_bill_button.dart';
+import 'package:pharmaish/core/services/session_service.dart';
 
 class AdminAllOrders extends StatefulWidget {
   const AdminAllOrders({super.key});
@@ -83,11 +83,7 @@ class _AdminAllOrdersState extends State<AdminAllOrders> {
 
       String errorMsg = 'Failed to load orders';
       if (e.response?.statusCode == 401) {
-        errorMsg = 'Authentication failed. Please login again.';
-        await StorageService.clearAll();
-        if (mounted) {
-          Navigator.of(context).pushReplacementNamed('/login');
-        }
+        await SessionService.endSession();
         return;
       } else if (e.response?.statusCode == 404) {
         errorMsg = 'Orders endpoint not found. Please contact administrator.';

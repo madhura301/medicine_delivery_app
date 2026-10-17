@@ -12,6 +12,7 @@ import 'package:pharmaish/core/theme/app_theme.dart';
 import 'package:pharmaish/core/services/dio_client.dart';
 import 'package:pharmaish/core/services/order_service.dart';
 import 'package:pharmaish/shared/widgets/order_status_chip.dart';
+import 'package:pharmaish/core/services/session_service.dart';
 
 class CustomerAllOrders extends StatefulWidget {
   const CustomerAllOrders({super.key});
@@ -101,11 +102,7 @@ class _CustomerAllOrdersState extends State<CustomerAllOrders> {
 
       String errorMsg = 'Failed to load orders';
       if (e.response?.statusCode == 401) {
-        errorMsg = 'Authentication failed. Please login again.';
-        await StorageService.clearAll();
-        if (mounted) {
-          Navigator.of(context).pushReplacementNamed('/login');
-        }
+        await SessionService.endSession();
         return;
       } else if (e.response?.statusCode == 404) {
         errorMsg = 'No orders found';
