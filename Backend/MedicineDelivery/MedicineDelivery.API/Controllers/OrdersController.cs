@@ -106,6 +106,44 @@ namespace MedicineDelivery.API.Controllers
             }
         }
 
+        /// <summary>
+        /// The customer's name and phone numbers for the Call Customer action. Only the chemist whose
+        /// store is handling the order, while it is in progress, may read it — plus staff who can read
+        /// any customer. A store the order has moved away from, or that rejected it, gets 403.
+        /// </summary>
+        [HttpGet("{orderId:int}/customer-contact")]
+        [Authorize(Policy = "RequireOrderReadPermission")]
+        public async Task<IActionResult> GetCustomerContact(int orderId, CancellationToken cancellationToken)
+        {
+            try
+            {
+                var hasFullCustomerAccess = await _permissionChecker.HasPermissionAsync(User, "AllCustomerRead");
+                if (!await _accessGuard.CanViewCustomerContactAsync(CurrentUserId, hasFullCustomerAccess, orderId, cancellationToken))
+                {
+                    return Forbid();
+                }
+
+                var contact = await _orderService.GetCustomerContactAsync(orderId, cancellationToken);
+                if (contact == null)
+                {
+                    return NotFound(new { error = "Order not found." });
+                }
+
+                // Audit trail: who looked up which customer's number, and when (App Insights traces).
+                _logger.LogInformation("Customer contact for Order {OrderId} viewed by User {UserId}", orderId, CurrentUserId);
+                return Ok(contact);
+            }
+            catch (OperationCanceledException)
+            {
+                return StatusCode(499, new { error = "Request was cancelled." });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error in GetCustomerContact for Order {OrderId}", orderId);
+                return StatusCode(500, new { error = "An error occurred while retrieving the customer contact." });
+            }
+        }
+
         [HttpGet("customer/{customerId:guid}")]
         [Authorize(Policy = "RequireOrderReadPermission")]
         public async Task<IActionResult> GetOrdersByCustomerId(Guid customerId, CancellationToken cancellationToken)

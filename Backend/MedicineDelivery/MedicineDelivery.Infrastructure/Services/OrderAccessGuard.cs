@@ -1,3 +1,4 @@
+using MedicineDelivery.Application.Common;
 using MedicineDelivery.Application.Interfaces;
 using MedicineDelivery.Domain.Enums;
 using MedicineDelivery.Domain.Interfaces;
@@ -112,6 +113,27 @@ namespace MedicineDelivery.Infrastructure.Services
             if (!isStaff)
                 _logger.LogWarning("Store-orders access denied: UserId {UserId} for Store {StoreId}", userId, medicalStoreId);
             return isStaff;
+        }
+
+        public async Task<bool> CanViewCustomerContactAsync(string userId, bool hasFullAccess, int orderId, CancellationToken cancellationToken = default)
+        {
+            if (hasFullAccess) return true;
+            if (string.IsNullOrWhiteSpace(userId)) return false;
+
+            var order = await _unitOfWork.Orders.FirstOrDefaultAsync(o => o.OrderId == orderId);
+            if (order == null) return true;   // let the action return its own 404
+
+            var store = await _unitOfWork.MedicalStores.FirstOrDefaultAsync(s => s.UserId == userId);
+            if (store != null &&
+                CustomerContactRules.StoreMaySeeCustomerContact(order.MedicalStoreId, order.OrderStatus, store.MedicalStoreId))
+            {
+                return true;
+            }
+
+            _logger.LogWarning(
+                "Customer-contact access denied: UserId {UserId} for Order {OrderId} (status {OrderStatus})",
+                userId, orderId, order.OrderStatus);
+            return false;
         }
 
         public async Task<string?> GetVisibleOtpAsync(string userId, int orderId, CancellationToken cancellationToken = default)

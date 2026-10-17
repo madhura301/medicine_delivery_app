@@ -43,6 +43,12 @@ namespace MedicineDelivery.Application.Interfaces
         /// routing applies — so staff see exactly which stores an order placed there could reach.
         /// </summary>
         Task<ChemistsNearLocationDto> GetChemistsNearLocationAsync(decimal latitude, decimal longitude, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// The order's customer name and phone numbers, or null when the order or its customer does
+        /// not exist. Callers must check <c>IOrderAccessGuard.CanViewCustomerContactAsync</c> first.
+        /// </summary>
+        Task<CustomerContactDto?> GetCustomerContactAsync(int orderId, CancellationToken cancellationToken = default);
     }
 }
 

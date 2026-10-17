@@ -483,6 +483,30 @@ namespace MedicineDelivery.Infrastructure.Services
             await WriteOrderLogAsync(log, cancellationToken);
         }
 
+        public async Task<CustomerContactDto?> GetCustomerContactAsync(int orderId, CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            var order = await _unitOfWork.Orders.FirstOrDefaultAsync(o => o.OrderId == orderId);
+            if (order == null)
+            {
+                return null;
+            }
+
+            var customer = await _unitOfWork.Customers.FirstOrDefaultAsync(c => c.CustomerId == order.CustomerId);
+            if (customer == null)
+            {
+                _logger.LogWarning("GetCustomerContactAsync: Order {OrderId} references missing Customer {CustomerId}", orderId, order.CustomerId);
+                return null;
+            }
+
+            return new CustomerContactDto(
+                order.OrderId,
+                BuildCustomerName(customer),
+                customer.MobileNumber,
+                string.IsNullOrWhiteSpace(customer.AlternativeMobileNumber) ? null : customer.AlternativeMobileNumber);
+        }
+
         private static string BuildCustomerName(Customer customer) =>
             Truncate(string.Join(' ', new[] { customer.CustomerFirstName, customer.CustomerMiddleName, customer.CustomerLastName }
                 .Where(part => !string.IsNullOrWhiteSpace(part))).Trim(), 200);

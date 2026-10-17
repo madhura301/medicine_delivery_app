@@ -36,6 +36,16 @@ namespace MedicineDelivery.Application.Interfaces
         Task<bool> CanAccessMedicalStoreAsync(string userId, bool hasFullAccess, Guid medicalStoreId, CancellationToken cancellationToken = default);
 
         /// <summary>
+        /// True when the user may see the phone number of this order's customer: the chemist whose
+        /// store is handling the order while it is still in progress (see
+        /// <see cref="Common.CustomerContactRules"/>), or a caller with full access
+        /// (<c>AllCustomerRead</c> — Admin/Manager/CustomerSupport). Narrower than
+        /// <see cref="CanAccessOrderAsync"/>: a store that rejected the order can still read the
+        /// order, but no longer the customer's number.
+        /// </summary>
+        Task<bool> CanViewCustomerContactAsync(string userId, bool hasFullAccess, int orderId, CancellationToken cancellationToken = default);
+
+        /// <summary>
         /// Returns the order's delivery OTP ONLY when both conditions hold (finding H-02):
         /// (1) the order is fully paid, and (2) <paramref name="userId"/> is the order's own customer.
         /// Returns null in every other case — including for staff, chemists and delivery partners,
